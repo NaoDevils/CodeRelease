@@ -1,0 +1,1 @@
+set representation:MotionRequest motion = walk; standType = doubleSupport; specialActionRequest = {specialAction = stand; mirror = false;}; walkRequest = { request = { rotation = 0; translation = {x = 50; y = 0;}; }; requestType = speed; }; kickRequest = { kickTarget = {x = 0; y = 0;}; kickMotionType = none; mirror = false; dynamical = false; }; kickDirection = 0; kickTime = 0;

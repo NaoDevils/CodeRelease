@@ -1,0 +1,15 @@
+motion_id = stand
+"test
+
+label start
+
+stiffness 40 40 40 40 40 40 40 40 40 40 40 40 100 100 100 100 100 100 100 100 100 100 100 100 100 100 0
+
+"   HY     HP    LSP    LSR    LEY    LER  _LWY_  _LH_     RSP    RSR    REY    RER  _RWY_   _RH_   LHYP    LHR    LHP    LKP    LAP    LAR   RHYP    RHR    RHP    RKP    RAP    RAR Int  Dur
+  -0.5    20.3   90.0   11.5  0.0    90.0    -90.0   0.0    90.0  -11.5   0.0    -90.0  90.0    0.0    0.0    0.0  -21.3   48.9  -27.6    0.1    0.0    0.0  -21.2   49.0  -27.6    0.0   1 1000
+label repeat
+stiffness 80 80   40 40 40 40 40 40   40 40 40 40 40 40   60 60 60 60 60 60 60 60 60 60 60 60 0
+  *    *   90.0   10.1  0.0   90  -90.0   0.0    90.5   -9.8   0    -90   90.0    0.0    0.0    0.0  -21.3   48.9  -27.6    0.1    0.0    0.0  -21.2   49.0  -27.6    0.0   1 100
+transition stand stand repeat
+
+transition allMotions extern start

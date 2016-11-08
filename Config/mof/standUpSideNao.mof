@@ -1,0 +1,41 @@
+motion_id = standUpSideNao
+
+"kick used for robot lying on side to fall on front or back
+"Kick uses LeftFoot
+
+label start
+
+"HP HT  AL1 AL2 AL3 AL4	AR1 AR2 AR3 AR4		LL0 LL1 LL2 LL3 LL4 LL5		LR0 LR1 LR2 LR3 LR4 LR5 Int Dur   
+stiffness 0 0   0 0 0 0 0 0   0 0 0 0 0 0  	100 100 100 100 100 100 100 100 100 100 100 100 500
+
+"now standing stable prepare Kick
+* *  * * * * * *  * * * *	* *	0 25 -20 40 -20 -25 	 0 25 -20 40 -20 -25		1 500
+transition standUpFrontNao standUpFrontNao start
+transition standUpBackNao standUpBackNao start
+
+* * * * * * * * * * * * * *		0 22 -50 100 -80 -22	 0 22 -20 40 -20 -22 	 	1 500
+transition standUpFrontNao standUpFrontNao start
+transition standUpBackNao standUpBackNao start
+
+* * * * * * * * * *	* * * *	0 20 -20 100 -60 -30	 0 22 -20 40 -20 -22 	 	1 500
+transition standUpFrontNao standUpFrontNao start
+transition standUpBackNao standUpBackNao start
+
+"* * * * * * * * * *	* * * *	0 20 -80 20 15 -30 	 	0 22 -20 40 -20 -22 		1 300
+"transition standUpFrontNao standUpFrontNao start
+"transition standUpBackNao standUpBackNao start
+
+"* * * * * * * * * 	* * * * *	0 18 -80 20 50 -30 		 0 22 -20 40 -20 -22 		1 300
+"transition standUpFrontNao standUpFrontNao start
+"transition standUpBackNao standUpBackNao start
+
+"* * * * * * * * * *	* * * *	0 30 -50 20 30 -22 		 0 22 -20 40 -20 -22 		1 600
+"transition standUpFrontNao standUpFrontNao start
+"transition standUpBackNao standUpBackNao start
+
+
+"* * * * * * * * * * 	* * * *	0 34 -30 60 -30 -22 	 0 22 -20 40 -20 -22 		1 400
+"transition standUpFrontNao standUpFrontNao start
+"transition standUpBackNao standUpBackNao start                                                        
+                         
+transition allMotions extern start

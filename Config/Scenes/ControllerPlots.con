@@ -1,0 +1,12 @@
+vp contx 1000 0 1
+vpd contx module:ZMPIPController2012:targetCoM.x
+vpd contx module:ZMPIPController2012:refZMP.x blue
+vpd contx module:ZMPIPController2012:calcZMP.x red
+vpd contx module:ZMPIPObserver2012:ZMPDiff.x
+vpd contx module:CoPProvider:CoPxWCS green
+vp conty 1000 -0.1 0.1
+vpd conty module:ZMPIPController2012:targetCoM.y
+vpd conty module:ZMPIPController2012:refZMP.y blue
+vpd conty module:ZMPIPController2012:calcZMP.y red
+vpd conty module:ZMPIPObserver2012:ZMPDiff.y
+vpd conty module:CoPProvider:CoPyWCS green

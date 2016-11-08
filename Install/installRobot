@@ -1,0 +1,124 @@
+#!/bin/bash
+
+set -eu
+
+scriptPath="$(echo $0 | sed "s|^\.\./|`pwd`/../|" | sed "s|^\./|`pwd`/|")"
+baseDir="$(dirname "${scriptPath}")"
+bhDir="$(dirname "${baseDir}")"
+includeDir="${baseDir}/Include/"
+
+source "${includeDir}/bhumanBase"
+
+headName=""
+robotVersion=""
+
+usage() {
+  echo "usage:"
+  echo "${0} <ipaddress>"
+  echo ""
+  echo " <address> : the current dns name or ip address of the robot to install"
+  echo " -h|--help : displays this help"
+  exit 1
+}
+
+parseOptions() {
+  # -h or --help => print help
+  if [ $# -ne 1 ] ; then
+    if [ $# -gt 1 ] ; then
+      error "Too many arguments!"
+    fi
+	usage
+  fi
+  robotIp=${1}
+
+  # try to ping robot
+  if [ `ping ${pingoptions} ${robotIp} > /dev/null && echo 1 || echo 0` == "0" ]; then
+    error "robot not reachable at ${robotIp}"
+    usage
+  fi
+}
+
+getNames() {
+  # Test if robots.cfg exists
+  if [ ! -f "${robotsFile}" ]; then
+    fatal "The file ${robotsFile} (containing the robot names and ids) does not exist!"
+  fi
+  
+  # copy python scripts
+  tmpPath="/tmp/NaoInstall"
+  ssh -i "${privateKey}" ${sshOptions} nao@${robotIp} "rm -Rf ${tmpPath}"
+  ssh -i "${privateKey}" ${sshOptions} nao@${robotIp} "mkdir -p ${tmpPath}"
+  rsync ${rsyncOptions} -e "${sshCommand}" "${fileDir}/bin/getHeadId.py" nao@${robotIp}:${tmpPath}/getHeadId.py
+  
+  # get headId
+  local headId
+  headId=$(ssh -i "${privateKey}" ${sshOptions} nao@${robotIp} "python /tmp/NaoInstall/getHeadId.py | grep -v '[I]'")
+  if [ ${headId} == "Fail" ]; then
+    fatal "Failed reading the headId!"
+  fi
+  
+  #find robotName
+  grepForHeadId=$(grep ${headId} "${robotsFile}")
+  numOfMatchingHeadIds=$(echo "${grepForHeadId}" | wc -l)
+  if [ ${numOfMatchingHeadIds} -eq 0 ]; then
+    fatal "The headId \"${headId}\" is missing (in ${robotsFile})!"
+  elif [ ${numOfMatchingHeadIds} -gt 1 ]; then
+    fatal "${robotsFile} contains the headId \"${headId}\" more than once!"
+  else
+    robotName=$(echo "${grepForHeadId}" | grep -Po 'name\s*=\s*"\K[^"]*')
+	if [ ${robotName} == "" ]; then
+	  fatal "RobotName is empty"
+	fi
+  fi
+  
+  robotDir="${baseDir}/Robots/${robotName}"
+
+  # does the robot exist?
+  if [ ! -d "${robotDir}" ]; then
+    fatal "Robot \"${robotName}\" does not exist"
+  fi
+
+  echo ""
+  echo "using parameters"
+  echo "  robotName: ${robotName}"
+  echo "  address:   ${robotIp}"
+  echo ""
+}
+
+copyFiles() {
+  networkDriver=$(ssh -i "${privateKey}" ${sshOptions} nao@${robotIp} lspci -k -s 02:00.0 | grep "Kernel driver in use:" | awk 'NF>1{print $NF}')
+  if [[ ${networkDriver} == "r8169" ]] ; then
+    message "Buggy Ethernet driver detected! Limiting bandwidth to 100 kb/s"
+    rsyncOptions="${rsyncOptions} --bwlimit=100"
+  fi
+  
+  copyTo="/tmp/NaoInstall/${robotName}"
+  message "Copying files to ${copyTo}"
+  if [[ $(uname) == "*CYGWIN*" ]] ; then
+    chmod -R 755 "${fileDir}"
+    setfacl -s d:u::rwx,d:g::r-x,d:o:r-x "${fileDir}" #due to windows 8
+  fi
+  
+  ssh -i "${privateKey}" ${sshOptions} nao@${robotIp} "mkdir -p ${copyTo}"
+  rsync ${rsyncOptions} -e "${sshCommand}" "${fileDir}"/* nao@${robotIp}:${copyTo}
+  rsync ${rsyncOptions} -e "${sshCommand}" "${robotDir}"/* nao@${robotIp}:${copyTo}/Robot/
+  rsync ${rsyncOptions} -e "${sshCommand}" "${baseDir}/Network/Profiles" nao@${robotIp}:${copyTo}/Robot/
+}
+
+runInstallation() {
+  message "launching install process"
+  ssh -i "${privateKey}" ${sshOptions} nao@${robotIp} "chmod -R 755 ${copyTo} && ${copyTo}/install"
+}
+
+###############################################################################
+##                                                                           ##
+##  MAIN                                                                     ##
+##                                                                           ##
+###############################################################################
+
+checkApp "rsync"
+parseOptions "$@"
+copyKey ${robotIp}
+getNames
+copyFiles
+runInstallation

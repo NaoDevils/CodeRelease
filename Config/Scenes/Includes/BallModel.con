@@ -1,0 +1,26 @@
+call Includes/FieldViews2
+
+vd module:BallModelProvider:parameters
+vd module:BallModelProvider:teamParameters
+vd representation:BallPercept
+vd representation:BallModel
+vd representation:RemoteBallModel
+vd representation:TeamBallModel
+
+# Draw number of hypotheses.
+vp teamBallModelHypotheses 300 0 10 "#" s 0.033
+vpd teamBallModelHypotheses module:BallModelProvider:localNumberOfHypotheses cyan
+vpd teamBallModelHypotheses module:BallModelProvider:remoteNumberOfHypotheses blue
+
+# Draw validity of local and remote ball model inclusive the thresholds from 
+# TeamBallModelProvider to visualise the decision for the team ball model.
+vp teamBallModelValidity 300 0 1 validity s 0.033
+vpd teamBallModelValidity module:BallModelProvider:localValidity red
+vpd teamBallModelValidity module:BallModelProvider:localValidityMin orange
+vpd teamBallModelValidity module:BallModelProvider:remoteValidity black
+vpd teamBallModelValidity module:BallModelProvider:remoteValidityMin gray
+
+# Draw percepts per second of local and remote ball model.
+vp teamBallModelPerceptsPerSecond 300 0 30 "percepts/s" s 0.033
+vpd teamBallModelPerceptsPerSecond module:BallModelProvider:localPerceptsPerSecond red
+vpd teamBallModelPerceptsPerSecond module:BallModelProvider:remotePerceptsPerSecond black

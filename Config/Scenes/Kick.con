@@ -1,0 +1,11 @@
+vp footPos.r 1000 -3 3
+vpd footPos.r module:SwingLegController:footpositions.footPos[LEFT_FOOT].r red
+vpd footPos.r module:SwingLegController:footpositions.footPos[RIGHT_FOOT].r
+vpd footPos.r module:SwingLegController:footpositions.direction blue
+
+vd module:SwingLegController:phases
+set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 40deg; translation = { x = 100; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = sideKickLeft; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 40deg; translation = { x = 100; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = sideKickLeft; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+
+#echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = -90deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };

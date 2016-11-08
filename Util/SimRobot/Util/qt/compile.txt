@@ -1,0 +1,25 @@
+A short guide on how to compile the Qt library with Visual Studio 2015:
+
+Requirements:
+  Visual Studio 2015 (Command Prompt)
+  ActivePerl (http://www.activestate.com/activeperl/downloads)
+  some free disk space
+  a lot of time
+
+1. Download and unpack the package (e.g. qt-everywhere-opensource-src-4.8.7.zip) to the path <builddir> (e.g. C:\Qt\qt-everywhere-opensource-src-4.8.7)
+
+2. Open the "Visual Studio 2015 x64 Command Prompt" and go to <builddir>.
+
+3. Type: configure.exe -debug-and-release -opensource -no-qt3support -opengl desktop -platform win32-msvc2015 -no-script -no-scripttools -no-webkit -nomake examples -nomake demos -mp
+
+4. *wait*
+
+5. Type: nmake
+   
+6. *wait*
+
+7. Type nmake install
+
+8. *wait*
+
+9. Done? The binaries (*.dll) and imports libraries (*.lib) are located at <builddir>\lib.

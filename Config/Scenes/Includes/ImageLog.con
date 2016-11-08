@@ -1,0 +1,12 @@
+dr representation:CameraInfo
+dr representation:CameraInfoUpper
+dr representation:CameraMatrix
+dr representation:CameraMatrixUpper
+dr representation:Image
+dr representation:ImageUpper
+
+echo log start
+echo log stop
+echo log save LOGNAME
+echo Um das Log zu resetten (bisherige Aufnahme entfernen), folgende Zeile:
+echo log clear

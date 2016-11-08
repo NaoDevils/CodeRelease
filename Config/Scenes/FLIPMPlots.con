@@ -1,0 +1,182 @@
+vd representation:WalkingEngineParams
+vd representation:FLIPMObserverParams
+vd representation:JointCalibration
+dr representation:JointSensorData
+
+############################
+# Walking Plots Controller #
+############################
+vp Walking.x 1000 0 0.25
+vpd Walking.x module:FLIPMController:refZMP.x yellow
+vpd Walking.x module:FLIPMController:x1 blue
+vpd Walking.x module:FLIPMController:x2 green
+vpd Walking.x module:FLIPMController:calcZMP.x  red
+#vpd Walking.x module:FLIPMController:calcAcc.x
+
+vp Walking.y 1000 -0.1 0.1
+vpd Walking.y module:FLIPMController:refZMP.y yellow
+vpd Walking.y module:FLIPMController:y1 blue 
+vpd Walking.y module:FLIPMController:y2 green 
+vpd Walking.y module:FLIPMController:calcZMP.y  red
+#vpd Walking.y module:FLIPMController:calcAcc.y
+
+vp TargetCoM 1000 -0.1 0.1
+vpd TargetCoM module:FLIPMController:targetCoM.x black
+vpd TargetCoM module:FLIPMController:targetCoM.y red
+
+vp XOffset 1000 -0.1 0.1
+vpd XOffset module:FLIPMObserver:XOffset.x green
+vpd XOffset module:FLIPMObserver:XOffset.y red
+vpd XOffset module:FLIPMObserver:XOffset.abs black
+
+####################
+# Upper body angle #
+####################
+#vp angleX 1000 -0.3 0.3 
+#vpd angleX module:FLIPMController:angleX red
+
+#vp angleY 1000 -0.3 0.3
+#vpd angleY module:FLIPMController:angleY red
+
+###########
+# Targets #
+###########
+#vp DelayedCoM1.x 1000 -0.25 0.25
+#vpd DelayedCoM1.x module:FLIPMObserver:Delayed_CoM1.x red
+#vp DelayedCoM1.y 1000 -0.25 0.25
+#vpd DelayedCoM1.y module:FLIPMObserver:Delayed_CoM1.y red	
+#
+#vp DelayedCoM2.x 1000 -0.25 0.25
+#vpd DelayedCoM2.x module:FLIPMObserver:Delayed_CoM2.x red
+#vp DelayedCoM2.y 1000 -0.25 0.25
+#vpd DelayedCoM2.y module:FLIPMObserver:Delayed_CoM2.y red	
+#
+#vp DelayedZMP.x 1000 -1.0 1.0
+#vpd DelayedZMP.x module:FLIPMObserver:Delayed_ZMP.x red
+#vp DelayedZMP.y 1000 -1.0 1.0
+#vpd DelayedZMP.y module:FLIPMObserver:Delayed_ZMP.y red	
+#
+#vp DelayedACC.x 1000 -5.0 5.0
+#vpd DelayedACC.x module:FLIPMObserver:Delayed_Acc.x red
+#vp DelayedACC.y 1000 -5.0 5.0
+#vpd DelayedACC.y module:FLIPMObserver:Delayed_Acc.y red	
+#	
+################
+## Real Values #
+################
+#vp RealCoM1.x 1000 -0.25 0.25
+#vpd RealCoM1.x module:FLIPMObserver:realCoM1.x red
+#vp RealCoM1.y 1000 -0.25 0.25
+#vpd RealCoM1.y module:FLIPMObserver:realCoM1.y red	
+#
+#vp RealZMP.x 1000 -5.0 5.0
+#vpd RealZMP.x module:FLIPMObserver:realZMP.x red
+#vp RealZMP.y 1000 -5.0 5.0
+#vpd RealZMP.y module:FLIPMObserver:realZMP.y red	
+#
+#vp RealACC.x 1000 -1.0 1.0
+#vpd RealACC.x module:FLIPMObserver:realAcc.x red
+#vp RealACC.y 1000 -1.0 1.0
+#vpd RealACC.y module:FLIPMObserver:realAcc.y red		
+#
+#vp RealCoM2.x 1000 -0.25 0.25
+#vpd RealCoM2.x module:FLIPMObserver:realCoM2.x red
+#vp RealCoM2.y 1000 -0.25 0.25
+#vpd RealCoM2.y module:FLIPMObserver:realCoM2.y red	
+
+###############
+# Differences #
+###############
+vp ACC1DIFF.y 1000 -3.5 3.5
+vpd ACC1DIFF.y module:FLIPMObserver:Delayed_Acc.y red
+vpd ACC1DIFF.y module:FLIPMObserver:realAcc.y green
+vpd ACC1DIFF.y module:FLIPMObserver:ACC1diff.y black
+
+vp ACC1DIFF.x 1000 -2.5 2.5
+vpd ACC1DIFF.x module:FLIPMObserver:Delayed_Acc.x red
+vpd ACC1DIFF.x module:FLIPMObserver:realAcc.x green
+vpd ACC1DIFF.x module:FLIPMObserver:ACC1diff.x black
+
+vp CoM1DIFF.y 1000 -0.25 0.25
+vpd CoM1DIFF.y module:FLIPMObserver:Delayed_CoM1.y red
+vpd CoM1DIFF.y module:FLIPMObserver:realCoM1.y green
+vpd CoM1DIFF.y module:FLIPMObserver:CoM1diff.y black
+
+vp CoM1DIFF.x 1000 -0.25 0.25
+vpd CoM1DIFF.x module:FLIPMObserver:Delayed_CoM1.x red
+vpd CoM1DIFF.x module:FLIPMObserver:realCoM1.x green
+vpd CoM1DIFF.x module:FLIPMObserver:CoM1diff.x black
+
+vp ZMP1DIFF.y 1000 -0.1 0.1
+vpd ZMP1DIFF.y module:FLIPMObserver:Delayed_ZMP.y red
+vpd ZMP1DIFF.y module:FLIPMObserver:realZMP.y green
+vpd ZMP1DIFF.y module:FLIPMObserver:ZMP1diff.y black
+
+vp ZMP1DIFF.x 1000 -0.1 0.1
+vpd ZMP1DIFF.x module:FLIPMObserver:Delayed_ZMP.x red
+vpd ZMP1DIFF.x module:FLIPMObserver:realZMP.x green
+vpd ZMP1DIFF.x module:FLIPMObserver:ZMP1diff.x black
+
+vp CoM2DIFF.y 1000 -0.25 0.25
+vpd CoM2DIFF.y module:FLIPMObserver:realCoM1.y red
+vpd CoM2DIFF.y module:FLIPMObserver:realCoM2.y green
+#vpd CoM2DIFF.y module:FLIPMObserver:Delayed_CoM2.y orange
+vpd CoM2DIFF.y module:FLIPMObserver:CoM2diff.y black
+
+vp CoM2DIFF.x 1000 -0.25 0.25
+vpd CoM2DIFF.x module:FLIPMObserver:realCoM1.x red
+vpd CoM2DIFF.x module:FLIPMObserver:realCoM2.x green
+#vpd CoM2DIFF.x module:FLIPMObserver:Delayed_CoM2.x orange
+vpd CoM2DIFF.x module:FLIPMObserver:CoM2diff.x black
+
+#####################
+# Differences Ratio #
+#####################
+#vp CoM1DIFF_Ratio.x 1000 -0.2 0.2
+#vpd CoM1DIFF_Ratio.x module:FLIPMObserver:CoM1diffRatio.x red
+#vp CoM1DIFF_Ratio.y 1000 -0.2 0.2
+#vpd CoM1DIFF_Ratio.y module:FLIPMObserver:CoM1diffRatio.y red		
+#
+#vp ACC1DIFF_Ratio.x 1000 -2.0 2.0
+#vpd ACC1DIFF_Ratio.x module:FLIPMObserver:ACC1diffRatio.x red
+#vp ACC1DIFF_Ratio.y 1000 -2.0 2.0
+#vpd ACC1DIFF_Ratio.y module:FLIPMObserver:ACC1diffRatio.y red		
+#
+#vp CoM2DIFF_Ratio.x 1000 -0.2 0.2
+#vpd CoM2DIFF_Ratio.x module:FLIPMObserver:CoM2diffRatio.x red
+#vp CoM2DIFF_Ratio.y 1000 -0.2 0.2
+#vpd CoM2DIFF_Ratio.y module:FLIPMObserver:CoM2diffRatio.y red		
+#
+#
+#vp ZMPProvider.y 1000 -0.1 0.1
+#vpd ZMPProvider.y module:FLIPMObserver:realAcc.y green
+#vpd ZMPProvider.y module:CoPProvider:CoPy red
+#
+#####################
+# FLIPM Config Load #
+#####################
+dr module:FLIPMController:FLIPMContX:load
+dr module:FLIPMController:FLIPMContY:load
+dr module:FLIPMObserver:FLIPMObsvX:load
+dr module:FLIPMObserver:FLIPMObsvY:load
+#mr SpeedRequest PathToSpeedRules 
+
+echo dr module:FLIPMController:FLIPMContX:load
+echo dr module:FLIPMController:FLIPMContY:load
+echo dr module:FLIPMObserver:FLIPMObsvX:load
+echo dr module:FLIPMObserver:FLIPMObsvY:load
+echo /////////////////////////////////////////
+echo mv 0 0 400 0 0 -180
+echo /////////////////////////////////////////
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 10; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo /////////////////////////////////////////
+echo mr TargetCoM ZMPIPController2012Module
+echo mr TargetCoM FLIPMController
+echo /////////////////////////////////////////
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+
+echo 
+echo get representation:WalkingEngineParams
+echo get representation:JointCalibration

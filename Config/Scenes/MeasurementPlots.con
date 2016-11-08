@@ -1,0 +1,21 @@
+vp Delay.y 5000 -0.1 0.1
+vpd Delay.y module:CoMProvider:ActualCoM.y red
+vpd Delay.y module:ZMPIPObserver2012:Delayed_CoM.y green
+vpd Delay.y module:CoPProvider:CoPyWCS  blue
+vpd Delay.y module:ZMPIPObserver2012:Delayed_ZMP.y grey
+
+
+vp Delay.x 5000 -0.1 1
+vpd Delay.x module:CoMProvider:ActualCoM.x red
+vpd Delay.x module:ZMPIPObserver2012:Delayed_CoM.x green
+vpd Delay.x module:CoPProvider:CoPxWCS blue
+vpd Delay.x module:ZMPIPObserver2012:Delayed_ZMP.x grey
+
+vp Angle 5000 -1 1
+vpd Angle module:OrientationPredictor:angleX
+vpd Angle module:OrientationPredictor:angleY
+
+dr representation:SensorData
+dr representation:FilteredSensorData
+dr representation:JointData
+dr representation:JointRequest 

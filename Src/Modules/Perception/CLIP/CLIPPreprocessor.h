@@ -235,13 +235,13 @@ private:
   /** return sum of cb and cr channel differences, used to detect changes in color on scan lines */
   inline int lastColorDiff()
   {
-    return std::abs(scanLinePixelBuffer[pixelCount - 1].cb - scanLinePixelBuffer[pixelCount].cb + scanLinePixelBuffer[pixelCount - 1].cr - scanLinePixelBuffer[pixelCount].cb);
+    return std::abs(scanLinePixelBuffer[pixelCount - 1].cb - scanLinePixelBuffer[pixelCount].cb + scanLinePixelBuffer[pixelCount - 1].cr - scanLinePixelBuffer[pixelCount].cr);
   }
 
   /** return sum of cb and cr channel differences, used to detect changes in color on scan lines */
   inline int lastColorDiff2()
   {
-    return std::abs(scanLinePixelBuffer[pixelCount - 2].cb - scanLinePixelBuffer[pixelCount].cb + scanLinePixelBuffer[pixelCount - 2].cr - scanLinePixelBuffer[pixelCount].cb);
+    return std::abs(scanLinePixelBuffer[pixelCount - 2].cb - scanLinePixelBuffer[pixelCount].cb + scanLinePixelBuffer[pixelCount - 2].cr - scanLinePixelBuffer[pixelCount].cr);
   }
 
   unsigned timeStamp,timeStampUpper; // used to make sure that images are only processed once

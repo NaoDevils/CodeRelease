@@ -73,7 +73,7 @@ public:
 	/** Constructor with all needed source data structures.
 	 * @param theRobotModel Model of the robot.
 	 * @param theRefZMP The desired ZMP.
-	 * @param theSensorData Data from sensors.
+	 * @param theInertialSensorData Data from sensors.
 	 * @param theWalkingEngineParams Walking Engine Parameters.
 	 * @param thePatternGenRequest The request received by the PatternGenerator.
 	 * @param theFallDownState Information about the current state. If the robt has fallen down stop walking engine.
@@ -95,7 +95,7 @@ public:
 	~ZMPIPController() { freeMem(); } /**< Destructor */
 
 	/** Start the controller. */
-	void Start() { useSensor(theWalkingEngineParams.sensorControlRatio[0]); }
+	void Start() { useSensor(theWalkingEngineParams.sensorControl.sensorControlRatio[0]); }
 
 	/** Tells the controller to stop moving after the last added step. */
 	void End() { reset(); } 

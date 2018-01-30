@@ -181,7 +181,8 @@ void LogPlayer::stepForward()
       if(queue.getMessageID() == idImage || queue.getMessageID() == idImageUpper || 
         queue.getMessageID() == idJPEGImage || queue.getMessageID() == idJPEGImageUpper || 
         queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper ||
-         (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000))
+         (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
+          (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000))
         lastImageFrameNumber = currentFrameNumber;
     }
     while(queue.getMessageID() != idProcessFinished);
@@ -286,6 +287,15 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
       else
         continue;
     }
+    else if (queue.getMessageID() == idLowFrameRateImageUpper)
+    {
+      LowFrameRateImage lowFrameRateImage;
+      in.bin >> lowFrameRateImage;
+      if (lowFrameRateImage.imageUpdated)
+        image = lowFrameRateImage.image;
+      else
+        continue;
+    }
     else
       continue;
 
@@ -344,7 +354,8 @@ bool LogPlayer::replay()
         if(queue.getMessageID() == idImage || queue.getMessageID() == idJPEGImage || 
           queue.getMessageID() == idImageUpper || queue.getMessageID() == idJPEGImageUpper || 
           queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper ||
-           (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000))
+           (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
+            (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000))
           lastImageFrameNumber = currentFrameNumber;
       }
       while(queue.getMessageID() != idProcessFinished && currentMessageNumber < numberOfMessagesWithinCompleteFrames - 1);

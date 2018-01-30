@@ -4,7 +4,7 @@
  */
 
 #pragma once
-/* tells the RingBuffer to check the boundaries */
+ /* tells the RingBuffer to check the boundaries */
 #define LIMIT_CHECK
 
 #include <list>
@@ -21,17 +21,12 @@
 #include "Representations/Sensing/ZMPModel.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/MotionControl/FootSteps.h"
-
-//#include "Tools/Math/Pose3D.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Configuration/RobotDimensions.h"
-//#include "Tools/MathDortmund/Pose3D_D.h"
-
-//#include "Tools/Streams/InStreams.h"
+#include "Representations/MotionControl/Footpositions.h"
 
 #define COMMA ,
 const int static_N = 50; /**< Length of the preview phase */
-#define SEPERATEDXY 1
 
 MODULE(FLIPMObserver,
 { ,
@@ -42,147 +37,134 @@ MODULE(FLIPMObserver,
   REQUIRES(InertialSensorData),
   REQUIRES(ZMPModel),
   REQUIRES(FootSteps),
-  /////////////////////////////
   REQUIRES(RobotModel),
   REQUIRES(RobotDimensions),
-  /////////////////////////////
+  REQUIRES(Footpositions),
   USES(WalkingInfo),
   USES(TargetCoM),
-  /////////////////////////////
   PROVIDES(ObservedFLIPMError),
-  //LOADS_PARAMETERS(
-  //{ ,
-  //  // TODO: initialized has to be changed when changing parameters!!
-  //  (bool)  activateSensorX,
-  //  (float) sensorControlRatioObserverX[3],
-  //  (bool)  activateSensorY,
-  //  (float) sensorControlRatioObserverY[3],
-  //  (int)   FLIPM_XOffset,
-  //  (float) FLIPM_IMUFilter,
-  //  (int)   FLIPM_CoM1Delay,
-  //  (float) FLIPM_CoM1Multiplikator[2],
-  //  (float) FLIPM_CoM1OffsetX,
-  //  (float) FLIPM_CoM1OffsetY,
-  //  (float) FLIPM_CoM1DiffOffsetX,
-  //  (float) FLIPM_CoM1DiffOffsetY,
-  //  (int)   FLIPM_CoM2Delay,
-  //  (float) FLIPM_CoM2Multiplikator[2],
-  //  (float) FLIPM_CoM2OffsetX,
-  //  (float) FLIPM_CoM2OffsetY,
-  //  (float) FLIPM_CoM2DiffOffsetX,
-  //  (float) FLIPM_CoM2DiffOffsetY,
-  //  (int)   FLIPM_ACC1Provider,
-  //  (int)   FLIPM_CoM1Provider,
-  //  (int)   FLIPM_CoM2Provider,
-  //  (int)   FLIPM_CoM2DiffProvider,
-  //}),
 });
 
 class FLIPMObserverParams : public Streamable
 {
 public:
-	FLIPMObserverParams() {
-    FILE *stream;
-    std::string name = "flipmObserverParams";
-    std::string fullPath;
-    std::list<std::string> names = File::getFullNames(name + ".cfg");
-    bool found = false;
+	FLIPMObserverParams()
+	{
+		FILE *stream;
+		std::string name = "flipmObserverParams";
+		std::string fullPath;
+		std::list<std::string> names = File::getFullNames(name + ".cfg");
+		bool found = false;
 
-    for (auto& path : names)
-    {
-      stream = fopen(path.c_str(), "r");
-      if (stream)
-      {
-        found = true;
-        fullPath = path;
-        break;
-      }
-    }
-    if (!found)
-    {
-      fullPath = File::getBHDir() + std::string("/Config/Robots/Default/") + name + std::string(".cfg");
-      ASSERT(false);
-    }
-    fclose(stream);
-    InMapFile file(name + std::string(".cfg"));
-    if (file.exists())
-      file >> *this;
-    else
-      OUTPUT_TEXT("Warning, could not create" + fullPath);
+		for (auto& path : names)
+		{
+			stream = fopen(path.c_str(), "r");
+			if (stream)
+			{
+				found = true;
+				fullPath = path;
+				break;
+			}
+		}
+		if (!found)
+		{
+			fullPath = File::getBHDir() + std::string("/Config/Robots/Default/") + name + std::string(".cfg");
+			ASSERT(false);
+		}
+		fclose(stream);
+		InMapFile file(name + std::string(".cfg"));
+		if (file.exists())
+			file >> *this;
+		else
+			OUTPUT_TEXT("Warning, could not create" + fullPath);
 	}
 
-	bool activateSensorX;
-	float sensorControlRatioObserverX[3];
-	bool activateSensorY;
-	float sensorControlRatioObserverY[3];
-	int FLIPM_XOffset;
-	float FLIPM_IMUFilter;
-  int FLIPM_CoM1Delay;
-  float FLIPM_CoM1Multiplikator[2];
-	float FLIPM_CoM1OffsetX;
-	float FLIPM_CoM1OffsetY;
-  float FLIPM_CoM1DiffOffsetX;
-  float FLIPM_CoM1DiffOffsetY;
-  int FLIPM_CoM2Delay;
-  float FLIPM_CoM2Multiplikator[2];
-	float FLIPM_CoM2OffsetX;
-	float FLIPM_CoM2OffsetY;
-  float FLIPM_CoM2DiffOffsetX;
-  float FLIPM_CoM2DiffOffsetY;
-	int FLIPM_ACC1Provider;
-	int FLIPM_CoM1Provider;
-	int FLIPM_CoM2Provider;
-	int FLIPM_CoM2DiffProvider;
+	ENUM(CoMProvider,
+	{ ,
+	  targetCoM,
+	  MRE_CoM,
+	  IMU_CoM,
+	});
+
+	ENUM(ACCProvider,
+	{ ,
+	  targetAcc,
+	  ZMP_Acc,
+	  ZMP_CoM1_Acc,
+	  IMU_Acc,
+	});
+
+	bool            activateSensorX;
+  float           sensorXFactor;
+	float           sensorControlRatioObserverX[3];
+	bool            activateSensorY;
+  float           sensorYFactor;
+	float           sensorControlRatioObserverY[3];
+	float			maxDiffCoMClip;
+	float			maxDiffACCClip;
+	CoMProvider     CoM1Provider;
+	ACCProvider     ACC1Provider;
+	CoMProvider     CoM2Provider;
+	unsigned int    CoM1Delay;
+	float           CoM1OffsetX;
+	float           CoM1OffsetY;
+
+	unsigned int    CoM2Delay;
+	float           CoM2OffsetX;
+	float           CoM2OffsetY;
+	float           CoM2DiffXOffset;
+	float           CoM2DiffYOffset;
+
+	float           accFilter;
+	bool            useRCS;
 
 	void serialize(In* in, Out* out)
 	{
 		STREAM_REGISTER_BEGIN;
 		STREAM(activateSensorX);
+    STREAM(sensorXFactor);
 		STREAM(sensorControlRatioObserverX);
 		STREAM(activateSensorY);
+    STREAM(sensorYFactor);
 		STREAM(sensorControlRatioObserverY);
-		STREAM(FLIPM_XOffset);
-		STREAM(FLIPM_IMUFilter);
-    STREAM(FLIPM_CoM1Delay);
-    STREAM(FLIPM_CoM1Multiplikator);
-		STREAM(FLIPM_CoM1OffsetX);
-		STREAM(FLIPM_CoM1OffsetY);
-    STREAM(FLIPM_CoM1DiffOffsetX);
-    STREAM(FLIPM_CoM1DiffOffsetY);
-    STREAM(FLIPM_CoM2Delay);
-    STREAM(FLIPM_CoM2Multiplikator);
-		STREAM(FLIPM_CoM2OffsetX);
-		STREAM(FLIPM_CoM2OffsetY);
-    STREAM(FLIPM_CoM2DiffOffsetX);
-    STREAM(FLIPM_CoM2DiffOffsetY);
-		STREAM(FLIPM_ACC1Provider);
-		STREAM(FLIPM_CoM1Provider);
-		STREAM(FLIPM_CoM2Provider);
-		STREAM(FLIPM_CoM2DiffProvider);
+		STREAM(maxDiffCoMClip);
+		STREAM(maxDiffACCClip);
+		STREAM(CoM1Provider);
+		STREAM(ACC1Provider);
+		STREAM(CoM2Provider);
+		STREAM(CoM1Delay);
+		STREAM(CoM1OffsetX);
+		STREAM(CoM1OffsetY);
+		STREAM(CoM2Delay);
+		STREAM(CoM2OffsetX);
+		STREAM(CoM2OffsetY);
+		STREAM(CoM2DiffXOffset);
+		STREAM(CoM2DiffYOffset);
+		STREAM(accFilter);
+		STREAM(useRCS);
 		STREAM_REGISTER_FINISH;
 	}
 };
 
 class FLIPMObserver : public FLIPMObserverBase
 {
-  ROBOT_PARAMETER_CLASS(FLIPMObsvX, FLIPMObserver)
-	  PARAM(int, N)
-	  PARAM(float, z_h)
-	  PARAM(float, g)
-	  PARAM(Matrix6x3f, L)
-  END_ROBOT_PARAMETER_CLASS(FLIPMObsvX)
+	ROBOT_PARAMETER_CLASS(FLIPMObsvX, FLIPMObserver)
+		PARAM(int, N)
+		PARAM(float, z_h)
+		PARAM(float, g)
+		PARAM(Matrix6x3f, L)
+		END_ROBOT_PARAMETER_CLASS(FLIPMObsvX)
 
-  ROBOT_PARAMETER_CLASS(FLIPMObsvY, FLIPMObserver)
-    PARAM(int, N)
-    PARAM(float, z_h)
-    PARAM(float, g)
-    PARAM(Matrix6x3f, L)
-  END_ROBOT_PARAMETER_CLASS(FLIPMObsvY)
-
-
+		ROBOT_PARAMETER_CLASS(FLIPMObsvY, FLIPMObserver)
+		PARAM(int, N)
+		PARAM(float, z_h)
+		PARAM(float, g)
+		PARAM(Matrix6x3f, L)
+		END_ROBOT_PARAMETER_CLASS(FLIPMObsvY)
 
 public:
-	FLIPMObserver():
+	FLIPMObserver() :
+		counter(0),
 		isStable(true),
 		localSensorScale(0),
 		filteredAccX(0.0),
@@ -195,17 +177,17 @@ protected:
 	FLIPMObserverParams flipmObserverParams;
 private:
 
-  RingBuffer<Vector2f, static_N> accDelayBuffer,	/**< Buffer to deal with the sensor delay. */
+	RingBuffer<Vector2f, static_N> accDelayBuffer,	/**< Buffer to deal with the sensor delay. */
 		coM1DelayBuffer,									/**< Buffer to deal with the sensor delay. */
-		coM2DelayBuffer,									/**< Buffer to deal with the sensor delay. */	
-    realCoM1DelayBuffer,
-    realCoM2DelayBuffer;
-
+		coM2DelayBuffer,									/**< Buffer to deal with the sensor delay. */
+		realCoM1DelayBuffer,
+		realCoM2DelayBuffer;
+	int counter;
 	bool isStable;
 	float localSensorScale;
 	Point lastRealZMP;
 
-	double filteredAccX;
-	double filteredAccY;
+	float filteredAccX;
+	float filteredAccY;
 };
 

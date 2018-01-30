@@ -23,7 +23,6 @@
 MODULE(PatternGeneratorModule,
 { ,
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FreeLegPhaseParams),
   REQUIRES(PatternGenRequest),
   REQUIRES(RobotModel),
   REQUIRES(RobotDimensions),

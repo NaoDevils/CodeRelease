@@ -49,6 +49,21 @@ STREAMABLE_WITH_BASE(GroundTruthRobotPose, RobotPose,
 });
 
 /**
+* @struct MocapRobotPose
+* The same as the RobotPose, but
+* provided by the mocap system
+*/
+STREAMABLE_WITH_BASE(MocapRobotPose, RobotPose,
+{ 
+  /** Draws the robot pose to the field view*/
+  void draw() const,
+
+  (unsigned int)(0) mocapFrameNumber,
+  (unsigned int)(0) timestamp,
+});
+
+
+/**
 * @struct RobotPoseAfterPreview
 * The same as the RobotPose, including 
 * the preview phase of Dortmund Walking Engine.

@@ -1,0 +1,40 @@
+call Includes/FieldViews2
+
+vd module:KalmanRobotMapProvider:parameters
+vd module:KalmanRobotMapProvider:teamParameters
+vd module:KalmanRobotMapProvider:hypotheses
+vd representation:RobotsPercept
+vd representation:RemoteRobotMap
+
+# Draw hypotheses
+vfd worldState module:KalmanRobotMapProvider:hypotheses
+vfd worldState module:KalmanRobotMapProvider:validity
+# Don't draw percepts
+vfd worldState representation:RobotsPercept:Field off
+
+# Move head
+#set representation:HeadControlRequest controlType = localizeBall; pan = 0deg; tilt = 0deg;
+
+
+# Plot number of hypotheses
+vp kalmanRobotModelHypotheses 300 0 10 "#" s 0.033
+vpd kalmanRobotModelHypotheses module:KalmanRobotMapProvider:numberOfHypotheses blue
+
+# Plot validities
+vp kalmanRobotModelValidity 300 0 1 validity s 0.033
+vpd kalmanRobotModelValidity module:KalmanRobotMapProvider:validityMin gray
+vpd kalmanRobotModelValidity module:KalmanRobotMapProvider:validityGood green
+vpd kalmanRobotModelValidity module:KalmanRobotMapProvider:meanValidity red
+
+# Plot percepts per second
+vp kalmanRobotModelPPS 300 0 30 PPS s 0.033
+vpd kalmanRobotModelPPS module:KalmanRobotMapProvider:ppsMin gray
+vpd kalmanRobotModelPPS module:KalmanRobotMapProvider:ppsMax black
+vpd kalmanRobotModelPPS module:KalmanRobotMapProvider:ppsGood green
+vpd kalmanRobotModelPPS module:KalmanRobotMapProvider:meanPPS red
+
+# Plot robot type validities
+vp kalmanRobotModelRobotType 300 -1 1 RobotType s 0.033
+vpd kalmanRobotModelRobotType module:KalmanRobotMapProvider:RobotType_opponent red
+vpd kalmanRobotModelRobotType module:KalmanRobotMapProvider:RobotType_teammate green
+vpd kalmanRobotModelRobotType module:KalmanRobotMapProvider:meanRobotType black

@@ -72,6 +72,7 @@ private slots:
   void transparencyChanged(const int& i);
   //Tab
   void updateCommonParameters(QStandardItem* item);
+  void updateNextPhase(float& next_phase0, float phase1, float phase2, int phaseNumber);
   void updatePhaseParameters(QStandardItem* item);
   void movePhase(const int fromIndex, int toIndex);
   void setSelectedFromEditor(const int&);
@@ -144,8 +145,9 @@ private:
   //Contextmenu
   KickMenuBar* kickMenuBar; //the contextMenubar
   QSignalMapper dragPlaneMapper, softenMapper;
-
+public:
   bool mirror;
 
+private:
   friend class KickViewGLWidget;
 };

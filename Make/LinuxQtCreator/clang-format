@@ -1,0 +1,15 @@
+BasedOnStyle: Google
+BreakBeforeBraces: Allman
+ColumnLimit: 100
+IndentWidth: 2
+AllowShortFunctionsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+MaxEmptyLinesToKeep: 2
+TabWidth: 2
+UseTab: Never
+AlignEscapedNewlinesLeft: false
+AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: true
+Standard: Cpp11
+AlignConsecutiveDeclarations: true
+AlignAfterOpenBracket: true

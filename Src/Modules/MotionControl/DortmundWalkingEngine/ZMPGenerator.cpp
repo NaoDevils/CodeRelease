@@ -34,13 +34,11 @@ ZMPGenerator::ZMPGenerator(
                            const FootSteps				&theFootSteps,
                            const WalkingEngineParams	&theWalkingEngineParams,
                            const ControllerParams		&theControllerParams,
-                           const FreeLegPhaseParams	&theFreeLegPhaseParams,
-                           const WalkingInfo			&theWalkingInfo,
+                           //const WalkingInfo			&theWalkingInfo,
                            const ReferenceModificator  &theReferenceModificator):
 theFootSteps(theFootSteps),
 theWalkingEngineParams(theWalkingEngineParams),
 theControllerParams(theControllerParams),
-theFreeLegPhaseParams(theFreeLegPhaseParams),
 //theWalkingInfo(theWalkingInfo), unused
 theReferenceModificator(theReferenceModificator)
 {
@@ -100,10 +98,11 @@ DECLARE_INTERPOLATE_VAR(stand_px, double, 0);
 void ZMPGenerator::planZMP(RefZMP &refZMP)
 {
   FootList::iterator _footList;
-  double diff;
 
   for (_footList=lastPlannedZMP; _footList!=footPositions.end(); ++_footList)
   {
+    POSE_2D_SAMPLE("module:ZMPGenerator:rightFootPositions", Pose2f((*_footList)->direction, (*_footList)->footPos[ZMP::phaseToZMPFootMap[(*_footList)->phase]].x*1000, (*_footList)->footPos[ZMP::phaseToZMPFootMap[(*_footList)->phase]].y*1000), ColorRGBA(255,0,0));
+    
     float vxss;
     float spdx=(float)(*_footList)->speed.x;
     float tss=(*_footList)->singleSupportLen*(float)theControllerParams.dt;
@@ -139,34 +138,20 @@ void ZMPGenerator::planZMP(RefZMP &refZMP)
 
     float pxss=vxss*tss/2;
 
-    const float *polygonLeft = theWalkingEngineParams.polygonLeft;
-    const float *polygonRight = theWalkingEngineParams.polygonRight;
-    if ((*_footList)->kickPhase == ongoing)
-    {
-      polygonLeft = theFreeLegPhaseParams.polygonLeft;
-      polygonRight = theFreeLegPhaseParams.polygonRight;
-    }
-
+    const float *polygonLeft = theWalkingEngineParams.footMovement.polygonLeft;
+    const float *polygonRight = theWalkingEngineParams.footMovement.polygonRight;
+    
     bool toConvert=false;
     switch ((*_footList)->phase)
     {
 
     case firstSingleSupport:
       p.y=FourPointBezier1D(polygonLeft, (float)(*_footList)->frameInPhase/(*_footList)->singleSupportLen);
-      if ((*_footList)->kickPhase == freeLegNA)
-        p.x=-pxss+pc*(float)theControllerParams.dt*vxss;
-      else
-        p.x = -0.02f;
+      p.x=-pxss+pc*(float)theControllerParams.dt*vxss;
       toConvert=true;    
       break;
 
     case firstDoubleSupport:
-      if ((*_footList)->kickPhase == ending)
-      {
-        p.y = (rf.y - lf.y) / 2;
-        toConvert = true;
-      }
-      else
       {
         plgn[0]=polygonLeft[3];
         plgn[1]=(float)(rf.y-lf.y)/2;
@@ -175,28 +160,16 @@ void ZMPGenerator::planZMP(RefZMP &refZMP)
         p.y=FourPointBezier1D(plgn, (float)(*_footList)->frameInPhase/(*_footList)->doubleSupportLen);
         toConvert=true;
       }
-      if ((*_footList)->kickPhase == freeLegNA)
-        p.x=+pxss+pc*(float)theControllerParams.dt*vxds;
-      else
-        p.x = -0.02f;
+      p.x=+pxss+pc*(float)theControllerParams.dt*vxds;
       break;
 
     case secondSingleSupport:
       p.y=FourPointBezier1D(polygonRight, (float)(*_footList)->frameInPhase/(*_footList)->singleSupportLen);
-      if ((*_footList)->kickPhase == freeLegNA)
-        p.x=-pxss+pc*(float)theControllerParams.dt*vxss;
-      else
-        p.x = -0.02f;
+      p.x=-pxss+pc*(float)theControllerParams.dt*vxss;
       toConvert=true;
       break;
 
     case secondDoubleSupport:
-      if ((*_footList)->kickPhase == ending)
-      {
-        p.y = (lf.y - rf.y) / 2;
-        toConvert = true;
-      }
-      else
       {
         plgn[0]=polygonRight[3];
         plgn[1]=-(float)(rf.y-lf.y)/2;
@@ -205,29 +178,12 @@ void ZMPGenerator::planZMP(RefZMP &refZMP)
         p.y=FourPointBezier1D(plgn, (float)(*_footList)->frameInPhase/(*_footList)->doubleSupportLen);
         toConvert=true;
       }
-      if ((*_footList)->kickPhase == freeLegNA)
-        p.x=+pxss+pc*(float)theControllerParams.dt*vxds;
-      else
-        p.x = -0.02f;
-      break;
-
-    case unlimitedSingleSupportLeft:
-      p=(*_footList)->footPos[LEFT_FOOT]+Point(theFreeLegPhaseParams.zmpLeftX, theFreeLegPhaseParams.zmpLeftY);
-      diff=p.y-zmp.y();
-      if (std::abs(diff)>std::abs(theFreeLegPhaseParams.zmpMoveSpeedY))
-        p.y=zmp.y()+sgn(p.y-zmp.y())*theFreeLegPhaseParams.zmpMoveSpeedY;
-      break;
-
-    case unlimitedSingleSupportRight:
-      p=(*_footList)->footPos[RIGHT_FOOT]+Point(theFreeLegPhaseParams.zmpRightX, theFreeLegPhaseParams.zmpRightY);
-      diff=p.y-zmp.y();
-      if (std::abs(diff)>std::abs(theFreeLegPhaseParams.zmpMoveSpeedY))
-        p.y=zmp.y()+sgn(p.y-zmp.y())*theFreeLegPhaseParams.zmpMoveSpeedY;
+      p.x=+pxss+pc*(float)theControllerParams.dt*vxds;
       break;
 
     default:
       p.x = -pxss;
-      p.y = -theWalkingEngineParams.footYDistance;
+      p.y = -theWalkingEngineParams.footMovement.footYDistance;
       toConvert = true;
       break;
     }
@@ -257,12 +213,23 @@ void ZMPGenerator::planZMP(RefZMP &refZMP)
       lpxss=0;
     lastspdx = spdx;
 
+    Point pRCS;
+
     // Translate and rotate the ZMP to world coordinate system
     if (toConvert)
     {
       p.rotate2D((*_footList)->direction);
       p+=fp;
+      pRCS = p;
+      pRCS.rotate2D(-(*_footList)->direction);
     }
+
+    // Arne 07.02.17 - ZMP in RCS //
+    //Point pRCS = p;
+    //pRCS.rotate2D(-(*_footList)->direction);
+    ZMP zmpRCS = pRCS;
+    zmpRCS.direction = (*_footList)->direction;
+
 
 #ifdef CENTER_ZMP_X
     p.x=fp.x;
@@ -283,6 +250,8 @@ void ZMPGenerator::planZMP(RefZMP &refZMP)
 
     zmp=p;
     zmp.timestamp=(*_footList)->timestamp;
+    // Arne 07.02.17 - ZMP in RCS //
+    refZMP.addZMP_RCS(zmpRCS);
     refZMP.addZMP(zmp);
   }
 
@@ -291,6 +260,7 @@ void ZMPGenerator::planZMP(RefZMP &refZMP)
 
 void ZMPGenerator::updateRefZMP(RefZMP& refZMP)
 {
+  DECLARE_DEBUG_DRAWING("module:ZMPGenerator:rightFootPositions", "drawingOnField");
 	for (int i=0; i < theFootSteps.getNumOfSteps(); i++)
       addFootsteps(theFootSteps.getStep(i));
 

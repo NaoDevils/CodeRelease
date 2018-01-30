@@ -28,7 +28,7 @@
 #endif
 
 #ifdef OSX
-#include "linux/Thread.h"
+#include "Linux/Thread.h"
 #define THREAD_INCLUDED
 #endif
 

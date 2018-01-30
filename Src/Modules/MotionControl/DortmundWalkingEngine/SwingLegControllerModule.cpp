@@ -14,11 +14,11 @@ controller(
   theBallModel,
   theMotionRequest,
   theWalkingInfo,
-  theFreeLegPhaseParams,
   theFallDownState,
   thePatternGenRequest,
   theObservedError,
-  theControllerParams)
+  theControllerParams,
+  theInertialSensorData)
 {
 }
 

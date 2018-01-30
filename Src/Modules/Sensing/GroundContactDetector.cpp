@@ -21,14 +21,6 @@ void GroundContactDetector::update(GroundContactState& groundContactState)
 
   MODIFY("module:GroundContactDetector:contact", contact);
 
-  if(theMotionInfo.motion == MotionRequest::getUp) //hack to avoid long pause after get up
-  {
-    contact = true;
-    useAngle = false;
-    groundContactState.contact = contact;
-    contactStartTime = theFrameInfo.time;
-  }
-
   // TODO: BHuman 2015 port
   bool ignoreSensors = (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::standHigh) ||
                        (theMotionRequest.motion == MotionRequest::specialAction && theMotionRequest.specialActionRequest.specialAction != SpecialActionRequest::standHigh);

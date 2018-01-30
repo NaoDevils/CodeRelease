@@ -38,6 +38,7 @@ void OracledWorldModelProvider::computeBallModel()
   theBallModel.lastPerception = theBallModel.estimate.position;
   theBallModel.timeWhenLastSeen = theFrameInfo.time;
   theBallModel.timeWhenDisappeared = theFrameInfo.time;
+  theBallModel.validity = 1.f;
 
   lastBallPosition = ballPosition;
   lastBallModelComputation = theFrameInfo.time;
@@ -56,38 +57,7 @@ void OracledWorldModelProvider::update(GroundTruthBallModel& groundTruthBallMode
   groundTruthBallModel.estimate = theBallModel.estimate;
   groundTruthBallModel.timeWhenDisappeared = theBallModel.timeWhenDisappeared;
   groundTruthBallModel.timeWhenLastSeen = theBallModel.timeWhenLastSeen;
-}
-
-void OracledWorldModelProvider::update(ObstacleModel& obstacleModel)
-{
-  computeRobotPose();
-  obstacleModel.obstacles.clear();
-  if(!Global::settingsExist())
-    return;
-
-  // Simulation scene should only use blue and red for now
-  ASSERT(Global::getSettings().teamColor == Settings::blue || Global::getSettings().teamColor == Settings::red);
-
-  const bool teammate = Global::getSettings().teamColor == Settings::blue;
-  for(unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
-    playerToObstacle(theGroundTruthWorldState.bluePlayers[i], obstacleModel, teammate);
-  for(unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
-    playerToObstacle(theGroundTruthWorldState.redPlayers[i], obstacleModel, !teammate);
-
-  //add goal posts
-  float squaredObstacleModelMaxDistance = sqr(obstacleModelMaxDistance);
-  Vector2f goalPost = theRobotPose.inverse() * Vector2f(theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal);
-  if(goalPost.squaredNorm() < squaredObstacleModelMaxDistance)
-    obstacleModel.obstacles.emplace_back(Matrix2f::Identity(), goalPost, Obstacle::goalpost);
-  goalPost = theRobotPose.inverse() * Vector2f(theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosRightGoal);
-  if(goalPost.squaredNorm() < squaredObstacleModelMaxDistance)
-    obstacleModel.obstacles.emplace_back(Matrix2f::Identity(), goalPost, Obstacle::goalpost);
-  goalPost = theRobotPose.inverse() * Vector2f(theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosLeftGoal);
-  if(goalPost.squaredNorm() < squaredObstacleModelMaxDistance)
-    obstacleModel.obstacles.emplace_back(Matrix2f::Identity(), goalPost, Obstacle::goalpost);
-  goalPost = theRobotPose.inverse() * Vector2f(theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosRightGoal);
-  if(goalPost.squaredNorm() < squaredObstacleModelMaxDistance)
-    obstacleModel.obstacles.emplace_back(Matrix2f::Identity(), goalPost, Obstacle::goalpost);
+  groundTruthBallModel.validity = theBallModel.validity;
 }
 
 void OracledWorldModelProvider::update(RobotMap& robotMap)
@@ -105,18 +75,6 @@ void OracledWorldModelProvider::update(RobotMap& robotMap)
     playerToRobotMapEntry(theGroundTruthWorldState.bluePlayers[i], robotMap, teammate);
   for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
     playerToRobotMapEntry(theGroundTruthWorldState.redPlayers[i], robotMap, !teammate);
-}
-
-void OracledWorldModelProvider::playerToObstacle(const GroundTruthWorldState::GroundTruthPlayer& player, ObstacleModel& obstacleModel, const bool isTeammate) const
-{
-  Vector2f center(theRobotPose.inverse() * player.pose.translation);
-  if(center.squaredNorm() >= sqr(obstacleModelMaxDistance))
-    return;
-  Obstacle obstacle(Matrix2f::Identity(), center,
-                    isTeammate ? (player.upright ? Obstacle::teammate : Obstacle::fallenTeammate)
-                               : player.upright ? Obstacle::opponent : Obstacle::fallenOpponent);
-  obstacle.setLeftRight(Obstacle::getRobotDepth());
-  obstacleModel.obstacles.emplace_back(obstacle);
 }
 
 void OracledWorldModelProvider::playerToRobotMapEntry(const GroundTruthWorldState::GroundTruthPlayer& player, RobotMap& robotMap, const bool isTeammate) const

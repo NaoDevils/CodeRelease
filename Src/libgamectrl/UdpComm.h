@@ -38,6 +38,7 @@ public:
    */
   bool setBroadcast(bool enable);
 
+
   /**
    * Sets blocking mode.
    */

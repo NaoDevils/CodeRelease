@@ -16,11 +16,13 @@
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Representations/Sensing/InertialData.h"
+#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Streams/InStreams.h"
 
 MODULE(KickEngine,
 {,
+  USES(JointRequest),
   REQUIRES(FrameInfo),
   REQUIRES(HeadJointRequest),
   REQUIRES(InertialData),
@@ -34,6 +36,7 @@ MODULE(KickEngine,
   REQUIRES(SpecialActionsOutput),
   REQUIRES(TorsoMatrix),
   REQUIRES(WalkingEngineOutput),
+  REQUIRES(InertialSensorData),
   PROVIDES(KickEngineOutput),
 });
 
@@ -41,8 +44,9 @@ class KickEngine : public KickEngineBase
 {
 private:
   KickEngineData data;
-  bool compensate, compensated;
-  unsigned timeSinceLastPhase;
+  bool compensate = false;
+  bool compensated = false;
+  unsigned timeSinceLastPhase = 0;
 
   std::vector<KickEngineParameters> params;
 

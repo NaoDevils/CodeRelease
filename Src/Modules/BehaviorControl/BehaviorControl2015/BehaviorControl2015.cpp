@@ -83,15 +83,11 @@ class BehaviorControl2015 : public BehaviorControl2015Base
   void update(MotionRequest& motionRequest) { motionRequest = theMotionRequest;}
 
   /** Updates the arm motion request by copying it from the behavior */
-  void update(ArmMotionRequest& armMotionRequest) { armMotionRequest = theArmMotionRequest; }
-
-  /** Updates the arm motion request by copying it from the behavior */
   void update(HeadControlRequest& headControlRequest) { headControlRequest = theHeadControlRequest; }
 
   Parameters parameters; /**< The root options. */
   BehaviorControlOutput theBehaviorControlOutput;
   BehaviorLEDRequest theBehaviorLEDRequest;
-  ArmMotionRequest theArmMotionRequest;
   HeadControlRequest theHeadControlRequest;
   MotionRequest theMotionRequest;
   BehaviorOutput behaviorOutput; /**< References to the representations above. */
@@ -102,7 +98,6 @@ public:
   : behaviorOutput(const_cast<ActivationGraph&>(theActivationGraph),
                  theBehaviorControlOutput,
                  theBehaviorLEDRequest,
-                 theArmMotionRequest,
                  theHeadControlRequest,
                  theMotionRequest),
     theBehavior(new Behavior(*this, behaviorOutput))

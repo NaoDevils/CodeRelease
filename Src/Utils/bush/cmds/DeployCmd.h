@@ -29,4 +29,6 @@ class DeployCmd : public RobotCommand
   static QString getCommand();
 public:
   static DeployCmd theDeployCmd;
+private:
+  static std::string mapColorToConf(std::string color);
 };

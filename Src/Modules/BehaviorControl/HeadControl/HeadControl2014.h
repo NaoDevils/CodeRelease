@@ -183,7 +183,6 @@ private:
   
   HeadControlState headControlState;
   HeadControlState lastHeadControlState;
-  unsigned timeStampSwitchedToNewState;
   // queue for points of interest on field to look at, always check if empty
   // in field coordinates
   std::vector<PointOfInterest> targetQueue;
@@ -207,7 +206,6 @@ private:
   
  std::vector<BallPerceptPosition> falsifiedBallPositions;
   Vector2f perceptToVerify;
-  unsigned timeVerifyStarted;
 
   bool targetIsClose;
 };

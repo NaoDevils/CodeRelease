@@ -17,7 +17,6 @@ vpd Walking.y module:CoPProvider:CoPy_WCS grey
 vp unrotatedPRef.x 1000 0 1
 vpd unrotatedPRef.x module:ZMPGenerator:unrotatedZMP.x
 
-
 vp unrotatedPRef.y 1000 -1 1
 vpd unrotatedPRef.y module:ZMPGenerator:unrotatedZMP.y
 
@@ -26,3 +25,6 @@ vpd Preview module:PatternGenerator:PreviewLength
 
 vp Steps 1000 0 10
 vpd Steps module:SwingLegController:StepsCount
+
+vp Modifier 1000 -0.1 0.1
+vpd Modifier module:CSConverter:Modification_X

@@ -3,12 +3,10 @@
 #include "Tools/Math/Transformation.h"
 #include "Tools/Debugging/DebugDrawings.h"
 
-
 const float leftSonarMaxAngle = Angle::fromDegrees(70);
 const float leftCenterSonarMaxAngle = Angle::fromDegrees(30);
 const float rightCenterSonarMaxAngle = Angle::fromDegrees(-30);
 const float rightSonarMaxAngle = Angle::fromDegrees(-70);
-
 
 RobotDetector::RobotDetector()
 {
@@ -43,162 +41,8 @@ bool RobotDetector::checkForGreen(const float &x, const float &y, Vector2f scanD
   }
 }
 
-bool RobotDetector::checkForm(const Vector2f &footBase, const float &robotWidth, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  
-  int noChecks = 1;
-  int xValues[6] = {(int)footBase.x(),0,0,0,0,0};
-  int lastX = 0;
-  Vector2i checkPoint((int)footBase.x()+5,(int)footBase.y()-10);
-
-  // check leg outline left
-  while (!image.isOutOfImage(checkPoint.x(),checkPoint.y(),5) && noChecks < 6)
-  {
-    lastX = checkPoint.x() - checkForYGradient(checkPoint,Vector2i(-1,0),upper);
-    LINE("module:RobotDetector:outLineScans",checkPoint.x(),checkPoint.y(),lastX,checkPoint.y(),2,Drawings::solidPen,ColorRGBA::red);
-    checkPoint.y() -= 3;
-    checkPoint.x() = lastX + 5;
-    xValues[noChecks] = lastX;
-    noChecks++;
-  }
-
-  Vector2f legDir(15,(float)(xValues[0]-xValues[5]));
-  //if (legDir.angle() < -0.5 || legDir.angle() > 0.5)
-  //  return false;
-
-  Geometry::Line baseToTop;
-  baseToTop.base.x() = (float)xValues[0];
-  baseToTop.base.y() = footBase.y()-10;
-  baseToTop.direction.x() = (float)(xValues[5] - xValues[0]);
-  baseToTop.direction.y() = (float)checkPoint.y() + 3;
-  float distSum = 0.f;
-  for (int i = 1; i < 5; i++)
-  {
-    distSum += std::abs(Geometry::getDistanceToLine(baseToTop, Vector2f((float)xValues[i], baseToTop.base.y() - 3 * i)));
-  }
-
-  if (distSum < 3.f)
-    return false;
-
-  xValues[0] = (int)(footBase.x()+robotWidth);
-  noChecks = 1;
-  checkPoint.x() = (int)(footBase.x()-5+robotWidth);
-  checkPoint.y() = (int)footBase.y()-10;
-  // check leg outline right
-  while (!image.isOutOfImage(checkPoint.x(),checkPoint.y(),5) && noChecks < 6)
-  {
-    lastX = checkPoint.x() + checkForYGradient(checkPoint,Vector2i(1,0),upper);
-    LINE("module:RobotDetector:outLineScans",checkPoint.x(),checkPoint.y(),lastX,checkPoint.y(),2,Drawings::solidPen,ColorRGBA::red);
-    checkPoint.y() -= 3;
-    checkPoint.x() = lastX - 5;
-    xValues[noChecks] = lastX;
-    noChecks++;
-  }
-
-  legDir.x() = 15;
-  legDir.y() = (float)(xValues[5] - xValues[0]);
-  //if (legDir.angle() < -0.5 || legDir.angle() > 0.5)
-  //  return false;
-  baseToTop.base.x() = (float)xValues[0];
-  baseToTop.base.y() = footBase.y()-10;
-  baseToTop.direction.x() = (float)(xValues[5] - xValues[0]);
-  baseToTop.direction.y() = (float)checkPoint.y() + 3;
-
-  distSum = 0.f;
-  for (int i = 1; i < 5; i++)
-  {
-    distSum += std::abs(Geometry::getDistanceToLine(baseToTop, Vector2f((float)xValues[i], baseToTop.base.y() - 3 * i)));
-  }
-
-  if (distSum < 3.f)
-    return false;
-
-  return true;
-}
-
-bool RobotDetector::checkYDiffs(const Vector2f &footBase, const float &robotWidth, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  const FieldColors &fieldColor = upper ? (FieldColorsUpper&)theFieldColorsUpper : theFieldColors;
-  
-  float whiteCount = 0.f;
-  float length = 0.f;
-  int yDiffs = 0;
-  int maxLength = imageHeight/12;
-
-  Image::Pixel p = image[(unsigned int)(footBase.y()-2)][(unsigned int)(footBase.x()+5)];
-  int lastY = p.y;
-  Vector2i checkPoint((int)(footBase.x()+robotWidth/4),(int)(footBase.y()-5));
-  
-  while (!image.isOutOfImage(checkPoint.x(),checkPoint.y(),3) && length < maxLength)
-  {
-    Image::Pixel p = image[(unsigned int)checkPoint.y()][(unsigned int)checkPoint.x()];
-
-    if (p.y > fieldColor.fieldColorArray[0].fieldColorOptY+(3*fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)/2)
-      whiteCount += 1.f;
-    if (abs(p.y - lastY) > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)
-      yDiffs++;
-    checkPoint.y() -= 2;
-    length += 2.0;
-  }
-
-  LINE("module:RobotDetector:footScanner",
-    (int)(footBase.x()+robotWidth/4),(int)(footBase.y()-5),checkPoint.x(),checkPoint.y(),
-    3,Drawings::solidPen,ColorRGBA::orange);
-
-  if (yDiffs < length/5 || whiteCount/length < 0.2f)
-    return false;
-
-  checkPoint.x() = (int)(footBase.x()+3*robotWidth/4);
-  checkPoint.y() = (int)footBase.y()-5;
-
-  while (!image.isOutOfImage(checkPoint.x(),checkPoint.y(),3) && length < maxLength)
-  {
-    Image::Pixel p = image[(unsigned int)checkPoint.y()][(unsigned int)checkPoint.x()];
-
-    if (p.y > fieldColor.fieldColorArray[0].fieldColorOptY+(3*fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)/2)
-      whiteCount += 1.f;
-    if (abs(p.y - lastY) > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)
-      yDiffs++;
-    checkPoint.y() -= 2;
-    length += 2.f;
-  }
-
-  LINE("module:RobotDetector:footScanner",
-    (int)(footBase.x()+3*robotWidth/4),(int)(footBase.y()-5),checkPoint.x(),checkPoint.y(),
-    3,Drawings::solidPen,ColorRGBA::orange);
-
-   if (yDiffs < length/5 || whiteCount/length < 0.2f)
-    return false;
-
-
-
-  return true;
-}
-
-int RobotDetector::checkForYGradient(const Vector2i &from, const Vector2i &dir, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  
-  Vector2i checkPoint = from;
-  int count = 0;
-  int y = 0,lastY = 0,lastLastY = 0;
-  while (count < 10 && !image.isOutOfImage(checkPoint.x(),checkPoint.y(),4))
-  {
-    Image::Pixel p = image[(unsigned int)checkPoint.y()][(unsigned int)checkPoint.x()];
-
-    y = p.y;
-    if (lastY-y > 20 || lastLastY - y > 20)
-      return count;
-    count++;
-    lastLastY = lastY;
-    lastY = y;
-    checkPoint += dir;
-  }
-  return 0;
-}
-bool RobotDetector::scanForRobotWidth(Vector2f &basePoint, float &robotWidth, const bool &upper, const bool &imageEndOkLeft, const bool &imageEndOkRight)
+bool RobotDetector::scanForRobotWidth(Vector2f &basePoint, float &robotWidth,
+  const bool &upper, const bool &imageEndOkLeft, const bool &imageEndOkRight)
 {
     
   robotWidth = 0.f;
@@ -206,7 +50,6 @@ bool RobotDetector::scanForRobotWidth(Vector2f &basePoint, float &robotWidth, co
   if (!findEndOfObstacle(basePoint,scanDir,robotWidth,upper, imageEndOkRight))
     return false;
   //LINE("module:RobotDetector:footScanner",basePoint.x,basePoint.y,basePoint.x+robotWidth,basePoint.y,2,Drawings::ps_solid,ColorClasses::orange);
-    
   scanDir.x() = (float)(-imageWidth / 160);
   float widthLeft = 0.f;
   if (!findEndOfObstacle(basePoint,scanDir,widthLeft,upper, imageEndOkLeft))
@@ -360,9 +203,10 @@ RobotEstimate::RobotType RobotDetector::scanForRobotColor(
   int numOppColor = 0;
   Vector2f checkPoint(from);
   int steps = 0;
-  Vector2i color(-1, -1);
-  Vector2i lastColor(-1, -1);
-  Vector2i lastColor2(-1, -1);
+  int lastColorY = -1;
+  int lastColorCb = -1;
+  int lastColorCr = -1;
+  bool colorFound = false;
   Vector2f lastColorPoint(-1, -1);
   int wrongColorCount = 0;
   int goodColorCount = 0;
@@ -370,26 +214,32 @@ RobotEstimate::RobotType RobotDetector::scanForRobotColor(
   while (!image.isOutOfImage(checkPoint.x(), checkPoint.y(), 4) && steps < maxSteps && wrongColorCount < 5)
   {
     Image::Pixel p = image[(int)checkPoint.y()][(int)checkPoint.x()];
-    if (!fieldColor.isPixelFieldColor(p.y, p.cb, p.cr)
-      && (p.y < std::min(2 * fieldColor.fieldColorArray[0].fieldColorOptY / 3,80) || std::max(abs(p.cb - 128), abs(p.cr - 128)) > shirtMinColorDiff))
+    if (!fieldColor.isPixelFieldColor(p.y, p.cb, p.cr))
+      //&& (p.y < std::min(2 * fieldColor.fieldColorArray[0].fieldColorOptY / 3,80) || std::max(abs(p.cb - 128), abs(p.cr - 128)) > shirtMinColorDiff))
     {
-      color.x() = p.cb;
-      color.y() = p.cr;
-      float diffToOwnColor = (color - ownColor).cast<float>().norm();
-      float diffToOppColor = (color - oppColor).cast<float>().norm();
-      if (diffToOwnColor < diffToOppColor)
-        numOwnColor += (diffToOwnColor < 60);
-      else
-        numOppColor += (diffToOppColor < 60);
+      int diffToOwnColor = std::abs(p.cb - ownColor.y()) + std::abs(p.cr - ownColor.z());
+      if (ownColor.x() != 128)
+        diffToOwnColor += 60 * (sgn(p.y - 128) != sgn(ownColor.x() - 128));
+      int diffToOppColor = std::abs(p.cb - oppColor.y()) + std::abs(p.cr - oppColor.z());
+      if (oppColor.x() != 128)
+        diffToOppColor += 60 * (sgn(p.y - 128) != sgn(oppColor.x() - 128));
+      if (diffToOwnColor > 15 || diffToOppColor > 15)
+      {
+        if (diffToOwnColor < diffToOppColor)
+          numOwnColor += (diffToOwnColor < 60);
+        else
+          numOppColor += (diffToOppColor < 60);
 
-      lastColor2 = lastColor;
-      lastColorPoint = checkPoint;
-      lastColor.x() = p.cb;
-      lastColor.y() = p.cr;
-      if (++goodColorCount > 4)
-        wrongColorCount = 0;
+        colorFound = true;
+        lastColorPoint = checkPoint;
+        lastColorY = p.y;
+        lastColorCb = p.cb;
+        lastColorCr = p.cr;
+        if (++goodColorCount > 4)
+          wrongColorCount = 0;
+      }
     }
-    else if (lastColor2.x() > 0)
+    else if (colorFound)
     {
       goodColorCount = 0;
       wrongColorCount++;
@@ -465,11 +315,7 @@ bool RobotDetector::verifyObstacle(Vector2f &footBase, float &robotWidth, RobotE
   if (perceptOnGoal || pointOnField.norm() > maxObstacleDistField || pointOnField.norm() < 200.f)
     return false;
 
-  /*// <<< check for green at bottom of obstacle >>>
-  if (!checkForGreen(footBase.x+robotWidth/6,footBase.y+10,Vector2<>(2.0,0.0),(int)(robotWidth/3),(int)(robotWidth/6),upper))
-    return false;*/
-
-  // <<< check for waist band colors >>>
+  // <<< check for shirt colors >>>
   // to determine obstacle type or discard obstacle if too much colors
   Vector2f wristPos(0,0);
   scanDir.x() = 0.f;
@@ -479,13 +325,6 @@ bool RobotDetector::verifyObstacle(Vector2f &footBase, float &robotWidth, RobotE
 
   if (robot.robotType == RobotEstimate::noRobot)
     return false;
-  // <<< verify form of obstacle as robot >>>
-  /*if (!checkForm(footBase,robotWidth,upper))
-    return false;*/
-
-  // <<< check for y Diffs and/or 'whiteness' on obstacle >>>
-  //if (!checkYDiffs(footBase,robotWidth,upper))
-  //  return false;
 
   // <<< check for green on obstacle by sampling a few pixels >>>
   int stepSize = imageHeight / 240;
@@ -521,8 +360,8 @@ bool RobotDetector::verifyObstacle(Vector2f &footBase, float &robotWidth, RobotE
       avgCb /= pixelCount;
       avgCr /= pixelCount;
       if (avgY < fieldColor.fieldColorArray[0].fieldColorOptY + fieldColor.fieldColorArray[0].lineToFieldColorYThreshold / 2
-        || abs(128 - avgCb) > 18
-        || abs(128 - avgCr) > 18)
+        || std::abs(128 - avgCb) > 18
+        || std::abs(128 - avgCr) > 18)
       {
         return false;
       }
@@ -530,18 +369,6 @@ bool RobotDetector::verifyObstacle(Vector2f &footBase, float &robotWidth, RobotE
     else
       return false;
   }
-  /*if (upper)
-  {
-    if (checkForGreen(footBase.x+robotWidth/2,footBase.y-3*obstacleHeightInImage/5,scanDir,maxSteps,maxSteps/3,upper))
-      return false;
-    scanDir.rotate(pi_2);
-    if (checkForGreen(footBase.x+robotWidth/2,footBase.y-3*obstacleHeightInImage/5,scanDir,maxSteps,maxSteps/3,upper))
-      return false;
-  }*/
-
-  // <<< extra check on unknown obstacle type, check feet for now.. >>>
-  /*if (robot.obstacleType == RobotsPercept::RobotEstimate::unknown && !findFeetOutline(footBase,robotWidth,upper))
-    return false;*/
 
   // are there lower white points? (eg when having upper body part of robot in image (arms..))
   float toBottom = 0.f;
@@ -557,16 +384,8 @@ bool RobotDetector::verifyObstacle(Vector2f &footBase, float &robotWidth, RobotE
   int minX = (int)(footBase.x() + robotWidth / 5);
   int maxX = (int)(footBase.x() + 4 * robotWidth / 5);
   int minY = (int)(footBase.y() - obstacleHeightInImage / 2); // scan legs basically
-  int noScans = 0;
-  int noFeatures = 0;
-  for (int scanAtX = minX; scanAtX <= maxX && noScans < 10; scanAtX += imageWidth / 80)
-  {
-    noScans++;
-    noFeatures += scanForFeatures(Vector2i(scanAtX, static_cast<int>(footBase.y())), Vector2i(0, -2), Vector2i(scanAtX, minY), upper);
-  }
-  if ((float)noFeatures / (float)noScans < featureFactor)
+  if (!checkForFeaturesOnRobot(minX, maxX, imageWidth / 80, static_cast<int>(footBase.y()), minY, upper))
     return false;
-
 
   // <<< fill RobotsPercept >>>
   robot.locationOnField = pointOnField;
@@ -577,8 +396,27 @@ bool RobotDetector::verifyObstacle(Vector2f &footBase, float &robotWidth, RobotE
   robot.imageUpperLeft.y() = (int)(footBase.y() - obstacleHeightInImage);
   robot.validity = 1.f;
   robot.fromUpperImage = upper;
-
   
+  return true;
+}
+
+bool RobotDetector::checkForFeaturesOnRobot(const int &minX, const int &maxX, const int &xStep, const int &fromY, const int &toY, const bool &upper)
+{
+  int scans = 0;
+  int featureSum = 0;
+  int features = 0;
+  int noFeatureLines = 0;
+  for (int scanAtX = minX; scanAtX <= maxX; scanAtX += xStep)
+  {
+    features = 0;
+    scans++;
+    features = scanForFeatures(Vector2i(scanAtX, fromY), Vector2i(0, -2), Vector2i(scanAtX, toY), upper);
+    featureSum += features;
+    if (features < 2)
+      noFeatureLines++;
+  }
+  if (scans < 4 || noFeatureLines > 1 || (float)featureSum / (float)scans < featureFactor)
+    return false;
   return true;
 }
 
@@ -679,16 +517,21 @@ void RobotDetector::execute()
     }
     if (!segmentOnRobot)
     {
+      const Image &image = obstacle->upperCam ? (Image&)theImageUpper : theImage;
+      imageWidth = image.width;
+      imageHeight = image.height;
       switch (obstacle->direction)
       {
       case ObstacleBasePoints::ObstacleBasePoint::up:
         checkLowBasePoint(*obstacle);
         break;
       case ObstacleBasePoints::ObstacleBasePoint::right:
-        //checkLeftBasePoint(*obstacle);
+        if (allowInCompleteRobots)
+          checkLeftBasePoint(*obstacle);
         break;
       case ObstacleBasePoints::ObstacleBasePoint::left:
-        //checkRightBasePoint(*obstacle);
+        if (allowInCompleteRobots)
+          checkRightBasePoint(*obstacle);
         break;
       default:
         break;
@@ -869,6 +712,8 @@ void RobotDetector::checkHighBasePoint(const ObstacleBasePoints::ObstacleBasePoi
 
 void RobotDetector::checkLeftBasePoint(const ObstacleBasePoints::ObstacleBasePoint &obstacle)
 {
+  const BodyContour &bodyContour = obstacle.upperCam ? (BodyContour&)theBodyContourUpper : theBodyContour;
+  const float expectedRobotWidth = static_cast<float>(imageWidth / 10);
   if (obstacle.pointInImage.x() > imageWidth - imageWidth / 8) // not too far to the image border
     return;
   float widths[6] = { -1.f };
@@ -876,32 +721,132 @@ void RobotDetector::checkLeftBasePoint(const ObstacleBasePoints::ObstacleBasePoi
   Vector2f basePoint = obstacle.pointInImage;
   basePoint.y() = obstacle.upperCam ? imageHeight / 6.f : imageHeight/4.f;
   basePoint.x() += imageWidth / 10;
+  float minX = static_cast<float>(imageWidth);
+  float maxX = -1.f;
   float yStep = (imageHeight - basePoint.y()) / 7;
   int i = 0;
+  int failedScans = 0;
   for (i = 0; i < 6; i++)
   {
-    if (!scanForRobotWidth(basePoint, widths[i], obstacle.upperCam, false, true))
+    Vector2f scanPoint = basePoint;
+    if (!scanForRobotWidth(scanPoint, widths[i], obstacle.upperCam, false, true))
     {
-      if (!obstacle.upperCam && i > 3)
-        break;
-      else
-        return;
+      failedScans++;
     }
+    minX = std::min(scanPoint.x(), minX);
+    maxX = std::max(scanPoint.x() + widths[i], maxX);
+    int yClipped = static_cast<int>(basePoint.y());
+    const int yBase = yClipped;
+    bodyContour.clipBottom(static_cast<int>(basePoint.x() + avgWidth / 2), yClipped);
+    if (yBase != yClipped)
+      return;
     basePoint.y() += yStep;
     avgWidth += widths[i];
   }
-  avgWidth /= i;
+  basePoint.y() -= yStep;
+  avgWidth /= (i - failedScans);
+  int badWidthCount = 0;
   for (int j = 0; j <= i; j++)
   {
-    if (std::abs(widths[j] - avgWidth) > avgWidth)
+    if (widths[j] < expectedRobotWidth)
+      badWidthCount++;
+  }
+  Vector2f colorPoint(std::min(basePoint.x() + avgWidth / 2,imageWidth - imageWidth/12.f), 2 * imageHeight / 3);
+  if (badWidthCount < 2 && !checkForGreen(colorPoint.x(),colorPoint.y(),Vector2f(0,-1.f),imageHeight/4,imageHeight/12,obstacle.upperCam))
+  {
+    minX = std::max(minX, 4.f);
+    maxX = std::min(maxX, imageWidth - 4.f);
+    RobotEstimate newRE;
+    newRE.robotType = obstacle.upperCam ? scanForRobotColor(colorPoint, Vector2f(0.f, -1.f), imageHeight / 5, Vector2f(basePoint), true) : RobotEstimate::RobotType::unknownRobot;
+    newRE.locationOnField.translation = Vector2f(1000, 0);
+    const CameraMatrix &cm = obstacle.upperCam ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+    const CameraInfo &ci = obstacle.upperCam ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+    Vector2f angles = Vector2f::Zero();
+    Geometry::calculateAnglesForPoint(Vector2f((minX+maxX)/2,colorPoint.y()), cm, ci, angles);
+    newRE.locationOnField.translation.rotate(angles.x());
+    float guessWidth = (maxX > imageWidth - 8) ? avgWidth + avgWidth / 5 : avgWidth;
+    newRE.locationOnField.translation.normalize(Geometry::getDistanceBySize(ci, robotFootWidth, guessWidth));
+    newRE.distance = newRE.locationOnField.translation.norm();
+    if (newRE.distance < 200 || newRE.locationOnField.translation.x() < 100)
       return;
+    newRE.locationOnField.rotation = 0.f;
+    newRE.imageUpperLeft = obstacle.upperCam ? Vector2i((int)minX, imageHeight / 4) : Vector2i((int)minX, 4);
+    newRE.imageLowerRight = Vector2i((int)maxX, imageHeight - 4);
+    newRE.validity = 0.33f;
+    newRE.fromUpperImage = obstacle.upperCam;
+    localRobotsPercept.robots.push_back(newRE);
   }
 
 }
 
 void RobotDetector::checkRightBasePoint(const ObstacleBasePoints::ObstacleBasePoint &obstacle)
 {
-
+  const BodyContour &bodyContour = obstacle.upperCam ? (BodyContour&)theBodyContourUpper : theBodyContour;
+  const float expectedRobotWidth = static_cast<float>(imageWidth / 10);
+  if (obstacle.pointInImage.x() < imageWidth / 8) // not too far to the image border
+    return;
+  float widths[6] = { -1.f };
+  float avgWidth = 0.f;
+  Vector2f basePoint = obstacle.pointInImage;
+  basePoint.y() = obstacle.upperCam ? imageHeight / 6.f : imageHeight / 4.f;
+  basePoint.x() -= imageWidth / 10;
+  float minX = static_cast<float>(imageWidth);
+  float maxX = -1.f;
+  float yStep = (imageHeight - basePoint.y()) / 7;
+  int i = 0;
+  int failedScans = 0;
+  for (i = 0; i < 6; i++)
+  {
+    Vector2f scanPoint = basePoint;
+    if (!scanForRobotWidth(scanPoint, widths[i], obstacle.upperCam, false, true))
+    {
+      failedScans++;
+    }
+    minX = std::min(scanPoint.x(), minX);
+    maxX = std::max(scanPoint.x() + widths[i], maxX);
+    int yClipped = static_cast<int>(basePoint.y());
+    const int yBase = yClipped;
+    bodyContour.clipBottom(static_cast<int>(basePoint.x() + avgWidth / 2), yClipped);
+    if (yBase != yClipped)
+      return;
+    basePoint.y() += yStep;
+    avgWidth += widths[i];
+  }
+  basePoint.y() -= yStep;
+  avgWidth /= (i - failedScans);
+  int badWidthCount = 0;
+  for (int j = 0; j <= i; j++)
+  {
+    if (widths[j] < expectedRobotWidth)
+      badWidthCount++;
+    else if (widths[j] > 3 * expectedRobotWidth) // TODO: could still be robot on line..?
+      return;
+  }
+  Vector2f colorPoint(std::min(basePoint.x() - avgWidth / 2, imageWidth / 12.f), 2 * imageHeight / 3);
+  if (badWidthCount < 2 && !checkForGreen(colorPoint.x(), colorPoint.y(), Vector2f(0, -1.f), imageHeight / 4, imageHeight / 12, obstacle.upperCam))
+  {
+    minX = std::max(minX, 4.f);
+    maxX = std::min(maxX, imageWidth - 4.f);
+    RobotEstimate newRE;
+    newRE.robotType = obstacle.upperCam ? scanForRobotColor(colorPoint, Vector2f(0.f, -1.f), imageHeight / 5, Vector2f(basePoint), true) : RobotEstimate::RobotType::unknownRobot;
+    newRE.locationOnField.translation = Vector2f(1000, 0);
+    const CameraMatrix &cm = obstacle.upperCam ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+    const CameraInfo &ci = obstacle.upperCam ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+    Vector2f angles = Vector2f::Zero();
+    Geometry::calculateAnglesForPoint(Vector2f((minX + maxX) / 2, colorPoint.y()), cm, ci, angles);
+    newRE.locationOnField.translation.rotate(angles.x());
+    float guessWidth = (minX < 8) ? avgWidth + avgWidth / 5 : avgWidth;
+    newRE.locationOnField.translation.normalize(Geometry::getDistanceBySize(ci, robotFootWidth, guessWidth));
+    newRE.distance = newRE.locationOnField.translation.norm();
+    if (newRE.distance < 200 || newRE.locationOnField.translation.x() < 100)
+      return;
+    newRE.locationOnField.rotation = 0.f;
+    newRE.imageUpperLeft = obstacle.upperCam ? Vector2i((int)minX, imageHeight / 4) : Vector2i((int)minX, 4);
+    newRE.imageLowerRight = Vector2i((int)maxX, imageHeight - 4);
+    newRE.validity = 0.33f;
+    newRE.fromUpperImage = obstacle.upperCam;
+    localRobotsPercept.robots.push_back(newRE);
+  }
 }
 
 void RobotDetector::addObstaclesFromGoodSegments()
@@ -940,7 +885,20 @@ void RobotDetector::calcImageCoords(RobotEstimate &robot, bool upper)
 
 void RobotDetector::addObstacleFromBumpers()
 {
-  // ..
+  // Security check for broken bumpers
+	if (theKeySymbols.obstacle_hit)
+  {
+    RobotEstimate robot;
+    robot.fromUpperImage = false; // should cover the whole lower image
+    robot.distance = 150; // directly in front of our feet
+    robot.locationOnField.translation.x() = 150; // dito
+    robot.locationOnField.translation.y() = 0; // don't know...
+    robot.locationOnField.rotation = 0; // don't know...
+    robot.robotType = RobotEstimate::unknownRobot;
+    robot.validity = 0.5f;
+    calcImageCoords(robot,false);
+    localRobotsPercept.robots.push_back(robot);
+  }
 }
 
 void RobotDetector::addObstaclesFromTeamMateData()

@@ -33,6 +33,11 @@ scp $KEY $MODULES_DIR/$DRIVERS_INPUT/joydev.ko $MODULES_DIR/$DRIVERS_INPUT/ff-me
 ssh root@$IP $KEY $TEST 'mkdir /lib/modules/2.6.33.9-rt31-aldebaran-rt/kernel/drivers/input/joystick'
 scp $KEY $MODULES_DIR/$DRIVERS_JOYSTICK/xpad.ko root@$IP:/lib/modules/$KERNEL/$DRIVERS_JOYSTICK
 # Search for new kernel modules.
-ssh root@$IP $KEY 'depmod -A'
+#ssh root@$IP $KEY 'depmod -A' # This causes the audio driver to fail
+# Load joystick drivers manually
+ssh root@$IP $KEY 'insmod /lib/modules/2.6.33.9-rt31-aldebaran-rt/kernel/drivers/input/joydev.ko'
+ssh root@$IP $KEY 'insmod /lib/modules/2.6.33.9-rt31-aldebaran-rt/kernel/drivers/input/ff-memless.ko'
+ssh root@$IP $KEY 'insmod /lib/modules/2.6.33.9-rt31-aldebaran-rt/kernel/drivers/input/evdev.ko'
+ssh root@$IP $KEY 'insmod /lib/modules/2.6.33.9-rt31-aldebaran-rt/kernel/drivers/input/joystick/xpad.ko'
 
 scp $KEY joystick_test root@$IP:/root

@@ -14,22 +14,30 @@
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Perception/CLIPGoalPercept.h"
 #include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/RobotPose.h"
 #include "Representations/Sensing/GroundContactState.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/BehaviorLEDRequest.h"
+#include "Representations/Modeling/WhistleDortmund.h"
+#include "Representations/BehaviorControl/GameSymbols.h"
 
 MODULE(LEDHandler,
-{,
+{ ,
   REQUIRES(BallModel),
-  REQUIRES(BehaviorLEDRequest),
   REQUIRES(BehaviorData),
+  REQUIRES(BehaviorLEDRequest),
+  REQUIRES(RoleSymbols),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(CLIPGoalPercept),
   REQUIRES(GroundContactState),
   REQUIRES(RobotInfo),
+  REQUIRES(RobotPose),
   REQUIRES(SystemSensorData),
   REQUIRES(TeammateData),
+  REQUIRES(WhistleDortmund),
+  REQUIRES(GameSymbols),
   PROVIDES(LEDRequest),
 });
 

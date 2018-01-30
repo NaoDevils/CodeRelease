@@ -24,9 +24,9 @@ public:
     black,
   });
   
-    ENUM(GameMode,
+  ENUM(GameMode,
   { ,
-    dropIn,
+    mixedTeam,
     preliminary,
     playOff,
     penaltyShootout,
@@ -40,11 +40,7 @@ public:
   static constexpr int highestValidPlayerNumber = 6; /**< No player can have a number greater than this */
   static constexpr int lowestValidPlayerNumber = 1;  /**< No player can have a number smaller than this */
   bool isGoalkeeper;            /**< Is this robot the goaliekeeper? */
-  bool isDropInGame = false;    /**< Is this a normal game or a dropin game? */
-  bool isCornerChallenge = false;
-  bool isCarpetChallenge = false;
-  bool isRealBallChallenge = false;
-
+  
   friend class Framework; /**< To access loaded. */
 
 

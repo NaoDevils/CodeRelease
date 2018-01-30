@@ -43,9 +43,10 @@ mr PenaltyCrossPercept OracledPerceptsProvider
 mr CLIPPointsPercept off
 mr ObstacleBasePoints off
 mr BallSpots off
+mr IntegralImage off
 mr BodyContour default
-mr FieldColor off
-mr FieldColorUpper off
+mr FieldColors off
+mr FieldColorsUpper off
 
 call Includes/DebugResponses
 call Includes/GameStates

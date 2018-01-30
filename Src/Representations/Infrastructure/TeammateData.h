@@ -10,15 +10,14 @@
 
 #include <cstdint>
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/BehaviorControl/Role.h"
 #include "Representations/MotionControl/WalkRequest.h"
 #include "Representations/Modeling/BallModel.h"
+#include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/SimpleRobotsDistributed.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/SideConfidence.h"
 #include "Representations/Modeling/WhistleDortmund.h"
-#include "Representations/Modeling/Whistle.h"
 
 /**
  * @struct Teammate
@@ -34,7 +33,7 @@ STREAMABLE(Teammate,
   {,
     INACTIVE,                              /** OK   : I receive packets, but robot is penalized */
     ACTIVE,                                /** GOOD : OK + Teammate is not penalized */
-    FULLY_ACTIVE,                          /** BEST : GOOD + Teammate is standing/walking and has ground contact :-) */
+    FULLY_ACTIVE,                          /** BEST : GOOD + Teammate is standing/walking :-) */
   }),
 
   (int)(-1) number,                                   /**< The number of this player */
@@ -42,12 +41,14 @@ STREAMABLE(Teammate,
   (bool)(true) isNDevilsPlayer,                       /**< The name says it all */
   (bool)(true) isPenalized,                           /**< The name says it all */
   (bool)(true) isUpright,                             /**< The name says it all */
-  (unsigned)(0) timeWhenLastPacketReceived,           /**< The name says it all */
+  (unsigned)(0) timeWhenSent,                         /**< Time when the teammate sent the message. */
+  (unsigned)(0) timeWhenLastPacketReceived,           /**< Time when this player received the message. */
   (unsigned)(0) timeOfLastGroundContact,              /**< The name says it all */
   (bool)(true) hasGroundContact,                      /**< The name says it all */
   (Status)(INACTIVE) status,                          /**< @see enum \c Status */
   (RobotPose) pose,                                   /**< The pose in global field coordinates, no preview! */
   (BallModel) ball,                                   /**< Model of the ball (in coordinates relative to my teammate's pose), no preview! */
+  (RobotsPercept) robotsPercept,                      /**< Unfiltered robots percept of seen teammates and opponents. */
   (RobotMap) robotMap,                                /**< Map of obstacles in world coordinates */
   (WalkRequest) walkRequest,                          /**< The name says it all. */
   (float)(0.f) headPan,                               /**< for field coverage */

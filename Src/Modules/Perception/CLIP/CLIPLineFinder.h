@@ -237,7 +237,7 @@ private:
       lineAngle += pi_2;
       lineAngle = Angle::normalize(lineAngle);
     }
-    Vector2f lineCenter = (line->endOnField + line->startOnField) / 2.;
+    Vector2f lineCenter = (line->endOnField + line->startOnField) / 2.f;
     line->isPlausible = true; // Line with highest validity is reference line and therefore plausible
     line++;
     for (; line < end; line++)
@@ -248,7 +248,7 @@ private:
         currAngle += pi_2;
         currAngle = Angle::normalize(currAngle);
       }
-      Vector2f actCenter = (line->endOnField + line->startOnField) / 2.;
+      Vector2f actCenter = (line->endOnField + line->startOnField) / 2.f;
       float diff = Angle::normalize(lineAngle - currAngle);
       float deg = toDegrees(diff);
       float lengthMulti = 1 - (lineCenter - actCenter).norm() / maxAwayLength;

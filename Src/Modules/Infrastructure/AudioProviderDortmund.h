@@ -31,6 +31,7 @@ MODULE(AudioProviderDortmund,
     (unsigned)(22050) sampleRate, //44100/2 hz /**< Sample rate to capture. This variable will contain the framerate the driver finally selected. */
     (unsigned)(10000) maxFrames, /**< Maximum number of frames read in one cycle. */
     (bool)(false) connectionEstablished, /**< is set during initializing sound card connection */
+    (bool)(false) simulateWhistleInSimulator, /**< if enabled a whistle sound is send in set to robots inside the simulator */
   }),
 });
 

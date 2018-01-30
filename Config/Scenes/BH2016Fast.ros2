@@ -19,7 +19,9 @@
       <Body ref="Nao" name="robot1">
         <Translation x="2.8" y="0" z="300mm"/>
         <Rotation z="180degree"/>
+        <Set name="NaoColor" value="yellow"/>
       </Body>
+
       <Body ref="Nao" name="robot3">
         <Translation x="0.3" y="-1" z="300mm"/>
         <Rotation z="180degree"/>

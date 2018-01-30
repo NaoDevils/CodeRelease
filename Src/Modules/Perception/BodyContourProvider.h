@@ -18,10 +18,14 @@
 MODULE(BodyContourProvider,
 {,
   REQUIRES(CameraInfo),
+  REQUIRES(CameraInfoUpper),
   REQUIRES(ImageCoordinateSystem),
+  REQUIRES(ImageCoordinateSystemUpper),
   REQUIRES(RobotCameraMatrix),
+  REQUIRES(RobotCameraMatrixUpper),
   REQUIRES(RobotModel),
   PROVIDES(BodyContour),
+  PROVIDES(BodyContourUpper),
   LOADS_PARAMETERS(
   {,
     (std::vector<Vector3f>) torso, /**< The contour of the torso. */
@@ -44,8 +48,10 @@ class BodyContourProvider: public BodyContourProviderBase
 {
 private:
   Pose3f robotCameraMatrixInverted; /**< The inverse of the current robotCameraMatrix. */
+  Pose3f robotCameraMatrixInvertedUpper; /**< The inverse of the current robotCameraMatrix. */
 
   void update(BodyContour& bodyContour);
+  void update(BodyContourUpper& bodyContour);
 
   /**
    * The method projects a point in world coordinates into the image using the precomputed
@@ -55,7 +61,7 @@ private:
    * @param pointInImage Guess what?!
    * @return Whether the point lies in front of the image plane.
    */
-  bool calculatePointInImage(const Vector3f& pointInWorld, Vector2i& pointInImage) const;
+  bool calculatePointInImage(const Vector3f& pointInWorld, Vector2i& pointInImage, bool upper = false) const;
 
   /**
    * The method add a 3-D contour to the 2-D image contour.
@@ -65,5 +71,5 @@ private:
    *             body parts for right body parts.
    * @param bodyContour The 2-D contour in image coordinates the 3-D contour is added to.
    */
-  void add(const Pose3f& origin, const std::vector<Vector3f >& c, float sign, BodyContour& bodyContour);
+  void add(const Pose3f& origin, const std::vector<Vector3f >& c, float sign, BodyContour& bodyContour, bool upper = false);
 };

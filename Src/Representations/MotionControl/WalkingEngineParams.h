@@ -1,5 +1,5 @@
 /**
-* @class WalkingEngineParams 
+* @class WalkingEngineParams
 * @author <a href="mailto:oliver.urbann@tu-dortmund.de> Oliver Urbann</a>
 * @author <a href="mailto:florian.wilmshoever@tu-dortmund.de">Florian Wilmshöver</a>
 */
@@ -21,197 +21,205 @@
 #endif
 
 /**
-* @class WalkingEngineParams 
+* @class WalkingEngineParams
 * Contains the parameters of the walking engine. See the "Nao Devils Team Report 2010" for a detailed description.
 */
-struct WalkingEngineParams : public Streamable
+struct COMOffsets
 {
+  // translational
+  float xFixed; // was xOffset
+  float yFixed; // was fixedYOffset
+  float xSpeedDependent; // was dynXOffset
+  float ySpeedDependent[2]; // 0 = left, 1 = right, was yOffset
+  // rotational
+  float tiltFixed; // new 25_04_17
+  float tiltSpeedDependent[2]; // Min/Max, was speedDependentBodyTilt
+  // special case: arm contact
+  float xArmContact; // was armContactCoMShiftX
+  float yArmContact[2]; // 0 = left, 1 = right, was armContactCoMShift
+  
+};
+
+struct SpeedLimits
+{
+  float xForward; // was maxSpeedXForward
+  float xForwardArmContact; // was maxSpeedArmContact
+  float xForwardOmni; // was maxSpeedXForwardOmni
+  float xBackward; // was maxSpeedXBack
+  float y; // was maxSpeedY
+  float yArmContact; // new 25_04_17 
+  float r; // was maxSpeedR
+};
+
+struct Acceleration
+{
+  float maxAccX; // in mm / accDelayX
+  int accDelayX; // in frames
+  float maxAccY; // in mm / accDelayY
+  int accDelayY; // in frames
+  float maxAccR; // in rad / accDelayR
+  int accDelayR; // in frames
+  int speedApplyDelay; // in frames
+  int walkRequestFilterLen; // buffer length for speed buffer
+};
+
+struct SensorControl
+{
+  unsigned int halSensorDelay; // in frames
+  unsigned int sensorDelay; // in frames
+  float accXAlpha; // changing comOffsets.xFixed using acc.x sensor
+  float sensorControlRatio[2]; // 0 = com, 1 = zmp
+  // tilt control
+  float tiltControllerParams[3]; // p, i, d
+  float tiltFactor; // rotate com around Y: inertialData * tiltFactor
+  float steppingRotSpeedUprect;
+  float steppingRotSpeedCapture;
+
+  // roll control
+  float rollControllerParams[3]; // p, i, d
+  float rollFactor; // rotate com around X: inertialData * rollFactor
+};
+
+struct FootMovement
+{
+  // pitch control
   float footPitch;
   float footPitchPD[2];
-  float maxWalkPitch;
-  float pitchSpeed;
-  float xOffset;
-  float stepHeight[2]; // first: normal, second: value for max y speed
-  float sensorControlRatio[2];
+  float footRoll;
+  float stepHeight[3]; // first: normal, second: value for max y speed
   float doubleSupportRatio;
-  int crouchingDownPhaseLength;
-  int startingPhaseLength;
-  int stoppingPhaseLength;
-  float armFactor;
-  float arms1;
-  int zmpSmoothPhase;
-  int maxSpeedXForward;
-  int maxSpeedXForwardOmni;
-  int maxSpeedXBack;
-  int maxSpeedY;
-  float maxSpeedR;
-  float maxStandPitch;
-  float maxLegLength;
-  float stepDuration;
+  float maxStepDuration;
+  float minStepDuration;
   float footYDistance;
-  float stopPosThresholdX;
-  float stopPosThresholdY;
-  float stopSpeedThresholdX;
-  float stopSpeedThresholdY;
-  float zmpLeftX;
-  float zmpLeftY;
-  float zmpRightX;
-  float zmpRightY;
-  int outFilterOrder;
-  float tiltFactor;
-  float rollFactor;
-  float tiltControllerParams[3];
-  float rollControllerParams[3];
-  unsigned int sensorDelay;
-  unsigned int halSensorDelay;
-  float maxFootSpeed;
-  float fallDownAngleMinMaxX[2];
-  float fallDownAngleMinMaxY[2];
   float polygonLeft[4];
   float polygonRight[4];
-  float offsetLeft[6];
-  float offsetRight[6];
-  int walkRequestFilterLen;
-  float accXAlpha;
-  float maxAccX;
-  int accDelayX;
-  float maxAccY;
-  int accDelayY;
-  float maxAccR;
-  int accDelayR;
-  int speedApplyDelay;
-  //hardness settings
-  int legJointHardness[6];
-  float heightPolygon[5];
-  // kick settings
-  float kickStart[2];
-  float kickStop[2];
-  float angleTiltP;
-  float ballXMin[2];
-  float ballXMax[2];
-	float ballYMin[2];  // index 0 for a kick with direction 0,
-                      // index 1 for a kick with max direction
-	float ballYMax[2];  // same here
-  float rotMin;
-  float rotMax; 
-  float zmpMax;
-  float zmpMoveSpeedY;
-  float standRollFactor;
-  float CoMZDiff;
-  float stepOffsetFactor;
-  // Sidestep settings
-  float maxSidestep[2];
-  float minSidestep[2];
   float forwardPolygon[5];
-  int kickStartLen[2];
-  int kickStopLen[2];
-  float fixedBallPos[2];
-  union WEJointCalibration
+  float heightPolygon[5];
+};
+
+struct WalkTransition
+{
+  int crouchingDownPhaseLength; // in frames
+  int startingPhaseLength; // in frames
+  int stoppingPhaseLength; // in frames
+
+  float stopPosThresholdX; // in m
+  float stopPosThresholdY; // in m
+  float stopSpeedThresholdX; // in m/s
+  float stopSpeedThresholdY; // in m/s
+  float fallDownAngleMinMaxX[2]; // in rad
+  float fallDownAngleMinMaxY[2]; // in rad
+  float unstableGyroY; // If gyroY is above this limit the robot is assumed
+                       // to be unstable
+  int zmpSmoothPhase; // in frames
+};
+
+struct WEJointCalibration
+{
+  union
   {
-    struct 
+    struct
     {
       float jointCalibrationLeft[6];
       float jointCalibrationRight[6];
     };
     float jointCalibration[12];
   };
-  WEJointCalibration jointCalibration;
-  float footRoll;
-  float speedDependentBodyTilt[2]; // Min/Max
-  float yOffset[2]; // Depends on y speed! Index 0 is left, 1 is right
-  float fixedYOffset; // This one applies always.
-  float dynXOffset;
+  float offsetLeft[6];
+  float offsetRight[6];
+  int legJointHardness[6];
+};
+
+struct WalkingEngineParams : public Streamable
+{
+  Acceleration acceleration;
+  COMOffsets comOffsets;
+  FootMovement footMovement;
+  SensorControl sensorControl;
+  SpeedLimits speedLimits;
+  WalkTransition walkTransition;
+  float armFactor;
+  float arms1;
+  // float maxLegLength; // unused
+  int outFilterOrder; // walkingEngineOutput angles are average of ringbuffer (with kinematicoutput) of this size
   
+  // Sidestep settings
+  float maxSidestep[2];
+
+  WEJointCalibration jointCalibration;
+
   /** Constructor */
   WalkingEngineParams() {}
 
-  void serialize(In* in,Out* out)
+  void serialize(In* in, Out* out)
   {
     STREAM_REGISTER_BEGIN;
-    STREAM(accDelayR)
-    STREAM(accDelayX)
-    STREAM(accDelayY)
-    STREAM(accXAlpha)
-    STREAM(angleTiltP)
-    STREAM(armFactor)
-    STREAM(arms1)
-    STREAM(ballXMax)
-    STREAM(ballXMin)
-    STREAM(ballYMax)
-    STREAM(ballYMin)
-    STREAM(CoMZDiff)
-    STREAM(crouchingDownPhaseLength)
-    STREAM(doubleSupportRatio)
-    STREAM(dynXOffset)
-	  STREAM(fallDownAngleMinMaxX)
-	  STREAM(fallDownAngleMinMaxY)
-    STREAM(fixedBallPos)
-    STREAM(fixedYOffset)
-    STREAM(footPitch)
-    STREAM(footPitchPD)
-    STREAM(footRoll)
-    STREAM(footYDistance)
-    STREAM(forwardPolygon)
-    STREAM(halSensorDelay)
-    STREAM(heightPolygon)
-    STREAM(jointCalibration.jointCalibrationLeft)
-    STREAM(jointCalibration.jointCalibrationRight)
-    STREAM(kickStart)
-    STREAM(kickStartLen)
-    STREAM(kickStop)
-    STREAM(kickStopLen)
-    STREAM(legJointHardness)
-    STREAM(maxAccR)
-    STREAM(maxAccX)
-    STREAM(maxAccY)
-    STREAM(maxFootSpeed)
-    STREAM(maxLegLength)
-    STREAM(maxSidestep)
-    STREAM(maxSpeedR)
-    STREAM(maxSpeedXBack)
-    STREAM(maxSpeedXForward)
-    STREAM(maxSpeedXForwardOmni)
-    STREAM(maxSpeedY)
-    STREAM(maxStandPitch)
-    STREAM(maxWalkPitch)
-    STREAM(minSidestep)
-    STREAM(offsetLeft)
-    STREAM(offsetRight)
-    STREAM(outFilterOrder)
-    STREAM(pitchSpeed)
-    STREAM(polygonLeft)
-    STREAM(polygonRight)
-    STREAM(rollControllerParams)
-    STREAM(rollFactor)
-    STREAM(rotMax)
-    STREAM(rotMin)
-    STREAM(sensorControlRatio)
-    STREAM(sensorDelay)
-    STREAM(speedApplyDelay)
-    STREAM(speedDependentBodyTilt)
-    STREAM(standRollFactor)
-    STREAM(startingPhaseLength)
-    STREAM(stepDuration)
-    STREAM(stepHeight)
-    STREAM(stepOffsetFactor)
-    STREAM(stoppingPhaseLength)
-    STREAM(stopPosThresholdX)
-    STREAM(stopPosThresholdY)
-    STREAM(stopSpeedThresholdX)
-    STREAM(stopSpeedThresholdY)
-    STREAM(tiltControllerParams)
-    STREAM(tiltFactor)
-    STREAM(walkRequestFilterLen)
-    STREAM(xOffset)
-    STREAM(yOffset)
-    STREAM(zmpLeftX)
-    STREAM(zmpLeftY)
-    STREAM(zmpMax)
-    STREAM(zmpMoveSpeedY)
-    STREAM(zmpRightX)
-    STREAM(zmpRightY)
-    STREAM(zmpSmoothPhase)
-    STREAM_REGISTER_FINISH;
+      STREAM(acceleration.accDelayR)
+      STREAM(acceleration.accDelayX)
+      STREAM(acceleration.accDelayY)
+      STREAM(acceleration.maxAccR)
+      STREAM(acceleration.maxAccX)
+      STREAM(acceleration.maxAccY)
+      STREAM(acceleration.speedApplyDelay)
+      STREAM(acceleration.walkRequestFilterLen)
+      STREAM(armFactor)
+      STREAM(arms1)
+      STREAM(comOffsets.tiltFixed)
+      STREAM(comOffsets.tiltSpeedDependent)
+      STREAM(comOffsets.xArmContact)
+      STREAM(comOffsets.xFixed)
+      STREAM(comOffsets.xSpeedDependent)
+      STREAM(comOffsets.yArmContact)
+      STREAM(comOffsets.yFixed)
+      STREAM(comOffsets.ySpeedDependent)
+      STREAM(footMovement.doubleSupportRatio)
+      STREAM(footMovement.footPitch)
+      STREAM(footMovement.footPitchPD)
+      STREAM(footMovement.footRoll)
+      STREAM(footMovement.footYDistance)
+      STREAM(footMovement.forwardPolygon)
+      STREAM(footMovement.heightPolygon)
+      STREAM(footMovement.polygonLeft)
+      STREAM(footMovement.polygonRight)
+      STREAM(footMovement.maxStepDuration)
+      STREAM(footMovement.minStepDuration)
+      STREAM(footMovement.stepHeight)
+      STREAM(jointCalibration.jointCalibrationLeft)
+      STREAM(jointCalibration.jointCalibrationRight)
+      STREAM(jointCalibration.legJointHardness)
+      STREAM(jointCalibration.offsetLeft)
+      STREAM(jointCalibration.offsetRight)
+      STREAM(maxSidestep)
+      STREAM(outFilterOrder)
+      STREAM(sensorControl.accXAlpha)
+      STREAM(sensorControl.halSensorDelay)
+      STREAM(sensorControl.rollControllerParams)
+      STREAM(sensorControl.rollFactor)
+      STREAM(sensorControl.sensorControlRatio)
+      STREAM(sensorControl.sensorDelay)
+      STREAM(sensorControl.steppingRotSpeedCapture)
+      STREAM(sensorControl.steppingRotSpeedUprect)
+      STREAM(sensorControl.tiltControllerParams)
+      STREAM(sensorControl.tiltFactor)
+      STREAM(speedLimits.r)
+      STREAM(speedLimits.xBackward)
+      STREAM(speedLimits.xForward)
+      STREAM(speedLimits.xForwardArmContact)
+      STREAM(speedLimits.xForwardOmni)
+      STREAM(speedLimits.y)
+      STREAM(speedLimits.yArmContact)
+      STREAM(walkTransition.crouchingDownPhaseLength)
+      STREAM(walkTransition.fallDownAngleMinMaxX)
+      STREAM(walkTransition.fallDownAngleMinMaxY)
+      STREAM(walkTransition.startingPhaseLength)
+      STREAM(walkTransition.stoppingPhaseLength)
+      STREAM(walkTransition.stopPosThresholdX)
+      STREAM(walkTransition.stopPosThresholdY)
+      STREAM(walkTransition.stopSpeedThresholdX)
+      STREAM(walkTransition.stopSpeedThresholdY)
+      STREAM(walkTransition.unstableGyroY)
+      STREAM(walkTransition.zmpSmoothPhase)
+      STREAM_REGISTER_FINISH;
   };
   /** Descructor */
   ~WalkingEngineParams()
@@ -219,5 +227,5 @@ struct WalkingEngineParams : public Streamable
 
 };
 
-struct FreeLegPhaseParams : public WalkingEngineParams { };
+//struct FreeLegPhaseParams : public WalkingEngineParams { };
 

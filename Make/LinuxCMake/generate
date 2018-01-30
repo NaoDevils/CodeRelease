@@ -1,3 +1,0 @@
-#!/bin/bash
-cp CMakeLists.txt ../../CMakeLists.txt
-

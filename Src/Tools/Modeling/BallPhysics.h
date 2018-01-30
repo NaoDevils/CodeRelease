@@ -82,7 +82,6 @@ public:
    * @param v The ball velocity (in mm/s), set by this method
    * @t Time in seconds
    * @ballFriction The ball friction (negative force)  (in m/s^2)
-   * @return The new velocity (in mm / s)
    */
   static void applyFrictionToPositionAndVelocity(Vector2f& p, Vector2f& v, float t, float ballFriction)
   {

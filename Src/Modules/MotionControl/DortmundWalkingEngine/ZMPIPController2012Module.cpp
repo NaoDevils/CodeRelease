@@ -16,6 +16,9 @@ controller(
 {
 }
 
+//void ZMPIPController2012Module::update(TargetCoMLIPM & theTargetCoMLIPM) {
+//  update((TargetCoM&)theTargetCoMLIPM);
+//}
 
 void ZMPIPController2012Module::update(TargetCoM &theTargetCoM)
 {

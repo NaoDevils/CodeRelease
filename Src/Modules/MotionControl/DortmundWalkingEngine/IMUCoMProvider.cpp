@@ -11,13 +11,17 @@ void IMUCoMProvider::update(ActualCoM &theActualCoM)
 
   for (int i=0; i<theFootSteps.getNumOfSteps(); i++)
     footPositions.push_back(theFootSteps.getStep(i));
-  if (footPositions.empty()) return;
+  if (footPositions.empty()) {
+	  (Point &)theActualCoM = Point(0.0, 0.0);
+	  return;
+  }
 
   static bool running = false;
   if (!theFootSteps.running && running)
   {
     footPositions.clear();
     running = false;
+	(Point &)theActualCoM = Point(0.0,0.0);
     return;
   }
   else if (theFootSteps.running && !running)
@@ -27,7 +31,6 @@ void IMUCoMProvider::update(ActualCoM &theActualCoM)
   
 
   Point rcs = theWalkingInfo.toRobotCoords(theTargetCoM);
-  rcs.x += theWalkingEngineParams.xOffset;
   
   rcs.rotateAroundX(theInertialSensorData.angle.x());
   rcs.rotateAroundY(theInertialSensorData.angle.y());

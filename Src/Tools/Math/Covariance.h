@@ -48,15 +48,37 @@ namespace Covariance
                                       sinRotation, cosRotation).finished();
     return r * (Matrix2f() << xDev * xDev, 0.0f, 0.0f, yDev * yDev).finished() * r.transpose();
   }
+  
+  /**
+   * Creates a covariance of 2 dependend random variables with known eigenvalues 
+   * and eigenvectors. The eigenvectors must be linearly independent.
+   * @param eigenValue1 The first eigenvalue of the covariance matrix.
+   * @param eigenVector1 The first eigenvector of the covariance matrix.
+   * @param eigenValue2 The second eigenvalue of the covariance matrix.
+   * @param eigenVector2 The second eigenvector of the covariance matrix.
+   */
+  inline const Matrix2f create(const float eigenValue1, const Vector2f& eigenVector1,
+    const float eigenValue2, const Vector2f& eigenVector2)
+  {
+    // D: Diagonal matrix with eigenvalues as diagonal elements.
+    const Matrix2f diagEigenValues = (Matrix2f() << eigenValue1, 0,
+                                                    0, eigenValue2).finished();
+    // V: Matrix with eigenvectors as columns.
+    const Matrix2f matEigenVectors = (Matrix2f() << eigenVector1(0), eigenVector2(0),
+                                                    eigenVector1(1), eigenVector2(1)).finished();
+    
+    // The resulting covariance matrix can be computed by M = VDV^-1
+    return matEigenVectors * diagEigenValues * matEigenVectors.inverse();
+  }
 
   /**
    * Calculates an ellipse of equiprobable points of a zero centered covariance.
    * This is usually used for debug drawings.
-   * @param covariance The covariance matrix.
-   * @param axis1 The major axis of the corresponding ellipse.
-   * @param axis2 The minor axis of the corresponding ellipse.
-   * @param angle The rotation of the ellipse.
-   * @param factor A scaling factor for the axes.
+   * @param [in] covariance The covariance matrix.
+   * @param [out] axis1 The major axis of the corresponding ellipse.
+   * @param [out] axis2 The minor axis of the corresponding ellipse.
+   * @param [out] angle The rotation of the ellipse.
+   * @param [in] factor A scaling factor for the axes.
    */
   inline void errorEllipse(const Matrix2f& covariance, float& axis1, float& axis2,
                            float& angle, const float factor = 1.0f)

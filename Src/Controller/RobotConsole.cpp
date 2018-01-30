@@ -287,11 +287,11 @@ bool RobotConsole::handleMessage(InMessage& message)
     case idThumbnailUpper:
     {
       if (!incompleteImages["raw imageUpper"].image)
-        incompleteImages["raw imageUpper"].image = new Image(false);
-      Thumbnail thumbnail;
+        incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+      ThumbnailUpper thumbnail;
       message.bin >> thumbnail;
       thumbnail.toImage(*incompleteImages["raw imageUpper"].image);
-      incompleteImages["raw imimageUpperage"].image->timeStamp = SystemCall::getCurrentSystemTime();
+      incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
       return true;
     }
     case idDebugImage:
@@ -2257,7 +2257,7 @@ bool RobotConsole::viewImage(In& stream)
     ctrl->printLn("");
     return true;
   }
-  else if(buffer == "none") // TODO: BH2015 port of NDD
+  else if(buffer == "none")
   {
     bool upperCam = false;
     stream >> buffer;

@@ -65,6 +65,21 @@ void Image::setImage(unsigned char* buffer)
   setImage(reinterpret_cast<Pixel*>(buffer));
 }
 
+bool Image::projectIntoImage(int &x, int &y, int sizeX, int sizeY) const
+{
+	if (sizeX > width || sizeY > height)
+		return false;
+	if (x < 0)
+		x = 0;
+	if (x + sizeX >= width)
+		x = width - sizeX;
+	if (y < 0)
+		y = 0;
+	if (y + sizeY >= height)
+		y = height - sizeY;
+  return true;
+}
+
 void Image::setImage(Pixel* buffer)
 {
   if(!isReference)
@@ -170,6 +185,39 @@ float Image::getColorDistance(const Image::Pixel& a, const Image::Pixel& b)
   dcb *= dcb;
   dcr *= dcr;
   return std::sqrt(float(dy + dcb + dcr));
+}
+
+void Image::copyAndResizeArea(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char> &result) const
+{
+  //ASSERT(result.size() == sizeXNew*sizeYNew);
+  unsigned char* image_ptr = (unsigned char*)image;
+  const int rowStep = widthStep * 4;
+  image_ptr += yPos*rowStep + xPos * 4;
+  unsigned char* row_ptr = image_ptr;
+  float xPrecise = 0.f;
+  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
+  float yPrecise = 0.f;
+  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
+  int pixelNo = 0;
+  int lastX = 0;
+  int lastY = 0;
+  for (int y = 0; y < sizeYNew; y++)
+  {
+    for (int x = 0; x < sizeXNew; x++)
+    {
+      result[pixelNo] = *image_ptr;
+      xPrecise += xStep;
+      int xInc = static_cast<int>(xPrecise + 0.5) - lastX;
+      lastX += xInc;
+      image_ptr += xInc * 4;
+      pixelNo++;
+    }
+    yPrecise += yStep;
+    int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
+    lastY += yInc;
+    row_ptr += yInc * rowStep;
+    image_ptr = row_ptr;
+  }
 }
 
 void Image::serialize(In* in, Out* out)

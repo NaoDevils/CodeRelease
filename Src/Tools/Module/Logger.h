@@ -27,6 +27,8 @@
 #include "Platform/Semaphore.h"
 #include "Platform/Thread.h"
 #include "Representations/Infrastructure/GameInfo.h"
+#include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/MotionControl/MotionRequest.h"
 #include "Tools/Cabsl.h"
 
 class Logger : public Cabsl<Logger>
@@ -108,6 +110,16 @@ private:
     const GameInfo& gameInfo = static_cast<const GameInfo&>(Blackboard::getInstance()["GameInfo"]);
     receivedGameControllerPacket |= static_cast<const RoboCup::RoboCupGameControlData&>(gameInfo).packetNumber != 0 || gameInfo.secsRemaining != 0;
 
+    ASSERT(Blackboard::getInstance().exists("RobotInfo"));
+    const RobotInfo& robotInfo = static_cast<const RobotInfo&>(Blackboard::getInstance()["RobotInfo"]);
+    ASSERT(Blackboard::getInstance().exists("MotionRequest"));
+    const MotionRequest& motionRequest = static_cast<const MotionRequest&>(Blackboard::getInstance()["MotionRequest"]);
+
+    const bool isInactive =
+      robotInfo.penalty != PENALTY_NONE
+      || (motionRequest.motion == MotionRequest::Motion::specialAction && motionRequest.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::playDead)
+      || (motionRequest.motion == MotionRequest::Motion::specialAction && motionRequest.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::sitDown);
+
     initial_state(initial)
     {
       transition
@@ -155,14 +167,29 @@ private:
     {
       transition
       {
-        if(gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
+        if (gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
           goto delayPlaySound;
+        else if (isInactive)
+          goto paused;
         else if(file && SystemCall::getFreeDiskSpace(logFilename.c_str()) >> 20 < parameters.minFreeSpace)
           goto error;
       }
       action
       {
         logFrame();
+      }
+    }
+
+    state(paused)
+    {
+      transition
+      {
+        if (gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
+          goto delayPlaySound;
+        else if (!isInactive)
+          goto running;
+        else if (file && SystemCall::getFreeDiskSpace(logFilename.c_str()) >> 20 < parameters.minFreeSpace)
+          goto error;
       }
     }
 

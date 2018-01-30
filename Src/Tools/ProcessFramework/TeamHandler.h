@@ -11,10 +11,15 @@
 #include <string>
 #include "Representations/Infrastructure/RoboCupGameControlData.h"
 
+#define MAX_NUM_OF_TC_MESSAGES 10 // 5 broadcasting players and substitute + space for delays
+
 struct NDevilsHeader
 {
-  unsigned remoteIp; // TODO: needed?
-  unsigned timeStampSent;
+  uint64_t timeStampSent;
+  unsigned char teamID;
+  bool isPenalized;
+  bool whistleDetected;
+  unsigned char dummy;
 };
 
 const int teamCommHeaderSize = sizeof(RoboCup::SPLStandardMessage) - SPL_STANDARD_MESSAGE_DATA_SIZE;
@@ -24,7 +29,7 @@ const int ndevilsHeaderSize = sizeof(NDevilsHeader);
 class TeamDataIn
 {
 public:
-  TeamDataIn() { clear(); queue.setSize(5 * sizeof(RoboCup::SPLStandardMessage)); messages.reserve(5); }
+  TeamDataIn() { clear(); queue.setSize(MAX_NUM_OF_TC_MESSAGES * sizeof(RoboCup::SPLStandardMessage)); messages.reserve(MAX_NUM_OF_TC_MESSAGES); }
   std::vector<RoboCup::SPLStandardMessage> messages;
   MessageQueue queue;
   int currentPosition;

@@ -17,6 +17,7 @@
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/BodyTilt.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
@@ -24,12 +25,13 @@
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "CSConverter.h"
 #include "Representations/Modeling/RobotPose.h"
+#include "Representations/Sensing/ArmContact.h"
+#include "Representations/Configuration/RobotDimensions.h"
 
 MODULE(CSConverterModule,
 { ,
   REQUIRES(TargetCoM),
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FreeLegPhaseParams),
   REQUIRES(ControllerParams),
   REQUIRES(ActualCoMRCS),
   REQUIRES(BodyTilt),
@@ -41,6 +43,9 @@ MODULE(CSConverterModule,
   REQUIRES(FallDownState),
   REQUIRES(Footpositions),
   REQUIRES(FootSteps),
+  REQUIRES(ArmContact),
+  REQUIRES(RobotDimensions),
+  REQUIRES(WalkCalibration),
   PROVIDES(KinematicRequest),
   PROVIDES(WalkingInfo),
   PROVIDES(FixedOdometryRobotPose),

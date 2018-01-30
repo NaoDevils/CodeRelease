@@ -25,6 +25,7 @@ STREAMABLE(Path,
     wayPoints.clear();
     nearestObstacle = 10000.f;
     distanceToBall = 10000.f;
+    useExtraBallPoint = false;
   };
   /**
   * The method draws the path.
@@ -34,10 +35,27 @@ STREAMABLE(Path,
     //2D
     DEBUG_DRAWING("representation:Path", "drawingOnField")
     {
-      // draw next path points
-      for (auto const& i : wayPoints)
-      {
-        POSE_2D_SAMPLE("representation:Path", i, ColorRGBA(255, 0, 0));
+      const Pose2f* prev = nullptr;
+      for (std::vector<Pose2f>::const_iterator wpIt = wayPoints.cbegin(); wpIt != wayPoints.cend(); ++wpIt) {
+        Vector2f direction = Vector2f(300, 0);
+        direction.rotate(wpIt->rotation);
+        direction += wpIt->translation;
+        ARROW(
+          "representation:Path",
+          wpIt->translation.x(),
+          wpIt->translation.y(),
+          direction.x(),
+          direction.y(),
+          8,
+          Drawings::solidPen,
+          ColorRGBA::red
+        );
+
+        if (prev) {
+          LINE("representation:Path", prev->translation.x(), prev->translation.y(), wpIt->translation.x(), wpIt->translation.y(), 8, Drawings::solidPen, ColorRGBA::white);
+        }
+
+        prev = &*wpIt;
       }
     }
     // 3D
@@ -46,7 +64,11 @@ STREAMABLE(Path,
       Pose2f last = *(wayPoints.begin());
       for (std::vector<Pose2f>::const_iterator i = ++wayPoints.begin(); i != wayPoints.end(); ++i)
       {
-        LINE3D("representation:Path", last.translation.x(), last.translation.y(), 1.f, i->translation.x(), i->translation.y(), 1.f, 2.f, ColorRGBA::yellow);
+        if (useExtraBallPoint)
+          LINE3D("representation:Path", last.translation.x(), last.translation.y(), 1.f, i->translation.x(), i->translation.y(), 1.f, 2.f, ColorRGBA::red);
+        else
+          LINE3D("representation:Path", last.translation.x(), last.translation.y(), 1.f, i->translation.x(), i->translation.y(), 1.f, 2.f, ColorRGBA::yellow);
+        
         Vector3f from(i->translation.x(), i->translation.y(), 1.f);
         Vector3f to(from + Vector3f(std::cos(i->rotation) * 100, std::sin(i->rotation) * 100, 0.f));
         CYLINDERARROW3D("representation:Path", from, to, 2.f, 30.f, 5.f, ColorRGBA::yellow);
@@ -54,6 +76,8 @@ STREAMABLE(Path,
       }
     }
   },
+    
+  (bool)(false) useExtraBallPoint,
   (std::vector<Pose2f>) wayPoints, /**< The wayPoints in absolute field coordinates. */
   (float)(10000.f) nearestObstacle,
   (float)(100.f) distanceToBall, /**< The distance to the ball calculated from the path to the ball and the rotation towards the ball */  

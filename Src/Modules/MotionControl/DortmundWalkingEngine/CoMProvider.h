@@ -8,6 +8,7 @@
 #include "Representations/MotionControl/ActualCoM.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/Infrastructure/JointAngles.h"
+#include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Infrastructure/JointAngles.h"
 #include "Representations/Infrastructure/JointRequest.h"
@@ -29,11 +30,12 @@ public:
 	 * @param theWalkingEngineParams Walking Engine Parameters.
 	 */
 	CoMProvider(
-		const JointAngles				&theJointAngles,
-		const WalkingEngineParams	&theWalkingEngineParams,
-		const JointRequest			&theJointRequest,
-		const FootSteps				&theFootSteps,
-    const RobotModel &theRobotModel,
+		//const JointAngles				&theJointAngles,
+		//const WalkingEngineParams	&theWalkingEngineParams,
+		//const JointRequest			&theJointRequest,
+    const WalkingInfo       &theWalkingInfo,
+		//const FootSteps				&theFootSteps,
+    //const RobotModel &theRobotModel,
 		const ActualCoMRCS			&theActualCoMProvider);
 
 	/** Destructor */
@@ -47,10 +49,14 @@ public:
 
 private:
     //const JointAngles				&theJointAngles; unused
-    //const WalkingEngineParams	&theWalkingEngineParams; unused
+    //const WalkingEngineParams	&theWalkingEngineParams;
     //const JointRequest			&theJointRequest;			/**< Set by constructor. */ unused
-		const FootSteps				&theFootSteps;
-    const RobotModel &theRobotModel;
+    const WalkingInfo     &theWalkingInfo;
+		//const FootSteps				&theFootSteps;
+
+    //Rensen: Removed due to unused warning
+    //const RobotModel &theRobotModel;
+
 		const ActualCoMRCS			&theActualCoMRCS;
 
 		typedef std::list<Footposition> FootList;

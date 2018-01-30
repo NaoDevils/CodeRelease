@@ -46,5 +46,6 @@ public:
 
   unsigned timeStampRight, timeStampLeft;
   ArmContactState armContactStateLeft, armContactStateRight;
+
 };
 #endif // __ArmContact_H__

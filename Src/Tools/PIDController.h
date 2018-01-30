@@ -31,7 +31,7 @@ public:
   /**
    * Returns the controller output.
    * @param measuredValue The current value of the joint
-   * @param set point The desired value of the joint
+   * @param setpoint point The desired value of the joint
    * @return The controller output
    */
   double getControllerOutput(double measuredValue, double setpoint);

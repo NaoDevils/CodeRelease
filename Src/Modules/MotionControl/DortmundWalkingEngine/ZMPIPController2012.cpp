@@ -53,9 +53,10 @@ ZMP ZMPIPController2012::getReferenceZMP()
   else return ZMP();
 }
 
-#ifdef TARGET_ROBOT
-__attribute__((optimize("unroll-loops")))
-#endif
+//Rensen: Removed due to unknown attribute warning
+//#ifdef TARGET_ROBOT
+//__attribute__((optimize("unroll-loops")))
+//#endif
 void ZMPIPController2012::executeController(Dimension d, const Eigen::Matrix<float, 1,ControllerParams::N> &refZMP)
 {
   Vector3f err = theObservedError.ZMP_WCS(d) + theReferenceModificator.handledErr(d);
@@ -66,9 +67,10 @@ void ZMPIPController2012::executeController(Dimension d, const Eigen::Matrix<flo
   v(d) += theControllerParams.c0 * obs(d) - (*kElement)(d);
 }
 
-#ifdef TARGET_ROBOT
-__attribute__((optimize("unroll-loops")))
-#endif
+//Rensen: Removed due to unknown attribute warning
+//#ifdef TARGET_ROBOT
+//__attribute__((optimize("unroll-loops")))
+//#endif
 Point ZMPIPController2012::controllerStep()
 {
   ZMPList::iterator _pRef = kElement;
@@ -79,6 +81,10 @@ Point ZMPIPController2012::controllerStep()
   PLOT("module:ZMPIPController2012:calcZMP.x", obs(0)(2, 0));
   PLOT("module:ZMPIPController2012:calcZMP.y", obs(1)(2, 0));
   
+  //Rensen: Added because of warning above
+#ifdef TARGET_ROBOT
+#pragma unroll
+#endif
   for (int i = 0; i < ControllerParams::N; i++) {
     refZMP(0)(0,i) = _pRef->x();
     refZMP(1)(0,i) = _pRef->y();

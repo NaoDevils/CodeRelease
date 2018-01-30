@@ -55,8 +55,8 @@ public:
 
   /**
    * Sets a representation.
-   * @param The name of the Representation to set.
-   * @param The repreentation.
+   * @param representationName The name of the Representation to set.
+   * @param representation The repreentation.
    */
   void setRepresentation(const std::string representationName, const Streamable& representation);
 
@@ -251,7 +251,7 @@ private:
    * @param stream The stream containing the parameters of "ci".
    * @return Returns true if the parameters were correct.
    */
-  bool calcImage(In&);
+  bool calcImage(In& stream);
 
   /**
   * The function creates the map for command completion.

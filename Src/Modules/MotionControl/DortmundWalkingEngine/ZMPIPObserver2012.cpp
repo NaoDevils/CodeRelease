@@ -18,7 +18,7 @@ void ZMPIPObserver2012::update(ObservedError& observedError)
     wasOn = true;
   }
   
-  Vector2f xOffset(theWalkingEngineParams.xOffset, 0);
+  Vector2f xOffset(theWalkingEngineParams.comOffsets.xFixed, 0);
   xOffset.rotate(theWalkingInfo.robotPosition.rotation);
 
   Vector2f target(theTargetCoM.state_x[2] + xOffset.x(),
@@ -36,10 +36,10 @@ void ZMPIPObserver2012::update(ObservedError& observedError)
                                    theWalkingInfo.robotPosition.translation.y()));
 
   Vector2f ZMPdiff, CoMdiff;
-  if (delayBuffer.size()>theWalkingEngineParams.sensorDelay)
+  if (delayBuffer.size()>theWalkingEngineParams.sensorControl.sensorDelay)
   {
-    ZMPdiff = realZMP - delayBuffer[theWalkingEngineParams.sensorDelay];
-    CoMdiff = realCoM - coMDelayBuffer[theWalkingEngineParams.halSensorDelay];
+    ZMPdiff = realZMP - delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay];
+    CoMdiff = realCoM - coMDelayBuffer[theWalkingEngineParams.sensorControl.halSensorDelay];
   }
   else
   {
@@ -50,20 +50,18 @@ void ZMPIPObserver2012::update(ObservedError& observedError)
 #if 1
   static bool sensorOn=false;
 
-  if ((thePatternGenRequest.newState==PatternGenRequest::walking ||
-	  theWalkingInfo.kickPhase!=freeLegNA) &&
+  if ((thePatternGenRequest.newState==PatternGenRequest::walking) &&
     isStable)
 	  sensorOn=true;
 
-  if (!(thePatternGenRequest.newState==PatternGenRequest::walking ||
-	  theWalkingInfo.kickPhase!=freeLegNA))
+  if (!(thePatternGenRequest.newState==PatternGenRequest::walking))
 	  sensorOn=false;
 #else
   static bool sensorOn=true;
 #endif
 
   if (sensorOn && localSensorScale<1)
-	  localSensorScale+=1.0f/theWalkingEngineParams.zmpSmoothPhase;
+	  localSensorScale+=1.0f/theWalkingEngineParams.walkTransition.zmpSmoothPhase;
 
   if (!sensorOn)
 	  delayCounter++;
@@ -71,14 +69,14 @@ void ZMPIPObserver2012::update(ObservedError& observedError)
 	  delayCounter=0;
 
   if (delayCounter>theControllerParams.N && localSensorScale>0)
-	  localSensorScale-=1.0f/theWalkingEngineParams.zmpSmoothPhase;
+	  localSensorScale-=1.0f/theWalkingEngineParams.walkTransition.zmpSmoothPhase;
 
   ZMPdiff.rotate(-robotPosition.rotation);
-  ZMPdiff *= (theWalkingEngineParams.sensorControlRatio[1] * localSensorScale);
+  ZMPdiff *= (theWalkingEngineParams.sensorControl.sensorControlRatio[1] * localSensorScale);
   ZMPdiff.rotate(robotPosition.rotation);
 
   CoMdiff.rotate(-robotPosition.rotation);
-  CoMdiff *= (localSensorScale * theWalkingEngineParams.sensorControlRatio[0]);
+  CoMdiff *= (localSensorScale * theWalkingEngineParams.sensorControl.sensorControlRatio[0]);
   CoMdiff.rotate(robotPosition.rotation);
 
   MODIFY("module:ZMPIPObserver:CoMdiff", CoMdiff);
@@ -89,10 +87,10 @@ void ZMPIPObserver2012::update(ObservedError& observedError)
   observedError.CoM_WCS.y() = theControllerParams.L * Vector2f(CoMdiff.y(), 0);
   observedError.ZMP_WCS.y() = theControllerParams.L * Vector2f(0, ZMPdiff.y());
 
-  PLOT("module:ZMPIPObserver2012:Delayed_CoM.x", coMDelayBuffer[theWalkingEngineParams.halSensorDelay].x());
-  PLOT("module:ZMPIPObserver2012:Delayed_CoM.y", coMDelayBuffer[theWalkingEngineParams.halSensorDelay].y());
-  PLOT("module:ZMPIPObserver2012:Delayed_ZMP.x", delayBuffer[theWalkingEngineParams.sensorDelay].x());
-  PLOT("module:ZMPIPObserver2012:Delayed_ZMP.y", delayBuffer[theWalkingEngineParams.sensorDelay].y());
+  PLOT("module:ZMPIPObserver2012:Delayed_CoM.x", coMDelayBuffer[theWalkingEngineParams.sensorControl.halSensorDelay].x());
+  PLOT("module:ZMPIPObserver2012:Delayed_CoM.y", coMDelayBuffer[theWalkingEngineParams.sensorControl.halSensorDelay].y());
+  PLOT("module:ZMPIPObserver2012:Delayed_ZMP.x", delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].x());
+  PLOT("module:ZMPIPObserver2012:Delayed_ZMP.y", delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].y());
   PLOT("module:ZMPIPObserver2012:ZMPDiff.x", ZMPdiff.x());
   PLOT("module:ZMPIPObserver2012:ZMPDiff.y", ZMPdiff.y());
 

@@ -1,0 +1,9 @@
+# request behavior messages
+dr representation:ActivationGraph
+
+# relative drawings
+vfd worldState origin:RobotPose
+
+# back to global coordinates
+vfd worldState origin:Reset
+vfd worldState representation:Path

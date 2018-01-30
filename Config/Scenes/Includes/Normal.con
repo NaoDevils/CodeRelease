@@ -24,7 +24,10 @@ mr FrameInfo MotionLogDataProvider
 mr GroundTruthWorldState CognitionLogDataProvider
 mr GroundTruthRobotPose OracledWorldModelProvider
 mr GroundTruthBallModel OracledWorldModelProvider
-mr Thumbnail off
+mr Thumbnail default
+mr ThumbnailUpper default
+mr LowFrameRateImage default
+mr LowFrameRateImageUpper default
 
 call Includes/DebugResponses
 call Includes/GameStates

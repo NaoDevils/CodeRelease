@@ -392,9 +392,19 @@ void JoystickControl::standUpFallen()
   // Choose appropriate stand up action
   if (theFallDownState.state == FallDownState::onGround)
   {
-    localMotionRequest.motion = MotionRequest::getUp;
+    int duration = 1000;
+    if (theFallDownState.direction == FallDownState::back)
+    {
+      specialAction(SpecialActionRequest::standUpBackNao, false, 5500);
+      duration = 5500;
+    }
+    else if (theFallDownState.direction == FallDownState::front)
+    {
+      specialAction(SpecialActionRequest::standUpFrontNao, false, 3100);
+      duration = 3100;
+    }
     // Set duration of action.
-    m_actionEndTime = theFrameInfo.time + 4000;
+    m_actionEndTime = theFrameInfo.time + duration;
     m_actionRunning = true;
   }
   else
@@ -411,9 +421,12 @@ void JoystickControl::standUpFallen()
 
 void JoystickControl::kick(bool kickLeft)
 {
-  localMotionRequest.motion = MotionRequest::walk;
-  localMotionRequest.walkRequest.stepRequest = kickLeft ? WalkRequest::StepRequest::frontKickLeft : WalkRequest::StepRequest::frontKickRight;
+  localMotionRequest.motion = MotionRequest::kick;
+  localMotionRequest.kickRequest.mirror = !kickLeft;
+  localMotionRequest.kickRequest.kickMotionType = KickRequest::kickForward;
+  localMotionRequest.kickRequest.dynamical = true;
+  localMotionRequest.kickRequest.kickTarget << 1000.f, 0.f;
   // Set duration of action.
-  m_actionEndTime = theFrameInfo.time + 100;
+  m_actionEndTime = theFrameInfo.time + 1000;
   m_actionRunning = true;
 }

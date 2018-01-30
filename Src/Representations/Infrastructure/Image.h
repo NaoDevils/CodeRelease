@@ -7,8 +7,15 @@
 #pragma once
 
 #include "Tools/Streams/Streamable.h"
+// TODO: check this warning
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#endif
 #include <tmmintrin.h>
-
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 /**
  * Platform independent definition of an image struct
  */
@@ -151,6 +158,10 @@ public:
     return x >= width - distance || x < distance ||
       y >= height - distance || y < distance;
   }
+
+  bool projectIntoImage(int &x, int &y, int sizeX, int sizeY) const;
+
+  void copyAndResizeArea(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char> &result) const;
 
 protected:
   void serialize(In* in, Out* out);

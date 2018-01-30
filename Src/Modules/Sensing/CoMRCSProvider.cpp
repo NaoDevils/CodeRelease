@@ -2,7 +2,7 @@
 
 void CoMRCSProvider::update(ActualCoMRCS &actualCoMRCS)
 {
-  if (thePatternGenRequest.newState != PatternGenRequest::walking)
+  if (!walkFixedCoM || thePatternGenRequest.newState != PatternGenRequest::walking)
     (Point &)actualCoMRCS = Point(theRobotModel.centerOfMass.x()/1000, theRobotModel.centerOfMass.y()/1000, (theRobotModel.centerOfMass.z())/1000 , 0);
   //else
    // actualCoMRCS.y = theRobotModel.centerOfMass.y() / 1000;

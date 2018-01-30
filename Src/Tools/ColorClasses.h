@@ -21,13 +21,13 @@ namespace ColorClasses
 {
   ENUM(Color,
   {,
-    none,   /*<! all other objects */
-    white,  /*<! lines */
-    green,  /*<! field */
-    blue,   /*<! color of blue robots */
-    red,    /*<! color of red robots */
-    orange, /*<! ball */
-    black,  /*<! most probably: nothing */
+    none,   /**<! all other objects */
+    white,  /**<! lines */
+    green,  /**<! field */
+    blue,   /**<! color of blue robots */
+    red,    /**<! color of red robots */
+    orange, /**<! ball */
+    black,  /**<! most probably: nothing */
   });
 
   /**

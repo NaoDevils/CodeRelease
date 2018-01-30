@@ -30,7 +30,6 @@ public:
 private slots:
   void setPings(ENetwork, std::map<std::string, double>*);
   void batteryReadable();
-  void batteryPlugReadable();
 
 signals:
   void powerChanged(std::map<std::string, Power>*);

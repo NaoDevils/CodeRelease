@@ -11,6 +11,10 @@ MODULE(CoMRCSProvider,
   REQUIRES(RobotModel),
   REQUIRES(PatternGenRequest),
   PROVIDES(ActualCoMRCS),
+  LOADS_PARAMETERS(
+  {,
+    (bool)(true) walkFixedCoM,
+  }),
 });
 
 class CoMRCSProvider : public CoMRCSProviderBase

@@ -2,6 +2,7 @@
 #include "Tools/Enum.h"
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Eigen.h"
+#include "Tools/Math/Angle.h"
 
 STREAMABLE(Behavior2015Parameters,
 {

@@ -19,7 +19,11 @@ usage()
   echo "    -nr                    do not check whether target is reachable"
   echo "    -d                     remove all log files before copying"
   echo "    -v <percent>           set NAO's volume"
+  echo "    -mv <percent>          set NAO's microphone volume"
   echo "    -w <profile>           set wireless profile"
+  echo "    -sp <repres> <module>  set provider for <representation> to <module> in modules.cfg"
+  echo "    -own <color>           set color for own team (e.g. \"x = 255; y = 255; z = 255;\")"
+  echo "    -opp <color>           set color for opposing team (e.g. \"x = 255; y = 255; z = 255;\")"
   echo "    -h | --help | /h | /?  print this text"
   echo "  examples:"
   echo "    ./copyfiles Develop 192.168.5.14 -p 1"
@@ -47,10 +51,11 @@ copy()
 
   echo "stopping bhuman"
   ssh $sshoptions nao@$REMOTE "/home/nao/bin/bhumand stop > /dev/null"
-
+  
   echo "------- Synchronizing clocks on $REMOTE -------"
   set +e
-  ssh $sshoptions root@$REMOTE "ntpdate -u 192.168.101.1 && hwclock --systohc"
+  ssh $sshoptions root@$REMOTE "ntpdate -u 192.168.101.122 192.168.101.1 && hwclock --systohc --utc"
+  #ssh $sshoptions root@$REMOTE "ntpdate -u 192.168.100.4 192.168.101.88 && hwclock --systohc"
   if [[ $? != 0 ]]; then
      >&2 echo "[ERROR] while updating NTP time!"  
   else
@@ -58,10 +63,10 @@ copy()
   fi
   echo "-----------------------------------------------------"
   set -e
-
+  
   if [ ! -z $REMOVE_LOGS ]; then
-    echo "removing log files"
-    ssh $sshoptions nao@$REMOTE "rm -rf /home/nao/logs/* > /dev/null"
+    echo "removing log files and PNGs"
+    ssh $sshoptions nao@$REMOTE "rm -rf /home/nao/logs/* > /dev/null && rm -rf /var/volatile/PNGs &> /dev/null"
   fi
 
   echo "updating wireless profiles"
@@ -102,6 +107,11 @@ copy()
   #New naoqi versions use "Master", old use "PCM" as amixer SCONTROL
   ssh $sshoptions nao@$REMOTE "amixer set Master $VOLUME% unmute &> /dev/null"
 
+  # set microphone volume
+  echo "setting microphone volume to $MIC_VOLUME%"
+  
+  ssh $sshoptions nao@$REMOTE "amixer set Capture $MIC_VOLUME% unmute &> /dev/null"
+
   # set settings on robot
   if [ ! -z $LOCATION ] || [ ! -z $TEAM ] || [ ! -z $PORT ] || [ ! -z $PLAYER ] || [ ! -z $NUMBER ] || [ ! -z $GAMEMODE ]; then
     echo "updating settings"
@@ -112,7 +122,23 @@ copy()
     [ ! -z $NUMBER ] && SEDFLAGS="$SEDFLAGS -e 's/teamNumber.*/teamNumber = $NUMBER;/'"
     [ ! -z $PORT ] && SEDFLAGS="$SEDFLAGS -e 's/teamPort.*/teamPort = $PORT;/'"
 	[ ! -z $GAMEMODE ] && SEDFLAGS="$SEDFLAGS -e 's/gameMode.*/gameMode = $GAMEMODE;/'"
-    ssh $sshoptions nao@$REMOTE "sed $SEDFLAGS < /home/nao/Config/settings.cfg > /home/nao/Config/settingsTEMP.cfg && mv /home/nao/Config/settingsTEMP.cfg /home/nao/Config/settings.cfg"
+    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/settings.cfg"
+  fi
+
+  # set modules settings on robot
+  if [ ! -z "$SET_PROVIDER" ]; then
+    echo "updating module settings"
+    ssh $sshoptions nao@$REMOTE "sed -i $SET_PROVIDER /home/nao/Config/Locations/Default/modules.cfg"
+  fi
+  
+  
+  # set robot detector settings on robot
+  if [ ! -z "$COLOR_OWN" ] || [ ! -z "$COLOR_OPP" ]; then
+    echo "updating robot detector settings"
+    SEDFLAGS=""
+    [ ! -z "$COLOR_OWN" ] && SEDFLAGS="$SEDFLAGS -e 's/\(ownColor = { \)[0-9xyz=; ]\+\( };\)/\1$COLOR_OWN\2/'"
+    [ ! -z "$COLOR_OPP" ] && SEDFLAGS="$SEDFLAGS -e 's/\(oppColor = { \)[0-9xyz=; ]\+\( };\)/\1$COLOR_OPP\2/'"
+    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/Locations/Default/robotDetector.cfg"
   fi
 
   if [ ! -z $RESTART ]; then
@@ -157,8 +183,12 @@ RESTARTNAOQI=
 MULTIPLEDATA=
 REMOVE_LOGS=
 VOLUME=100
+MIC_VOLUME=75
 PROFILE=
 PORT=
+SET_PROVIDER=
+COLOR_OWN=
+COLOR_OPP=
 
 echo Parameters: $@
 
@@ -233,9 +263,26 @@ while true; do
       shift
       VOLUME=$1
       ;;
+    "-mv" | "/mv")
+      shift
+      MIC_VOLUME=$1
+      ;;
     "-w" | "/w")
       shift
       PROFILE=$1
+      ;;
+    "-sp" | "/sp")
+      shift
+      SET_PROVIDER="$SET_PROVIDER -e 's/\({representation = $1; provider = \)\S\+\(;}\)/\1$2\2/'"
+	  shift
+      ;;
+    "-own" | "/own")
+      shift
+      COLOR_OWN=$1
+      ;;
+    "-opp" | "/opp")
+      shift
+      COLOR_OPP=$1
       ;;
     "Nao")
       COMPONENT="Nao"

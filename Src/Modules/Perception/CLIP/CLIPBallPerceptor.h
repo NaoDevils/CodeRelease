@@ -6,13 +6,15 @@
 * @author <a href="mailto:ingmar.schwarz@tu-dortmund.de">Ingmar Schwarz</a>
 */
 
-#ifndef __CLIPBallPerceptor_h_
-#define __CLIPBallPerceptor_h_
+#pragma once
 
 #include "Tools/Module/Module.h"
+#include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
+#include "Tools/Debugging/DebugImages.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/Image.h"
+#include "Representations/Infrastructure/IntegralImage.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Perception/BodyContour.h"
 #include "Representations/Perception/CameraMatrix.h"
@@ -23,12 +25,14 @@
 #include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotPose.h"
+#include "Representations/MotionControl/MotionInfo.h"                                                     
 #include <algorithm>
 #include "stdint.h"
 
 MODULE(CLIPBallPerceptor,
 {,
   REQUIRES(BodyContour),
+  REQUIRES(BodyContourUpper),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
@@ -39,16 +43,23 @@ MODULE(CLIPBallPerceptor,
   REQUIRES(FrameInfo),
   REQUIRES(Image),
   REQUIRES(ImageUpper),
+  REQUIRES(IntegralImage),
   REQUIRES(BallSpots),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(RobotsPercept),
   USES(RobotPose),
+  USES(MotionInfo),
   USES(BallModel),
+  PROVIDES(BallHypotheses),
   PROVIDES(BallPercept),
+  PROVIDES(MultipleBallPercept),
   LOADS_PARAMETERS(
   {,
     (bool) addExtraScan, // add additional scan lines if ball not found
     (int) numberOfScanLines, // Number of scan lines within possible ball.
+    (bool) useCNN, // if true, CNN is used on every 'testCircle' (after ball center is found)
+    (bool) useCNNOnly, // if true, all other checks after CNN are omitted (except basic size sanity checks)
+    (bool) logTestCircles, // log hypotheses for CNN, does nothing if useCNN == false
     (int) minFittingPoints, // Minimum fitting points on calculated circle on possible ball to be accepted as ball percept.
     (int) minFittingPointsForSafeBall, // If this number is fitting, rest does not matter
     (int) maxFarPointsOnHull, // How many of the scan lines within ball are allowed to end outside of calculated circle?
@@ -74,6 +85,11 @@ MODULE(CLIPBallPerceptor,
     (int) maxBallFeatureScore, // Max percent of black pixels on ball
     (int) minBallFeatureScore, // Min percent of black pixels on ball
     (int) maxBallWhiteScore, // Max percent of pixels counted as white on ball without black in between
+    (int) minCornerResponses, // Minimum number of positive responses to 'darker corner' check on II
+    (int) minWBResponses, // Minimum number of gradient responses on II
+    (float) minScore, // Minimum number of gradient responses on II
+    (bool) logPositives,
+    (bool) useBallValidity, // If false, validity of ball percept is always 1
   }),
 });
 
@@ -85,12 +101,22 @@ public:
   */
   CLIPBallPerceptor();
 
+  DECLARE_DEBUG_IMAGE(BallHypothesesLower);
+  DECLARE_DEBUG_IMAGE(BallHypothesesUpper);
+
   struct BallFeature
   {
     int yAvg;
+    int minX, maxX, minY, maxY;
     float scannedSizeX;
     float scannedSizeY;
     Vector2f center;
+  };
+
+  struct OverlapArea
+  {
+    int startID;
+    int endID;
   };
 
   ENUM(HullCheckState,
@@ -106,6 +132,7 @@ public:
     void reset()
     {
       ballFeatures.clear();
+      overlapAreas.clear();
       featureCheckNeeded = false;
       detailedCheckNeeded = false;
       circleOK = false;
@@ -113,8 +140,13 @@ public:
       ballObstacleOverlap = false;
       ballOnFieldLine = false;
       ballScannedOnce = false;
+      integralImageResponse = -1;
+      cnnCheck = false;
+      ballOnField = Vector2f::Zero();
+      validity = 0;
     }
     std::vector<BallFeature> ballFeatures;
+    std::vector<OverlapArea> overlapAreas;
     bool featureCheckNeeded;
     bool detailedCheckNeeded;
     bool circleOK;
@@ -123,7 +155,23 @@ public:
     // for possible ball on field line - do not use scan lines ending on field line
     bool ballOnFieldLine;
     bool ballScannedOnce;
+    int integralImageResponse;
     int yHistogram[32];
+    bool cnnCheck;
+    Vector2f ballOnField;
+    float validity;
+  };
+
+  struct BallHullPoint
+  {
+    BallHullPoint operator=(const BallHullPoint &other)
+    {
+      pointInImage = other.pointInImage;
+      directionID = other.directionID;
+      return *this;
+    }
+    Vector2f pointInImage;
+    int directionID;
   };
 
   Geometry::Line lineUpperBorder; //upper left
@@ -137,13 +185,20 @@ public:
   unsigned lastImageTimeStamp;
   unsigned lastImageUpperTimeStamp;
 
-  std::vector< Vector2f > ballHullPoints; /*< all ball edge points, if scanline is not too long */
-  std::vector< Vector2f > goodBallHullPoints; /*< ball edge points to field */
-  Vector2f scannedCenter; /*< For comparing the model matching ball center with the ball center found via image scan. */
+  //for cnn
+  std::vector<unsigned char> ballHypothesis;
+  std::vector<unsigned char> ballHypothesisLog;
+
+  std::vector< BallHullPoint > ballHullPoints; /**< all ball edge points, if scanline is not too long */
+  std::vector< BallHullPoint > goodBallHullPoints; /**< ball edge points to field */
+  std::vector< Vector2f > ballPoints;
+  std::vector< Vector2f > goodBallPoints;
+  Vector2f scannedCenter; /**< For comparing the model matching ball center with the ball center found via image scan. */
   float scannedRadius;
   BallPerceptState ballPerceptState;
 
   BallPercept localBallPercept;
+  MultipleBallPercept localMultipleBallPercept;
   BallSpots localBallSpots;
   std::vector<BallSpot> noBallSpots;
 
@@ -152,13 +207,15 @@ public:
 
 private:
   void update(BallPercept &theBallPercept);
+  void update(MultipleBallPercept &theMultipleBallPercept);
+  void update(BallHypotheses &theBallHypotheses);
 
   /*
   * Iterates through ball spots and tries to create ball percepts.
   * Validity of BallPercept is defined by comparing theoretical size in
   * image (calculated by distance on field) to scanned size.
   */
-  void execute(const bool &upper);
+  void execute(const bool &upper, bool multi = false);
 
   // creates ball hull points from ball spot if constraints are fulfilled
   // call three times 
@@ -173,6 +230,8 @@ private:
   // verify ball spot and fill ball percept
   bool verifyBallPercept(BallSpot &spot, const bool &upper);
 
+  bool verifyBallSizeAndPosition(const Vector2f &posInImage, const float &radius, const bool &upper);
+
   // counts y jumps on ball (for white black ball)
   // TODO: make more reliable (using distance, distribution?)
   bool checkYJumps(BallSpot &spot, const bool &upper);
@@ -180,10 +239,15 @@ private:
   // check features 
   bool checkFeatures(const BallSpot &spot, const bool &upper);
 
+  // feature check using integral image, replaces 'checkFeatures' method
+  bool checkFeaturesWithIntegralImage(const BallSpot &spot, const bool &upper);
+
   // check feature distribution on ball
   bool checkFeatureDistribution(const BallSpot &spot, const bool &upper);
 
   bool scanForOverlap(const BallSpot &spot, const bool &upper);
+
+  bool checkOverlap(const BallSpot &spot, const bool &upper);
 
   bool scanFeature(BallFeature &feature, const Vector2f &center, const float &expectedSize, const bool &upper);
 
@@ -192,11 +256,11 @@ private:
   *
   * return Maximum number of connected fitting points
   */
-  int getFittingPoints(const Vector2f &centerPoint, 
-    const float &radius, float &distSum, float &maxDist, const bool &upper);
+  int getFittingPoints(const Geometry::Circle &baseCircle,
+    float &distSum, float &maxDist, const bool &upper);
 
   // used to compute ballpercept only once from multiple ball spots on one ball
-  bool isOnBallSpot(const Vector2i &pos);
+  bool isOnBallSpot(const Vector2i &pos, const bool &upper);
 
   // extra scan lines if ball was not found
   void additionalBallSpotScan();
@@ -212,6 +276,23 @@ private:
       (theFieldDimensions.ballType == SimpleFieldDimensions::BallType::any);
   }
 
+  float getBallDiameterAt(const float &x, const float &y, const Image &image, const CameraMatrix &cameraMatrix, const CameraInfo &cameraInfo)
+  {
+    // theoretical diameter if cameramatrix is correct
+    Vector2f posOnField;
+    if (!Transformation::imageToRobotHorizontalPlane(
+      Vector2f(x, y),
+      theFieldDimensions.ballRadius,
+      cameraMatrix,
+      cameraInfo,
+      posOnField))
+      return 100;
+    Geometry::Circle expectedCircle;
+    if (!Geometry::calculateBallInImage(posOnField, cameraMatrix, cameraInfo, theFieldDimensions.ballRadius, expectedCircle))
+      return 100;
+    return expectedCircle.radius * 2;
+
+  }
+
 };
 
-#endif //__CLIPBallPerceptor_h_

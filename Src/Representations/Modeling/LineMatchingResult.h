@@ -177,7 +177,8 @@ public:
     const Matrix3d & poseCovariance, 
     double likelihoodThreshold, 
     const Matrix2d & sphericalPointMeasurementCovariance_inv, 
-    std::vector<FieldLine> & correspondencesForObservations, 
+    std::vector<FieldLine> & correspondencesForObservations,
+    bool displayWarning=false,
     bool requestedByLocalization=true) const;
 
   Vector2d projectPointToFieldLine(const Pose2f & pose, const Vector2d & pointInRelativeCoords, const FieldLine & line) const;

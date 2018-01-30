@@ -19,12 +19,16 @@ public:
   std::string name;
   unsigned short number;
   unsigned short port;
-  std::string color;
+  std::string colorOwn;
+  std::string colorOpp;
   std::string location;
   std::string gameMode;
   std::string wlanConfig;
+  std::string walkConfig;
+  bool mocapConfig;
   std::string buildConfig;
   unsigned short volume;
+  unsigned short micVolume;
   std::string deployDevice;
 
   Team();

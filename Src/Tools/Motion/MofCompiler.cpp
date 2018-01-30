@@ -159,7 +159,7 @@ bool MofCompiler::parseMofs()
     do
     {
       ff = readdir(fd);
-      thereAreMore = ff > 0;
+      thereAreMore = ff != NULL;
     }
     while(thereAreMore && (strlen(ff->d_name) <= 4 || strcmp(ff->d_name + strlen(ff->d_name) - 4, ".mof") != 0));
   }
@@ -174,7 +174,7 @@ bool MofCompiler::parseMofs()
       char name[512];
       sprintf(name, "%s/Config/mof/%s", File::getBHDir(), ff->d_name);
       FILE* f = fopen(name, "r");
-      if(f <= 0)
+      if(f == NULL)
       {
         printf("error opening %s. Aborting.\n", name);
         return false;
@@ -411,7 +411,7 @@ bool MofCompiler::parseMofs()
       do
       {
         ff = readdir(fd);
-        thereAreMore = ff > 0;
+        thereAreMore = ff != NULL;
       }
       while(thereAreMore && (strlen(ff->d_name) <= 4 || strcmp(ff->d_name + strlen(ff->d_name) - 4, ".mof") != 0));
     }
@@ -435,7 +435,7 @@ bool MofCompiler::parseExternMof()
   char name[512];
   sprintf(name, "%s/Config/mof/extern.mof", File::getBHDir());
   FILE* f = fopen(name, "r");
-  if(f <= 0)
+  if(f == NULL)
   {
     printf("error opening %s. Aborting.\n", name);
     return false;

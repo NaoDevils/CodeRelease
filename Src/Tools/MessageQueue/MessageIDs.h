@@ -14,6 +14,9 @@
  * IDs for debug messages
  *
  * To distinguish debug messages, they all have an id.
+ *
+ * !!! WARNING: Only add new IDs at the end.
+ *              If not all logs will become unreplayable !!!
  */
 ENUM(MessageID,
 {,
@@ -58,10 +61,12 @@ ENUM(MessageID,
   idJPEGImage,
   idJPEGImageUpper,
   idKeyStates,
-  idLocalizationTeamBall,
+  idRemoteRobotMap, // added by NDevils
   idLowFrameRateImage,
   idMotionInfo,
   idMotionRequest,
+  idMocapRobotPose, //added by NDevils
+  idMocapBallModel, //added by NDevils
   idOdometer,
   idOdometryData,
   idOpponentTeamInfo,
@@ -75,12 +80,12 @@ ENUM(MessageID,
   idRobotsPercept,
   idScanlineRegions,
   idSideConfidence,
-  idSPLStandardBehaviorStatus,
+  idKickSymbols, // added by NDevils
   idStopwatch,
   idSystemSensorData,
   idTeamBallModel,
   idTeammateData,
-  idTeammateReliability,
+  idRoleSymbols, // added by NDevils
   idThumbnail,
   idUsSensorData,
   idZmp,
@@ -94,6 +99,7 @@ ENUM(MessageID,
   idLowFrameRateImageUpper,
   idThumbnailUpper,
   idRemoteBallModel,
+  idBodyContourUpper,
 
   numOfDataMessageIDs, /**< everything below this does not belong into log files */
 
@@ -110,7 +116,7 @@ ENUM(MessageID,
   idTeammateIsUpright,
   idTeammateTimeOfLastGroundContact,
   idWhistle,
-  idWhistleDortmund,
+  idWhistleDortmund, // added by NDevils
 
   // infrastructure
   idConsole,

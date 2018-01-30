@@ -21,11 +21,13 @@ converter(
 		theInertialSensorData,
     theFsrSensorData,
 		theBodyTilt,
-		theFreeLegPhaseParams,
 		theTorsoMatrix,
     theRobotModel,
     theRobotInfo,
-    theFootSteps)
+    theFootSteps,
+    theArmContact,
+    theRobotDimensions,
+    theWalkCalibration)
 {
 }
 
@@ -34,18 +36,18 @@ void CSConverterModule::update(KinematicRequest &kinematicRequest)
 	converter.updateKinematicRequest(kinematicRequest);
   PLOT("module:CSConverter:TargetCoM.x", theTargetCoM.x);
   PLOT("module:CSConverter:TargetCoM.y", theTargetCoM.y);
-  PLOT("module:CSConverter:Footpos[LEFT_FOOT].x", theFootpositions.footPos[LEFT_FOOT].x);
-  PLOT("module:CSConverter:Footpos[LEFT_FOOT].y", theFootpositions.footPos[LEFT_FOOT].y);
-  PLOT("module:CSConverter:Footpos[LEFT_FOOT].z", theFootpositions.footPos[LEFT_FOOT].z);
-  PLOT("module:CSConverter:Footpos[LEFT_FOOT].r", theFootpositions.footPos[LEFT_FOOT].r);
-  PLOT("module:CSConverter:Footpos[LEFT_FOOT].rx", theFootpositions.footPos[LEFT_FOOT].rx);
-  PLOT("module:CSConverter:Footpos[LEFT_FOOT].ry", theFootpositions.footPos[LEFT_FOOT].ry);
-  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].x", theFootpositions.footPos[RIGHT_FOOT].x);
-  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].y", theFootpositions.footPos[RIGHT_FOOT].y);
-  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].z", theFootpositions.footPos[RIGHT_FOOT].z);
-  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].r", theFootpositions.footPos[RIGHT_FOOT].r);
-  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].rx", theFootpositions.footPos[RIGHT_FOOT].rx);
-  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].ry", theFootpositions.footPos[RIGHT_FOOT].ry);
+  PLOT("module:CSConverter:Footpos[LEFT_FOOT].x", kinematicRequest.leftFoot[0]);
+  PLOT("module:CSConverter:Footpos[LEFT_FOOT].y", kinematicRequest.leftFoot[1]);
+  PLOT("module:CSConverter:Footpos[LEFT_FOOT].z", kinematicRequest.leftFoot[2]);
+  PLOT("module:CSConverter:Footpos[LEFT_FOOT].r", kinematicRequest.leftFoot[3]);
+  PLOT("module:CSConverter:Footpos[LEFT_FOOT].rx", kinematicRequest.leftFoot[4]);
+  PLOT("module:CSConverter:Footpos[LEFT_FOOT].ry", kinematicRequest.leftFoot[5]);
+  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].x", kinematicRequest.rightFoot[0]);
+  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].y", kinematicRequest.rightFoot[1]);
+  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].z", kinematicRequest.rightFoot[2]);
+  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].r", kinematicRequest.rightFoot[3]);
+  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].rx", kinematicRequest.rightFoot[4]);
+  PLOT("module:CSConverter:Footpos[RIGHT_FOOT].ry", kinematicRequest.rightFoot[5]);
   static float sum = 0;
   sum += theInertialSensorData.gyro.y() * 0.01f;
   PLOT("module:CSConverter:sum", sum);

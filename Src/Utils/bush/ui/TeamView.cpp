@@ -7,6 +7,7 @@
 
 #include <QPushButton>
 #include <QComboBox>
+//#include <QColordialog> TODO: use this for color picking
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QFormLayout>
@@ -15,6 +16,11 @@
 #include <QSlider>
 #include <QToolTip>
 #include <QCursor>
+
+// for file modification (robotDetector and modules.cfg)
+#include <iostream>
+#include "Platform/File.h"
+#include <fstream>
 
 void TeamView::init()
 {
@@ -31,15 +37,31 @@ void TeamView::init()
     settingsGrid->addWidget(pbSave);
     connect(pbSave, SIGNAL(clicked()), teamSelector, SLOT(saveTeams()));
 
-    cbColor = new QComboBox(this);
-    cbColor->addItem("red");
-    cbColor->addItem("blue");
-    cbColor->addItem("yellow");
-    cbColor->addItem("black");
-    cbColor->setCurrentIndex(cbColor->findText(fromString(team->color)));
-    settingsGrid->addWidget(new QLabel("Color:", cbColor));
-    settingsGrid->addWidget(cbColor);
-    connect(cbColor, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(colorChanged(const QString&)));
+    cbColorOwn = new QComboBox(this);
+    cbColorOwn->addItem("red");
+    cbColorOwn->addItem("blue");
+    cbColorOwn->addItem("yellow");
+    cbColorOwn->addItem("black");
+    cbColorOwn->addItem("green");
+    cbColorOwn->addItem("gray");
+    cbColorOwn->setCurrentIndex(cbColorOwn->findText(fromString(team->colorOwn)));
+    settingsGrid->addWidget(new QLabel("Color:", cbColorOwn));
+    settingsGrid->addWidget(cbColorOwn);
+    connect(cbColorOwn, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(colorOwnChanged(const QString&)));
+    colorOwnChanged(fromString(team->colorOwn));
+
+    cbColorOpp = new QComboBox(this);
+    cbColorOpp->addItem("red");
+    cbColorOpp->addItem("blue");
+    cbColorOpp->addItem("yellow");
+    cbColorOpp->addItem("black");
+    cbColorOpp->addItem("green");
+    cbColorOpp->addItem("gray");
+    cbColorOpp->setCurrentIndex(cbColorOpp->findText(fromString(team->colorOpp)));
+    settingsGrid->addWidget(new QLabel("OppColor:", cbColorOpp));
+    settingsGrid->addWidget(cbColorOpp);
+    connect(cbColorOpp, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(colorOppChanged(const QString&)));
+    colorOppChanged(fromString(team->colorOpp));
 
     sbNumber = new QSpinBox(this);
     sbNumber->setRange(1, 99);
@@ -59,15 +81,15 @@ void TeamView::init()
     settingsGrid->addWidget(cbLocation);
     connect(cbLocation, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(locationChanged(const QString&)));
 
-	cbGameMode = new QComboBox(this);
-	cbGameMode->addItem("dropIn");
-	cbGameMode->addItem("preliminary");
-	cbGameMode->addItem("playOff");
-	cbGameMode->addItem("penaltyShootout");
-	cbGameMode->setCurrentIndex(cbGameMode->findText(fromString(team->gameMode)));
-	settingsGrid->addWidget(new QLabel("GameMode:", lePort));
-	settingsGrid->addWidget(cbGameMode);
-	connect(cbGameMode, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(gameModeChanged(const QString&)));
+    cbGameMode = new QComboBox(this);
+    cbGameMode->addItem("mixedTeam");
+    cbGameMode->addItem("preliminary");
+    cbGameMode->addItem("playOff");
+    cbGameMode->addItem("penaltyShootout");
+    cbGameMode->setCurrentIndex(cbGameMode->findText(fromString(team->gameMode)));
+    settingsGrid->addWidget(new QLabel("Mode:", lePort));
+    settingsGrid->addWidget(cbGameMode);
+    connect(cbGameMode, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(gameModeChanged(const QString&)));
 
     cbWlanConfig = new QComboBox(this);
     std::vector<std::string> configs = Filesystem::getWlanConfigs();
@@ -87,6 +109,23 @@ void TeamView::init()
     settingsGrid->addWidget(cbBuildConfig);
     connect(cbBuildConfig, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(buildConfigChanged(const QString&)));
 
+    cbWalkConfig = new QComboBox(this);
+    cbWalkConfig->addItem("LIPM");
+    cbWalkConfig->addItem("FLIPM");
+    cbWalkConfig->setCurrentIndex(cbWalkConfig->findText(fromString(team->walkConfig)));
+    // saving space
+    //settingsGrid->addWidget(new QLabel("Walk:", cbWalkConfig));
+    settingsGrid->addWidget(cbWalkConfig);
+    connect(cbWalkConfig, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(walkConfigChanged(const QString&)));
+    walkConfigChanged(fromString(team->walkConfig));
+
+    cbMocapConfig = new QCheckBox(this);
+    cbMocapConfig->setChecked(team->mocapConfig);
+    settingsGrid->addWidget(new QLabel("GT:", cbMocapConfig));
+    settingsGrid->addWidget(cbMocapConfig);
+    connect(cbMocapConfig, SIGNAL(clicked(bool)), this, SLOT(mocapConfigChanged(bool)));
+    mocapConfigChanged(cbMocapConfig->isChecked());
+
     sVolume = new QSlider(this);
     sVolume->setMinimum(0);
     sVolume->setMaximum(100);
@@ -95,6 +134,15 @@ void TeamView::init()
     settingsGrid->addWidget(new QLabel("Vol:", sVolume));
     settingsGrid->addWidget(sVolume);
     connect(sVolume, SIGNAL(valueChanged(int)), this, SLOT(volumeChanged(const int)));
+
+    sMicVolume = new QSlider(this);
+    sMicVolume->setMinimum(0);
+    sMicVolume->setMaximum(100);
+    sMicVolume->setTickInterval(1);
+    sMicVolume->setValue(team->micVolume);
+    settingsGrid->addWidget(new QLabel("Mic:", sMicVolume));
+    settingsGrid->addWidget(sMicVolume);
+    connect(sMicVolume, SIGNAL(valueChanged(int)), this, SLOT(micVolumeChanged(const int)));
 
     settingsGrid->addStretch();
 
@@ -125,11 +173,13 @@ TeamView::TeamView(TeamSelector* parent, Team* team)
     teamSelector(parent),
     team(team),
     robotViews(),
-    cbColor(0),
+    cbColorOwn(0),
+    cbColorOpp(0),
     sbNumber(0),
     lePort(0),
     cbLocation(0),
     cbWlanConfig(0),
+    cbWalkConfig(0),
     cbBuildConfig(0)/*,
     handicapSlider(0)*/
 {
@@ -161,10 +211,20 @@ void TeamView::update(size_t index)
   robotViews[index]->update();
 }
 
-void TeamView::colorChanged(const QString& color)
+void TeamView::colorOwnChanged(const QString& color)
 {
-  if(team)
-    team->color = toString(color);
+  if (team)
+  {
+    team->colorOwn = toString(color);
+  }
+}
+
+void TeamView::colorOppChanged(const QString& color)
+{
+  if (team)
+  {
+    team->colorOpp = toString(color);
+  }
 }
 
 void TeamView::numberChanged(int number)
@@ -194,6 +254,18 @@ void TeamView::wlanConfigChanged(const QString& config)
     team->wlanConfig = toString(config);
 }
 
+void TeamView::walkConfigChanged(const QString& config)
+{
+  if (team)
+    team->walkConfig = toString(config);
+}
+
+void TeamView::mocapConfigChanged(bool checked)
+{
+  if (team)
+    team->mocapConfig = checked;
+}
+
 void TeamView::buildConfigChanged(const QString& build)
 {
   if(team)
@@ -202,9 +274,18 @@ void TeamView::buildConfigChanged(const QString& build)
 
 void TeamView::volumeChanged(const int volume)
 {
-  if(team)
+  if (team)
   {
     team->volume = static_cast<unsigned short>(volume);
+    QToolTip::showText(QCursor::pos(), QString::number(volume) + QString("%"));
+  }
+}
+
+void TeamView::micVolumeChanged(const int volume)
+{
+  if (team)
+  {
+    team->micVolume = static_cast<unsigned short>(volume);
     QToolTip::showText(QCursor::pos(), QString::number(volume) + QString("%"));
   }
 }

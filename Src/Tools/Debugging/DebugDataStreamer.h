@@ -47,7 +47,7 @@ private:
 
   /**
    * The method streams an entry.
-   * @param T The type of the entry to be streamed.
+   * @tparam T The type of the entry to be streamed.
    * @param in The stream from which the object is read. Must be 0 if this object was constructed for a reading stream.
    * @param out The stream to which the object is written. Must be 0 if this object was constructed for a writing stream.
    * @param enumToString A function that can provide element names if we are stream an enum value. Otherwise 0.

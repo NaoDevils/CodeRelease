@@ -9,8 +9,17 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/Image.h"
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#endif
 #include "Tools/ImageProcessing/stb_image.h"
 #include "Tools/ImageProcessing/stb_image_write.h"
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
 #include "Representations/Perception/CNN/PNGImage.h"
 #include "Platform/File.h"
 #include <string>

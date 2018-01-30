@@ -86,20 +86,6 @@ void CoPProvider::update(ZMPModel &zmpModel)
 		lfac = theFsrSensorData.leftTotal / robotMass;
 		rfac = theFsrSensorData.rightTotal / robotMass;
 	}
-	if (theWalkingInfo.kickPhase!=freeLegNA)
-	{
-		// Weights delivered by Aldebaran are wrong when standing on one leg
-		if (theWalkingInfo.lastUsedFootPositions.onFloor[LEFT_FOOT])
-		{
-			lfac = 1.0f;
-			rfac = 0.0f;
-		}
-		else 
-		{
-			lfac = 0.0f;
-			rfac = 1.0f;
-		}
-	}
 
 	zmpModel.zmp_acc = lCoP_RCS * lfac + rCoP_RCS * rfac;
 

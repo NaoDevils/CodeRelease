@@ -27,27 +27,18 @@
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotMap.h"
-#include "Representations/Modeling/Odometer.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/SideConfidence.h"
 #include "Representations/Modeling/TeamBallModel.h"
-#include "Representations/Modeling/TeammateReliability.h"
-#include "Representations/Modeling/Whistle.h"
-#include "Representations/MotionControl/ArmKeyFrameEngineOutput.h"
-#include "Representations/MotionControl/ArmMotionSelection.h"
 #include "Representations/MotionControl/HeadJointRequest.h"
-#include "Representations/MotionControl/HeadMotionRequest.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/Perception/CameraMatrix.h"
-#include "Representations/Perception/FieldBoundary.h"
 #include "Representations/Perception/CLIPGoalPercept.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
-#include "Representations/Sensing/ArmContactModel.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/Sensing/FootContactModel.h"
 #include "Representations/Sensing/GroundContactState.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
@@ -64,8 +55,6 @@
 
 MODULE(BehaviorControl2015,
 {,
-  REQUIRES(ArmContactModel),
-  REQUIRES(ArmKeyFrameEngineOutput),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
   REQUIRES(BehaviorData),
@@ -75,7 +64,6 @@ MODULE(BehaviorControl2015,
   REQUIRES(DamageConfigurationBody),
   REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
-  REQUIRES(FootContactModel),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(GroundContactState),
@@ -88,8 +76,6 @@ MODULE(BehaviorControl2015,
   REQUIRES(KickEngineOutput),
   REQUIRES(MotionInfo),
   REQUIRES(MotionSelection),
-  REQUIRES(ArmMotionSelection),
-  REQUIRES(Odometer),
   REQUIRES(OpponentTeamInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RawGameInfo),
@@ -102,13 +88,10 @@ MODULE(BehaviorControl2015,
   REQUIRES(SideConfidence),
   REQUIRES(TeamBallModel),
   REQUIRES(TeammateData),
-  REQUIRES(TeammateReliability),
   REQUIRES(TorsoMatrix), // Required for kicks
   REQUIRES(WalkingEngineOutput),
-  REQUIRES(Whistle),
   REQUIRES(ActivationGraph),
   PROVIDES(ActivationGraph),
-  PROVIDES(ArmMotionRequest),
   PROVIDES(BehaviorControlOutput),
   PROVIDES(BehaviorLEDRequest),
   PROVIDES(HeadControlRequest),
@@ -126,20 +109,17 @@ namespace Behavior2015
     ActivationGraph& theActivationGraph;
     BehaviorControlOutput& theBehaviorControlOutput;
     BehaviorLEDRequest& theBehaviorLEDRequest;
-    ArmMotionRequest& theArmMotionRequest;
     HeadControlRequest& theHeadControlRequest;
     MotionRequest& theMotionRequest;
 
     BehaviorOutput(ActivationGraph& theActivationGraph,
                  BehaviorControlOutput& theBehaviorControlOutput,
                  BehaviorLEDRequest& theBehaviorLEDRequest,
-                 ArmMotionRequest& theArmMotionRequest,
                  HeadControlRequest& theHeadControlRequest,
                  MotionRequest& theMotionRequest)
     : theActivationGraph(theActivationGraph),
       theBehaviorControlOutput(theBehaviorControlOutput),
       theBehaviorLEDRequest(theBehaviorLEDRequest),
-      theArmMotionRequest(theArmMotionRequest),
       theHeadControlRequest(theHeadControlRequest),
       theMotionRequest(theMotionRequest){}
   };
@@ -155,7 +135,6 @@ namespace Behavior2015
     void update(BehaviorLEDRequest&) {}
     void update(HeadControlRequest&) {}
     void update(MotionRequest&) {}
-    void update(ArmMotionRequest&) {}
 
   public:
     using BehaviorOutput::theActivationGraph; /**< Use the non-const version. */

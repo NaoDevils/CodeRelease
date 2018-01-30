@@ -13,7 +13,6 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/ObstacleModel.h"
 #include "Representations/MotionControl/MotionInfo.h"
 
 MODULE(Predictor,

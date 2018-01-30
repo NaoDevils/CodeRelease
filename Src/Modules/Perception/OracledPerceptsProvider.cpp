@@ -98,20 +98,28 @@ void OracledPerceptsProvider::update(BallPercept& ballPercept)
       return;
     if (randomFloat() > ballRecognitionRate)
       return;
-    Geometry::Circle circle;
-    bool upper = Geometry::calculateBallInImage(ballOffset, theCameraMatrixUpper, theCameraInfoUpper, theFieldDimensions.ballRadius, circle);
-    if (upper || Geometry::calculateBallInImage(ballOffset, theCameraMatrix, theCameraInfo, theFieldDimensions.ballRadius, circle))
+    Geometry::Circle circle, circleUpper;
+    bool upper = false;
+    bool inImage = false;
+    if (Geometry::calculateBallInImage(ballOffset, theCameraMatrixUpper, theCameraInfoUpper, theFieldDimensions.ballRadius, circleUpper)
+      && circleUpper.center.x() > circleUpper.radius && circleUpper.center.x() < theCameraInfoUpper.width - circleUpper.radius
+      && circleUpper.center.y() > circleUpper.radius && circleUpper.center.y() < theCameraInfoUpper.height - circleUpper.radius)
     {
-      // A true returned value of Geometry::calculateBallInImage says only that the
-      // circle position can be calculated. It does not say that the ball center is
-      // inside the image. Therefore the following if statement is used to decide
-      // if the upper camera can see the ball depending on the position in image.
-      if (upper && circle.center.y() > theCameraInfoUpper.height + circle.radius / 1.5f) {
-        upper = !Geometry::calculateBallInImage(ballOffset, theCameraMatrix, theCameraInfo, theFieldDimensions.ballRadius, circle);
-      }
-      
+      inImage = true;
+      upper = true;
+    }
+    if (Geometry::calculateBallInImage(ballOffset, theCameraMatrix, theCameraInfo, theFieldDimensions.ballRadius, circle)
+      && circle.center.x() > circle.radius && circle.center.x() < theCameraInfo.width - circle.radius
+      && circle.center.y() > circle.radius && circle.center.y() < theCameraInfo.height - circle.radius)
+    {
+      inImage = true;
+      upper = false;
+    }
+    if (inImage)
+    {
       const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
       const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+      if (upper) circle = circleUpper;
       if ((circle.center.x() >= -circle.radius / 1.5f) &&
         (circle.center.x() < cameraInfo.width + circle.radius / 1.5f) &&
         (circle.center.y() >= -circle.radius / 1.5f) &&
@@ -246,11 +254,16 @@ void OracledPerceptsProvider::addLinePercept(const bool upper, const Vector2f& s
       {
         applyNoise(linePosInImageStdDev, line.startInImage);
         applyNoise(linePosInImageStdDev, line.endInImage);
-        success = Transformation::imageToRobot(line.startInImage.x(), line.startInImage.y(), cameraMatrix, cameraInfo, line.startInImage) &&
-          Transformation::imageToRobot(line.endInImage.x(), line.endInImage.y(), cameraMatrix, cameraInfo, line.endInImage);
+        Vector2i pField;
+        success = Transformation::imageToRobot(line.startInImage.x(), line.startInImage.y(), cameraMatrix, cameraInfo, pField) &&
+          Transformation::imageToRobot(line.endInImage.x(), line.endInImage.y(), cameraMatrix, cameraInfo, pField);
       }
       if (success)
       {
+        line.isPlausible = true;
+        Vector2i imageVector = (line.endInImage - line.startInImage);
+        float length = imageVector.cast<float>().norm();
+        line.validity = std::min(length / (cameraInfo.width / 2), 1.f);
         linePercept.lines.push_back(line);
       }
     }
@@ -315,6 +328,7 @@ void OracledPerceptsProvider::update(CLIPCenterCirclePercept& centerCirclePercep
   // Find center circle (at least one out of five center circle points must be inside the current image)
   bool pointFound = false;
   bool upper = false;
+  centerCirclePercept.centerCircleWasSeen = false;
   if ((theGroundTruthWorldState.ownPose.translation.norm() <= centerCircleMaxVisibleDistance) &&
     (randomFloat() < centerCircleRecognitionRate))
   {
@@ -408,7 +422,7 @@ bool OracledPerceptsProvider::pointIsInImage(const Vector2f& p, Vector2f& pImg, 
       return true;
     }
   }
-  else if (Transformation::robotToImage(p, theCameraMatrixUpper, theCameraInfoUpper, pImg))
+  if (Transformation::robotToImage(p, theCameraMatrixUpper, theCameraInfoUpper, pImg))
   {
     if ((pImg.x() >= 0) && (pImg.x() < theCameraInfoUpper.width) && (pImg.y() >= 0) && (pImg.y() < theCameraInfoUpper.height))
     {

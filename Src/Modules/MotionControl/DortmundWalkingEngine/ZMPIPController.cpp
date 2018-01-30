@@ -56,16 +56,16 @@ void ZMPIPController::setZMP()
 {
 	Point realZMP(theZMPModel.zmp_acc.x()/1000, theZMPModel.zmp_acc.y()/1000);
 	Point CoM(0, 0, theControllerParams.z_h, 0);
-	CoM.rotateAroundX(theInertialSensorData.angle.x()*theWalkingEngineParams.rollFactor);
-	CoM.rotateAroundY(theInertialSensorData.angle.y()*theWalkingEngineParams.tiltFactor);
+	CoM.rotateAroundX(theInertialSensorData.angle.x()*theWalkingEngineParams.sensorControl.rollFactor);
+	CoM.rotateAroundY(theInertialSensorData.angle.y()*theWalkingEngineParams.sensorControl.tiltFactor);
 
 	positionDelayBuffer.push_front(robotPosition);
 
 	realZMP+=CoM;
-	if (positionDelayBuffer.size()>theWalkingEngineParams.sensorDelay)
+	if (positionDelayBuffer.size()>theWalkingEngineParams.sensorControl.sensorDelay)
 	{
-		realZMP.rotate2D(positionDelayBuffer[theWalkingEngineParams.sensorDelay].r);
-		realZMP+=positionDelayBuffer[theWalkingEngineParams.sensorDelay];
+		realZMP.rotate2D(positionDelayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].r);
+		realZMP+=positionDelayBuffer[theWalkingEngineParams.sensorControl.sensorDelay];
 	}
 	realZMP.z=0;
 	this->realZMP=realZMP;
@@ -121,20 +121,19 @@ Point ZMPIPController::controllerStep()
 	delayBuffer.push_front(target);
 
 	Point ZMPdiff;
-	if (delayBuffer.size()>theWalkingEngineParams.sensorDelay)
+	if (delayBuffer.size()>theWalkingEngineParams.sensorControl.sensorDelay)
 	{
-		ZMPdiff.x=delayBuffer[theWalkingEngineParams.sensorDelay].x-realZMP.x;
-		ZMPdiff.y=delayBuffer[theWalkingEngineParams.sensorDelay].y-realZMP.y;
+		ZMPdiff.x=delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].x-realZMP.x;
+		ZMPdiff.y=delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].y-realZMP.y;
 	}
 
 	bool sensorOn=false;
 
-	if (thePatternGenRequest.newState==PatternGenRequest::walking ||
-		theWalkingInfo.kickPhase!=freeLegNA)
+	if (thePatternGenRequest.newState==PatternGenRequest::walking)
 		sensorOn=true;
 
 	if (sensorOn && localSensorScale<1)
-		localSensorScale+=1.0f/theWalkingEngineParams.zmpSmoothPhase;
+		localSensorScale+=1.0f/theWalkingEngineParams.walkTransition.zmpSmoothPhase;
 
 	if (!sensorOn)
 		delayCounter++;
@@ -142,12 +141,12 @@ Point ZMPIPController::controllerStep()
 		delayCounter=0;
 
 	if (delayCounter>theControllerParams.N && localSensorScale>0)
-		localSensorScale-=1.0f/theWalkingEngineParams.zmpSmoothPhase;
+		localSensorScale-=1.0f/theWalkingEngineParams.walkTransition.zmpSmoothPhase;
 
 	float _obs_x[3], _obs_y[3], _cur_x[3], _cur_y[3];
 
 	ZMPdiff.rotate2D(-robotPosition.r);
-  ZMPdiff *= (localSensorScale * theWalkingEngineParams.sensorControlRatio[0]);
+  ZMPdiff *= (localSensorScale * theWalkingEngineParams.sensorControl.sensorControlRatio[0]);
 	ZMPdiff.rotate2D(robotPosition.r);
 
 	_obs_x[0]=theControllerParams.A0(0,0)*obs_x[0]+theControllerParams.A0(0,1)*obs_x[1]+theControllerParams.A0(0,2)*obs_x[2]-theControllerParams.L(0,0)*ZMPdiff.x;

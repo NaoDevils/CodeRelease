@@ -25,6 +25,9 @@
 #include "Platform/File.h"
 #include "BHToolBar.h"
 
+#include "Tools/Module/ModuleManager.h"
+#include <iostream>
+
 #define FRAMES_PER_SECOND 30
 
 ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
@@ -67,6 +70,31 @@ ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
   representationToFile["representation:CameraIntrinsics"] = "cameraIntrinsics.cfg";
   representationToFile["parameters:WalkingEngine"] = "walkingEngine.cfg";
   representationToFile["parameters:DmpKickEngine"] = "dmpKickEngine.cfg";
+  representationToFile["representation:FLIPMObserverParams"] = "flipmObserverParams.cfg"; 
+  representationToFile["parameters:MotionCombinator"] = "motionCombinator.cfg";
+  
+  std::ifstream infile(std::string(File::getBHDir()) + "/Config/Locations/Default/modules.cfg");
+  std::string line;
+  std::vector<std::string> output;
+  bool flipm = false;
+  while (std::getline(infile, line))
+  {
+    if (line.find("TargetCoM") != std::string::npos) {
+      if (line.find("FLIPMController") != std::string::npos) {
+        flipm = true;
+        break;
+      }
+    }
+  }
+  if (!flipm) {
+    std::cout << "LIPM used for save!" << std::endl;
+    representationToFile["representation:WalkingEngineParams"] = "walkingParams.cfg";
+  }
+  else {
+    std::cout << "FLIPM used for save!" << std::endl;
+    representationToFile["representation:WalkingEngineParams"] = "walkingParamsFLIPM.cfg";
+  }
+  
 }
 
 bool ConsoleRoboCupCtrl::compile()

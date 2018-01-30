@@ -154,7 +154,7 @@ public:
 
   /**
   * The function creates a histogram on the message ids contained in the log file.
-  * @param frequency An array that is filled with the frequency of message ids.
+  * @param frequencies An array that is filled with the frequency of message ids.
   */
   void statistics(int frequencies[numOfDataMessageIDs], unsigned* sizes = nullptr, char processIdentifier = 0);
 

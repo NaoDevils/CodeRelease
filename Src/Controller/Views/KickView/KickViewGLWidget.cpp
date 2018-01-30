@@ -278,7 +278,7 @@ bool KickViewGLWidget::clickControlPoint(const int& x, const int& y)
       {
         for(int limb = 0; limb < Phase::numOfLimbs; limb++)
         {
-          for(unsigned int i = 0; i < NUM_OF_POINTS; i++)
+          for(unsigned int i = 0; i < Phase::numOfPoints; i++)
           {
             Vector3f cubePoint;
             cubePoint = Vector3f((float)(parameters.phaseParameters[phaseNumber].controlPoints[limb][i].x()),
@@ -315,11 +315,11 @@ bool KickViewGLWidget::clickControlPoint(const int& x, const int& y)
         float maxXrange = 100, minXrange = -100, maxYrange = 150, minYrange = -150, maxZrange = 100, minZrange = -250;
 
         std::vector<Vector2f> cpWindow1, cpWindow2, cpWindow3;
-        cpWindow1.resize(NUM_OF_POINTS);
-        cpWindow2.resize(NUM_OF_POINTS);
-        cpWindow3.resize(NUM_OF_POINTS);
+        cpWindow1.resize(Phase::numOfPoints);
+        cpWindow2.resize(Phase::numOfPoints);
+        cpWindow3.resize(Phase::numOfPoints);
 
-        for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+        for(unsigned int k = 0; k < Phase::numOfPoints; k++)
         {
           Vector3f controlPoint = parameters.phaseParameters[widget.selectedPoint.phaseNumber].controlPoints[widget.selectedPoint.limb][k];
 
@@ -478,7 +478,7 @@ void KickViewGLWidget::drawPhases()
         {
           oPoint = parameters.getPosition(0.f, phaseNumber, j);
 
-          for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+          for(unsigned int k = 0; k < Phase::numOfPoints; k++)
           {
             Vector3f point1, point2;
             if(k == 0)
@@ -506,11 +506,11 @@ void KickViewGLWidget::drawPhases()
 void KickViewGLWidget::drawBezierCurves(const int& phaseNumber)
 {
   //draw controlPoints
-  Vector3f cubePoint[NUM_OF_POINTS][Phase::numOfLimbs], cubePoint2[NUM_OF_POINTS][Phase::numOfLimbs];
+  Vector3f cubePoint[Phase::numOfPoints][Phase::numOfLimbs], cubePoint2[Phase::numOfPoints][Phase::numOfLimbs];
 
   for(int j = 0; j < Phase::numOfLimbs; j++)
   {
-    for(unsigned int i = 0; i < NUM_OF_POINTS; i++)
+    for(unsigned int i = 0; i < Phase::numOfPoints; i++)
     {
       cubePoint[i][j] = parameters.phaseParameters[phaseNumber].controlPoints[j][i];
 
@@ -533,16 +533,16 @@ void KickViewGLWidget::drawBezierCurves(const int& phaseNumber)
         Vector3f drawPos(0.f, 150.f, 0.f);
         drawPos = RotationMatrix::aroundZ(cubePoint[i][j].z()) *
                   RotationMatrix::aroundX(cubePoint[i][j].x()) * drawPos;
-        cubePoint2[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].x() + drawPos.x(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].y() + drawPos.y(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].z() + drawPos.z());
+        cubePoint2[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].x() + drawPos.x(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].y() + drawPos.y(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].z() + drawPos.z());
 
         Vector3f drawPos2(150.f, 0.f, 0.f);
         drawPos2 = RotationMatrix::aroundZ(cubePoint[i][j].z()) *
                    RotationMatrix::aroundY(cubePoint[i][j].y()) * drawPos2;
-        cubePoint[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].x() + drawPos2.x(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].y() + drawPos2.y(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].z() + drawPos2.z());
+        cubePoint[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].x() + drawPos2.x(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].y() + drawPos2.y(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].z() + drawPos2.z());
       }
 
       if(j == Phase::rightFootRot)
@@ -550,53 +550,53 @@ void KickViewGLWidget::drawBezierCurves(const int& phaseNumber)
         Vector3f drawPos(0.f, -150.f, 0.f);
         drawPos = RotationMatrix::aroundZ(cubePoint[i][j].z()) *
                   RotationMatrix::aroundX(cubePoint[i][j].x()) * drawPos;
-        cubePoint2[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].x() + drawPos.x(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].y() + drawPos.y(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].z() + drawPos.z());
+        cubePoint2[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].x() + drawPos.x(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].y() + drawPos.y(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].z() + drawPos.z());
 
         Vector3f drawPos2(150.f, 0.f, 0.f);
         drawPos2 = RotationMatrix::aroundZ(cubePoint[i][j].z()) *
                    RotationMatrix::aroundY(cubePoint[i][j].y()) * drawPos2;
-        cubePoint[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].x() + drawPos2.x(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].y() + drawPos2.y(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].z() + drawPos2.z());
+        cubePoint[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].x() + drawPos2.x(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].y() + drawPos2.y(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].z() + drawPos2.z());
       }
 
       if(j == Phase::leftHandRot)
       {
         Vector3f drawPos2(0.f, kickView.robotDimensions.lowerArmLength, 0.f);
         drawPos2 = RotationMatrix::aroundX(cubePoint[i][j].x()) * drawPos2;
-        cubePoint2[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].x() + drawPos2.x(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].y() + drawPos2.y(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].z() + drawPos2.z());
+        cubePoint2[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].x() + drawPos2.x(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].y() + drawPos2.y(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].z() + drawPos2.z());
 
         Vector3f lHDrawPos(-kickView.robotDimensions.lowerArmLength, 0., 0.);
         lHDrawPos = RotationMatrix::aroundZ(cubePoint[i][j].z()) *
                     RotationMatrix::aroundY(cubePoint[i][j].y()) *
                     RotationMatrix::aroundX(cubePoint[i][j].x()) * lHDrawPos;
-        cubePoint[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].x() + lHDrawPos.x(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].y() + lHDrawPos.y(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].z() + lHDrawPos.z());
+        cubePoint[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].x() + lHDrawPos.x(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].y() + lHDrawPos.y(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].z() + lHDrawPos.z());
       }
 
       if(j == Phase::rightHandRot)
       {
         Vector3f drawPos2(0.f, -kickView.robotDimensions.lowerArmLength, 0.f);
         drawPos2 = RotationMatrix::aroundX(cubePoint[i][j].x()) * drawPos2;
-        cubePoint2[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].x() + drawPos2.x(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].y() + drawPos2.y(),
-                                    cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].z() + drawPos2.z());
+        cubePoint2[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].x() + drawPos2.x(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].y() + drawPos2.y(),
+                                    cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].z() + drawPos2.z());
 
         Vector3f rHDrawPos(-kickView.robotDimensions.lowerArmLength, 0., 0.);
         rHDrawPos = RotationMatrix::aroundZ(cubePoint[i][j].z()) *
                     RotationMatrix::aroundY(cubePoint[i][j].y()) *
                     RotationMatrix::aroundX(cubePoint[i][j].x()) * rHDrawPos;
-        cubePoint[i][j] = Vector3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].x() + rHDrawPos.x(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].y() + rHDrawPos.y(),
-                                   cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].z() + rHDrawPos.z());
+        cubePoint[i][j] = Vector3f(cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].x() + rHDrawPos.x(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].y() + rHDrawPos.y(),
+                                   cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].z() + rHDrawPos.z());
       }
 
-      if(i == NUM_OF_POINTS - 1)
+      if(i == Phase::numOfPoints - 1)
       {
         Vector3f rotation(0, 0, 0);
 
@@ -701,31 +701,31 @@ void KickViewGLWidget::drawBezierCurves(const int& phaseNumber)
     Vector3f lDrawPos(0., 150., 0.);
     lDrawPos = RotationMatrix::aroundZ(positions[Phase::leftFootRot].z()) *
                RotationMatrix::aroundX(positions[Phase::leftFootRot].x()) * lDrawPos;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].x() + lDrawPos.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].y() + lDrawPos.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].z() + lDrawPos.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].x() + lDrawPos.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].y() + lDrawPos.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].z() + lDrawPos.z());
 
     Vector3f lDrawPos2(150., 0., 0.);
     lDrawPos2 = RotationMatrix::aroundZ(positions[Phase::leftFootRot].z()) *
                 RotationMatrix::aroundY(positions[Phase::leftFootRot].y()) * lDrawPos2;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].x() + lDrawPos2.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].y() + lDrawPos2.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftFootTra].z() + lDrawPos2.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].x() + lDrawPos2.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].y() + lDrawPos2.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftFootTra].z() + lDrawPos2.z());
 
     //draw right footRotation
     Vector3f rDrawPos(0., -150., 0.);
     rDrawPos = RotationMatrix::aroundZ(positions[Phase::rightFootRot].z()) *
                RotationMatrix::aroundX(positions[Phase::rightFootRot].x()) * rDrawPos;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].x() + rDrawPos.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].y() + rDrawPos.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].z() + rDrawPos.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].x() + rDrawPos.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].y() + rDrawPos.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].z() + rDrawPos.z());
 
     Vector3f rDrawPos2(150., 0., 0.);
     rDrawPos2 = RotationMatrix::aroundZ(positions[Phase::rightFootRot].z()) *
                 RotationMatrix::aroundY(positions[Phase::rightFootRot].y()) * rDrawPos2;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].x() + rDrawPos2.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].y() + rDrawPos2.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightFootTra].z() + rDrawPos2.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].x() + rDrawPos2.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].y() + rDrawPos2.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightFootTra].z() + rDrawPos2.z());
 
     glEnd();
     glPushMatrix();
@@ -737,33 +737,33 @@ void KickViewGLWidget::drawBezierCurves(const int& phaseNumber)
 
     Vector3f drawPos3(0.f, kickView.robotDimensions.lowerArmLength, 0.f);
     drawPos3 = RotationMatrix::aroundX(positions[Phase::leftHandRot].x()) * drawPos3;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].x() + drawPos3.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].y() + drawPos3.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].z() + drawPos3.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].x() + drawPos3.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].y() + drawPos3.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].z() + drawPos3.z());
 
     //draw left Handrotation
     Vector3f lHDrawPos(-kickView.robotDimensions.lowerArmLength, 0., 0.);
     lHDrawPos = RotationMatrix::aroundZ(positions[Phase::leftHandRot].z()) *
                 RotationMatrix::aroundY(positions[Phase::leftHandRot].y()) *
                 RotationMatrix::aroundX(positions[Phase::leftHandRot].x()) * lHDrawPos;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].x() + lHDrawPos.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].y() + lHDrawPos.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::leftArmTra].z() + lHDrawPos.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].x() + lHDrawPos.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].y() + lHDrawPos.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::leftArmTra].z() + lHDrawPos.z());
 
     Vector3f drawPos2(0.f, -kickView.robotDimensions.lowerArmLength, 0.f);
     drawPos2 = RotationMatrix::aroundX(positions[Phase::rightHandRot].x()) * drawPos2;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].x() + drawPos2.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].y() + drawPos2.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].z() + drawPos2.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].x() + drawPos2.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].y() + drawPos2.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].z() + drawPos2.z());
 
     //draw right Handrotation
     Vector3f rHDrawPos(-kickView.robotDimensions.lowerArmLength, 0., 0.);
     rHDrawPos = RotationMatrix::aroundZ(positions[Phase::rightHandRot].z()) *
                 RotationMatrix::aroundY(positions[Phase::rightHandRot].y()) *
                 RotationMatrix::aroundX(positions[Phase::rightHandRot].x()) * rHDrawPos;
-    glVertex3f(cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].x() + rHDrawPos.x(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].y() + rHDrawPos.y(),
-               cubePoint[NUM_OF_POINTS - 1][Phase::rightArmTra].z() + rHDrawPos.z());
+    glVertex3f(cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].x() + rHDrawPos.x(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].y() + rHDrawPos.y(),
+               cubePoint[Phase::numOfPoints - 1][Phase::rightArmTra].z() + rHDrawPos.z());
 
     if(widget.selectedPoint.limb == Phase::rightArmTra) glColor4f(1.0f, 1.0f, 0.0f, 1.0f);  //selected Limb yellow
     else if(widget.selectedPoint.phaseNumber == phaseNumber) glColor4f(0.0f, 1.0f, 0.0f, 1.0f);  //green selected Phase
@@ -1052,7 +1052,7 @@ void KickViewGLWidget::paintGL()
 
       std::vector<Vector2f> cpWindow1, cpWindow2, cpWindow3, pWindow1, pWindow2, pWindow3;
 
-      for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+      for(unsigned int k = 0; k < Phase::numOfPoints; k++)
       {
         Vector3f controlPoint = parameters.phaseParameters[widget.selectedPoint.phaseNumber].controlPoints[widget.selectedPoint.limb][k];
 
@@ -1512,7 +1512,7 @@ void KickViewGLWidget::mouseMoveEvent(QMouseEvent* event)
 
       float maxXrange = 100, minXrange = -100, maxYrange = 150, minYrange = -150, maxZrange = 100, minZrange = -250;
 
-      for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+      for(unsigned int k = 0; k < Phase::numOfPoints; k++)
       {
         Vector3f controlPoint = parameters.phaseParameters[widget.selectedPoint.phaseNumber].controlPoints[widget.selectedPoint.limb][k];
         minXrange = std::min<float>(minXrange, controlPoint.x());

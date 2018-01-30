@@ -2,8 +2,6 @@
 * @file Controller/RobotConsole.h
 *
 * Declaration of RobotConsole.
-* TODO (port BH2015 NDD): jpeg and debug images for upper/lower,
-* what to do if name buffer is empty... basically finish porting for two images at once
 *
 * @author <a href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</a>
 */
@@ -31,14 +29,10 @@
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
 #include "Representations/Infrastructure/SensorData/UsSensorData.h"
 #include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/ObstacleModel.h"
 #include "Representations/Modeling/TeamBallModel.h"
-#include "Representations/Modeling/TeamPlayersModel.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/Perception/CameraMatrix.h"
-#include "Representations/Perception/GoalPercept.h"
-#include "Representations/Perception/LinePercept.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Tools/ProcessFramework/Process.h"
@@ -152,13 +146,9 @@ protected:
   enum MoveOp {noMove, movePosition, moveBoth, moveBallPosition} moveOp = noMove; /**< The move operation to perform. */
   Vector3f movePos = Vector3f::Zero(); /**< The position the robot is moved to. */
   Vector3f moveRot = Vector3f::Zero(); /**< The rotation the robot is moved to. */
-  ObstacleModelCompressed obstacleModelCompressed; /**< Obstacle model from team communication. */
   RobotPose robotPose; /**< Robot pose from team communication. */
   BallModel ballModel; /**< Ball model from team communication. */
   TeamBallModel teamBallModel; /**< combined ball information from team communication */
-  TeamPlayersModel teamPlayersModel; /**< combined player information from team communication */
-  GoalPercept goalPercept; /**< Goal percept from team communication. */
-  LinePercept linePercept; /**< Line percept from team communication. */
   BehaviorData behaviorData; /**< Behavior data from team communication. */
   RobotHealth robotHealth; /**< Robot Health from team communication. */
   MotionRequest motionRequest; /**< Motion Request from team communication. */

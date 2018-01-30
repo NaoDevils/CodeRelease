@@ -22,7 +22,7 @@ numberOfContributingLines(1)
 
 LineMatcher::LineMatcher():
   preInitDone(false),
-  lastUpdateTime(0)    
+  lastUpdateTime(0)
 {
 }
 LineMatcher::~LineMatcher(){
@@ -79,7 +79,7 @@ inline void LineMatcher::preExecuteInit(LineMatchingResult& theLineMatchingResul
     theLineMatchingResult.fieldLines.clear();
     theLineMatchingResult.reset();
 
-    
+
     // It is important that those field lines are in the same order in theLineMatchingResult,
     // to allow the recovery of correspondences later.
 
@@ -146,8 +146,8 @@ inline void LineMatcher::preExecuteInit(LineMatchingResult& theLineMatchingResul
 
 
     // field lines (segments) in y-direction
-    // Note: A negative x in field coordinates is 
-    // a positive offset in the rotated 
+    // Note: A negative x in field coordinates is
+    // a positive offset in the rotated
     // AbstractLine coordinate system.
     // Min and max are min-y and max-y, respectively.
     fieldLinesY.push_back(AbstractLine( // own groundline; 6
@@ -263,8 +263,8 @@ void LineMatcher::execute(LineMatchingResult& theLineMatchingResult)
 
 double LineMatcher::determineMainDirection()
 {
-  // 10° steps, each bucket is supposed to hold
-  // a 30° slice, which is the needed resolution,
+  // 10Â° steps, each bucket is supposed to hold
+  // a 30Â° slice, which is the needed resolution,
   // and the overlapping garantees acceptable results.
   // I don't see a reason not to hardcode those numbers,
   // as this will not be a subject to any parameter tuning.
@@ -276,7 +276,7 @@ double LineMatcher::determineMainDirection()
     directionAccumulator[i] = 0;
   }
   // "accumulatorCount[0] = 1" means there is 1 line
-  // with a direction between 0° and 30° (or +90°)
+  // with a direction between 0Â° and 30Â° (or +90Â°)
 
   double tenDegrees = Angle::fromDegrees(10);
 
@@ -301,7 +301,7 @@ double LineMatcher::determineMainDirection()
       wraparound2 = pi_2;
     }
 
-    // so "index == 0" means, the line is in [0°..9°]
+    // so "index == 0" means, the line is in [0Â°..9Â°]
     // which should increase accumulatorCount[i] for i={7,8,0}
     int index2 = (index+8)%9;
     int index3 = (index+7)%9;
@@ -327,7 +327,6 @@ double LineMatcher::determineMainDirection()
       bestCount = accumulatorCount[i];
       indexOfBest = i;
     }
-    i++;
   }
 
   mainDirection = directionAccumulator[indexOfBest];
@@ -348,7 +347,7 @@ void LineMatcher::buildLineClusters(LineMatchingResult& theLineMatchingResult)
     // find the right cluster
     double direction = (i->end - i->start).angle() - mainDirection;
     direction = std::abs(Angle::normalize(direction)); // -> [0..pi]
-    
+
     std::vector<AbstractLine> * linesCluster;
     if (direction < pi_4 || direction > pi3_4)
     {
@@ -384,7 +383,7 @@ void LineMatcher::buildLineClusters(LineMatchingResult& theLineMatchingResult)
         j->offset = j->offset * (j->numberOfContributingLines-1)/j->numberOfContributingLines + 1.0/j->numberOfContributingLines * distance;
         j->min = std::min(j->min, std::min(start.x(), end.x()));
         j->max = std::max(j->max, std::max(start.x(), end.x()));
-        
+
         observationMapToInternalIndex[index] = matchIndex;
 
         break;
@@ -415,7 +414,7 @@ void LineMatcher::buildLineClusters(LineMatchingResult& theLineMatchingResult)
     counter++;
   }
 
-  // ok, fine in theory, but to prevent some situation dependent difficult checks later, 
+  // ok, fine in theory, but to prevent some situation dependent difficult checks later,
   // let's ensure now that we will never have more lines than we have possible field line correspondences
   unsigned int allowedNumber = std::min((int)numberOfFieldLinesX,(int)numberOfFieldLinesY);
   while (linesInMainDirection.size() > allowedNumber)
@@ -437,7 +436,7 @@ void LineMatcher::findPossiblePositions(LineMatchingResult & theLineMatchingResu
 
   int conflictingPosition; // needed later when checking possible correspondences
 
-  // test for 0°, 90°, 180°, 270° rotation
+  // test for 0Â°, 90Â°, 180Â°, 270Â° rotation
   Pose2f poseHypothesis((float)-mainDirection);
   for (int i=0; i<4; i++)
   {
@@ -454,7 +453,7 @@ void LineMatcher::findPossiblePositions(LineMatchingResult & theLineMatchingResu
           addPoseToLineMatchingResult(poseHypothesis, theLineMatchingResult);
         }
       }
-    } 
+    }
     while (getNextCorrespondenceCombination(totalNumberOfObservedLines, conflictingPosition));
     rotateObservationsBy90Degree();
     poseHypothesis.rotation += pi_2;
@@ -554,7 +553,7 @@ bool LineMatcher::getNextCorrespondenceCombination(int totalNumberOfObservedLine
     // TODO: Think of something clever to avoid double correspondences/associations
     //       with the previous positions.
     //       (Checking all the previous fields using alreadyAssignedFieldLinesX seems overkill/inefficient)
-    int i = 0; // mainDirection class 
+    int i = 0; // mainDirection class
     int j = 0; // non-mainDirection class
     for (; index<totalNumberOfObservedLines; index++)
     {
@@ -602,7 +601,7 @@ bool LineMatcher::checkCombinatorialValidityOfCorrespondences(int totalNumberOfO
         alreadyAssignedFieldLinesX[correspondences[i]] = true;
       } // ok so far, test the next one...
     }
-    else 
+    else
     {
       // test for assignment in y
       if (alreadyAssignedFieldLinesY[correspondences[i]])
@@ -614,7 +613,7 @@ bool LineMatcher::checkCombinatorialValidityOfCorrespondences(int totalNumberOfO
       {
         alreadyAssignedFieldLinesY[correspondences[i]] = true;
       } // ok so far, test the next one...
-    }      
+    }
   }
   // passed the "double correspondences" test, so this might be a legal combination
   conflictingPosition = totalNumberOfObservedLines-1; // last position, just in case somebody uses it even for "return true"
@@ -634,7 +633,7 @@ bool LineMatcher::doesObservationFitModel(const AbstractLine & observationInRela
       (std::abs(observationInRelativeCoords.max / modelInRelativeCoords.max - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
       ||     (observationInRelativeCoords.max - modelInRelativeCoords.max) < parameters.absoluteAllowedDistanceErrorForLineClustering ))
     {
-      // Using absoluteAllowedDistanceErrorForLineClustering might allow small line fragments on the wrong side of 
+      // Using absoluteAllowedDistanceErrorForLineClustering might allow small line fragments on the wrong side of
       // another perpendicular line. Calculate the overlap (how much of the observation is covered by the model)
       // to filter those ones out.
       double overlap = std::max((double)0.0,std::min(modelInRelativeCoords.max, observationInRelativeCoords.max) - std::max(modelInRelativeCoords.min, observationInRelativeCoords.min));
@@ -709,8 +708,8 @@ void LineMatcher::addPoseToLineMatchingResult(const Pose2f & pose, LineMatchingR
   {
     theLineMatchingResult.poseHypothesis.push_back(ph);
   }
-  
-  // for debugging (this draws all poses, even outside the carpet. 
+
+  // for debugging (this draws all poses, even outside the carpet.
   // See theLineMatchingResult if you only want to see the forwarded ones.)
   POSE_2D_SAMPLE("module:LineMatcher:possiblePositions",pose,ColorRGBA(0,255,255));
   DRAWTEXT("module:LineMatcher:possiblePositions",pose.translation.x() + 40,pose.translation.y() + 40,100, ColorRGBA(0,255,255), counterForDrawing);
@@ -728,20 +727,20 @@ void LineMatcher::addPoseIntervalToLineMatchingResult(const Pose2f & start, cons
     int indexInCorrespondenceArray = observationMapToInternalMainDirectionClass[i] ? mainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]] : notMainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]];
     phi.lineCorrespondences[i] = correspondences[indexInCorrespondenceArray] + offset;
   }
-  
+
   if (parameters.allowPosesOutsideOfCarpet
     || theFieldDimensions.isInsideCarpet(phi.start.translation)
     || theFieldDimensions.isInsideCarpet(phi.end.translation))
   {
     theLineMatchingResult.poseHypothesisIntervals.push_back(phi);
   }
-  
-  // for debugging (this draws all poses, even outside the carpet. 
-  // See theLineMatchingResult if you only want to see the forwarded ones.) 
+
+  // for debugging (this draws all poses, even outside the carpet.
+  // See theLineMatchingResult if you only want to see the forwarded ones.)
   for (float t=0.f; t<=1.f; t+= 1.f/25)
   {
     float s = 1.f-t;
-    Pose2f interpolation( t*phi.start.rotation + s*phi.end.rotation, 
+    Pose2f interpolation( t*phi.start.rotation + s*phi.end.rotation,
                           t*phi.start.translation.x() + s*phi.end.translation.x(),
                           t*phi.start.translation.y() + s*phi.end.translation.y());
     POSE_2D_SAMPLE("module:LineMatcher:possiblePositions",interpolation,ColorRGBA(0,255,255));
@@ -758,7 +757,7 @@ void LineMatcher::findPossiblePoseIntervals(LineMatchingResult & theLineMatching
 
   int conflictingPosition; // needed later when checking possible correspondences
 
-  // test for 0°, 90°, 180°, 270° rotation
+  // test for 0Â°, 90Â°, 180Â°, 270Â° rotation
   Pose2f poseIntervalHypothesisStart((float)-mainDirection),
     poseIntervalHypothesisEnd((float)-mainDirection);
   for (int i=0; i<4; i++)
@@ -776,12 +775,12 @@ void LineMatcher::findPossiblePoseIntervals(LineMatchingResult & theLineMatching
           addPoseIntervalToLineMatchingResult(poseIntervalHypothesisStart, poseIntervalHypothesisEnd, theLineMatchingResult);
         }
       }
-    } 
+    }
     while (getNextCorrespondenceCombination(totalNumberOfObservedLines, conflictingPosition));
     rotateObservationsBy90Degree();
     poseIntervalHypothesisStart.rotation += pi_2;
     poseIntervalHypothesisEnd.rotation += pi_2;
-  } 
+  }
 }
 
 void LineMatcher::resetToStartingCorrespondencesForIntervals()
@@ -789,7 +788,7 @@ void LineMatcher::resetToStartingCorrespondencesForIntervals()
   // this will only be done if observations exist in only one of the classes,
   // and there must be at least 2 observations
   bool allObservatiosInMainClass = linesInMainDirection.size() > 0;
-  
+
   int n = static_cast<int>(linesInMainDirection.size() + lines90DegreeToMainDirection.size());
   for (int i=0; i<n; i++)
   {
@@ -857,7 +856,7 @@ bool LineMatcher::doesObservationFitModelForInterval(const AbstractLine & observ
   if (std::abs(observationInRelativeCoords.offset / modelInRelativeCoords.offset - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
     ||std::abs(observationInRelativeCoords.offset - modelInRelativeCoords.offset) < parameters.absoluteAllowedDistanceErrorForLineClustering )
   {
-    // in contrast to absolute pose hypotheses, we can only use the new constraints 
+    // in contrast to absolute pose hypotheses, we can only use the new constraints
     // to decrease the interval and check if it is still "there" afterwards.
 
     // Those are the new constraints:

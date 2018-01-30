@@ -81,6 +81,30 @@ void BodyContour::draw() const
        1, Drawings::solidPen, ColorRGBA(255, 0, 255));
 }
 
+void BodyContourUpper::draw() const
+{
+  DECLARE_DEBUG_DRAWING("representation:BodyContourUpper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("representation:BodyContourUpper:maxY", "drawingOnImage");
+  COMPLEX_DRAWING("representation:BodyContourUpper")
+  {
+    for (std::vector<Line>::const_iterator i = lines.begin(); i != lines.end(); ++i)
+      LINE("representation:BodyContourUpper", i->p1.x(), i->p1.y(), i->p2.x(), i->p2.y(), 1,
+        Drawings::solidPen, ColorRGBA(255, 0, 255));
+
+    for (int x = 0; x < cameraResolution.x(); x += 10)
+    {
+      int y = cameraResolution.y();
+      clipBottom(x, y);
+      LINE("representation:BodyContourUpper", x, y, x, cameraResolution.y(), 1,
+        Drawings::solidPen, ColorRGBA(255, 0, 255));
+    }
+  }
+  int maxY = getMaxY();
+  LINE("representation:BodyContourUpper:maxY", 0, maxY, cameraResolution.x() - 1, maxY,
+    1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+}
+
+
 int BodyContour::getMaxY() const
 {
   int y = cameraResolution.y() - 1;

@@ -121,7 +121,6 @@ public:
     const WalkingInfo           &theWalkingInfo,
     const ReferenceModificator  &theReferenceModificator,
     const FrameInfo             &theFrameInfo,
-    const FreeLegPhaseParams    &theFreeLegPhaseParams,
     const BallModel             &theBallModel,
     const BallModelAfterPreview &theBallModelAfterPreview);
 
@@ -167,7 +166,6 @@ protected:
   const WalkingInfo             &theWalkingInfo;
   const ReferenceModificator    &theReferenceModificator;
   const FrameInfo               &theFrameInfo;
-  const FreeLegPhaseParams      &theFreeLegPhaseParams;
   const BallModel               &theBallModel;
   const BallModelAfterPreview   &theBallModelAfterPreview;
 
@@ -229,8 +227,6 @@ protected:
   inline unsigned int getPhaseLength(float ratio, float stepDur);
   /** Updates the phase and state counter */
   void updateCounter();
-  /** Handles the requested pitch */
-  void handlePitch();
   /** Initialize a new walk phase */
   void initWalkingPhase();
   void applyStandType();
@@ -250,7 +246,6 @@ protected:
   Point robotPoseAfterStep;
   int cyclePosCounter;
   int curPreviewLength;
-  FreeLegPhase kickOn;
   /** direction is the recent real direction. */
   float direction;
 

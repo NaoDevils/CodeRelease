@@ -55,7 +55,7 @@ MODULE(JointDataPredictor,
     (PT2) rAnklePitch,
     (PT2) rAnkleRoll,
     (int) requestSize,
-    (float) (0.005f) iterationDt, /*<The dt used to iterate the model. The real dt should be divisible by this */
+    (float) (0.005f) iterationDt, /**< dt used to iterate the model. The real dt should be divisible by this */
     (float) (0.1f) predictVariance,/**<Variances for the kalmanfilter used to filter the positions */
     (float) (0.9f) updateVariance,
     (double) (0.0001) minimumVelocity, /**Velocities below this value will be set to zero to avoid numerical instabilities */

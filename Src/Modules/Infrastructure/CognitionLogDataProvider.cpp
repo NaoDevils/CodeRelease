@@ -123,6 +123,50 @@ void CognitionLogDataProvider::update(ImageCoordinateSystem& imageCoordinateSyst
   }
 }
 
+void CognitionLogDataProvider::update(ImageCoordinateSystemUpper& imageCoordinateSystem)
+{
+  imageCoordinateSystem.setCameraInfo(theCameraInfoUpper);
+  DECLARE_DEBUG_DRAWING("loggedHorizon", "drawingOnImage"); // displays the horizon
+  ARROW("loggedHorizon",
+    imageCoordinateSystem.origin.x(),
+    imageCoordinateSystem.origin.y(),
+    imageCoordinateSystem.origin.x() + imageCoordinateSystem.rotation(0, 0) * 50,
+    imageCoordinateSystem.origin.y() + imageCoordinateSystem.rotation(1, 0) * 50,
+    0, Drawings::solidPen, ColorRGBA(255, 0, 0));
+  ARROW("loggedHorizon",
+    imageCoordinateSystem.origin.x(),
+    imageCoordinateSystem.origin.y(),
+    imageCoordinateSystem.origin.x() + imageCoordinateSystem.rotation(0, 1) * 50,
+    imageCoordinateSystem.origin.y() + imageCoordinateSystem.rotation(1, 1) * 50,
+    0, Drawings::solidPen, ColorRGBA(255, 0, 0));
+  COMPLEX_IMAGE(correctedUpper)
+  {
+    if (Blackboard::getInstance().exists("ImageUpper"))
+    {
+      const Image& image = (const Image&)Blackboard::getInstance()["ImageUpper"];
+      INIT_DEBUG_IMAGE_BLACK(correctedUpper, theCameraInfoUpper.width, theCameraInfoUpper.height);
+      int yDest = -imageCoordinateSystem.toCorrectedCenteredNeg(0, 0).y();
+      for (int ySrc = 0; ySrc < theCameraInfoUpper.height; ++ySrc)
+        for (int yDest2 = -imageCoordinateSystem.toCorrectedCenteredNeg(0, ySrc).y(); yDest <= yDest2; ++yDest)
+        {
+          int xDest = -imageCoordinateSystem.toCorrectedCenteredNeg(0, ySrc).x();
+          for (int xSrc = 0; xSrc < theCameraInfoUpper.width; ++xSrc)
+          {
+            for (int xDest2 = -imageCoordinateSystem.toCorrectedCenteredNeg(xSrc, ySrc).x(); xDest <= xDest2; ++xDest)
+            {
+              DEBUG_IMAGE_SET_PIXEL_YUV(correctedUpper, xDest + int(theCameraInfoUpper.opticalCenter.x() + 0.5f),
+                yDest + int(theCameraInfoUpper.opticalCenter.y() + 0.5f),
+                image[ySrc][xSrc].y,
+                image[ySrc][xSrc].cb,
+                image[ySrc][xSrc].cr);
+            }
+          }
+        }
+      SEND_DEBUG_IMAGE(correctedUpper);
+    }
+  }
+}
+
 bool CognitionLogDataProvider::handleMessage(InMessage& message)
 {
   return theInstance && theInstance->handleMessage2(message);
@@ -172,9 +216,9 @@ bool CognitionLogDataProvider::handleMessage2(InMessage& message)
     case idThumbnailUpper:
       if (Blackboard::getInstance().exists("ImageUpper"))
       {
-        Thumbnail thumbnail;
+        ThumbnailUpper thumbnail;
         message.bin >> thumbnail;
-        thumbnail.toImage((Image&)Blackboard::getInstance()["ImageUpper"]);
+        thumbnail.toImage((ImageUpper&)Blackboard::getInstance()["ImageUpper"]);
       }
       return true;
     case idProcessFinished:

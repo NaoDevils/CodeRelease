@@ -47,7 +47,7 @@ protected:
 
   /**
   * A handler called for each parsed node. Call readSubNodes() within in the handler to parse subordinate nodes.
-  * @param node The name of the node
+  * @param name The name of the node
   * @param attributes The attributes of the node
   */
   virtual void handleNode(const std::string& name, Attributes& attributes) = 0;

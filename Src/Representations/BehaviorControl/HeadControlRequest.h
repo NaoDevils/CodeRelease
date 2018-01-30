@@ -20,6 +20,7 @@ STREAMABLE(HeadControlRequest,
   {,
     ball, // fixiate on ball
     localize, // try to gather localization information
+    localizeBall, // try to find ball (w/fieldCoverage)
     opponents, // fixiate on opponents
     soccer, // optimal mix for soccer
     direct, // direct control of angles

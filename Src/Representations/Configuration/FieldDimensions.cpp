@@ -75,6 +75,24 @@ void FieldDimensions::load()
   boundary.add(Vector2f(xPosOwnFieldBorder, yPosRightFieldBorder));
 }
 
+bool FieldDimensions::isBallInsideField(const Vector2f &ballPos) const
+{
+  float offset = fieldLinesWidth / 2 + ballRadius / 2;
+  float x, y;
+
+  if (ballPos.x() > 0)
+    x = std::max(0.f, ballPos.x() - offset);
+  else
+    x = std::min(0.f, ballPos.x() + offset);
+
+  if (ballPos.y() > 0)
+    y = std::max(0.f, ballPos.y() - offset);
+  else
+    y = std::min(0.f, ballPos.y() + offset);
+
+  return fieldBorder.isInside(Vector2f(x, y));
+}
+
 Pose2f FieldDimensions::randomPoseOnField() const
 {
   Pose2f pose;

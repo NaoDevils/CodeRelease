@@ -16,6 +16,9 @@
 #include "Tools/MessageQueue/MessageQueue.h"
 #include "Tools/Streams/StreamHandler.h"
 #include "Logger.h"
+#include <iostream>
+#include <time.h>
+
 #ifdef WINDOWS
 #define snprintf sprintf_s
 #endif
@@ -103,10 +106,28 @@ std::string Logger::generateFilename() const
         filename += gameInfo.secondaryState == STATE2_PENALTYSHOOT ? "ShootOut_" :
                     gameInfo.firstHalf ? "1stHalf_" : "2ndHalf_";
         filename += static_cast<char>(Global::getSettings().playerNumber + '0');
+		std::cout << "Log to: " << parameters.logFilePath << filename << std::endl;
         return parameters.logFilePath + filename;
       }
   }
-  return parameters.logFilePath + "Testing";
+
+  // Arne - 27.04.17 - Added Timestamp
+  time_t now;
+  char the_date[12];
+
+  the_date[0] = '\0';
+
+  now = time(NULL);
+
+  if (now != -1)
+  {
+	  strftime(the_date, 25, "%d_%m_%Y__%H_%M_%S", gmtime(&now));
+  }
+  // Arne - 27.04.17 - Added Timestamp
+  std::string testingName = "Testing_" + std::string(the_date);
+  std::cout << "Log to: " << parameters.logFilePath << testingName << std::endl;
+  return parameters.logFilePath + testingName;
+
 }
 
 void Logger::createStreamSpecification()

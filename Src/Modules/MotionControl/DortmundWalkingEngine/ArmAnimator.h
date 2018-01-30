@@ -5,6 +5,8 @@
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/MotionControl/ArmMovement.h"
 #include "Representations/MotionControl/KinematicRequest.h"
+#include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/BodyTilt.h"
@@ -16,7 +18,8 @@ MODULE(ArmAnimator,
   REQUIRES(FrameInfo),
   REQUIRES(JointSensorData),
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FreeLegPhaseParams),
+  REQUIRES(MotionRequest),
+  REQUIRES(MotionSelection),
   REQUIRES(KinematicRequest),
   REQUIRES(WalkingInfo),
   REQUIRES(BodyTilt),
@@ -26,11 +29,14 @@ MODULE(ArmAnimator,
   {,
     (Angle) wristOffset,
     (Angle) handOffset,
-    (unsigned) timeToHoldArmBack, // Same value as in ArmContactProvider!
+    (int) timeToHoldArmBack,
     (Angle) armBackPitch,
     (Angle) armBackElbowRoll,
-    (unsigned) timeToPullPitch,
-    (unsigned) timeToPullArmIn,
+    (Angle) armBackShoulderRoll,
+    (Angle) armToFrontShoulderRoll,
+    (int) timeToPullPitch,
+    (int) timeToPullArmIn,
+    (int) timeUntilArmContactActive,
   }),
 });
 
@@ -43,8 +49,12 @@ public:
 private:
   void update(ArmMovement& armMovement);
 
+  unsigned leftTimeWhenNoContact, rightTimeWhenNoContact;
+  unsigned leftTimeWhenContact, rightTimeWhenContact;
   ArmContact::ArmContactState lastContactStateLeft, lastContactStateRight;
-  unsigned leftTimeWhenContactStateChanged, rightTimeWhenContactStateChanged;
   float leftPitchWhenContactStateChanged;
   float rightPitchWhenContactStateChanged;
+
+  MotionRequest::Motion lastMotion;
+  unsigned timeWhenChangedToWalk;
 };

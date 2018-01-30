@@ -44,6 +44,7 @@ mr RobotHealth default
 mr Thumbnail off
 
 call Includes/FieldViews
+call Includes/BallModel
 
 mr RobotsPercept default
 mr CLIPGoalPercept default

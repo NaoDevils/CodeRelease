@@ -460,7 +460,10 @@ void NaoKinematic::update(KinematicOutput& kinematicOutput)
   case KinematicRequest::feet :
 		// Stand on the foot, which is nearer to the center
 		// This is foot has more pressure when the robot moves slowly
-    if (!useBHKinematics)
+    if (!useBHKinematics || !InverseKinematic::calcLegJoints(
+      Pose3f(RotationMatrix(leftFootRot.x(), leftFootRot.y(), leftFootRot.z()), leftFoot + Vector3f(0, 0, 40)),
+      Pose3f(RotationMatrix(rightFootRot.x(), rightFootRot.y(), rightFootRot.z()), rightFoot + Vector3f(0, 0, 40)),
+      kinematicOutput, theRobotDimensions))
     {
       if (distLeft < distRight)
       {
@@ -474,43 +477,33 @@ void NaoKinematic::update(KinematicOutput& kinematicOutput)
 
       }
     }
-    else
-      //TODO Return value ignored
-      InverseKinematic::calcLegJoints(
-        Pose3f(RotationMatrix(leftFootRot.x(), leftFootRot.y(), leftFootRot.z()), leftFoot + Vector3f(0, 0, 40)),
-        Pose3f(RotationMatrix(rightFootRot.x(), rightFootRot.y(), rightFootRot.z()), rightFoot + Vector3f(0, 0, 40)),
-        kinematicOutput, theRobotDimensions);
+      
 		break;
 
 	case KinematicRequest::bodyAndLeftFoot :
 		rightFoot=checkConstraints(leftFoot, leftFootRot.z(), rightFoot, rightFootRot.z(), false);
-    if (!useBHKinematics)
+    if (!useBHKinematics || !InverseKinematic::calcLegJoints(
+      Pose3f(RotationMatrix(leftFootRot.x(), leftFootRot.y(), leftFootRot.z()), leftFoot + Vector3f(0, 0, 40)),
+      Pose3f(RotationMatrix(rightFootRot.x(), rightFootRot.y(), rightFootRot.z()), rightFoot + Vector3f(0, 0, 40)),
+      kinematicOutput, theRobotDimensions))
     {
       calcLegJoints(Joints::lHipYawPitch, leftFoot, leftFootRot, kinematicOutput, theRobotDimensions);
       calcLegJoints(Joints::rHipYawPitch, rightFoot, rightFootRot, kinematicOutput.angles[Joints::lHipYawPitch], kinematicOutput, theRobotDimensions); 
-    }
-    else
-      //TODO Return value ignored
-      InverseKinematic::calcLegJoints(
-        Pose3f(RotationMatrix(leftFootRot.x(), leftFootRot.y(), leftFootRot.z()), leftFoot + Vector3f(0, 0, 40)),
-        Pose3f(RotationMatrix(rightFootRot.x(), rightFootRot.y(), rightFootRot.z()), rightFoot + Vector3f(0, 0, 40)),
-        kinematicOutput, theRobotDimensions);
+    }      
 		//kinematicOutput.angles[Joints::lHipRoll]+=0.1;
 		break;
 
 	case KinematicRequest::bodyAndRightFoot :	  
 		leftFoot=checkConstraints(leftFoot, leftFootRot.z(), rightFoot, rightFootRot.z(), true);
-    if (!useBHKinematics)
+    if (!useBHKinematics || !InverseKinematic::calcLegJoints(
+      Pose3f(RotationMatrix(leftFootRot.x(), leftFootRot.y(), leftFootRot.z()), leftFoot + Vector3f(0, 0, 40)),
+      Pose3f(RotationMatrix(rightFootRot.x(), rightFootRot.y(), rightFootRot.z()), rightFoot + Vector3f(0, 0, 40)),
+      kinematicOutput, theRobotDimensions))
     {
       calcLegJoints(Joints::rHipYawPitch, rightFoot, rightFootRot, kinematicOutput,theRobotDimensions);
 		  calcLegJoints(Joints::lHipYawPitch, leftFoot, leftFootRot, kinematicOutput.angles[Joints::rHipYawPitch], kinematicOutput,theRobotDimensions);
     }
     else
-      //TODO Return value ignored
-      InverseKinematic::calcLegJoints(
-      Pose3f(RotationMatrix(leftFootRot.x(), leftFootRot.y(), leftFootRot.z()), leftFoot + Vector3f(0,0,40)),
-      Pose3f(RotationMatrix(rightFootRot.x(), rightFootRot.y(), rightFootRot.z()), rightFoot + Vector3f(0, 0, 40)),
-      kinematicOutput, theRobotDimensions);
 		//kinematicOutput.angles[Joints::rHipRoll]-=0.1;
 		break;
 	default:

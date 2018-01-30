@@ -21,20 +21,20 @@ public :
 
 	/** Constructor */
 	ObservedFLIPMError(){
+    ObservedError[0].setZero();
+    ObservedError[1].setZero();
 	};
 
 	/** Destructor */
 	~ObservedFLIPMError()
 	{};
 
-  Eigen::Matrix< Vector6f, 2, 1> CoM_1_WCS, Acc_1_WCS, CoM_2_WCS;
+  Eigen::Matrix< Vector6f, 2, 1> ObservedError;
 	
 	void serialize(In* in,Out* out)
     {
       STREAM_REGISTER_BEGIN;
-	    STREAM(CoM_1_WCS);
-	    STREAM(Acc_1_WCS);
-	    STREAM(CoM_2_WCS);
+      STREAM(ObservedError);
       STREAM_REGISTER_FINISH;
     };
 };

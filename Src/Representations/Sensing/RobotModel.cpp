@@ -25,6 +25,9 @@ void RobotModel::setJointData(const JointAngles& jointAngles, const RobotDimensi
     ForwardKinematic::calculateLegChain(left, jointAngles, robotDimensions, limbs);
   }
 
+  soleLeft = limbs[Limbs::footLeft] + Vector3f(0.f, 0.f, -robotDimensions.footHeight);
+  soleRight = limbs[Limbs::footRight] + Vector3f(0.f, 0.f, -robotDimensions.footHeight);
+
   // calculate center of mass
   centerOfMass = Vector3f::Zero();
   totalMass = 0.0;

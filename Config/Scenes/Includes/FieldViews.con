@@ -7,3 +7,4 @@ vfd worldState origin:GroundTruthRobotPose
 vfd worldState representation:GroundTruthBallModel
 
 call Includes/FieldViews2
+call Includes/Behavior

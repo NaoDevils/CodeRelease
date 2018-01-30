@@ -8,34 +8,27 @@
 
 #pragma once
 
-#include "Representations/MotionControl/DmpKickEngineOutput.h"
 #include "Tools/Module/Module.h"
+#include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/MotionControl/ArmKeyFrameEngineOutput.h"
-#include "Representations/MotionControl/ArmMotionRequest.h"
-#include "Representations/MotionControl/ArmMotionSelection.h"
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
-#include "Representations/MotionControl/GetUpEngineOutput.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/Sensing/GroundContactState.h"
 
 MODULE(MotionSelector,
 {,
-  USES(ArmKeyFrameEngineOutput),
   USES(SpecialActionsOutput),
   USES(WalkingEngineOutput),
   USES(KickEngineOutput),
-  USES(GetUpEngineOutput),
   REQUIRES(FrameInfo),
   REQUIRES(MotionRequest),
-  REQUIRES(ArmMotionRequest),
+  REQUIRES(MotionSettings),
   REQUIRES(GroundContactState),
   PROVIDES(MotionSelection),
   REQUIRES(MotionSelection),
-  PROVIDES(ArmMotionSelection),
 });
 
 class MotionSelector : public MotionSelectorBase
@@ -43,19 +36,14 @@ class MotionSelector : public MotionSelectorBase
 private:
   static PROCESS_LOCAL MotionSelector* theInstance; /**< The only instance of this module. */
 
-  ArmMotionSelection armMotionSelection;
 
   bool forceStand;
   MotionRequest::Motion lastMotion;
   MotionRequest::Motion prevMotion;
-  ArmMotionRequest::ArmMotion lastArmMotion[Arms::numOfArms];
-  ArmMotionRequest::ArmMotion prevArmMotion[Arms::numOfArms];
   unsigned lastExecution; //FIXME: Value is used uninitialized
   SpecialActionRequest::SpecialActionID lastActiveSpecialAction;
-  ArmKeyFrameRequest::ArmKeyFrameId lastActiveArmKeyFrame[Arms::numOfArms];
 
   void update(MotionSelection& motionSelection);
-  void update(ArmMotionSelection& armMotionSelection) { armMotionSelection = this->armMotionSelection; }
 
   void interpolate(float* ratios, const int amount, const int interpolationTime, const int targetMotion);
 
@@ -67,12 +55,10 @@ public:
   static void stand();
   static void move();
   
-  MotionSelector() : armMotionSelection(),
+  MotionSelector() :
     lastMotion(MotionRequest::specialAction), prevMotion(MotionRequest::specialAction),
     lastActiveSpecialAction(SpecialActionRequest::playDead)
   {
-    lastArmMotion[Arms::left] = lastArmMotion[Arms::right] = prevArmMotion[Arms::left] = prevArmMotion[Arms::right] = ArmMotionRequest::none;
-    lastActiveArmKeyFrame[Arms::left] = lastActiveArmKeyFrame[Arms::right] = ArmKeyFrameRequest::useDefault;
     theInstance = this;
   }
 };

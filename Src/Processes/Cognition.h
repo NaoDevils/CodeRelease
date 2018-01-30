@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Tools/ProcessFramework/TeamHandler.h" // include this first to prevent winsock2.h/windows.h conflicts
+#include "Tools/ProcessFramework/MocapHandler.h"
 
 #include "Tools/ProcessFramework/Process.h"
 #include "Tools/Module/Logger.h"
@@ -22,6 +23,9 @@ private:
   RECEIVER(MotionToCognition);
   SENDER(CognitionToMotion);
   TEAM_COMM;
+#ifdef USE_MOCAP
+  MOCAP_COMM;
+#endif //USE_MOCAP  
   int numberOfMessages;
   ModuleManager moduleManager; /**< The solution manager handles the execution of modules. */
   Logger logger; /**< The logger logs representations in the background. */

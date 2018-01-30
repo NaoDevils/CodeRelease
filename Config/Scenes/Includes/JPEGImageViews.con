@@ -1,20 +1,7 @@
 vi image jpeg lower gain 1.0
 vi imageUpper jpeg upper gain 1.0
 
-vid lower representation:CLIPCenterCirclePercept:Image:Lower
-vid lower representation:CLIPFieldLinesPercept:Image:Lower
-vid lower representation:PenaltyCrossPercept:Image:Lower
-vid lower representation:BallPercept:Image:Lower
-vid lower representation:CLIPGoalPercept:Image:Lower
-vid lower representation:RobotsPercept:Image:Lower
-vid lower representation:BodyContour
-
-vid upper representation:CLIPCenterCirclePercept:Image:Upper
-vid upper representation:CLIPFieldLinesPercept:Image:Upper
-vid upper representation:PenaltyCrossPercept:Image:Upper
-vid upper representation:BallPercept:Image:Upper
-vid upper representation:CLIPGoalPercept:Image:Upper
-vid upper representation:RobotsPercept:Image:Upper
+call Includes/Perception
 
 # 3-D image views
 v3 image jpeg lower

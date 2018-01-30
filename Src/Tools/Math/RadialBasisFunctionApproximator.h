@@ -50,8 +50,6 @@ public:
    *                    \phi_{j+1}(c_j) = overlap
    *                \f]
    *                c_j is the center of the j'th gaussian.
-   * @param weights The weights of each radial basis function.
-   * @return
    */
   RadialBasisFunctionApproximator(const VectorXf& centers, const float overlap);
 

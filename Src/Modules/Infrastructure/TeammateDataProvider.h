@@ -36,6 +36,7 @@ MODULE(TeammateDataProvider,
     (int)(200) sendInterval, /** <  Time in ms between two messages that are sent to the teammates */
     (int)(4000) networkTimeout, /**< Time in ms after which teammates are considered as unconnected */
     (int)(1000) badWifiTimeout, /**< Time in ms after which a package is considered too old and discarded. */
+    (float)(-0.5f) minSanityForTeammates,
   }),
 });
 
@@ -88,7 +89,7 @@ public:
   static void handleMessages(TeamDataIn& teamReceiver);
 
   /**
-  * Get data from SPLStandardMessage header (used only for dropIn).
+  * Get data from SPLStandardMessage header (used only for mixedTeam competition).
   */
-  void handleDropInPackage(const RoboCup::SPLStandardMessage &msg);
+  void handleMixedTeamPackage(const RoboCup::SPLStandardMessage &msg);
 };

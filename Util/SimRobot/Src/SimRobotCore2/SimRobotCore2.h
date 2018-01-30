@@ -128,7 +128,7 @@ namespace SimRobotCore2
     /**
     * Accesses the size of the OpenGL rendering device that has been set using \c resize before
     * @param width The width of the rendering device
-    * @param width The height of the rendering device
+    * @param height The height of the rendering device
     */
     virtual void getSize(unsigned int& width, unsigned int& height) const = 0;
 
@@ -146,7 +146,7 @@ namespace SimRobotCore2
 
     /**
     * Sets the ShadeMode that is used to render physical primitives
-    * @return The ShadeMode used to render physics
+    * @param shadeMode The ShadeMode used to render physics
     */
     virtual void setPhysicsShadeMode(ShadeMode shadeMode) = 0;
 
@@ -158,7 +158,7 @@ namespace SimRobotCore2
 
     /**
     * Sets the ShadeMode that is used to render controller 3d drawings
-    * @return The ShadeMode used to render physics
+    * @param shadeMode The ShadeMode used to render physics
     */
     virtual void setDrawingsShadeMode(ShadeMode shadeMode) = 0;
 
@@ -170,7 +170,7 @@ namespace SimRobotCore2
 
     /**
     * Sets the render flags to enable or disable some render features
-    * @param The new render flags
+    * @param renderFlags The new render flags
     */
     virtual void setRenderFlags(unsigned int renderFlags) = 0;
 
@@ -302,14 +302,12 @@ namespace SimRobotCore2
 
     /**
     * Moves the  object to target position.
-    * @param object The object to move.
     * @param position The target position.
     */
     virtual void move(const float* position) = 0;
 
     /**
     * Moves the object to target position and rotation specified as 3x3 rotation matrix.
-    * @param object The object to move.
     * @param position The target position.
     * @param rotation The target rotation.
     */

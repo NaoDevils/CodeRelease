@@ -1,5 +1,10 @@
 #pragma once
 
+#include "Representations/BehaviorControl/BallSymbols.h"
+#include "Representations/BehaviorControl/BehaviorConfiguration.h"
+#include "Representations/BehaviorControl/GameSymbols.h"
+#include "Representations/BehaviorControl/KickSymbols.h"
+#include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -15,31 +20,38 @@
 
 MODULE(SimplePathProvider,
 { ,
+  REQUIRES(BallSymbols),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
   REQUIRES(BehaviorData),
+  REQUIRES(BehaviorConfiguration),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
+  REQUIRES(KickSymbols),
   REQUIRES(MotionRequest),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
+  REQUIRES(GameSymbols),
+  REQUIRES(PositioningSymbols),
   PROVIDES(Path),
   LOADS_PARAMETERS(
   {,
-    (float) ballInfluenceRadius,
-    (float) centerCircleInfluenceRadius,
-    (float) goalPostInfluenceRadius,
-    (float) robotInfluenceRadius,
-    (float) teamRobotInfluenceRadius,
-    (float) targetStateSwitchDistance,
-    (float) targetStateSwitchDistanceHysteresis,
-    (float) omniStateSwitchDistance,
-    (float) omniStateSwitchDistanceHysteresis,
-    (bool) keeperInGoalAreaOmniOnly,
-    (bool) stablizePath,
+    (float)(200.f) ballInfluenceRadius,
+    (float)(350.f) centerCircleInfluenceRadius,
+    (float)(250.f) goalPostInfluenceRadius,
+    (float)(400.f) robotInfluenceRadius,
+    (float)(500.f) teamRobotInfluenceRadius,
+    (float)(400.f) targetStateSwitchDistance,
+    (float)(100.f) targetStateSwitchDistanceHysteresis,
+    (float)(300.f) omniStateSwitchDistance,
+    (float)(100.f) omniStateSwitchDistanceHysteresis,
+    (bool)(true) keeperInGoalAreaOmniOnly,
+    (bool)(false) stablizePath,
+    (bool)(false) mergeObstacles,
+    (bool)(false) avoidRobotCrashes,
   }),
 });
 
@@ -102,6 +114,7 @@ private:
     }
   };
   PathFollowState state;
+  bool wasBlockingWayToGoal;
   
   float distanceToClosestObstacle;
   std::vector<Pose2f> wayPoints;

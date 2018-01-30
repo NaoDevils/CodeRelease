@@ -13,6 +13,8 @@
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/ArmMovement.h"
+#include "Modules/MotionControl/DortmundWalkingEngine/FLIPMObserver.h"
+#include "Representations/BehaviorControl/GoalSymbols.h"
 
 MODULE(RequestTranslatorModule,
 { ,
@@ -24,9 +26,10 @@ MODULE(RequestTranslatorModule,
   REQUIRES(BallModelAfterPreview),
   USES(ArmMovement),
   USES(SpeedInfo),
+  REQUIRES(GoalSymbols),
   PROVIDES(PatternGenRequest),
   PROVIDES(WalkingEngineParams),
-  PROVIDES(FreeLegPhaseParams),
+  PROVIDES(FLIPMObserverParams),
 });
 
 class RequestTranslatorModule : public RequestTranslatorModuleBase
@@ -40,11 +43,10 @@ protected:
 
 	void update(PatternGenRequest& patternGenRequest);
 	void update(WalkingEngineParams& walkingEngineParams);
-	void update(ControllerParams& controllerParams);
-
-	void update(FreeLegPhaseParams& freeLegPhaseParams);
+  void update(FLIPMObserverParams& flipmObserverParams);
 private:
   void save(WalkingEngineParams &params, std::string path);
+  void save(FLIPMObserverParams &flipmObserverParams, std::string path);
   WalkingInfo theWalkingInfoDummy;
 };
 

@@ -1,11 +1,13 @@
 #pragma once
 
 #include <QFrame>
+#include <QCheckBox>
 #include <vector>
 
 class Team;
 class QPushButton;
 class QComboBox;
+//class QColorDialog; TODO: use this for color picking
 class QLineEdit;
 class QSpinBox;
 class QSlider;
@@ -23,15 +25,19 @@ class TeamView : public QFrame
 
   std::vector<RobotView*> robotViews;
   QPushButton* pbSave;
-  QComboBox* cbColor;
+  QComboBox* cbColorOwn;
+  QComboBox* cbColorOpp;
   QSpinBox* sbNumber;
   QLineEdit* lePort;
   QComboBox* cbLocation;
   QComboBox* cbGameMode;
   QComboBox* cbWlanConfig;
+  QComboBox* cbWalkConfig;
+  QCheckBox* cbMocapConfig;
   QComboBox* cbBuildConfig;
   QComboBox* cbDeployDevice;
   QSlider* sVolume;
+  QSlider* sMicVolume;
 
   void init();
 public:
@@ -40,12 +46,16 @@ public:
   void update(size_t index);
 
 private slots:
-  void colorChanged(const QString& color);
+  void colorOwnChanged(const QString& color);
+  void colorOppChanged(const QString& color);
   void numberChanged(int number);
   void locationChanged(const QString& location);
   void gameModeChanged(const QString& gameMode);
   void wlanConfigChanged(const QString& config);
+  void walkConfigChanged(const QString& config);
+  void mocapConfigChanged(bool checked);
   void buildConfigChanged(const QString& build);
   void volumeChanged(const int volume);
+  void micVolumeChanged(const int volume);
   void deployDeviceChanged(const QString& device);
 };

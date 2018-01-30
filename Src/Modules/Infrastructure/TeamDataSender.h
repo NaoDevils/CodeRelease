@@ -8,13 +8,15 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/BehaviorControl/Role.h"
+#include "Representations/BehaviorControl/KickSymbols.h"
+#include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/SimpleRobotsDistributed.h"
 #include "Representations/Modeling/RobotPose.h"
@@ -35,17 +37,20 @@ MODULE(TeamDataSender,
   REQUIRES(GameInfo),
   REQUIRES(RawGameInfo),
   REQUIRES(GroundContactState),
+  REQUIRES(KickSymbols),
   REQUIRES(MotionInfo),
   REQUIRES(MotionRequest),
   REQUIRES(OwnTeamInfo),
+  REQUIRES(PositioningSymbols),
   REQUIRES(RobotHealth),
   REQUIRES(RobotInfo),
+  REQUIRES(RobotsPercept),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(SideConfidence),
   REQUIRES(SimpleRobotsDistributed),
   REQUIRES(TeammateData),
-  REQUIRES(TeammateRoles),
+  //REQUIRES(TeammateRoles),
   REQUIRES(WhistleDortmund),
   PROVIDES_WITHOUT_MODIFY(TeamDataSenderOutput),
   LOADS_PARAMETERS(

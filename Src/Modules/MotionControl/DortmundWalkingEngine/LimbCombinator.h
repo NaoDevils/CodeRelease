@@ -22,7 +22,6 @@ MODULE(LimbCombinator,
   REQUIRES(WalkingInfo),
   REQUIRES(MotionRequest),
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FreeLegPhaseParams),
   PROVIDES(WalkingEngineOutput),
 });
 

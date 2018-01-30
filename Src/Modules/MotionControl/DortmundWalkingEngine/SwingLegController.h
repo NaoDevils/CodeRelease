@@ -29,6 +29,7 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 
 #include <list>
 #include <queue>
+#include <map>
 #include "StepData.h"
 
 #include "Representations/MotionControl/ControllerParams.h"
@@ -44,6 +45,7 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/MotionControl/ObservedError.h"
 #include "Tools/DynamicRingBuffer.h"
 #include "Tools/Streams/RobotParameters.h"
+#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 
 #ifndef WALKING_SIMULATOR
 #include "Representations/Modeling/BallModel.h"
@@ -60,12 +62,7 @@ class SwingLegControllerModule;
 */
 class SwingLegController
 {
-  ROBOT_PARAMETER_CLASS(KickMotion, SwingLegController)
-    PARAM(unsigned int, hitPoint)
-    PARAM(unsigned int, degree)
-    PARAM(std::vector<StreamPoint>, p) 
-  END_ROBOT_PARAMETER_CLASS(KickMotion)
-
+  
   friend class SwingLegControllerModule;
 public:
   /** Constructor with all needed source data structures.
@@ -78,26 +75,25 @@ public:
     const BallModel	                &theBallModel,
     const MotionRequest             &theMotionRequest,
     const WalkingInfo               &theWalkingInfo,
-    const FreeLegPhaseParams        &theFreeLegPhaseParams,
     const FallDownState             &theFallDownState,
     const PatternGenRequest         &thePatternGenRequest,
     const ObservedError             &theObservedError,
-    const ControllerParams          &theControllerParams):
+    const ControllerParams          &theControllerParams,
+    const InertialSensorData        &theInertialSensorData):
 
     theWalkingEngineParams(theWalkingEngineParams),
     theFootSteps(theFootSteps),
     theBallModel(theBallModel),
     theMotionRequest(theMotionRequest),
     theWalkingInfo(theWalkingInfo),
-    theFreeLegPhaseParams(theFreeLegPhaseParams),
     theFallDownState(theFallDownState),
     thePatternGenRequest(thePatternGenRequest),
     theObservedError(theObservedError),
     theControllerParams(theControllerParams),
+    theInertialSensorData(theInertialSensorData),
+    infos(phases),
     debug(false),
-    lastKick(0),
-    modification(localModification),
-    infos(phases)
+    modification(localModification)
   { reset(); };
 
   /** Destructor */
@@ -124,11 +120,11 @@ private:
   const BallModel           &theBallModel;
   const MotionRequest       &theMotionRequest;
   const WalkingInfo         &theWalkingInfo;
-  const FreeLegPhaseParams  &theFreeLegPhaseParams;
   const FallDownState       &theFallDownState; /**< Set by constructor */
   const PatternGenRequest   &thePatternGenRequest;
   const ObservedError       &theObservedError;
   const ControllerParams    &theControllerParams;
+  const InertialSensorData  &theInertialSensorData;
 
   FreeLegPhase currentKickPhase;
 
@@ -295,7 +291,6 @@ private:
   Infos infos;
 
   bool debug;
-  int lastKick;
   /** Is the ZMP/IP-Controller running? */
   bool isRunning;
 
@@ -304,8 +299,6 @@ private:
 
   ReferenceModificator &modification, localModification;
 
-  Vector3f   kickVec, kickStart, kickStop;
-  int kickStartLen, kickStopLen;
   /** Resets the controller. */
   void reset();
   /** 
@@ -319,7 +312,6 @@ private:
   * @param fp The list to add to.
   */
   void addFootsteps(const Footposition &fp);
-  bool initKick(int footNum, Point &endFootPos, bool longKick);
 
   /**
   * Internal function to plan the next target position.

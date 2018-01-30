@@ -13,10 +13,8 @@ void WhistleHandlerDortmund::update(GameInfo& gameInfo)
   if (gameInfo.state == STATE_PLAYING && theRawGameInfo.state == STATE_SET)
     whistleDetected = true;
   gameInfo = theRawGameInfo;
-  // no whistle detection in penalty shootout or drop in (Rules 2016)
-  if (gameInfo.gameType == GAME_DROPIN ||
-    Global::getSettings().gameMode == Settings::penaltyShootout ||
-    Global::getSettings().gameMode == Settings::dropIn)
+  // no whistle detection in penalty shootout (Rules 2017)
+  if (Global::getSettings().gameMode == Settings::penaltyShootout)
     return;
   if (whistleDetected)
     gameInfo.state = STATE_PLAYING;

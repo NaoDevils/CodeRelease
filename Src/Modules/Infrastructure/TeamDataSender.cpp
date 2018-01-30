@@ -33,6 +33,7 @@ void TeamDataSender::update(TeamDataSenderOutput& teamDataSenderOutput)
     //TEAM_OUTPUT(idGoalPercept, bin, theGoalPercept);
 
     // Obstacle stuff
+    TEAM_OUTPUT(idRobotsPercept, bin, RobotsPerceptCompressed(theRobotsPercept));
     TEAM_OUTPUT(idRobotMap, bin, RobotMapCompressed(theRobotMap));
     //TEAM_OUTPUT(idSimpleRobotsDistributed, bin, theSimpleRobotsDistributed);
 
@@ -42,7 +43,7 @@ void TeamDataSender::update(TeamDataSenderOutput& teamDataSenderOutput)
 
     // Robot status
     TEAM_OUTPUT(idTeammateIsPenalized, bin, (theRobotInfo.penalty != PENALTY_NONE));
-    TEAM_OUTPUT(idTeammateHasGroundContact, bin, (theGroundContactState.contact && theMotionInfo.motion != MotionInfo::getUp && theMotionRequest.motion != MotionRequest::getUp));
+    TEAM_OUTPUT(idTeammateHasGroundContact, bin, (theGroundContactState.contact));
     TEAM_OUTPUT(idTeammateIsUpright, bin, (theFallDownState.state == theFallDownState.upright));
     if(theGroundContactState.contact)
     {
@@ -63,10 +64,19 @@ void TeamDataSender::update(TeamDataSenderOutput& teamDataSenderOutput)
 void TeamDataSender::fillStandardMessage()
 {
   RoboCup::SPLStandardMessage& message = Global::getTeamOut().message;
-  
+
   NDevilsHeader& header = (NDevilsHeader&)*message.data;
-  header.remoteIp = 0;
-  header.timeStampSent = SystemCall::getCurrentSystemTime();
+  header.teamID = 12;
+#ifdef TARGET_ROBOT
+  auto now = std::chrono::system_clock::now();
+  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+  header.timeStampSent = static_cast<uint64_t>(time);
+#else
+  header.timeStampSent = static_cast<uint64_t>(SystemCall::getCurrentSystemTime());
+#endif
+  header.dummy = 0;
+  header.isPenalized = (theRobotInfo.penalty != PENALTY_NONE);
+  header.whistleDetected = theWhistleDortmund.detected;
   OutBinarySize sizeStream;
   sizeStream << Global::getTeamOut().queue;
   message.numOfDataBytes = static_cast<uint16_t>(sizeStream.getSize() + ndevilsHeaderSize);
@@ -98,18 +108,25 @@ void TeamDataSender::fillStandardMessage()
   message.fallen = theFallDownState.state != FallDownState::upright;
   message.shootingTo[0] = message.pose[0];
   message.shootingTo[1] = message.pose[1];
-  message.shootingTo[0] = 0.f;
-  message.shootingTo[1] = 0.f;
-  switch (theBehaviorData.role)
+  message.shootingTo[0] = theKickSymbols.kickTarget.x();
+  message.shootingTo[1] = theKickSymbols.kickTarget.y();
+  switch (theBehaviorData.soccerState)
   {
-  case BehaviorData::keeper:
-    message.intention = 1;
+  case BehaviorData::positioning:
+    switch (theBehaviorData.role)
+    {
+    case BehaviorData::defender:
+      message.intention = 2;
+      break;
+    default:
+      message.intention = 1;
+    }
     break;
-  case BehaviorData::defender:
-    message.intention = 2;
+  case BehaviorData::controlBall:
+    message.intention = 3;
     break;
   default:
-    message.intention = 3;
+    message.intention = 0;
     break;
   }
   if (theBehaviorData.soccerState <= BehaviorData::numOfUnsafeActions ||

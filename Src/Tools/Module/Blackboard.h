@@ -65,7 +65,7 @@ public:
    * Allocate a new blackboard entry for a representation of a
    * certain type and name. The representation is only created
    * if this is its first allocation.
-   * @param T The type of the representation.
+   * @tparam T The type of the representation.
    * @param representation The name of the representation.
    * @return The representation.
    */

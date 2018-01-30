@@ -1,3 +1,5 @@
+dr representation:BodyContour
+dr representation:BodyContourUpper
 dr representation:CameraInfo
 dr representation:CameraInfoUpper
 dr representation:CameraMatrix

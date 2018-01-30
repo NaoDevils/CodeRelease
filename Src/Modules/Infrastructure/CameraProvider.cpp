@@ -329,8 +329,7 @@ void CameraProvider::waitForFrameData2()
     setupCameras();
   }
 
-  // release images, TODO BH2015 port: hasImage() needed? 
-  // (should be, but was not for releaseImage case below in BH2015 release)??
+  // release images
   if (lowerCamera->hasImage())
     lowerCamera->releaseImage();
   if (upperCamera->hasImage())
@@ -391,8 +390,8 @@ void CameraProvider::waitForFrameData2()
       SystemCall::playSound("cameraReset.wav");
     }
 
-    // TODO BH2015 port: does this mean wrong image order? how?
-    // check what happens in rest of code in this case.. just discarded?
+    // in case the image order is wrong (should not happen in NDD version of Framework)
+    // TODO: check what happens in rest of code in this case.. just discarded?
     if(upperCamera->hasImage() && upperCamera->getTimeStamp() < lastImageTimeStampLLUpper)
       upperCamera->releaseImage();
     if(lowerCamera->hasImage() && lowerCamera->getTimeStamp() < lastImageTimeStampLL)

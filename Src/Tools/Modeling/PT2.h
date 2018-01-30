@@ -58,10 +58,10 @@ STREAMABLE(PT2,
   /**Returns true if the parameters are valid, false otherwise*/
   bool isValid() const;
 
-  float x = 0.f; /*< Intermediate value, can be related to current velocity by: x / T */
-  float y = 0.f;/*< Current position in rad */
-  float yd = 0.f;/*< current velocity in rad/s */
-  float ydd = 0.f;/*< current acceleration in rad/s */
+  float x = 0.f; /**< Intermediate value, can be related to current velocity by: x / T */
+  float y = 0.f;/**< Current position in rad */
+  float yd = 0.f;/**< current velocity in rad/s */
+  float ydd = 0.f;/**< current acceleration in rad/s */
   bool initialized = false, /**<If initialize has been called */
 
   // See constructor for variable description

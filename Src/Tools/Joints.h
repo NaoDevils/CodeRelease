@@ -15,21 +15,21 @@ namespace Joints
     lElbowYaw,
     lElbowRoll,
     lWristYaw,
-    lHand, //< not an Angle, instead %
+    lHand, ///< not an Angle, instead %
     firstRightArmJoint,
     rShoulderPitch = firstRightArmJoint,
     rShoulderRoll,
     rElbowYaw,
     rElbowRoll,
     rWristYaw,
-    rHand, //< not an Angle, instead %
+    rHand, ///< not an Angle, instead %
     lHipYawPitch,
     lHipRoll,
     lHipPitch,
     lKneePitch,
     lAnklePitch,
     lAnkleRoll,
-    rHipYawPitch, //< not a joint in the real nao
+    rHipYawPitch, ///< not a joint in the real nao
     rHipRoll,
     rHipPitch,
     rKneePitch,

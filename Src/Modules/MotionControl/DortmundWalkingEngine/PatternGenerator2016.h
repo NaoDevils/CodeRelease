@@ -72,7 +72,6 @@ MODULE(PatternGenerator2016,
   USES(WalkingInfo),
   USES(ReferenceModificator),
   REQUIRES(FrameInfo),
-  REQUIRES(FreeLegPhaseParams),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
   PROVIDES(FootSteps),
@@ -182,6 +181,7 @@ protected:
 
   /** Current step duration */
   float curStepDuration;
+
   /** Is the dynamic step duration activated? */
   bool dynamicDuration;
   Point distanceLeft;
@@ -213,8 +213,6 @@ protected:
   inline unsigned int getPhaseLength(float ratio, float stepDur);
   /** Updates the phase and state counter */
   void updateCounter();
-  /** Handles the requested pitch */
-  void handlePitch();
   /** Initialize a new walk phase */
   void initWalkingPhase();
   void applyStandType();
@@ -235,6 +233,7 @@ protected:
   int cyclePosCounter;
   int curPreviewLength;
   float direction;
+  Point appliedReactiveStep[2];
 
   /** deltaDirection is added to the direction in every frame. */
   float deltaDirection[4];
@@ -301,7 +300,7 @@ protected:
   {
     Pose2f footPos[2];
     bool onFloor[2];     // foot is on floor
-    bool free[2];        // foot is available for kick or similar
+    std::string footTraj;// Name of trajectory file to execute for foor in air
     int duration;        // number of frames for this step
     virtual void serialize(In* in, Out* out);
   };

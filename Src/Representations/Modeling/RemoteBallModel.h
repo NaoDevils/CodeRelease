@@ -4,7 +4,7 @@
  * Declaration of a representation that represents a ball model based
  * only on teammate observations.
  *
- * \author Heiner Walter, heiner.walter@tu-dortmund.de
+ * \author <A href="mailto:heiner.walter@tu-dortmund.de">Heiner Walter</A>
  */
 #pragma once
 

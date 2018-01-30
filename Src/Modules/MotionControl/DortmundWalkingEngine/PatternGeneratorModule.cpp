@@ -19,7 +19,6 @@ PatternGeneratorModule::PatternGeneratorModule():
              theWalkingInfo,
              theReferenceModificator,
              theFrameInfo,
-             theFreeLegPhaseParams,
              theBallModel,
              theBallModelAfterPreview)
 {

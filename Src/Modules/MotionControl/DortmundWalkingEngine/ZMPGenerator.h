@@ -54,8 +54,7 @@ public:
 		const FootSteps				&theFootSteps,
 		const WalkingEngineParams	&theWalkingEngineParams,
 		const ControllerParams		&theControllerParams,
-		const FreeLegPhaseParams	&theFreeLegPhaseParams,
-		const WalkingInfo			&theWalkingInfo,
+		//const WalkingInfo			&theWalkingInfo,
         const ReferenceModificator  &theReferenceModificator);
 	/** Destructor */
 	~ZMPGenerator(void);
@@ -71,7 +70,6 @@ private:
 	const FootSteps &           theFootSteps;			/**< Set by constructor. */
 	const WalkingEngineParams & theWalkingEngineParams; /**< Set by constructor. */
 	const ControllerParams &    theControllerParams;	/**< Set by constructor. */
-	const FreeLegPhaseParams	&theFreeLegPhaseParams;
 //	const WalkingInfo			&theWalkingInfo; unused
     const ReferenceModificator  &theReferenceModificator;
 

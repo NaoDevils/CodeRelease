@@ -18,7 +18,7 @@ void CameraMatrixProvider::update(CameraMatrix& cameraMatrix)
   cameraMatrix.isValid = theTorsoMatrix.isValid && theMotionInfo.isMotionStable &&
                          theFallDownState.state == FallDownState::upright &&
                          theFrameInfo.getTimeSince(theJointSensorData.timestamp) < 500 &&
-                         theRobotInfo.penalty == PENALTY_NONE;
+                         (theRobotInfo.penalty == PENALTY_NONE || theRobotInfo.penalty == PENALTY_SPL_ILLEGAL_MOTION_IN_SET);
 
   DEBUG_DRAWING("module:CameraMatrixProvider:calibrationHelper", "drawingOnImage") drawFieldLines(cameraMatrix, false);
   DEBUG_DRAWING3D("module:CameraMatrixProvider:cameraMatrix", "field")

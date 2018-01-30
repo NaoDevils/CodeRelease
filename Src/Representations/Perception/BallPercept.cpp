@@ -25,8 +25,10 @@ void BallPercept::draw() const
     else
       CIRCLE("representation:BallPercept:Image:Lower", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
         Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA(255, 128, 64, 100));
-    CIRCLE("representation:BallPercept:Field", relativePositionOnField.x(), relativePositionOnField.y(), radiusOnField, 0, // pen width
-           Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::orange);
+    CIRCLE("representation:BallPercept:Field", relativePositionOnField.x(), relativePositionOnField.y(), radiusOnField/2, 0, // pen width
+           Drawings::solidPen, ColorRGBA::white, Drawings::solidBrush, ColorRGBA::white);
+    CIRCLE("representation:BallPercept:Field", relativePositionOnField.x(), relativePositionOnField.y(), radiusOnField/4, 0, // pen width
+      Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA::black);
     SPHERE3D("representation:BallPercept", relativePositionOnField.x(), relativePositionOnField.y(), radiusOnField, radiusOnField, ColorRGBA::orange);
   }
   else if(status != notSeen)

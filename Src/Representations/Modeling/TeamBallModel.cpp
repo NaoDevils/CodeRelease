@@ -30,7 +30,7 @@ void TeamBallModel::draw() const
     CIRCLE("representation:TeamBallModel", position.x(), position.y(), 30, 20, Drawings::solidPen, ColorRGBA::blue, Drawings::noBrush, ColorRGBA::black);
     ARROW("representation:TeamBallModel", position.x(), position.y(), position.x() + velocity.x(), position.y() + velocity.y(), 5, 1, ColorRGBA::blue);
     DRAWTEXT("representation:TeamBallModel", position.x(), position.y(), 100, ColorRGBA::blue, "validity: " << validity);
-    DRAWTEXT("representation:TeamBallModel", 0, 3250, 150, ColorRGBA::black, "TeamBallModel");
-    DRAWTEXT("representation:TeamBallModel", 0, 3100, 150, ColorRGBA::black, (isValid ? (isLocalBallModel ? "valid local" : "valid remote") : "invalid"));
+    DRAWTEXT("representation:TeamBallModel", 0, 3200, 50, ColorRGBA::black, "TeamBallModel");
+    DRAWTEXT("representation:TeamBallModel", 0, 3100, 50, ColorRGBA::black, (isValid ? (isLocalBallModel ? "valid local" : "valid remote") : "invalid"));
   }
 }

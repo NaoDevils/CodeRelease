@@ -78,7 +78,6 @@ void AudioProviderDortmund::update(AudioDataDortmund& audioData)
 
     if (theGameInfo.state != STATE_SET ||
         Global::getSettings().gameMode == Settings::penaltyShootout ||
-        Global::getSettings().gameMode == Settings::dropIn ||
         !connectionEstablished)
         return;
 
@@ -111,7 +110,7 @@ void AudioProviderDortmund::update(AudioDataDortmund& audioData)
 
 AudioProviderDortmund::AudioProviderDortmund()
 {
-    std::srand(std::time(nullptr));
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     std::string filePath(File::getBHDir());
     filePath += "/Config/Sounds/";
@@ -143,8 +142,8 @@ void AudioProviderDortmund::update(AudioDataDortmund& audioData)
 
     if (theGameInfo.state != STATE_SET ||
         Global::getSettings().gameMode == Settings::penaltyShootout ||
-        Global::getSettings().gameMode == Settings::dropIn ||
-        !connectionEstablished)
+        !connectionEstablished ||
+        !simulateWhistleInSimulator)
         return;
 
     ////create 3 sinus tones plus noise as pseudo audio data
@@ -165,7 +164,7 @@ void AudioProviderDortmund::update(AudioDataDortmund& audioData)
     timestamp = theFrameInfo.time;
 
     float element;
-    int i = 0;
+    size_t i = 0;
     while (i < audioData.samples.size())
     {
         if (fread(&element, sizeof(element), 1, audioFile) == 1)

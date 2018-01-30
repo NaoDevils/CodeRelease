@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -e
+
+rsync --include="*/" --include="cameraCalibration.cfg" --exclude="*" -rzce "ssh -c arcfour -i ../../Config/Keys/id_rsa_nao -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet" nao@$2:/home/nao/Config/Robots/$1 ../../Config/Robots

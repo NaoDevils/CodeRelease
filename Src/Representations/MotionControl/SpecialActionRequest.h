@@ -22,9 +22,14 @@ STREAMABLE(SpecialActionRequest,
     sitDown,
     stand,
     standHigh,
-    standUpBackNao,
+    // add new non-standup and non-block motions here
+    numOfBasicMotions,
+    // -------- from here on, gyro fall down detection is off for all motions               ---------
+    standUpBackNao = numOfBasicMotions,
     standUpFrontNao,
     standUpSideNao,
+    // -------- up to numOfSpecialActionIDs, gyro fall down detection is off for all motions ---------
+    // -------- so do not add non-block motions here!         
   });
 
   /**

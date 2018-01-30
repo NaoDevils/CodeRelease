@@ -12,11 +12,11 @@
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/Image.h"
+#include "Representations/Infrastructure/IntegralImage.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/FieldColor.h"
-#include "Representations/Perception/GoalPercept.h"
 #include "Representations/Perception/CLIPPointsPercept.h"
 #include "Representations/Perception/BallSpots.h"
 #include "Representations/Perception/BallPercept.h"
@@ -42,8 +42,9 @@ MODULE(CLIPPreprocessor,
   PROVIDES(CLIPPointsPercept),
   PROVIDES(BallSpots),
   PROVIDES(ObstacleBasePoints),
+  PROVIDES(IntegralImage),
   LOADS_PARAMETERS(
-  {,
+  { ,
     // TODO: initialized has to be changed when changing parameters!!
     (int) hScanLineDistanceLower, // distance of horizontal scan lines in lower image (320 image, will be scaled)
     (int) vScanLineDistanceLower, // distance of vertical scan lines in lower image (320 image, will be scaled)
@@ -61,7 +62,7 @@ MODULE(CLIPPreprocessor,
   }),
 });
 
-class CLIPPreprocessor: public CLIPPreprocessorBase
+class CLIPPreprocessor : public CLIPPreprocessorBase
 {
 public:
   /**
@@ -71,6 +72,8 @@ public:
 
   DECLARE_DEBUG_IMAGE(SIPField);
   DECLARE_DEBUG_IMAGE(SIPFieldUpper);
+  DECLARE_DEBUG_IMAGE(IntegralImageLower);
+  DECLARE_DEBUG_IMAGE(IntegralImageUpper);
 
   /** Destructor */
   ~CLIPPreprocessor();
@@ -94,40 +97,40 @@ public:
   class ScanLineSegment
   {
   public:
-    ScanLineSegment(const float &x, const float &y,const int &fieldCount, 
-		bool hasColorChangeAtStart, ScanLineSegmentType type)
+    ScanLineSegment(const float &x, const float &y, const int &fieldCount,
+      bool hasColorChangeAtStart, ScanLineSegmentType type)
     {
       startPointInImage.x() = x;
       startPointInImage.y() = y;
       segmentType = type;
-      endPointInImage = Vector2f(0,0);
+      endPointInImage = Vector2f(0, 0);
       gradientColorStart = hasColorChangeAtStart;
-	    gradientColorEnd = false;
+      gradientColorEnd = false;
       fieldColorCount = fieldCount;
       avgCr = 0;
       avgCb = 0;
       avgY = 0;
     }
 
-    ScanLineSegment(const float &x, const float &y,const float &maxLength, ScanLineSegmentType type)
+    ScanLineSegment(const float &x, const float &y, const float &maxLength, ScanLineSegmentType type)
     {
       startPointInImage.x() = x;
       startPointInImage.y() = y;
       segmentType = type;
-      endPointInImage = Vector2f(0,0);
+      endPointInImage = Vector2f(0, 0);
       gradientColorStart = false;
-	    gradientColorEnd = false;
+      gradientColorEnd = false;
       fieldColorCount = 0;
       avgCr = 0;
       avgCb = 0;
       avgY = 0;
     }
-    
+
     ScanLineSegmentType segmentType;
     Vector2f startPointInImage; // starting point
     Vector2f endPointInImage; // ending point
     bool gradientColorStart,
-		     gradientColorEnd; // did segment start/end with possible color change?
+      gradientColorEnd; // did segment start/end with possible color change?
     int fieldColorCount;
     int avgCr;
     int avgCb;
@@ -139,8 +142,8 @@ public:
   public:
     ScanLine()
     {
-      from = Vector2i(0,0);
-      to = Vector2i(0,0);
+      from = Vector2i(0, 0);
+      to = Vector2i(0, 0);
       stepSize = 1;
       fullScanLine = false;
       scanLineSegments.reserve(100);
@@ -174,7 +177,10 @@ private:
   void update(CLIPPointsPercept& theCLIPPointsPercept);
   void update(BallSpots& ballSpots);
   void update(ObstacleBasePoints& obstacleBasePoints);
-  
+  void update(IntegralImage& integralImage);
+
+  void createIntegralImage(const Image& other, const bool &upper, IntegralImage& integralImage);
+
   /*
   * Reset all local percepts, only to be called once a frame!
   */
@@ -185,12 +191,12 @@ private:
   void createObstacleBasePoints(const bool &upper); // add possible obstacles from obstacle points
   void postProcessScanLine(const ScanLine &scanLine, const bool &upper); // get additional info from finished ScanLine
   void classifyScanLineSegments(ScanLine &scanLine, const bool &upper); // run after processScanLine - classifies segments
-  
-  /*
-  * Run one scanLine over field, generates unclassified scan line segments, no percepts generated here yet.
-  * @param scanLine The Scan Line in question.
-  * @param upper True if upper image will be scanned.
-  */
+
+                                                                        /*
+                                                                        * Run one scanLine over field, generates unclassified scan line segments, no percepts generated here yet.
+                                                                        * @param scanLine The Scan Line in question.
+                                                                        * @param upper True if upper image will be scanned.
+                                                                        */
   void processScanLine(ScanLine &scanLine, const bool &upper);
 
   /*
@@ -218,8 +224,8 @@ private:
   /*
   * Finds field border(s).
   */
-  void findFieldBorders(); 
-  
+  void findFieldBorders();
+
   /*
   * The same function as provided in FieldColor.h,
   * but faster since some values are precomputed,
@@ -227,7 +233,7 @@ private:
   */
   inline bool isPixelBallColor(const int &y, const int &cb, const int &cr)
   {
-    return cr > minBallCr && 
+    return cr > minBallCr &&
       cb > minBallCb &&
       cb < maxBallCb;
   }
@@ -244,14 +250,14 @@ private:
     return std::abs(scanLinePixelBuffer[pixelCount - 2].cb - scanLinePixelBuffer[pixelCount].cb + scanLinePixelBuffer[pixelCount - 2].cr - scanLinePixelBuffer[pixelCount].cr);
   }
 
-  unsigned timeStamp,timeStampUpper; // used to make sure that images are only processed once
+  unsigned timeStamp, timeStampUpper; // used to make sure that images are only processed once
   bool wasReset;
   bool initialized;
 
-  int imageWidth,imageHeight;
+  int imageWidth, imageHeight;
 
   Geometry::Line horizon;
-  
+
   std::vector<ScanLine> scanLinesVerticalLower; // vertical scan lines - to find field lines, field end, obstacles and ball
   std::vector<ScanLine> scanLinesVerticalUpper; // vertical scan lines - to find field lines, field end, obstacles and ball
   std::vector<ScanLine> scanLinesHorizontalLower; // horizontal scan lines - to find goal, field lines, obstacles and ball
@@ -267,24 +273,24 @@ private:
 
   // scan line stuff
   // all unused
-//  int noVScanLinesVerticalLower;
-//  int noVScanLinesVerticalUpper;
-//  int noHScanLinesVerticalLower;
-//  int noHScanLinesVerticalUpper;
+  //  int noVScanLinesVerticalLower;
+  //  int noVScanLinesVerticalUpper;
+  //  int noHScanLinesVerticalLower;
+  //  int noHScanLinesVerticalUpper;
   int scanLineNoYStart;
   unsigned pixelCount;
-  
+
   // field color related vars (constant for one image, used to improve speed of ball color check)
   int minBallCb;
   int maxBallCb;
   int minBallCr;
-  
-    // for obstacle detection
+
+  // for obstacle detection
   std::vector< Vector2i > obstaclePointsLow;
   std::vector< Vector2i > obstaclePointsHigh;
   std::vector< Vector2i > obstaclePointsLeft;
   std::vector< Vector2i > obstaclePointsRight;
-  
+
   // local percepts
   CLIPPointsPercept localCLIPPointsPercept;
   BallSpots localBallSpots;
@@ -297,5 +303,5 @@ private:
   void drawFieldHull(const bool &upper);
   void drawScanLineSegments(const bool &upper);
   void drawSegment(std::vector<ScanLineSegment>::const_iterator seg, const bool &upper);
-  
+
 };

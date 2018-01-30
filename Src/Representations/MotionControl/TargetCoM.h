@@ -35,18 +35,28 @@ public :
 		STREAM(y)
 		STREAM(z)
     STREAM(state_x)
-   STREAM(state_y)
+    STREAM(state_y)
 		STREAM_REGISTER_FINISH;
 	};
-
+    
     float state_x[6], state_y[6];
     bool isRunning;
 
 	/** Constructor */
 	TargetCoM()
 	{
+    x = 0;
+    y = 0;
+    for (int i = 0; i < 6; i++) {
+      state_x[i] = 0.0;
+      state_y[i] = 0.0;
+    }
+    
 	};
 
 	/** Desctructor */
 	~TargetCoM(){};
 };
+
+//struct TargetCoMFLIPM : public TargetCoM {};
+//struct TargetCoMLIPM : public TargetCoM {};

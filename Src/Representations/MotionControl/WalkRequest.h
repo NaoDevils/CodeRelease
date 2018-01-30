@@ -30,6 +30,7 @@ STREAMABLE(WalkRequest,
     speed, /**< Interpret \c speed as absolute walking speed and ignore \c target. */
     destination, /**< Interpret \c speed as percentage walking speed and ignore \c target. */
     ball, /**< Use \c target as walking target relative to the current position of the robot and interpret \c speed as percentage walking speed. */
+    dribble,
   });
 
   ENUM(StepRequest,
@@ -44,6 +45,25 @@ STREAMABLE(WalkRequest,
   bool isValid() const
   {
     return !std::isnan(static_cast<float>(request.rotation)) && !std::isnan(request.translation.x()) && !std::isnan(request.translation.y());
+  }
+
+  /**
+   * \return \c true iff the current \c stepRequest is a kick.
+   */
+  bool isStepRequestKick() const
+  {
+    switch (stepRequest)
+    {
+    case frontKickLeft:
+    case frontKickRight:
+      return true;
+    case none:
+    case previewKick:
+    case beginScript:
+    case numOfStepRequests:
+      return false;
+    }
+    return false;
   },
 
   (RequestType)(speed) requestType, /**< The walking mode. */

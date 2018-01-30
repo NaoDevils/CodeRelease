@@ -95,7 +95,7 @@ std::string GameInfo::getStateAsString() const
 void GameInfo::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
-  STREAM(gameType); // type of the game (GAME_ROUNDROBIN, GAME_PLAYOFF, GAME_DROPIN)
+  STREAM(gameType); // type of the game (GAME_ROUNDROBIN, GAME_PLAYOFF, GAME_MIXEDTEAM_PLAYOFF, GAME_MIXEDTEAM_ROUNDROBIN)
   STREAM(state); // STATE_READY, STATE_PLAYING, ...
   STREAM(firstHalf); // 1 = game in first half, 0 otherwise
   STREAM(kickOffTeam); // team number

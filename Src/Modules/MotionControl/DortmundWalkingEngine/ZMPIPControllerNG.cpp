@@ -129,12 +129,12 @@ Point ZMPIPControllerNG::controllerStep()
 	coMDelayBuffer.push_front(targetCoM);
 
 	Point ZMPdiff, CoMdiff;
-	if (delayBuffer.size()>theWalkingEngineParams.sensorDelay)
+	if (delayBuffer.size()>theWalkingEngineParams.sensorControl.sensorDelay)
 	{
-		ZMPdiff.x=delayBuffer[theWalkingEngineParams.sensorDelay].x-realZMP.x;
-		ZMPdiff.y=delayBuffer[theWalkingEngineParams.sensorDelay].y-realZMP.y;
-		CoMdiff.x=coMDelayBuffer[theWalkingEngineParams.halSensorDelay].x-theActualCoM.x+theWalkingEngineParams.xOffset;
-		CoMdiff.y=coMDelayBuffer[theWalkingEngineParams.halSensorDelay].y-theActualCoM.y;
+		ZMPdiff.x=delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].x-realZMP.x;
+		ZMPdiff.y=delayBuffer[theWalkingEngineParams.sensorControl.sensorDelay].y-realZMP.y;
+		CoMdiff.x=coMDelayBuffer[theWalkingEngineParams.sensorControl.halSensorDelay].x-theActualCoM.x+theWalkingEngineParams.comOffsets.xFixed;
+		CoMdiff.y=coMDelayBuffer[theWalkingEngineParams.sensorControl.halSensorDelay].y-theActualCoM.y;
 	}
 
 
@@ -149,17 +149,15 @@ Point ZMPIPControllerNG::controllerStep()
 
 	static bool sensorOn=false;
 
-	if ((thePatternGenRequest.newState==PatternGenRequest::walking ||
-		theWalkingInfo.kickPhase!=freeLegNA) &&
+	if ((thePatternGenRequest.newState==PatternGenRequest::walking) &&
     isStable)
 		sensorOn=true;
 
-  if (!(thePatternGenRequest.newState==PatternGenRequest::walking ||
-		theWalkingInfo.kickPhase!=freeLegNA))
+  if (!(thePatternGenRequest.newState==PatternGenRequest::walking))
 		sensorOn=false;
 
 	if (sensorOn && localSensorScale<1)
-		localSensorScale+=1.0f/theWalkingEngineParams.zmpSmoothPhase;
+		localSensorScale+=1.0f/theWalkingEngineParams.walkTransition.zmpSmoothPhase;
 
 	if (!sensorOn)
 		delayCounter++;
@@ -167,16 +165,16 @@ Point ZMPIPControllerNG::controllerStep()
 		delayCounter=0;
 
 	if (delayCounter>theControllerParams.N && localSensorScale>0)
-		localSensorScale-=1.0f/theWalkingEngineParams.zmpSmoothPhase;
+		localSensorScale-=1.0f/theWalkingEngineParams.walkTransition.zmpSmoothPhase;
 
 	float _obs_x[3], _obs_y[3];
 
 	ZMPdiff.rotate2D(-robotPosition.r);
-	ZMPdiff *= (localSensorScale * theWalkingEngineParams.sensorControlRatio[0]);
+	ZMPdiff *= (localSensorScale * theWalkingEngineParams.sensorControl.sensorControlRatio[0]);
 	ZMPdiff.rotate2D(robotPosition.r);
 
 	CoMdiff.rotate2D(-robotPosition.r);
-	CoMdiff *= (localSensorScale * theWalkingEngineParams.sensorControlRatio[0]);
+	CoMdiff *= (localSensorScale * theWalkingEngineParams.sensorControl.sensorControlRatio[0]);
 	CoMdiff.rotate2D(robotPosition.r);
 
 	Point u;

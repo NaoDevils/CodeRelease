@@ -701,7 +701,10 @@ void CLIPLineFinder::enhanceFieldLines(const bool &upper)
     }
     if (distSum > std::max(3.f,(line->lineWidthStart+line->lineWidthEnd)/5))
     {
-      line = lineVector.erase(line);
+      if (lineLength < 1500.f)
+        line = lineVector.erase(line);
+      else
+        line++;
       continue;
     }
     else if (!checkPoints.empty() && 
@@ -762,7 +765,10 @@ void CLIPLineFinder::enhanceFieldLines(const bool &upper)
     }
     if (distSum > std::max<float>(3.f,(line->lineWidthStart+line->lineWidthEnd)/5))
     {
-      line = lineVector.erase(line);
+      if (lineLength < 1500.f)
+        line = lineVector.erase(line);
+      else
+        line++;
     }
     else
     {
@@ -812,7 +818,7 @@ bool CLIPLineFinder::getLineCenterAndWidth(const Vector2f scanPoint, const Vecto
   float stepSize = scanDir.norm();
   float maxWidth = std::max<float>(width*2,6.f);
 
-  while (!image.isOutOfImage(checkPoint.x(),checkPoint.y(),3) && width < maxWidth)
+  while (!image.isOutOfImage(checkPoint.x(),checkPoint.y(),3) && localWidth < maxWidth)
   {
 #ifdef USE_FULL_RESOLUTION
   image.getPixel((unsigned int)checkPoint.x,(unsigned int)checkPoint.y,&p);
@@ -1437,9 +1443,16 @@ bool CLIPLineFinder::createFieldLine(
   CLIPFieldLinesPercept::FieldLine newFL;
   
   Vector2f startImage,endImage;
-  if (!Geometry::getIntersectionOfLines(regLine, Geometry::Line(pointsOnLine.front(), Vector2f(0.f, 1.f)), startImage)
-    || !Geometry::getIntersectionOfLines(regLine, Geometry::Line(pointsOnLine.back(), Vector2f(0.f, 1.f)), endImage))
-    return false;
+  if (pointsOnLine.front().x() < pointsOnLine.back().x())
+  {
+    startImage = pointsOnLine.front();
+    endImage = pointsOnLine.back();
+  }
+  else
+  {
+    startImage = pointsOnLine.back();
+    endImage = pointsOnLine.front();
+  }
   
   newFL.startInImage = startImage.cast<int>();
   newFL.endInImage = endImage.cast<int>();

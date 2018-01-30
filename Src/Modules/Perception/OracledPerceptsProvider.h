@@ -81,13 +81,13 @@ public:
   OracledPerceptsProvider();
 
 private:
-  std::vector<Vector2f> goalPosts;                               /*< The positions of the four goal posts (needed for computing goal percepts)*/
-  std::vector<Vector2f> penaltyMarks;                            /*< The positions of the two penalty marks (needed for computing penalty mark percepts)*/
-  std::vector<Vector2f> ccPoints;                                /*< The positions of five center circle points (needed for computing center circle percept)*/
-  std::vector<std::pair<Vector2f, Vector2f>> lines;              /*< The lines on the field */
-  std::vector<std::pair<Vector2f, Vector2f>> fieldBoundaryLines; /*< The boundary of the field */
-  Vector2f viewPolygon[4];                                       /*< A polygon that describes the currently visible area in lower image*/
-  Vector2f viewPolygonUpper[4];                                  /*< A polygon that describes the currently visible area in upper image*/
+  std::vector<Vector2f> goalPosts;                               /**< The positions of the four goal posts (needed for computing goal percepts)*/
+  std::vector<Vector2f> penaltyMarks;                            /**< The positions of the two penalty marks (needed for computing penalty mark percepts)*/
+  std::vector<Vector2f> ccPoints;                                /**< The positions of five center circle points (needed for computing center circle percept)*/
+  std::vector<std::pair<Vector2f, Vector2f>> lines;              /**< The lines on the field */
+  std::vector<std::pair<Vector2f, Vector2f>> fieldBoundaryLines; /**< The boundary of the field */
+  Vector2f viewPolygon[4];                                       /**< A polygon that describes the currently visible area in lower image*/
+  Vector2f viewPolygonUpper[4];                                  /**< A polygon that describes the currently visible area in upper image*/
 
   /** One main function, might be called every cycle
   * @param ballPercept The data struct to be filled

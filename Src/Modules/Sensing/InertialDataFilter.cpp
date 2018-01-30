@@ -93,7 +93,7 @@ void InertialDataFilter::update(InertialData& inertialData)
   bool useFeet = true;
   MODIFY("module:InertialDataFilter:useFeet", useFeet);
   if(useFeet &&
-     (theMotionInfo.motion == MotionRequest::walk || 
+     (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick ||
       (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::standHigh) ||
        (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::stand)) &&
      std::abs(safeRawAngle.x()) < calculatedAccLimit.x() && std::abs(safeRawAngle.y()) < calculatedAccLimit.y())

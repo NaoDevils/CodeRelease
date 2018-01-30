@@ -9,6 +9,7 @@
 #include "Modules/Infrastructure/CameraProvider.h"
 #include "Modules/Infrastructure/CognitionLogDataProvider.h"
 #include "Modules/Infrastructure/TeammateDataProvider.h"
+#include "Modules/Infrastructure/MocapDataProvider.h"
 #include "Platform/BHAssert.h"
 #include "Representations/Infrastructure/TeammateData.h"
 
@@ -17,6 +18,9 @@ Cognition::Cognition() :
   INIT_RECEIVER(MotionToCognition),
   INIT_SENDER(CognitionToMotion),
   INIT_TEAM_COMM,
+#ifdef USE_MOCAP
+  INIT_MOCAP_COMM,
+#endif // USE_MOCAP
   moduleManager({ModuleBase::cognitionInfrastructure, ModuleBase::perception, ModuleBase::pathPlanning, ModuleBase::modeling, ModuleBase::behaviorControl})
 {
   theDebugSender.setSize(5200000, 100000);
@@ -28,6 +32,9 @@ void Cognition::init()
 {
   Global::theTeamOut = &theTeamSender;
   START_TEAM_COMM;
+#ifdef USE_MOCAP
+  START_MOCAP_COMM;
+#endif // USE_MOCAP
   moduleManager.load();
   BH_TRACE_INIT("Cognition");
 
@@ -47,6 +54,12 @@ bool Cognition::main()
   // read from team comm udp socket
   RECEIVE_TEAM_COMM;
 
+  // Read mocap data from mocap comm udp socket
+#ifdef USE_MOCAP
+  RECEIVE_MOCAP_COMM;
+#endif // USE_MOCAP
+  
+
   if(CognitionLogDataProvider::isFrameDataComplete() && CameraProvider::isFrameDataComplete())
   {
     timingManager.signalProcessStart();
@@ -54,6 +67,10 @@ bool Cognition::main()
 
     BH_TRACE_MSG("before TeammateDataProvider");
     TeammateDataProvider::handleMessages(theTeamReceiver);
+
+#ifdef USE_MOCAP
+    MocapDataProvider::handleMessages(theMocapReceiver);
+#endif // USE_MOCAP
 
     // Reset coordinate system for debug field drawing
     DECLARE_DEBUG_DRAWING("origin:Reset", "drawingOnField"); // Set the origin to the (0,0,0)

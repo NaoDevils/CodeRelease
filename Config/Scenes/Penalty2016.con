@@ -4,9 +4,14 @@ call Includes/Normal
 call Includes/Views
 
 call Includes/DebugResponses
+call Includes/Behavior3D
 
 # press any key to activate the joystick
 jc press 1 call Includes/Joystick
 jc press 2 call Includes/Joystick
 jc press 3 call Includes/Joystick
 jc press 4 call Includes/Joystick
+
+# game state should initially be set to "set" in Penalty Shootout
+# its important to call "gc set" before "gc playing" for SelfLocator!
+ gc set

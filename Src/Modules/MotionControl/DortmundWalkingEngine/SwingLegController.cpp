@@ -77,205 +77,16 @@ void SwingLegController::reset()
 {
   phases.clear();
   footToModify = -1;
-  lastKick = 5;
   currentKickPhase = freeLegNA;
-}
-
-bool SwingLegController::initKick(int footNum, Point &endFootPos, bool longKick)
-{
-#ifndef WALKING_SIMULATOR
-
-  if (lastKick < 6 && !longKick)
-  {
-    lastKick++;
-    return false;
-  }
-
-  WalkingEngineParams curparams = (WalkingEngineParams &)theFreeLegPhaseParams;
-
-  if (!longKick)
-    curparams = theWalkingEngineParams;
-
-  Vector2f endEffectorOffset(-0.01f - 0.06f, 0); // -0.06-0.03, -0.01-0.03
-  endEffectorOffset.rotate(theWalkingInfo.robotPosition.rotation);
-  Vector2f ballPos, ballPosWEWCS;
-
-  float kickDirection = theMotionRequest.walkRequest.kickDirection;
-  if (footNum == LEFT_FOOT) // Robot stands on right foot?
-  {
-    if (kickDirection > curparams.rotMax)
-      kickDirection = curparams.rotMax;
-    if (kickDirection < curparams.rotMin)
-      kickDirection = curparams.rotMin;
-  }
-  else
-  {
-    if (kickDirection < -1 * curparams.rotMax)
-      kickDirection = -1 * curparams.rotMax;
-    if (kickDirection > -1 * curparams.rotMin)
-      kickDirection = -1 * curparams.rotMin;
-  }
-
-  /* Fixme:
-  (gdb) p kickStartLen
-  $20 = 0
-  (gdb) p normDistToRotMax
-  $21 = 1.33333337
-  (gdb) p distToRotMax
-  $22 = <optimized out>
-  (gdb) p footNum
-  $23 = 1
-  (gdb) p kickDirection
-  $24 = 0.5
-  (gdb) p theWalkingEngineParams.rotMax
-  $25 = 1.5
-  (gdb)
-  */
-
-  float distToRotMax = (float)(std::abs((1 - footNum * 2) * theWalkingEngineParams.rotMax - kickDirection));
-
-  // Normalize the distance
-  float normDistToRotMax = distToRotMax / theWalkingEngineParams.rotMax;
-
-  // It is possible that it is larger than one, since it can be rotated into the other direction.
-  // However, we want only to measure "how inner" the kick is, so everything outer is just 1.
-  if (normDistToRotMax > 1)
-    normDistToRotMax = 1.f;
-
-
-
-  if (theMotionRequest.walkRequest.kickStrength != 0)
-  {
-
-    ballPos = theBallModel.estimate.position;
-    if (normDistToRotMax < 0.5f)
-      ballPos = Vector2f(theWalkingEngineParams.fixedBallPos[0], theWalkingEngineParams.fixedBallPos[1]);
-
-    LOG("Kick", "BallPos.x", theBallModel.estimate.position.x);
-    LOG("Kick", "BallPos.y", theBallModel.estimate.position.y);
-    LOG("Kick", "clipped BallPos.x", ballPos.x);
-    LOG("Kick", "clipped BallPos.y", ballPos.y);
-
-    ballPosWEWCS = ballPos.rotate(theWalkingInfo.robotPosition.rotation) / 1000 + theWalkingInfo.ballCSinWEWCS + endEffectorOffset;
-
-    LOG("Kick", "WCS BallPos.x", ballPos.x);
-    LOG("Kick", "WCS BallPos.y", ballPos.y);
-  }
-  else
-  {
-    ballPosWEWCS.x() = phases.front().members.front().footPos[footNum].x;
-    ballPosWEWCS.y() = phases.front().members.front().footPos[footNum].y;
-
-    MARK("Kick", "BallPos.x");
-    MARK("Kick", "BallPos.y");
-    MARK("Kick", "clipped BallPos.x");
-    MARK("Kick", "clipped BallPos.y");
-    MARK("Kick", "WCS BallPos.x");
-    MARK("Kick", "WCS BallPos.y");
-  }
-
-
-
-  float kickStartIn = normDistToRotMax * curparams.kickStart[0] + (1 - normDistToRotMax) * curparams.kickStart[1]; // Distance before the ball (in kick direction) [m]
-  float kickStopIn = normDistToRotMax * curparams.kickStop[0] + (1 - normDistToRotMax) * curparams.kickStop[1]; // Distance after the ball [m]
-
-
-  // Changed from using theWalkinEngineParams to curparams, seems to be a bug?!
-  kickStartLen = (int)(normDistToRotMax * curparams.kickStartLen[0] + (1 - normDistToRotMax) * curparams.kickStartLen[1]);
-  kickStopLen = (int)(normDistToRotMax * curparams.kickStopLen[0] + (1 - normDistToRotMax) * curparams.kickStopLen[1]);
-
-  if (theMotionRequest.walkRequest.kickStrength == 0)
-  {
-    kickStartIn = kickStopIn = 0;
-  }
-
-
-  // Ball left = leg left, otherwise we have to use the right leg
-  if ((ballPos.y() >= 0 && footNum == RIGHT_FOOT) ||
-    (ballPos.y() < 0 && footNum == LEFT_FOOT))
-  {
-    // wrong foot
-  }
-
-  Vector2f kickStart2D(static_cast<float>(kickStartIn), 0);
-  kickStart2D.rotate(kickDirection); // Kickstart in robot coordinate system
-  kickStart2D.y() *= 1.7f; // Extend the y start since we must move the foot around the ball without touching it!
-  kickStart2D = kickStart2D.rotate(theWalkingInfo.robotPosition.rotation) + ballPosWEWCS; // auf rotation!=0 achten bei ballPos
-  kickStart.x() = kickStart2D.x();
-  kickStart.y() = kickStart2D.y();
-  kickStart.z() = curparams.stepHeight[0];
-
-  LOG("Kick", "kickStart.x", kickStart.x);
-  LOG("Kick", "kickStart.y", kickStart.y);
-  LOG("Kick", "kickStart.z", kickStart.z);
-
-  if (theMotionRequest.walkRequest.kickStrength != 0)
-  {
-    Vector2f kickVec2D(std::abs(kickStopIn - kickStartIn), 0);
-    kickVec2D.rotate((kickDirection + theWalkingInfo.robotPosition.rotation));
-    kickVec.x() = kickVec2D.x();
-    kickVec.y() = kickVec2D.y();
-    kickVec.z() = 0;
-  }
-  else
-    kickVec = Vector3f::Zero();
-
-  kickStop = kickVec + kickStart;
-
-  LOG("Kick", "kickTime", theMotionRequest.kickTime);
-  LOG("Kick", "kickDirection", kickDirection);
-
-  LOG("Kick", "kickVec.x", kickVec.x);
-  LOG("Kick", "kickVec.y", kickVec.y);
-
-  ballPos = theBallModel.estimate.position;
-  ballPosWEWCS = ballPos.rotate(theWalkingInfo.robotPosition.rotation) / 1000 + theWalkingInfo.ballCSinWEWCS + endEffectorOffset;
-
-  Vector2f distToBall = ballPosWEWCS - Vector2f(endFootPos.x, endFootPos.y);
-  distToBall.rotate(-theWalkingInfo.robotPosition.rotation);
-
-  // Not so easy since the Max and Min must be mirrored when using the other foot. Settings are for
-  // right foot. And remember, footNum is the standing foot, not the kicking foot.
-  // footNum = 1, Min = -0.7, Ist = 0.6: 0.6 - -1 * -0.7 <=> 0.6 - 0.7
-  // footNum = 0: -0.6 - 1 * -0.7 <=> -0.6 + 0.7
-  // At the moment only max is used.
-  // float distToRotMin =  std::abs(theMotionRequest.kickDirection - (1 - footNum * 2) * theWalkingEngineParams.rotMin);
-
-  // footNum = 1, Max = 1.5, Ist = -1.4: -1 * 1.5 - -1.4 <=> -1.5 + 1.4
-  // footNum = 0: 1 * 1.5 - 1.4 <=>  1.5 - 1.4
-
-  float yMax = curparams.ballYMax[0];
-  float yMin = curparams.ballYMin[0];
-  float xMax = curparams.ballXMax[0];
-  float xMin = curparams.ballXMin[0];
-  // In this is true, then the foot is rotated for an "inner" kick. Then the ball cannot be at an "outer"
-  // position. It should be more in the middle of the robot.
-  // Set the maximum/minimum for y depending on the desired direction
-  yMax = normDistToRotMax * curparams.ballYMax[0] + (1 - normDistToRotMax) * curparams.ballYMax[1];
-  yMin = normDistToRotMax * curparams.ballYMin[0] + (1 - normDistToRotMax) * curparams.ballYMin[1];
-  xMax = normDistToRotMax * curparams.ballXMax[0] + (1 - normDistToRotMax) * curparams.ballXMax[1];
-  xMin = normDistToRotMax * curparams.ballXMin[0] + (1 - normDistToRotMax) * curparams.ballXMin[1];
-
-
-  return
-    distToBall.x() < xMax &&
-    distToBall.x() > xMin &&
-    (1 - footNum * 2) * distToBall.y() < yMax && // the smaller/larger comparison is exchanged when using other foot
-    (1 - footNum * 2) * distToBall.y() > yMin;   // so both sides are multiplied with -1 in that case
-#endif
 }
 
 void SwingLegController::PlanFootReset(int footNum)
 {
   FootpositionListElement &curPos = phases.front().members.front();
   float yFac;
-  yFac =  std::abs(curPos.speed.y * 1000) / theFreeLegPhaseParams.maxSpeedY;
-  float freeLegStepHeight = (1 - yFac) * theFreeLegPhaseParams.stepHeight[0] + yFac * theFreeLegPhaseParams.stepHeight[1];
-  yFac =  std::abs(curPos.speed.y * 1000) / theWalkingEngineParams.maxSpeedY;
-  float walkStepHeight = (1 - yFac) * theWalkingEngineParams.stepHeight[0] + yFac * theWalkingEngineParams.stepHeight[1];
-
-  if (curPos.phase == unlimitedDoubleSupport)
-    lastKick = 5;
+  yFac =  std::abs(curPos.speed.y * 1000) / theWalkingEngineParams.speedLimits.y;
+  float xStepHeight = curPos.speed.x > 0 ? theWalkingEngineParams.footMovement.stepHeight[0] : theWalkingEngineParams.footMovement.stepHeight[1];
+  float walkStepHeight = (1 - yFac) * xStepHeight + yFac * theWalkingEngineParams.footMovement.stepHeight[1];
 
   if (footToModify == footNum &&
     !curPos.instantKickRunning)
@@ -308,112 +119,19 @@ void SwingLegController::PlanFootReset(int footNum)
     ASSERT(++++phases.begin() != phases.end());
     
     Point polygonEnd = (++++phases.begin())->members.front().footPos[footNum];
-    int idx = std::abs(theMotionRequest.walkRequest.kickDirection) > 0.7f;
-    bool longKick = (++++phases.begin())->members.front().kickPhase == starting && 
-                    ((
-                    // Check for right foot
-                    (theMotionRequest.walkRequest.kickDirection >= 0 &&
-                    footNum == RIGHT_FOOT &&
-                    theBallModel.estimate.position.y() / 1000 > -theFreeLegPhaseParams.ballYMax[idx] &&
-                    theBallModel.estimate.position.y() / 1000 < -theFreeLegPhaseParams.ballYMin[idx]) ||
-
-                    // Check for left foot
-                    (theMotionRequest.walkRequest.kickDirection <= 0  && footNum == LEFT_FOOT &&
-                    theBallModel.estimate.position.y() / 1000 < theFreeLegPhaseParams.ballYMax[idx] &&
-                    theBallModel.estimate.position.y() / 1000 > theFreeLegPhaseParams.ballYMin[idx])) &&
-
-                    // Check x
-                    theBallModel.estimate.position.x() / 1000 < theFreeLegPhaseParams.ballXMax[idx] + 0.06 &&
-                    std::abs(theBallModel.estimate.position.y() / 1000) < theFreeLegPhaseParams.ballYMax[idx] &&
-                    theBallModel.estimate.position.x() / 1000 > theFreeLegPhaseParams.ballXMin[idx]);
-
-    if (longKick)
-    {
-      Point p[6];
-      if (std::abs(theMotionRequest.walkRequest.kickDirection) < 0.7f)
-      {
-        p[0] = polygonStart;
-        p[1] = polygonStart;
-        p[2] = Point(theFreeLegPhaseParams.kickStop[0], 0).rotate2D(theMotionRequest.walkRequest.kickDirection + theWalkingInfo.robotPosition.rotation) + polygonEnd;
-        p[3] = Point(theFreeLegPhaseParams.kickStop[0], 0).rotate2D(theMotionRequest.walkRequest.kickDirection + theWalkingInfo.robotPosition.rotation) + polygonEnd;
-        p[4] = polygonEnd;
-        p[5] = polygonEnd;
-      }
-      else
-      {
-        Point ballDiffToCenter = Point(0, theBallModel.estimate.position.y() / 1000 - (1 - 2 * footNum) * theFreeLegPhaseParams.footYDistance).rotate2D(theWalkingInfo.robotPosition.rotation);
-        Point yDist = Point(0, (1 - 2 * footNum) * 0.1f).rotate2D(theWalkingInfo.robotPosition.rotation);
-        p[0] = polygonStart;
-        p[1] = polygonStart + yDist + ballDiffToCenter;
-        p[2] = ((polygonStart - polygonEnd) * 0.5f).rotate2D(theMotionRequest.walkRequest.kickDirection) + polygonEnd + ballDiffToCenter;
-        p[3] = ((polygonStart - polygonEnd) * 0.33f).rotate2D(theMotionRequest.walkRequest.kickDirection) + polygonEnd + ballDiffToCenter;
-        p[4] = Point(theFreeLegPhaseParams.kickStop[1], 0).rotate2D(theMotionRequest.walkRequest.kickDirection + theWalkingInfo.robotPosition.rotation) + polygonEnd + ballDiffToCenter;
-        p[5] = Point(theFreeLegPhaseParams.kickStop[1], 0).rotate2D(theMotionRequest.walkRequest.kickDirection + theWalkingInfo.robotPosition.rotation) + polygonEnd + ballDiffToCenter;
-      }
-
-      START_POLYGON(5, polygonStart, polygonEnd, theFreeLegPhaseParams.footPitch);
-      POINT_XY(p[0].x, p[0].y, theFreeLegPhaseParams.heightPolygon[0], freeLegStepHeight);
-      POINT_XY(p[1].x, p[1].y, theFreeLegPhaseParams.heightPolygon[1], freeLegStepHeight);
-      POINT_XY(p[2].x, p[2].y, theFreeLegPhaseParams.heightPolygon[2], freeLegStepHeight);
-      POINT_XY(p[3].x, p[3].y, theFreeLegPhaseParams.heightPolygon[2], freeLegStepHeight);
-      POINT_XY(p[4].x, p[4].y, theFreeLegPhaseParams.heightPolygon[3], freeLegStepHeight);
-      POINT_XY(p[5].x, p[5].y, theFreeLegPhaseParams.heightPolygon[4], freeLegStepHeight);
-      END_POLYGON(output, len, POLYNOM_DEGREE);
-      currentKickPhase = curPos.kickPhase;
-    }
-    else if (initKick(!footNum, polygonEnd, longKick) && // must be the first so that it is surely called!
-      (theMotionRequest.walkRequest.kickStrength < 0))
-    {
-
-      modifier.x = (kickStop.x() - polygonEnd.x) * theWalkingEngineParams.stepOffsetFactor;
-      modifier.y = (kickStop.y() - polygonEnd.y) * theWalkingEngineParams.stepOffsetFactor;
-      polygonEnd += modifier;
-      footToModify = footNum;
-      lastModified = -1;
-
-      int kickTime = len - kickStartLen - kickStopLen - 1;
-
-      if (kickTime < 1)
-        return;
-      Point _kickStart(kickStart.x(), kickStart.y(), kickStart.z(), polygonStart.r);
-      Point _kickStop(kickStop.x(), kickStop.y(), kickStop.z(), polygonEnd.r);
-      START_POLYGON(2, polygonStart, _kickStart, theFreeLegPhaseParams.footPitch);
-      POINT_XY(polygonStart.x, polygonStart.y, theFreeLegPhaseParams.heightPolygon[0], kickStart.z());
-      POINT_XY(kickStart.x(), kickStart.y(), theFreeLegPhaseParams.heightPolygon[1], kickStart.z());
-      END_POLYGON(output, kickStartLen, 2);
-
-      START_POLYGON(2, _kickStart, _kickStop, theFreeLegPhaseParams.footPitch);
-      POINT_XY(kickStart.x(), kickStart.y(), theFreeLegPhaseParams.heightPolygon[2], kickStop.z());
-      POINT_XY(kickStop.x(), kickStop.y(), theFreeLegPhaseParams.heightPolygon[2], kickStop.z());
-      END_POLYGON(&output[kickStartLen], kickTime, 2);
-
-      START_POLYGON(2, _kickStop, polygonEnd, theFreeLegPhaseParams.footPitch);
-      POINT_XY(kickStop.x(), kickStop.y(), theFreeLegPhaseParams.heightPolygon[3], kickStop.z());
-      POINT_XY(polygonEnd.x, polygonEnd.y, theFreeLegPhaseParams.heightPolygon[4], kickStop.z());
-      END_POLYGON(&output[kickStartLen + kickTime], kickStopLen, 2);
-
-
-      lastKick = 0;
-      for (FootList::iterator fp = (++phases.begin())->members.begin();
-        fp != (++phases.begin())->members.end(); fp++)
-        fp->instantKickRunning = true;
-
-
-    }
-    else
     {
       float endingFactor = 1.;
-      START_POLYGON(5, polygonStart, polygonEnd, theWalkingEngineParams.footPitch);
-      POINT(theWalkingEngineParams.forwardPolygon[0], theWalkingEngineParams.heightPolygon[0], endingFactor * walkStepHeight);
-      POINT(theWalkingEngineParams.forwardPolygon[1], theWalkingEngineParams.heightPolygon[1], endingFactor * walkStepHeight);
-      POINT(theWalkingEngineParams.forwardPolygon[2], theWalkingEngineParams.heightPolygon[2], endingFactor * walkStepHeight);
-      POINT(theWalkingEngineParams.forwardPolygon[3], theWalkingEngineParams.heightPolygon[3], endingFactor * walkStepHeight);
-      POINT(theWalkingEngineParams.forwardPolygon[4], theWalkingEngineParams.heightPolygon[4], endingFactor * walkStepHeight);
+      START_POLYGON(5, polygonStart, polygonEnd, theWalkingEngineParams.footMovement.footPitch);
+      POINT(theWalkingEngineParams.footMovement.forwardPolygon[0], theWalkingEngineParams.footMovement.heightPolygon[0], endingFactor * walkStepHeight);
+      POINT(theWalkingEngineParams.footMovement.forwardPolygon[1], theWalkingEngineParams.footMovement.heightPolygon[1], endingFactor * walkStepHeight);
+      POINT(theWalkingEngineParams.footMovement.forwardPolygon[2], theWalkingEngineParams.footMovement.heightPolygon[2], endingFactor * walkStepHeight);
+      POINT(theWalkingEngineParams.footMovement.forwardPolygon[3], theWalkingEngineParams.footMovement.heightPolygon[3], endingFactor * walkStepHeight);
+      POINT(theWalkingEngineParams.footMovement.forwardPolygon[4], theWalkingEngineParams.footMovement.heightPolygon[4], endingFactor * walkStepHeight);
       END_POLYGON(output, len, POLYNOM_DEGREE);
 
       // Now add a rotation around x
       for (int i = 1; i < len; i++)
-        output[i].rx = (output[i] - output[i-1]).rotate2D(-output[i].r).y * theWalkingEngineParams.footRoll;
+        output[i].rx = (output[i] - output[i-1]).rotate2D(-output[i].r).y * theWalkingEngineParams.footMovement.footRoll;
       currentKickPhase = freeLegNA;
     }
 
@@ -455,8 +173,7 @@ bool SwingLegController::modPossible(PhaseList::iterator ph,
   for (PhaseList::iterator t_ph = ph; t_ph != phases.end(); t_ph++)
   {
     const Point modRCS = theWalkingInfo.vecToRobotCoords(t_ph->getSidestep());
-    if (std::abs(modRCS.v[dim] + modificatorRCS) > theWalkingEngineParams.maxSidestep[dim] ||
-      std::abs(modRCS.v[dim] + modificatorRCS) < theWalkingEngineParams.minSidestep[dim])// TODO: Fixme, min for the overall step!
+    if (std::abs(modRCS.v[dim] + modificatorRCS) > theWalkingEngineParams.maxSidestep[dim])
       return false;
   }
   return true;
@@ -494,7 +211,7 @@ void SwingLegController::modifyFp(int startFoot,
   // double support must be done now.
   if (ph == ++phases.begin())
   {
-    Point interpol = modification[dim] / phases.front().members.size();
+    Point interpol = modification[dim] / static_cast<float>(phases.front().members.size());
     int i = 0;
     for (FootList::iterator fp = phases.begin()->members.begin();
       fp != phases.begin()->members.end();
@@ -536,6 +253,8 @@ void SwingLegController::sidestep()
   Vector2f posErrRCS = theWalkingInfo.vecToRobotCoords(posErrWCS);
   Vector2f velErrRCS = theWalkingInfo.vecToRobotCoords(velErrWCS);
   Vector2f zmpErrRCS = theWalkingInfo.vecToRobotCoords(zmpErrWCS);
+  
+
 
   for (int i = 0; i < 2; i++)
     modification.aTime[i].startZMP =
@@ -584,7 +303,7 @@ void SwingLegController::sidestep()
       if (!yDone &&
         ((fp.footPos[LEFT_FOOT].y -
         fp.footPos[RIGHT_FOOT].y -
-        2 * theWalkingEngineParams.footYDistance -
+        2 * theWalkingEngineParams.footMovement.footYDistance -
         (1 - 2 * footNum) * offsetRCS.y() >= 0) ||
         ((1 - 2 * footNum) * offsetRCS.y() >= 0)) &&
         modPossible(ph, offsetRCS.y(), Y)) // Also possible to reduce the last side step
@@ -607,15 +326,10 @@ void SwingLegController::updateFootpositions(Footpositions &footpositions)
 {
   DEBUG_RESPONSE("module:SwingLegController:debugOutput")
     debug = true;
-  paramsKickMotion.handle();
-
-  // if (paramsKickMotion.p.empty())
-  // paramsKickMotion.p.push_back(Point());
-
+  
   if (isRunning && !theFootSteps.running)
     reset();
 
-  footpositions.kickPhase = currentKickPhase;
   isRunning = theFootSteps.running;
 
   if (theFallDownState.state != FallDownState::upright) reset();

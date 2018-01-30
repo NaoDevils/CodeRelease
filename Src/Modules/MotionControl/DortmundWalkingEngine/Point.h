@@ -291,7 +291,7 @@ public:
 
   /**
   * Checks for equality to another point.
-  * @param p The other point.
+  * @param other The other point.
   * @return True if equal, false otherwise.
   */
   bool operator != (Point other)
@@ -387,7 +387,6 @@ public:
   /**
   * Rotates the point around the x axis. The x component is therefore constant.
   * @param r Radians.
-  * @return Copy of the instance.
   */
   void rotateAroundX(float r)
   {
@@ -402,7 +401,6 @@ public:
   /**
   * Rotates the point around the y axis. The y component is therefore constant.
   * @param r Radians.
-  * @return Copy of the instance.
   */
   void rotateAroundY(float r)
   {
@@ -481,6 +479,16 @@ public:
   {
     Point nullPoint;
     return ((*this).scalarProduct(vec))/((*this).euklidDistance3D(nullPoint)*vec.euklidDistance3D(nullPoint));
+  }
+
+  /**
+  * Returns the normalized of the vector 0-->this.
+  * @return The length.
+  */
+  Point norm() const
+  {
+	  float l = getPositionVecLen();
+	  return Point(x/l, y/l, z/l);
   }
 
   /** 

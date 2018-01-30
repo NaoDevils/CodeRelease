@@ -12,8 +12,10 @@
 #include "Tools/Streams/InStreams.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Settings.h"
+#include <chrono>
+#include "Tools/date.h"
 
-#include "Representations/Infrastructure/SPLStandardMessage.h"
+#include <SPLStandardMessage.h>
 
 TeamHandler::TeamHandler(TeamDataIn& in, TeamDataOut& out) :
   in(in), out(out)
@@ -53,7 +55,7 @@ void TeamHandler::send()
   if(!port || out.isEmpty())
     return;
 
-  if(socket.write((char*)&out.message, teamCommHeaderSize + ndevilsHeaderSize + out.message.numOfDataBytes))
+  if(socket.write((char*)&out.message, teamCommHeaderSize + out.message.numOfDataBytes))
     out.clear();
 
   // Plot usage of data buffer in percent:
@@ -79,11 +81,10 @@ unsigned TeamHandler::receive()
     if(size >= teamCommHeaderSize && size <= static_cast<int>(sizeof(RoboCup::SPLStandardMessage)))
     {
       receivedSize = static_cast<unsigned>(size);
-      if (checkMessage(inMsg, remoteIp, receivedSize - teamCommHeaderSize - ndevilsHeaderSize))
+      if (checkMessage(inMsg, remoteIp, receivedSize - teamCommHeaderSize))
       {
         in.messages.push_back(inMsg);
-        if (Global::getSettings().gameMode != Settings::dropIn)
-          addDataToQueue(inMsg, remoteIp);
+        addDataToQueue(inMsg, remoteIp);
       }
     }
   }
@@ -94,6 +95,11 @@ unsigned TeamHandler::receive()
 
 bool TeamHandler::checkMessage(RoboCup::SPLStandardMessage& msg, const unsigned remoteIp, const unsigned realNumOfDataBytes)
 {
+  if (in.messages.size() >= MAX_NUM_OF_TC_MESSAGES)
+  {
+    OUTPUT_WARNING("Received too many packages, ignoring package from " << remoteIp);
+    return false;
+  }
   if (msg.header[0] != 'S' || msg.header[1] != 'P' || msg.header[2] != 'L' || msg.header[3] != ' ')
   {
     OUTPUT_WARNING("Received package from ip " << remoteIp << " with Header '" << msg.header[0] << msg.header[1] << msg.header[2] << msg.header[3] << "' but should be 'SPL '. Ignoring package...");
@@ -106,19 +112,27 @@ bool TeamHandler::checkMessage(RoboCup::SPLStandardMessage& msg, const unsigned 
     return false;
   }
 
+#ifdef TARGET_ROBOT
+  if (msg.teamNum != Global::getSettings().teamNumber)
+  {
+    OUTPUT_WARNING("Received package from ip " << remoteIp << " with team number '" << msg.teamNum << "'. Ignoring package...");
+    return false;
+  }
+#endif
+
   if (msg.numOfDataBytes != static_cast<uint16_t>(realNumOfDataBytes))
   {
     OUTPUT_WARNING("SPL Message: numOfDataBytes is '" << msg.numOfDataBytes << "' but realNumOfDataBytes is '" << realNumOfDataBytes << "'.");
     msg.numOfDataBytes = std::min(msg.numOfDataBytes, static_cast<uint16_t>(realNumOfDataBytes));
 
-    if (Global::getSettings().gameMode != Settings::dropIn)
+    if (Global::getSettings().gameMode != Settings::mixedTeam)
     {
       OUTPUT_WARNING("... ignoring package!");
       return false;
     }
   }
 
-  if (Global::getSettings().gameMode != Settings::dropIn && msg.numOfDataBytes < ndevilsHeaderSize)
+  if (Global::getSettings().gameMode != Settings::mixedTeam && msg.numOfDataBytes < ndevilsHeaderSize)
   {
     OUTPUT_WARNING("Ignoring SPL Message because: 'numOfDataBytes < ndevilsHeaderSize'.");
     return false;
@@ -130,13 +144,28 @@ void TeamHandler::addDataToQueue(const RoboCup::SPLStandardMessage& msg, const u
 {
   const NDevilsHeader& header = (const NDevilsHeader&)*msg.data;
 
-  in.queue.out.bin << (remoteIp ? remoteIp : static_cast<int>(msg.playerNum));
-  in.queue.out.bin << header.timeStampSent;
+  in.queue.out.bin << static_cast<unsigned>(msg.playerNum);
+  // TODO: use remote timestamp to generate base
+  unsigned timeStampSent = 0;
+#ifdef TARGET_ROBOT
+  auto now = std::chrono::system_clock::now();
+  auto dp = date::floor<date::days>(now);
+  auto base = std::chrono::duration_cast<std::chrono::milliseconds>(dp.time_since_epoch()).count();
+  timeStampSent = static_cast<unsigned>(header.timeStampSent - base);
+#else
+  timeStampSent = static_cast<unsigned>(header.timeStampSent);
+#endif
+  // hack since no ntp sync at robocup 2017!
+  if (Global::getSettings().gameMode == Settings::mixedTeam)
+    timeStampSent = SystemCall::getCurrentSystemTime();
+  in.queue.out.bin << timeStampSent;
   in.queue.out.bin << SystemCall::getCurrentSystemTime();
+  in.queue.out.bin << header.teamID;
+  in.queue.out.bin << header.isPenalized;
+  in.queue.out.bin << header.whistleDetected;
   in.queue.out.finishMessage(idNTPHeader);
-
-  in.queue.out.bin << static_cast<int>(msg.playerNum);
-  in.queue.out.finishMessage(idRobot);
+  if (std::abs(static_cast<int64_t>(timeStampSent) - static_cast<int64_t>(SystemCall::getCurrentSystemTime())) > 5000 || header.teamID != 12)
+    return;
 
   InBinaryMemory memory(msg.data + ndevilsHeaderSize, msg.numOfDataBytes - ndevilsHeaderSize);
   memory >> in.queue;

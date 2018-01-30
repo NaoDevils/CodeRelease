@@ -61,9 +61,9 @@ public:
   /**
   * The function returns statistics about a certain stop watch.
   * @param info Information on the stop watch to query.
-  * @param minTime The shortest measurement is returned to this variable in ms.
-  * @param maxTime The longest measurement is returned to this variable in ms.
-  * @param avgTime The average measurement is returned to this variable in ms.
+  * @param outMinTime The shortest measurement is returned to this variable in ms.
+  * @param outMaxTime The longest measurement is returned to this variable in ms.
+  * @param outAvgTime The average measurement is returned to this variable in ms.
   */
   void getStatistics(const Info& info, float& outMinTime, float& outMaxTime, float& outAvgTime) const;
 

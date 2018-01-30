@@ -2,15 +2,17 @@
 # from now, relative to estimated robot pose
 vfd worldState origin:RobotPose
 
-vfd worldState representation:BallModel
-vfd worldState module:BallModelProvider:local:hypotheses
-vfd worldState module:BallModelProvider:local:velocities
+#vfd worldState representation:BallModel
+#vfd worldState module:BallModelProvider:local:hypotheses
+#vfd worldState module:BallModelProvider:local:velocities
+#vfd worldState module:BallModelProvider:local:covariances
 vfd worldState representation:BallPercept:Field
 vfd worldState representation:CLIPCenterCirclePercept:Field
 vfd worldState representation:CLIPFieldLinesPercept:Field
 vfd worldState representation:PenaltyCrossPercept:Field
 #vfd worldState representation:CLIPGoalPercept:Field
 vfd worldState representation:RobotsPercept:Field
+vfd worldState origin:RobotPoseAfterPreview
 vfd worldState representation:MotionRequest
 
 # local obstacle grid view
@@ -20,5 +22,7 @@ vfd worldState representation:MotionRequest
 # back to global coordinates
 vfd worldState origin:Reset
 
-vfd worldState representation:TeamBallModel
+#vfd worldState representation:TeamBallModel
 #vfd worldState module:BallModelProvider:remote:hypotheses
+vfd worldState module:SelfLocator2017:hypotheses
+vfd worldState module:SelfLocator2017:LocalizationState

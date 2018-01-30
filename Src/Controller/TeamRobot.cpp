@@ -18,12 +18,9 @@ bool TeamRobot::main()
     DECLARE_DEBUG_DRAWING("origin:RobotPose", "drawingOnField"); // Set the origin to the robot's current position
     DECLARE_DEBUG_DRAWING("representation:BallModel", "drawingOnField"); // drawing of the ball model
     DECLARE_DEBUG_DRAWING("representation:TeamBallModel", "drawingOnField"); // drawing of the team ball model
-    DECLARE_DEBUG_DRAWING("representation:TeamPlayersModel", "drawingOnField"); // drawing of the team players model
     DECLARE_DEBUG_DRAWING("representation:GoalPercept:Field", "drawingOnField"); // drawing of the goal percept
     DECLARE_DEBUG_DRAWING("representation:MotionRequest", "drawingOnField"); // drawing of a request walk vector
-    DECLARE_DEBUG_DRAWING("representation:ObstacleModelCompressed:CenterCross", "drawingOnField"); //drawing center of obstacles from obstacle model
-    DECLARE_DEBUG_DRAWING("representation:LinePercept:Field", "drawingOnField");
-
+    
     uint8_t teamColor = 0,
             swapSides = 0;
     MODIFY("teamColor", ownTeamInfo.teamColor);
@@ -35,16 +32,8 @@ bool TeamRobot::main()
       ballModel.draw();
     if(SystemCall::getTimeSince(teamBallModelReceived) < 1000)
       teamBallModel.draw();
-    if(SystemCall::getTimeSince(teamPlayersModelReceived) < 1000)
-      teamPlayersModel.draw();
-    if(SystemCall::getTimeSince(goalPerceptReceived) < 1000)
-      goalPercept.draw();
     if(SystemCall::getTimeSince(motionRequestReceived) < 1000)
       motionRequest.draw();
-    if(SystemCall::getTimeSince(obstacleModelCompressedReceived) < 1000)
-      obstacleModelCompressed.draw();
-    if(SystemCall::getTimeSince(linePerceptReceived) < 1000)
-      linePercept.draw();
 
     if(swapSides ^ teamColor)
     {
@@ -72,14 +61,6 @@ bool TeamRobot::main()
     //DRAWTEXT("robotState", -5100, lineY, 150, ColorRGBA::white, "ballPercept: " << ballModel.lastPerception.position.x << ", " << ballModel.lastPerception.position.y);
     lineY -= 180;
     DRAWTEXT("robotState", -5100, lineY, 150, ColorRGBA::white, "memory usage: " << robotHealth.memoryUsage << " %");
-    if(goalPercept.timeWhenGoalPostLastSeen)
-    {
-      DRAWTEXT("robotState", 3700, lineY, 150, ColorRGBA::white, "goalLastSeen: " << SystemCall::getRealTimeSince(goalPercept.timeWhenGoalPostLastSeen) << " ms");
-    }
-    else
-    {
-      DRAWTEXT("robotState", 3700, lineY, 150, ColorRGBA::white, "goalLastSeen: never");
-    }
 
     lineY -= 180;
 

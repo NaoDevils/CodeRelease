@@ -33,7 +33,14 @@ double LineMatchingResult::calculateMeasurementLikelihoodSphericalCoordinates(co
 }
 
 
-bool LineMatchingResult::getCorrespondencesForLocalizationHypothesis(const Pose2f & localizationHypothesis, const Matrix3d & poseCovariance, double likelihoodThreshold, const Matrix2d & sphericalPointMeasurementCovariance_inv, std::vector<FieldLine> & correspondencesForObservations, bool requestedByLocalization) const
+bool LineMatchingResult::getCorrespondencesForLocalizationHypothesis(
+    const Pose2f & localizationHypothesis,
+    const Matrix3d & poseCovariance,
+    double likelihoodThreshold,
+    const Matrix2d & sphericalPointMeasurementCovariance_inv,
+    std::vector<FieldLine> & correspondencesForObservations,
+    bool displayWarning,
+    bool requestedByLocalization) const
 {
   Matrix3d poseCovariance_inv = poseCovariance.inverse();
   correspondencesForObservations.clear();
@@ -105,7 +112,7 @@ bool LineMatchingResult::getCorrespondencesForLocalizationHypothesis(const Pose2
           bestFit.pose.rotation = static_cast<float>(testPose.z());
           bestFit.pose.translation.x() = static_cast<float>(testPose.x());
           bestFit.pose.translation.y() = static_cast<float>(testPose.y());
-          bestFit.setLineCorrespondences(i->lineCorrespondences);;
+          bestFit.setLineCorrespondences(i->lineCorrespondences);
         }
       }
     }
@@ -118,17 +125,17 @@ bool LineMatchingResult::getCorrespondencesForLocalizationHypothesis(const Pose2
     // generate corresponding line segments as seen from the bestFit pose
     for (unsigned int i=0; i<observations.size(); i++)
     {
-      FieldLine correspondingSegment( projectPointToFieldLine(bestFit.pose, observations[i].start, fieldLines[bestFit.lineCorrespondences[i]]),
-                                      projectPointToFieldLine(bestFit.pose, observations[i].end, fieldLines[bestFit.lineCorrespondences[i]]),
-                                      observations[i].cameraHeight);
-      correspondencesForObservations.push_back(correspondingSegment);
+      Vector2d start = projectPointToFieldLine(bestFit.pose, observations[i].start, fieldLines[bestFit.lineCorrespondences[i]]);
+      Vector2d end = projectPointToFieldLine(bestFit.pose, observations[i].end, fieldLines[bestFit.lineCorrespondences[i]]);
+
+      if (start != end)
+        correspondencesForObservations.push_back(FieldLine(start, end, observations[i].cameraHeight));
+      else if (displayWarning)
+        OUTPUT_WARNING("LineMatchingResult - Projection of observed line does not match corresponding field line of best fitting pose");
     }
-    return true;
   }
-  else
-  {
-    return false;
-  }
+
+  return !correspondencesForObservations.empty();
 }
 
 Vector2d LineMatchingResult::projectPointToFieldLine(const Pose2f &pose, const Vector2d &pointInRelativeCoords, const LineMatchingResult::FieldLine &line) const
@@ -161,7 +168,7 @@ void LineMatchingResult::drawCorrespondences(const Pose2f & pose) const
   const int lineObsWidth = 50;
   const int correspondenceWidth = 50;
   const int lineObs2correspondenceWidth = 30;
-  if (getCorrespondencesForLocalizationHypothesis(pose,cov,0,measurementCov,correspondencesForObservations))
+  if (getCorrespondencesForLocalizationHypothesis(pose,cov,0,measurementCov,correspondencesForObservations, false))
   {
     for (unsigned int j=0; j<observations.size(); j++)
     {
@@ -198,7 +205,7 @@ void LineMatchingResult::drawRequestedCorrespondences(const Pose2f & pose, const
     const int lineObsWidth = 50;
     const int correspondenceWidth = 50;
     const int lineObs2correspondenceWidth = 30;
-    if (getCorrespondencesForLocalizationHypothesis(pose, cov, likelihoodThreshold, measurementCov, correspondencesForObservations))
+    if (getCorrespondencesForLocalizationHypothesis(pose, cov, likelihoodThreshold, measurementCov, correspondencesForObservations, false))
     {
       for (unsigned int j = 0; j < observations.size(); j++)
       {

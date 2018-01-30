@@ -14,7 +14,7 @@
   * Calculates a bezier courve based on the four point polygon.
   * @param point The Point on the courve.
   * @param polygon The Polygon as array of points.
-  * @param The Parameter t, must be between 0 and 1.
+  * @param t The Parameter t, must be between 0 and 1.
   */
 inline void FourPointBezier(Point *point, const Point *polygon, float t)
 {
@@ -26,7 +26,7 @@ inline void FourPointBezier(Point *point, const Point *polygon, float t)
 /** 
   * Calculates a one dimensional bezier courve based on the four point polygon.
   * @param polygon The Polygon as array of points.
-  * @param The Parameter t, must be between 0 and 1.
+  * @param t The Parameter t, must be between 0 and 1.
   * @return The coordinate of the curve point.
   */
 inline float FourPointBezier1D(const float *polygon, float t)

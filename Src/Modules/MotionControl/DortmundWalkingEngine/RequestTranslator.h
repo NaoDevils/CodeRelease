@@ -28,6 +28,9 @@
 #include "Representations/Modeling/BallModel.h"
 #include "Tools/Streams/RobotParameters.h"
 #include "Representations/MotionControl/ArmMovement.h"
+#include "Representations/BehaviorControl/GoalSymbols.h"
+#include "Tools/Module/ModuleManager.h"
+#include "Modules/MotionControl/DortmundWalkingEngine/FLIPMObserver.h"
 
 #define MAX_ACC_WINDOW 100
 
@@ -61,14 +64,14 @@ public:
                       const BallModelAfterPreview &theBallModelAfterPreview,
 					  const SpeedInfo &theSpeedInfo,
             const SpeedRequest &theSpeedRequest,
-                    const ArmMovement &ArmMovement
+                    const ArmMovement &ArmMovement,
+    const GoalSymbols &theGoalSymbols
                     );
 	~RequestTranslator(void);
 	
 	void updatePatternGenRequest(PatternGenRequest & patternGenRequest);
 	void updateWalkingEngineParams(WalkingEngineParams & walkingEngineParams);
-
-	void updateFreeLegPhaseParams(FreeLegPhaseParams & freeLegPhaseParams);
+  void updateFLIPMObserverParams(FLIPMObserverParams & flipmObserverParams);
 private:
 	const MotionSelection & theMotionSelection;
     const WalkingInfo &theWalkingInfo;
@@ -78,9 +81,11 @@ private:
 	const SpeedInfo &theSpeedInfo;
   const SpeedRequest &theSpeedRequest;
   const ArmMovement &theArmMovement;
-	 
+  const GoalSymbols &theGoalSymbols;
+	
+  ModuleManager::Configuration config;
+  FLIPMObserverParams observerParams;
 	WalkingEngineParams walkParams;
-	FreeLegPhaseParams flpParams;
 	ControllerParams contParams;
 	PatternGenRequest::State getNewState(float x, float y, float r);
 	FastFilter<float> filter[3];

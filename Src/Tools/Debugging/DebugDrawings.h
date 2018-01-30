@@ -584,6 +584,29 @@ inline const char* DrawingManager::getTypeName(char id, char processIdentifier) 
   while(false)
 
 /**
+ * A macro that sends a filled regular triangle
+ * @param x,y The coordinates of the center point
+ * @param rot The rotation
+ * @param id A drawing id
+ * @param penWidth The line width
+ * @param penStyle The line style, e.g. dotted
+ * @param penColor The line color
+ * @param brushStyle The brush style
+ * @param brushColor The brush color
+ */
+#define FILLED_TRIANGLE(id, x, y, rot, penWidth, penStyle, penColor, brushStyle, brushColor) \
+  do \
+    COMPLEX_DRAWING(id) \
+    { \
+      Vector2i points[3]; \
+      points[0] = Vector2i(int(x+sin(rot)*size),         int(y+cos(rot)*size)); \
+      points[1] = Vector2i(int(x+sin(rot+pi2/3)*size),   int(y+cos(rot+pi2/3)*size)); \
+      points[2] = Vector2i(int(x+sin(rot+2*pi2/3)*size), int(y+cos(rot+2*pi2/3)*size)); \
+      POLYGON(id, 3, points, penWidth, penStyle, penColor, brushStyle, brushColor); \
+    } \
+  while(false)
+
+/**
  * A macro that sends a cross
  * @param x,y The center of the cross
  * @param size Half of the height of the rectangle enclosing the cross
@@ -707,7 +730,7 @@ inline const char* DrawingManager::getTypeName(char id, char processIdentifier) 
  * A macro that sends a covariance ellipse
  * @param id A drawing id
  * @param cov The covariance matrix as Matrix2f
- * @param mean The mean value
+ * @param mean The mean value as Vector2f
  */
 #define COVARIANCE2D(id, cov, mean) \
   do \

@@ -13,8 +13,7 @@ generator(
 		theFootSteps,
 		theWalkingEngineParams,
 		theControllerParams,
-		theFreeLegPhaseParams,
-		theWalkingInfo,
+		//theWalkingInfo,
         theReferenceModificator)
 {
 }

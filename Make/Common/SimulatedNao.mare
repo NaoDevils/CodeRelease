@@ -123,10 +123,9 @@ SimulatedNao = cppDynamicLibrary + {
 
   cppFlags += {
     if (tool == "vcxproj") {
-      "/Zm200"
-      "/arch:AVX"
+      "/Zm200 /wd4503" //warning disabled b/c of very long eigen types
       if (configuration == "Develop") {
-        -"/Ox"
+        -"/Ox /Ob2 /Oi /Ot /Oy /GT",
         "/Od /ZI"
       } else if (configuration == "Release") {
         "/wd4101 /GS-"

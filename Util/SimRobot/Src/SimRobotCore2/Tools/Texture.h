@@ -30,7 +30,7 @@ public:
 
   /**
   * Loads a texture from a bmp or tga file (detected by file endling)
-  * @param The path to the file to load
+  * @param file The path to the file to load
   * @return Whether the texture was successfully loaded or not
   */
   bool load(const std::string& file);
@@ -43,7 +43,7 @@ public:
 private:
   /**
   * Loads a texture from a tga file
-  * @param The path to the file to load
+  * @param file path to the file to load
   * @return Whether the texture was successfully loaded or not
   */
   bool loadTGA(const std::string& file);

@@ -31,7 +31,6 @@ TiltController::TiltController(
 		const JointCalibration		&theJointCalibration,
 		const JointRequest				&theJointRequest,
     const SpeedInfo           &theSpeedInfo,
-    const FreeLegPhaseParams  &theFreeLegPhaseParams,
     const TargetCoM				&theTargetCoM*/
   ):
 	theInertialSensorData(theInertialSensorData),
@@ -39,7 +38,6 @@ TiltController::TiltController(
 	theJointCalibration(theJointCalibration),
 	theJointRequest(theJointRequest),
   theSpeedInfo(theSpeedInfo),
-  theFreeLegPhaseParams(theFreeLegPhaseParams),
   theTargetCoM(theTargetCoM)*/
 {
 	angleSum=0;
@@ -129,12 +127,12 @@ void TiltController::updateBodyTilt(BodyTilt &bodyTilt)
 	if (std::abs(bodyTilt.x) < 1.0f && std::abs(bodyTilt.y) < 1.0f)
 	{
 
-		tiltPIDController.updateControlFactors(INTERPOLATE_ARRAY_ELEMENT(tiltControllerParams, theWalkingEngineParams.tiltControllerParams[0], 0),
-			INTERPOLATE_ARRAY_ELEMENT(tiltControllerParams, theWalkingEngineParams.tiltControllerParams[1], 1),
-			INTERPOLATE_ARRAY_ELEMENT(tiltControllerParams, theWalkingEngineParams.tiltControllerParams[2], 2));
-		rollPIDController.updateControlFactors(INTERPOLATE_ARRAY_ELEMENT(rollControllerParams, theWalkingEngineParams.rollControllerParams[0], 0),
-			INTERPOLATE_ARRAY_ELEMENT(rollControllerParams, theWalkingEngineParams.rollControllerParams[1], 1),
-			INTERPOLATE_ARRAY_ELEMENT(rollControllerParams, theWalkingEngineParams.rollControllerParams[2], 2));
+		tiltPIDController.updateControlFactors(INTERPOLATE_ARRAY_ELEMENT(tiltControllerParams, theWalkingEngineParams.sensorControl.tiltControllerParams[0], 0),
+			INTERPOLATE_ARRAY_ELEMENT(tiltControllerParams, theWalkingEngineParams.sensorControl.tiltControllerParams[1], 1),
+			INTERPOLATE_ARRAY_ELEMENT(tiltControllerParams, theWalkingEngineParams.sensorControl.tiltControllerParams[2], 2));
+		rollPIDController.updateControlFactors(INTERPOLATE_ARRAY_ELEMENT(rollControllerParams, theWalkingEngineParams.sensorControl.rollControllerParams[0], 0),
+			INTERPOLATE_ARRAY_ELEMENT(rollControllerParams, theWalkingEngineParams.sensorControl.rollControllerParams[1], 1),
+			INTERPOLATE_ARRAY_ELEMENT(rollControllerParams, theWalkingEngineParams.sensorControl.rollControllerParams[2], 2));
 
 		if (std::abs(theInertialSensorData.angle.x()) < 1.0f && (theInertialSensorData.angle.y() < 1.0f))
 		{

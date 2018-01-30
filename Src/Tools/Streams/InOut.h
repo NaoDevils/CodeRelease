@@ -572,8 +572,8 @@ namespace EnumHelpers
    * are hidden in the derivations In2 and Out2. Since hiding
    * seems to be implemented differently in different compilers,
    * all other streaming operators are defined outside of classes.
-   * @param T The type of the value to stream.
-   * @param isEnum Is T an enum type? For this version, this is always false.
+   * @tparam T The type of the value to stream.
+   * @tparam isEnum Is T an enum type? For this version, this is always false.
    */
   template<class T, bool isEnum> struct EnumOrClass
   {
@@ -587,7 +587,7 @@ namespace EnumHelpers
    * A template class to stream in a different way depending on whether
    * it is instantiated for an enum or a class. This is the version for
    * streaming enums (as integers).
-   * @param T The type of the value to stream.
+   * @tparam T The type of the value to stream.
    */
   template<class T> struct EnumOrClass<T, true>
   {

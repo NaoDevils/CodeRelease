@@ -5,6 +5,7 @@ call Includes/connect
 echo call Includes/JPEGImageViews
 echo call Includes/FieldViews1
 echo call Includes/FieldViews2
+echo call CameraCalibrators/Automatic
 
 echo call Includes/DebugResponses
 

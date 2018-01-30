@@ -54,10 +54,16 @@ void GameController::registerSimulatedRobot(int robot, SimulatedRobot& simulated
 bool GameController::handleGlobalCommand(const std::string& command)
 {
   if(command == "initial")
-  {
+  {if (Global::getSettings().gameMode != Settings::penaltyShootout)
+    gameInfo.secsRemaining = durationOfHalf;
+  else
+    gameInfo.secsRemaining = durationOfPS;
     gameInfo.state = STATE_INITIAL;
     timeOfLastDropIn = timeWhenHalfStarted = 0;
-    gameInfo.secsRemaining = durationOfHalf;
+    if (Global::getSettings().gameMode != Settings::penaltyShootout)
+      gameInfo.secsRemaining = durationOfHalf;
+    else
+      gameInfo.secsRemaining = durationOfPS;
     return true;
   }
   else if(command == "ready")
@@ -71,32 +77,56 @@ bool GameController::handleGlobalCommand(const std::string& command)
   }
   else if(command == "set")
   {
-    gameInfo.state = STATE_SET;
-    for(int i = 0; i < numOfRobots; ++i)
-      robots[i].info.penalty = none;
-
-    if(automatic)
+    if (Global::getSettings().gameMode != Settings::penaltyShootout)
     {
-      placeGoalie(0);
-      placeGoalie(numOfRobots / 2);
-      placeDefensivePlayers(gameInfo.kickOffTeam == 1 ? numOfRobots / 2 + 1 : 1);
-      placeOffensivePlayers(gameInfo.kickOffTeam == 1 ? 1 : numOfRobots / 2 + 1);
-      executePlacement();
-    }
+      gameInfo.state = STATE_SET;
+      for (int i = 0; i < numOfRobots; ++i)
+        robots[i].info.penalty = none;
 
-    timeWhenStateBegan = SystemCall::getCurrentSystemTime();
-    
-    /*if(Global::getSettings().isCornerChallenge)
-      SimulatedRobot::moveBall(Vector3f(-4500.f, -3000.f, 50.f), true);
-    else*/
+      if (automatic)
+      {
+        placeGoalie(0);
+        placeGoalie(numOfRobots / 2);
+        placeDefensivePlayers(gameInfo.kickOffTeam == 1 ? numOfRobots / 2 + 1 : 1);
+        placeOffensivePlayers(gameInfo.kickOffTeam == 1 ? 1 : numOfRobots / 2 + 1);
+        executePlacement();
+      }
+
+      timeWhenStateBegan = SystemCall::getCurrentSystemTime();
+
+      /*if(Global::getSettings().isCornerChallenge)
+        SimulatedRobot::moveBall(Vector3f(-4500.f, -3000.f, 50.f), true);
+      else*/
       SimulatedRobot::moveBall(Vector3f(0.f, 0.f, 50.f), true);
+    }
+    else
+    {
+      gameInfo.state = STATE_SET;
+      for (int i = 0; i < numOfRobots; ++i)
+        robots[i].info.penalty = none;
+
+      gameInfo.secsRemaining = durationOfPS;
+      timeWhenHalfStarted = 0;
+      timeWhenStateBegan = SystemCall::getCurrentSystemTime();
+
+      SimulatedRobot::moveBall(Vector3f(-3200.f, 0.f, 50.f), true);
+    }
     return true;
   }
   else if(command == "playing")
   {
-    gameInfo.state = STATE_PLAYING;
-    if(gameInfo.gameType == GAME_PLAYOFF || !timeWhenHalfStarted)
-      timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfHalf - gameInfo.secsRemaining) * 1000;
+    if (Global::getSettings().gameMode != Settings::penaltyShootout)
+    {
+      gameInfo.state = STATE_PLAYING;
+      if (gameInfo.gameType == GAME_PLAYOFF || !timeWhenHalfStarted)
+        timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfHalf - gameInfo.secsRemaining) * 1000;
+    }
+    else
+    {
+      gameInfo.state = STATE_PLAYING;
+      gameInfo.secsRemaining = durationOfPS;
+      timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfPS - gameInfo.secsRemaining) * 1000;
+    }
     return true;
   }
   else if(command == "finished")
@@ -136,9 +166,15 @@ bool GameController::handleGlobalCommand(const std::string& command)
     gameInfo.gameType = GAME_ROUNDROBIN;
     return true;
   }
-  else if(command == "gameDropIn")
+  // Removed drop in here, because RoboCupGameControlData v10 has no GAME_DROPIN
+  else if(command == "gameMixedTeamRoundRobin")
   {
-    gameInfo.gameType = GAME_DROPIN;
+    gameInfo.gameType = GAME_MIXEDTEAM_ROUNDROBIN;
+    return true;
+  }
+  else if (command == "gameMixedTeamPlayOff")
+  {
+    gameInfo.gameType = GAME_MIXEDTEAM_PLAYOFF;
     return true;
   }
   return false;
@@ -433,11 +469,6 @@ void GameController::referee()
           handleGlobalCommand("set");
         break;
 
-      case STATE_SET:
-        if(SystemCall::getTimeSince(timeWhenStateBegan) >= 5000)
-          handleGlobalCommand("playing");
-        break;
-
       case STATE_PLAYING:
         switch(updateBall())
         {
@@ -469,7 +500,7 @@ GameController::BallOut GameController::updateBall()
   BallOut result = NONE;
   Vector2f ballPos;
   SimulatedRobot::getAbsoluteBallPosition(ballPos);
-  if(!fieldDimensions.isInsideField(ballPos))
+  if(!fieldDimensions.isBallInsideField(ballPos))
   {
     if(std::abs(ballPos.y()) < fieldDimensions.yPosLeftGoal) // goal
     {
@@ -515,8 +546,13 @@ void GameController::writeGameInfo(Out& stream)
     gameInfo.dropInTime = (unsigned short) (SystemCall::getTimeSince(timeOfLastDropIn) / 1000);
   else
     gameInfo.dropInTime = -1;
-  if(gameInfo.state == STATE_PLAYING || (gameInfo.gameType != GAME_PLAYOFF && timeWhenHalfStarted))
-    gameInfo.secsRemaining = (uint16_t) (durationOfHalf - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
+  if (gameInfo.state == STATE_PLAYING || (gameInfo.gameType != GAME_PLAYOFF && timeWhenHalfStarted))
+  {
+    if (Global::getSettings().gameMode != Settings::penaltyShootout)
+      gameInfo.secsRemaining = (uint16_t)(durationOfHalf - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
+    else
+      gameInfo.secsRemaining = (uint16_t)(durationOfPS - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
+  }
   gameInfo.timeLastPackageReceived = SystemCall::getCurrentSystemTime();
   stream << gameInfo;
 }

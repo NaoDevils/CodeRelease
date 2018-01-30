@@ -84,8 +84,10 @@ ENetwork PingAgent::getBestNetwork(const Robot* robot)
   double lanPing  = pings[LAN][robot->name];
   if(wlanPing == 2000.0 && lanPing == 2000.0)
     return NONE;
-  else if(wlanPing < lanPing)
+  else if (wlanPing < 2000.0 && lanPing >= 2000.0)
     return WLAN;
+  /*else if(wlanPing < lanPing)
+    return WLAN;*/
   else
     return LAN;
 }
@@ -144,9 +146,12 @@ void PingAgent::updatePing(ENetwork network, QProcess* process)
     {
       QString value = keyAndValue[1].replace("ms", "");
       networkMap[robots[process]->name] = value.toDouble();
+
+      /*
       otherNetworkMap[robots[process]->name] += 200.0; // hack!
       if(otherNetworkMap[robots[process]->name] > 2000.0)
         otherNetworkMap[robots[process]->name] = 2000.0;
+        */
     }
   }
 

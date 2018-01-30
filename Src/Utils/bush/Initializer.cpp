@@ -13,6 +13,7 @@
 #include <cstdlib>
 
 #include <QApplication>
+#include <QStyleFactory>
 #include "Utils/bush/ui/MainWindow.h"
 
 Initializer::Initializer(int &argc, char** argv) : logLevel(WARN), app(0)
@@ -36,7 +37,8 @@ Initializer::Initializer(int &argc, char** argv) : logLevel(WARN), app(0)
   Framework::getInstance("Initializer");
   app = new QApplication(argc, argv);
 #ifdef OSX
-  app->setStyle("macintosh");
+  //app->setStyle("macintosh");
+  app->setStyle("cleanlooks");
 #endif
   app->setApplicationName("B-Human User Shell (bush)");
   app->setCursorFlashTime(0);

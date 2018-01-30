@@ -577,7 +577,7 @@ ODE_API dReal dWorldGetAutoDisableAngularThreshold (dWorldID);
 
 /**
  * @brief Set auto disable angular threshold for newly created bodies.
- * @param linear_threshold default is 0.01
+ * @param angular_threshold default is 0.01
  * @ingroup disable
  */
 ODE_API void dWorldSetAutoDisableAngularThreshold (dWorldID, dReal angular_threshold);
@@ -605,7 +605,7 @@ ODE_API dReal dWorldGetAutoDisableAngularAverageThreshold (dWorldID);
 
 /**
  * @brief Set auto disable angular average threshold for newly created bodies.
- * @param linear_average_threshold default is 0.01
+ * @param angular_average_threshold default is 0.01
  * @ingroup disable
  */
 ODE_API void dWorldSetAutoDisableAngularAverageThreshold (dWorldID, dReal angular_average_threshold);
@@ -2202,9 +2202,9 @@ ODE_API void dJointAddPRTorque (dJointID j, dReal torque);
    * @param z The Z position of the anchor point in world frame
    * @param dx A delta to be substracted to the X position as if the anchor was set
    *           when body1 was at current_position[X] - dx
-   * @param dx A delta to be substracted to the Y position as if the anchor was set
+   * @param dy A delta to be substracted to the Y position as if the anchor was set
    *           when body1 was at current_position[Y] - dy
-   * @param dx A delta to be substracted to the Z position as if the anchor was set
+   * @param dz A delta to be substracted to the Z position as if the anchor was set
    *           when body1 was at current_position[Z] - dz
    */
   ODE_API void dJointSetPUAnchorOffset (dJointID, dReal x, dReal y, dReal z,
@@ -2835,7 +2835,7 @@ ODE_API dReal dJointGetPRParam (dJointID, int parameter);
   ODE_API dReal dJointGetPUAngle1 (dJointID);
 
   /**
-   * @brief * @brief Get time derivative of angle1
+   * @brief Get time derivative of angle1
    *
    * @ingroup joints
    */
@@ -2849,7 +2849,7 @@ ODE_API dReal dJointGetPRParam (dJointID, int parameter);
   ODE_API dReal dJointGetPUAngle2 (dJointID);
 
   /**
-   * @brief * @brief Get time derivative of angle2
+   * @brief Get time derivative of angle2
    *
    * @ingroup joints
    */

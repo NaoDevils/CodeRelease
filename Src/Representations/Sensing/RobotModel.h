@@ -45,5 +45,7 @@ STREAMABLE(RobotModel,
   ,
   (Pose3f[Limbs::numOfLimbs]) limbs, /**< Coordinate frame of the limbs of the robot relative to the robot's origin. */
   (Vector3f)(Vector3f::Zero()) centerOfMass, /**< Position of the center of mass (center of gravity) relative to the robot's origin. */
+  (Pose3f) soleLeft,
+  (Pose3f) soleRight,
   (float)(0) totalMass, /**< The mass of the robot. */
 });

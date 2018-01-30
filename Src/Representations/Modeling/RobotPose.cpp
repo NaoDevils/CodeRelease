@@ -65,7 +65,7 @@ void RobotPose::draw() const
 void GroundTruthRobotPose::draw() const
 {
   DECLARE_DEBUG_DRAWING("representation:GroundTruthRobotPose", "drawingOnField");
-  const ColorRGBA transparentWhite(255, 255, 255, 128);
+  const ColorRGBA transparentWhite(255,255, 255, 128);
   Vector2f bodyPoints[4] = {
     Vector2f(55, 90),
     Vector2f(-55, 90),
@@ -88,6 +88,34 @@ void GroundTruthRobotPose::draw() const
   DECLARE_DEBUG_DRAWING("origin:GroundTruthRobotPoseWithoutRotation", "drawingOnField");
   ORIGIN("origin:GroundTruthRobotPose", translation.x(), translation.y(), rotation);
   ORIGIN("origin:GroundTruthRobotPoseWithoutRotation", translation.x(), translation.y(), 0);
+}
+
+void MocapRobotPose::draw() const
+{
+  DECLARE_DEBUG_DRAWING("representation:MocapRobotPose", "drawingOnField");
+  const ColorRGBA transparentWhite(255, 255, 255, 128);
+  Vector2f bodyPoints[4] = {
+    Vector2f(55, 90),
+    Vector2f(-55, 90),
+    Vector2f(-55, -90),
+    Vector2f(55, -90)
+  };
+  for (int i = 0; i < 4; i++)
+    bodyPoints[i] = *this * bodyPoints[i];
+  Vector2f dirVec(200, 0);
+  dirVec = *this * dirVec;
+  const ColorRGBA ownTeamColorForDrawing(0, 0, 0, 128);
+  LINE("representation:MocapRobotPose", translation.x(), translation.y(), dirVec.x(), dirVec.y(),
+    20, Drawings::solidPen, transparentWhite);
+  POLYGON("representation:MocapRobotPose", 4, bodyPoints, 20, Drawings::solidPen,
+    ownTeamColorForDrawing, Drawings::solidBrush, transparentWhite);
+  CIRCLE("representation:MocapRobotPose", translation.x(), translation.y(), 42, 0,
+    Drawings::solidPen, ownTeamColorForDrawing, Drawings::solidBrush, ownTeamColorForDrawing);
+
+  DECLARE_DEBUG_DRAWING("origin:MocapRobotPose", "drawingOnField"); // Set the origin to the robot's ground truth position
+  DECLARE_DEBUG_DRAWING("origin:MocapRobotPoseWithoutRotation", "drawingOnField");
+  ORIGIN("origin:MocapRobotPose", translation.x(), translation.y(), rotation);
+  ORIGIN("origin:MocapPoseWithoutRotation", translation.x(), translation.y(), 0);
 }
 
 void RobotPoseAfterPreview::draw() const
@@ -127,7 +155,7 @@ RobotPoseCompressed::operator RobotPose() const
 {
   RobotPose robotPose;
   robotPose.translation = translation.cast<float>();
-  robotPose.rotation = static_cast<float>(Angle::fromDegrees(rotation));
+  robotPose.rotation = Angle::fromDegrees(rotation);
   robotPose.validity = validity / 255.f;
   return robotPose;
 }

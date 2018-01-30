@@ -13,7 +13,6 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GroundTruthWorldState.h"
 #include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/ObstacleModel.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
 
@@ -24,7 +23,6 @@ MODULE(OracledWorldModelProvider,
   REQUIRES(FrameInfo),
   PROVIDES(BallModel),
   PROVIDES(GroundTruthBallModel),
-  PROVIDES(ObstacleModel),
   PROVIDES(RobotMap),
   PROVIDES(RobotPose),
   PROVIDES(GroundTruthRobotPose),
@@ -63,11 +61,6 @@ private:
   void update(GroundTruthBallModel& groundTruthBallModel);
 
   /** One main function, might be called every cycle
-  * @param obstacleModel The data struct to be filled
-  */
-  void update(ObstacleModel& obstacleModel);
-
-  /** One main function, might be called every cycle
   * @param robotMap The data struct to be filled
   */
   void update(RobotMap& robotMap);
@@ -81,14 +74,7 @@ private:
   * @param groundTruthRobotPose The data struct to be filled
   */
   void update(GroundTruthRobotPose& groundTruthRobotPose);
-
-  /** Converts ground truth player data to an obstacle
-  * @param player A player
-  * @param obstacleModel The model to which the player will be added
-  * @param isRed Whether a player is in team red or not
-  */
-  void playerToObstacle(const GroundTruthWorldState::GroundTruthPlayer& player, ObstacleModel& obstacleModel, const bool isTeammate) const;
-  
+ 
   /** Converts ground truth player data to an robot map entry
   * @param player A player
   * @param robotMap The robot map to which the player will be added
@@ -96,9 +82,9 @@ private:
   */
   void playerToRobotMapEntry(const GroundTruthWorldState::GroundTruthPlayer& player, RobotMap& robotMap, const bool isTeammate) const;
 
-  unsigned int lastBallModelComputation;  /*< Time of last ball model computation*/
-  unsigned int lastRobotPoseComputation;  /*< Time of last robot pose computation*/
-  Vector2f     lastBallPosition = Vector2f::Zero(); /*< The ball position after the last computation*/
-  BallModel    theBallModel;              /*< The current ball model*/
-  RobotPose    theRobotPose;              /*< The current robot pose*/
+  unsigned int lastBallModelComputation;  /**< Time of last ball model computation*/
+  unsigned int lastRobotPoseComputation;  /**< Time of last robot pose computation*/
+  Vector2f     lastBallPosition = Vector2f::Zero(); /**< The ball position after the last computation*/
+  BallModel    theBallModel;              /**< The current ball model*/
+  RobotPose    theRobotPose;              /**< The current robot pose*/
 };

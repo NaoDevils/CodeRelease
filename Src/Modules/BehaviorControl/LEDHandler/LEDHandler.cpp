@@ -20,6 +20,7 @@ void LEDHandler::update(LEDRequest& ledRequest)
   setRightEye(ledRequest);
   setLeftEye(ledRequest);
   setChestButton(ledRequest);
+  setHead(ledRequest);
 }
 
 void LEDHandler::setRightEar(LEDRequest& ledRequest)
@@ -31,6 +32,17 @@ void LEDHandler::setRightEar(LEDRequest& ledRequest)
 
   for(int i = 0; i <= onLEDs; i++)
     ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
+
+  // in set override ears for battery with ears for whistle detection
+  if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
+  {
+    if (theWhistleDortmund.detected)
+      state = LEDRequest::LEDState::on;
+    else
+      state = LEDRequest::LEDState::off;
+    for (int i = 0; i <= 9; i++)
+      ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
+  }
 }
 
 void LEDHandler::setLeftEar(LEDRequest& ledRequest)
@@ -63,6 +75,18 @@ void LEDHandler::setLeftEar(LEDRequest& ledRequest)
   {
     ledRequest.ledStates[LEDRequest::earsLeft252Deg] = LEDRequest::on;
     ledRequest.ledStates[LEDRequest::earsLeft288Deg] = LEDRequest::on;
+  }
+
+  // in set override ears for battery with ears for whistle detection
+  LEDRequest::LEDState state;
+  if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
+  {
+    if (theWhistleDortmund.detected)
+      state = LEDRequest::LEDState::on;
+    else
+      state = LEDRequest::LEDState::off;
+    for (int i = 0; i <= 9; i++)
+      ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
   }
 }
 
@@ -173,7 +197,7 @@ void LEDHandler::setRightEye(LEDRequest& ledRequest)
     setEyeColor(ledRequest, false, theBehaviorLEDRequest.rightEyeColor, state);
   else
   {
-    switch(theBehaviorData.role)
+    switch(theRoleSymbols.role)
     {
       case BehaviorData::keeper:
         setEyeColor(ledRequest, false, BehaviorLEDRequest::blue, state);
@@ -188,6 +212,8 @@ void LEDHandler::setRightEye(LEDRequest& ledRequest)
         setEyeColor(ledRequest, false, BehaviorLEDRequest::green, state);
         break;
       case BehaviorData::supporterOff:
+        setEyeColor(ledRequest, false, BehaviorLEDRequest::magenta, state);
+        break;
       case BehaviorData::undefined:
         //off
         break;
@@ -199,9 +225,19 @@ void LEDHandler::setRightEye(LEDRequest& ledRequest)
 
 void LEDHandler::setHead(LEDRequest& ledRequest)
 {
-  //not used yet
-  for(unsigned i = LEDRequest::headLedRearLeft0; i <= LEDRequest::headLedMiddleLeft0; i++)
-    ledRequest.ledStates[i] = LEDRequest::on;
+  LEDRequest::LEDState ledState = (theBehaviorData.soccerState == BehaviorData::controlBall) ? LEDRequest::blinking : LEDRequest::on;
+  if (theRobotPose.translation.x() > 0)
+  {
+    for (unsigned i = LEDRequest::headLedRearLeft0; i <= LEDRequest::headLedMiddleLeft0; i++)
+      ledRequest.ledStates[i] = ledState;
+  }
+  else
+  {
+    for (unsigned i = LEDRequest::headLedRearLeft0; i < LEDRequest::headLedMiddleRight0; i++)
+      ledRequest.ledStates[i] = ledState;
+    for (unsigned i = LEDRequest::headLedMiddleRight0; i <= LEDRequest::headLedMiddleLeft0; i++)
+      ledRequest.ledStates[i] = LEDRequest::off;
+  }
 }
 
 void LEDHandler::setChestButton(LEDRequest& ledRequest)
@@ -213,6 +249,12 @@ void LEDHandler::setChestButton(LEDRequest& ledRequest)
   // for the penalty status of the robot to not deactivate the red penalty light.
   if(theGameInfo.state == STATE_SET || theRobotInfo.penalty != PENALTY_NONE)
     ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::on;
+  else if (theBehaviorData.soccerState == BehaviorData::inactive)
+  {
+    ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::off;
+    ledRequest.ledStates[LEDRequest::chestGreen] = LEDRequest::off;
+    ledRequest.ledStates[LEDRequest::chestBlue] = LEDRequest::blinking;
+  }
 }
 
 MAKE_MODULE(LEDHandler, behaviorControl)

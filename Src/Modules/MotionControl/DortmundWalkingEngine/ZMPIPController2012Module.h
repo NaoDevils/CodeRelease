@@ -29,9 +29,7 @@ class ZMPIPController2012Module : public ZMPIPController2012ModuleBase
 {
 public:
   ZMPIPController2012Module();
-
 	ZMPIPController2012 controller;
-
 	void update(TargetCoM &theTargetCoM);
 };
 

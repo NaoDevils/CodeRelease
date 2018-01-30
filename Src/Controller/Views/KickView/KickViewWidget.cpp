@@ -132,6 +132,8 @@ KickViewWidget::KickViewWidget(KickView& kickView, KickEngineParameters& paramet
   pal.setColor(QPalette::Background, Qt::darkGray);
   pal.setColor(QPalette::Foreground, Qt::white);
   mirrorCB->setPalette(pal);
+  mirrorCB->setShortcut(tr("Shift+M"));
+  mirrorCB->setToolTip("Shift+M");
 
   QToolButton* softLimb = new QToolButton(this);
   softLimb->setText("Soften Limb...");
@@ -352,7 +354,7 @@ KickViewWidget::KickViewWidget(KickView& kickView, KickEngineParameters& paramet
   modelCommon->setHeaderData(3, Qt::Horizontal,  QVariant(""));
   modelCommon->setHeaderData(4, Qt::Horizontal,  QVariant(""));
 
-  treeViewCommon->header()->setResizeMode(0, QHeaderView::ResizeToContents);
+  treeViewCommon->header()->setResizeMode(0, QHeaderView::Interactive);
   treeViewCommon->header()->setResizeMode(1, QHeaderView::Stretch);
   treeViewCommon->header()->setResizeMode(2, QHeaderView::Stretch);
   treeViewCommon->header()->setResizeMode(3, QHeaderView::Stretch);
@@ -369,7 +371,7 @@ KickViewWidget::KickViewWidget(KickView& kickView, KickEngineParameters& paramet
   vbox->addLayout(hbox);
 
   treeViewCommon->expandAll();
-  treeViewCommon->header()->setResizeMode(0, QHeaderView::ResizeToContents);
+  treeViewCommon->header()->setResizeMode(0, QHeaderView::Interactive);
 
   kickMenuBar = new KickMenuBar;
   kickMenuBar->hide();
@@ -639,13 +641,17 @@ void KickViewWidget::makeNewPhaseWithModelAndTree(const int& phaseNumber)
   newPhase.duration = 1000;
   if(phaseNumber > 0)
   {
-    for(int limb = 0; limb < Phase::numOfLimbs; ++limb)
-      for(int point = 0; point < NUM_OF_POINTS; ++point)
+    for (int point = 0; point < Phase::numOfPoints; ++point)
+    {
+      for (int limb = 0; limb < Phase::numOfLimbs; ++limb)
         newPhase.controlPoints[limb][point] = Vector3f::Zero();
+      newPhase.comTra[point] = Vector2f::Zero();
+      newPhase.headTra[point] = Vector2f::Zero();
+    }
   }
   else
   {
-    for(int point = 0; point < NUM_OF_POINTS; ++point)
+    for(int point = 0; point < Phase::numOfPoints; ++point)
     {
       newPhase.controlPoints[Phase::rightFootTra][point] = Vector3f(parameters.footOrigin.x(), -parameters.footOrigin.y(), parameters.footOrigin.z());
       newPhase.controlPoints[Phase::leftFootTra][point] = parameters.footOrigin;
@@ -699,10 +705,11 @@ void KickViewWidget::addPhaseAfterActual()
     for(int limb = 0; limb < Phase::numOfLimbs; ++limb)
     {
       //Set all Points from new Phase to the End of last Phase
-      for(int point = 0; point < (int)NUM_OF_POINTS; ++point)
+      for(int point = 0; point < (int)Phase::numOfPoints; ++point)
       {
-        parameters.phaseParameters[phaseNumber].controlPoints[limb][point] = parameters.phaseParameters[phaseNumber - 1].controlPoints[limb][NUM_OF_POINTS - 1];
-        parameters.phaseParameters[phaseNumber].comTra[point] = parameters.phaseParameters[phaseNumber - 1].comTra[NUM_OF_POINTS - 1];
+        parameters.phaseParameters[phaseNumber].controlPoints[limb][point] = parameters.phaseParameters[phaseNumber - 1].controlPoints[limb][Phase::numOfPoints - 1];
+        parameters.phaseParameters[phaseNumber].comTra[point] = parameters.phaseParameters[phaseNumber - 1].comTra[Phase::numOfPoints - 1];
+        parameters.phaseParameters[phaseNumber].headTra[point] = parameters.phaseParameters[phaseNumber - 1].headTra[Phase::numOfPoints - 1];
       }
 
       //correct controlPoints
@@ -978,7 +985,15 @@ void KickViewWidget::standRobot()
   std::string firstOfcom = command.substr(0, command.find("motion") + 9);
   std::string temp = command.substr(command.find("motion") + 10, command.size() - command.find("motion") + 10);
   std::string endOfcom = temp.substr(temp.find_first_of(";"), temp.size());
+
+  if (endOfcom.find("playDead") != std::string::npos) {
+    endOfcom = endOfcom.replace(endOfcom.find("playDead"), 8, "stand");
+  }
+   
   std::string stand = firstOfcom + "specialAction" + endOfcom;
+
+
+
   commands.push_back(stand);
   commands.push_back(" ");
 }
@@ -1200,7 +1215,7 @@ void KickViewWidget::updateEditorView()
     treeView[i]->setAcceptDrops(false);
     treeView[i]->setModel(phaseTab[i]);
     treeView[i]->expandToDepth(3);
-    treeView[i]->header()->setResizeMode(0, QHeaderView::Interactive);
+    treeView[i]->header()->setResizeMode(0, QHeaderView::Stretch);
     treeView[i]->header()->setResizeMode(1, QHeaderView::ResizeToContents);
     treeView[i]->header()->setResizeMode(2, QHeaderView::ResizeToContents);
     treeView[i]->header()->setResizeMode(3, QHeaderView::ResizeToContents);
@@ -1267,7 +1282,7 @@ void KickViewWidget::addControlPoints(QStandardItem* item)
 
   item->appendRow(list);
 
-  for(unsigned int k = 1; k < NUM_OF_POINTS; k++)
+  for(unsigned int k = 1; k < Phase::numOfPoints; k++)
   {
     QList <QStandardItem*> list;
     list.append(makeLabel(QString("Point%1").arg(k)));
@@ -1358,14 +1373,16 @@ QStandardItemModel* KickViewWidget::makeNewModelWithLabels()
   QStandardItem* COMTra = makeLabel(QString("Translation"));
   comTrajectory->appendRow(addXYZLabel(COMTra));
 
-  for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+  for(unsigned int k = 0; k < Phase::numOfPoints; k++)
   {
     QList <QStandardItem*> list;
     list.append(makeLabel(QString("Point%1").arg(k)));
     list.append(makeLabel(QString("")));
     for(int i = 0; i < 2; i++)
     {
-      list.append(makeValue((double) 0.0));
+      QStandardItem* it = makeValue((double)0.0);
+      if(k==0) it->setEditable(false);
+      list.append(it);
     }
     COMTra->appendRow(list);
   }
@@ -1376,14 +1393,16 @@ QStandardItemModel* KickViewWidget::makeNewModelWithLabels()
   QStandardItem* HEADTra = makeLabel(QString("Translation"));
   headTrajectory->appendRow(addXYZLabel(HEADTra));
 
-  for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+  for(unsigned int k = 0; k < Phase::numOfPoints; k++)
   {
     QList <QStandardItem*> list;
     list.append(makeLabel(QString("Point%1").arg(k)));
     list.append(makeLabel(QString("")));
     for(int i = 0; i < 2; i++)
     {
-      list.append(makeValue((double) 0.0));
+      QStandardItem* it = makeValue((double)0.0);
+      if (k == 0) it->setEditable(false);
+      list.append(it);
     }
     HEADTra->appendRow(list);
   }
@@ -1432,7 +1451,7 @@ void KickViewWidget::fillModelWithPhaseData(int i)
     //Duration im ms
     rootItem->child(0, 1)->setData(QVariant(parameters.phaseParameters[i].duration), Qt::DisplayRole);
 
-    for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+    for(unsigned int k = 0; k < Phase::numOfPoints; k++)
     {
       rootItem->child(5, 0)->child(0, 0)->child(k, 2)->setData(QVariant(parameters.phaseParameters[i].comTra[k].x()), Qt::DisplayRole);
       rootItem->child(5, 0)->child(0, 0)->child(k, 3)->setData(QVariant(parameters.phaseParameters[i].comTra[k].y()), Qt::DisplayRole);
@@ -1487,7 +1506,7 @@ void KickViewWidget::fillModelWithPhaseData(int i)
           break;
       }
 
-      for(unsigned int k = 0; k < NUM_OF_POINTS; k++)
+      for(unsigned int k = 0; k < Phase::numOfPoints; k++)
       {
         item = rootItem->child(child1, 0)->child(child2, 0);
         item->child(k, 2)->setData(QVariant(parameters.phaseParameters[i].controlPoints[limb][k].x()), Qt::DisplayRole);
@@ -1735,18 +1754,40 @@ void KickViewWidget::updateCommonParameters(QStandardItem* item)
       if(col == 4) parameters.kdy = (float)item->data(Qt::DisplayRole).toDouble();
     }
   }
-
-  updateEditorView();
+  
+  // updateEditorView();
   parameters.initFirstPhase();
+  for (int i = 0; i < parameters.numberOfPhases; i++)
+  {
+    fillModelWithPhaseData(i);
+  }
+}
+
+
+
+void KickViewWidget::updateNextPhase(float& next_phase0, float phase1, float phase2, int phaseNumber)
+{
+  float factor = (float)parameters.phaseParameters[phaseNumber].duration /
+    (float)parameters.phaseParameters[phaseNumber + 1].duration;
+
+  next_phase0 = phase2 - phase1;
+  next_phase0 *= factor;
+  next_phase0 += phase2;
+
+  fillModelWithPhaseData(phaseNumber + 1);
 }
 
 void KickViewWidget::updatePhaseParameters(QStandardItem* item)
 {
   QStandardItem* mamaItem = item->parent();
   int row = item->row();
-  int phaseNumber = tabber->currentIndex() - 1;
+  QStandardItemModel* model = item->model();
+
+  int phaseNumber = std::distance(phaseTab.begin(), std::find(phaseTab.begin(), phaseTab.end(), model));
   int col = item->column();
   int limb = -1;
+
+  bool notLastPhase = phaseNumber < parameters.numberOfPhases - 1;
 
   parent->addStateToUndoList();
 
@@ -1808,9 +1849,21 @@ void KickViewWidget::updatePhaseParameters(QStandardItem* item)
       {
         case 2:
           parameters.phaseParameters[phaseNumber].comTra[row].x() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].comTra[0].x(),
+            parameters.phaseParameters[phaseNumber].comTra[1].x(),
+            parameters.phaseParameters[phaseNumber].comTra[2].x(),
+            phaseNumber
+          );
           break;
         case 3:
           parameters.phaseParameters[phaseNumber].comTra[row].y() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].comTra[0].y(),
+            parameters.phaseParameters[phaseNumber].comTra[1].y(),
+            parameters.phaseParameters[phaseNumber].comTra[2].y(),
+            phaseNumber
+          );
           break;
       }
     }
@@ -1821,9 +1874,21 @@ void KickViewWidget::updatePhaseParameters(QStandardItem* item)
       {
         case 2:
           parameters.phaseParameters[phaseNumber].headTra[row].x() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].headTra[0].x(),
+            parameters.phaseParameters[phaseNumber].headTra[1].x(),
+            parameters.phaseParameters[phaseNumber].headTra[2].x(),
+            phaseNumber
+          );
           break;
         case 3:
           parameters.phaseParameters[phaseNumber].headTra[row].y() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].headTra[0].y(),
+            parameters.phaseParameters[phaseNumber].headTra[1].y(),
+            parameters.phaseParameters[phaseNumber].headTra[2].y(),
+            phaseNumber
+          );
           break;
       }
     }
@@ -1848,19 +1913,37 @@ void KickViewWidget::updatePhaseParameters(QStandardItem* item)
   selectedPoint.limb = limb;
   if(limb > -1)
   {
-    if(row < NUM_OF_POINTS)
+    if(row < Phase::numOfPoints)
     {
       selectedPoint.pointNumber = row;
       switch(col)
       {
         case 2:
           parameters.phaseParameters[phaseNumber].controlPoints[limb][row].x() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].controlPoints[limb][0].x(),
+            parameters.phaseParameters[phaseNumber].controlPoints[limb][1].x(),
+            parameters.phaseParameters[phaseNumber].controlPoints[limb][2].x(),
+            phaseNumber
+          );
           break;
         case 3:
           parameters.phaseParameters[phaseNumber].controlPoints[limb][row].y() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].controlPoints[limb][0].y(),
+            parameters.phaseParameters[phaseNumber].controlPoints[limb][1].y(),
+            parameters.phaseParameters[phaseNumber].controlPoints[limb][2].y(),
+            phaseNumber
+          );
           break;
         case 4:
           parameters.phaseParameters[phaseNumber].controlPoints[limb][row].z() = (float)item->data(Qt::DisplayRole).toDouble();
+          if (notLastPhase) updateNextPhase(
+            parameters.phaseParameters[phaseNumber + 1].controlPoints[limb][0].z(),
+            parameters.phaseParameters[phaseNumber].controlPoints[limb][1].z(),
+            parameters.phaseParameters[phaseNumber].controlPoints[limb][2].z(),
+            phaseNumber
+          );
           break;
       }
     }

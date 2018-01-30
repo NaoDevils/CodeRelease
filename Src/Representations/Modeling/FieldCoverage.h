@@ -6,8 +6,11 @@
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Streams/Streamable.h"
+#include "Representations/Infrastructure/TeammateData.h"
 #include "Tools/Math/Eigen.h"
 #include <algorithm>
+
+
 
 struct FieldCoverage : public Streamable
 {
@@ -40,11 +43,11 @@ public:
 
   enum
   {
-    numOfCellsX = 18,
-    numOfCellsY = 12,
-    numOfCells = numOfCellsX*numOfCellsY,
-    stepSize = 500
+    numOfCellsX = 27,
+    numOfCellsY = 18,
+    numOfCells = numOfCellsX*numOfCellsY
   };
+
   
   FieldCoverage() 
   {
@@ -57,6 +60,7 @@ public:
     {
       cells[i].validity = 0.f;
       cells[i].viewBlocked = false;
+      interestingCellInSearchArea = -1;
     }
   }
   
@@ -69,25 +73,53 @@ public:
       cells[i].validity = other.cells[i].validity;
       cells[i].viewBlocked = other.cells[i].viewBlocked;
     }
+    interestingCellInSearchArea = other.interestingCellInSearchArea;
     return *this;
   }
 
   Cell cells[numOfCells];
+  int interestingCellInSearchArea=-1;
+  static const float stepSize;
+//helper functions
 
-  //helper functions
+int getCellNumber(const Vector2f &posOnField, const FieldDimensions &fieldDimensions) const;
 
-  inline int getCellNumber(const Vector2f &posOnField, const FieldDimensions &fieldDimensions) const
-  {
-    int xIndex = (int)((posOnField.x()+(float)fieldDimensions.xPosOpponentGroundline)/(float)stepSize);
-    int yIndex = (int)((posOnField.y()+(float)fieldDimensions.yPosLeftSideline)/(float)stepSize);
-    xIndex = std::min(std::max(0,xIndex),(int)numOfCellsX-1);
-    yIndex = std::min(std::max(0,yIndex),(int)numOfCellsY-1);
-    return xIndex*numOfCellsY+yIndex;
-  }
+Vector2f getFieldCoordinates(int cellNo, const FieldDimensions &fieldDimensions) const;
 
-  inline Vector2f getFieldCoordinates(int cellNo, const FieldDimensions &fieldDimensions) const
-  {
-    return Vector2f((((float)cellNo/ (float)numOfCellsY)*stepSize-fieldDimensions.xPosOpponentGroundline+FieldCoverage::stepSize/2),
-      (float)((cellNo%numOfCellsY)*stepSize-fieldDimensions.yPosLeftSideline+stepSize/2));
-  }
+// copied here from FieldCoverageProvider
+
+// distance between two cells on the field
+float getCellDistance(int firstCell, int secondCell, const FieldDimensions &fieldDimensions) const;
+
+// checks if a cell has been visited, i.e. the validity equals 1 or the robot is standing on that cell
+bool hasCellBeenVisited(const RobotPose &pose, const FieldDimensions &fieldDimensions, int cellNumber) const;
+
+//this only works on the fieldcoverage that assigns negative values to covered cells, e.g. theFieldCoverage
+bool isSorroundingCovered(const RobotPose &pose, const FieldDimensions &fieldDimensions, float radiusOfSorroundingArea) const;
+
+// TODO: Do not return worst validty value, but an interesting cell.
+// TODO: depending on distance to self and teammates
+// TODO: ..depending on intention (looking for ball or maybe for obstacles), different method!?
+// determines the most interesting cell on the field
+int getInterestingCell(const RobotPose &pose, const FieldDimensions &fieldDimensions, float minDistanceToRobot) const;
+
+/*determines the most interesting cell in a defined rectangle
+@param center - center of the rectangle
+@param width - size in y direction
+@param height - size in x direction
+*/
+int getInterestingCell(const RobotPose &pose, const FieldDimensions &fieldDimensions, Vector2f center, float width, float height, float minDistanceToRobot) const;
+
+// determines the most interesting cell on the field ignoring cellToExclude
+int getInterestingCellExcluding(const RobotPose &pose, const FieldDimensions &fieldDimensions, int cellToExclude, float minDistanceToRobot) const;
+
+//determines the most interesting cell in a defined rectangle ignoring cellToExclude
+int getInterestingCellExcluding(const RobotPose &pose, const FieldDimensions &fieldDimensions, Vector2f center, float width, float height, int cellToExclude, float minDistanceToRobot) const;
+
+//determines the most interesting cell in a defined circle area
+int getInterestingCellInCircle(const RobotPose &pose, float maxDistance, const FieldDimensions &fieldDimensions, Vector2f center, float radius) const;
+
+int getInterestingCellInSearchArea();
+
+
 };

@@ -21,6 +21,7 @@ STREAMABLE(KickRequest,
   (KickMotionID)(none) kickMotionType,
   (bool)(false) mirror,
   (bool)(false) dynamical,
+  (bool)(true) armsBackFix,
   (std::vector<DynPoint>) dynPoints,
   (Vector2f)(Vector2f(1000,0)) kickTarget,
 });

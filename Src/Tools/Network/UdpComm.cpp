@@ -369,3 +369,4 @@ unsigned char UdpComm::getLastByteOfIP()
 #endif
   return 255;
 }
+

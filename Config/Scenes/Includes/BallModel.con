@@ -1,7 +1,19 @@
-call Includes/FieldViews2
+# relative drawings
+vfd worldState:origin RobotPose
+vfd worldState representation:BallModel
+vfd worldState module:BallModelProvider:local:hypotheses
+vfd worldState module:BallModelProvider:local:velocities
+vfd worldState module:BallModelProvider:local:covariances
+
+# back to global coordinates
+vfd worldState origin:Reset
+
+vfd worldState representation:TeamBallModel
+vfd worldState module:BallModelProvider:remote:hypotheses
 
 vd module:BallModelProvider:parameters
 vd module:BallModelProvider:teamParameters
+vd module:BallModelProvider:kalmanMatrices
 vd representation:BallPercept
 vd representation:BallModel
 vd representation:RemoteBallModel
@@ -24,3 +36,11 @@ vpd teamBallModelValidity module:BallModelProvider:remoteValidityMin gray
 vp teamBallModelPerceptsPerSecond 300 0 30 "percepts/s" s 0.033
 vpd teamBallModelPerceptsPerSecond module:BallModelProvider:localPerceptsPerSecond red
 vpd teamBallModelPerceptsPerSecond module:BallModelProvider:remotePerceptsPerSecond black
+vpd teamBallModelPerceptsPerSecond module:BallModelProvider:localValidityPPS orange
+vpd teamBallModelPerceptsPerSecond module:BallModelProvider:remoteValidityPPS gray
+
+# Draw value of maximum velocity covariance coefficient of the best local hypothesis (red)
+# and the kick state (black; 0 = no kick; 50 = motion type kick; 100 = kick detected by high ball velocity).
+vp cov 300 0 150 "max velocity covariance" s 0.033
+vpd cov module:BallModelProvider:localMaxVelocityCovariance red
+vpd cov module:BallModelProvider:kickTriggered black

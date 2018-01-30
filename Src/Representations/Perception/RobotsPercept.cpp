@@ -79,9 +79,9 @@ void RobotsPercept::draw() const
 
   for (auto const& robotEstimate : robots)
   {
-    ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ?
-      ColorRGBA::green : (robotEstimate.robotType == RobotEstimate::opponentRobot ?
-        ColorRGBA::red : ColorRGBA::black);
+    ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green :
+                      (robotEstimate.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red :
+                      ColorRGBA::black);
     CIRCLE("representation:RobotsPercept:Field",
       robotEstimate.locationOnField.translation.x(), robotEstimate.locationOnField.translation.y(),
       40, 2, Drawings::solidPen, color, Drawings::solidBrush, color);

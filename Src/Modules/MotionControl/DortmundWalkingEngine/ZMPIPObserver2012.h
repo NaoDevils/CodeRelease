@@ -34,7 +34,8 @@ public:
     isStable(true),
     //sensorScale(0), unused
     localSensorScale(0),
-    stableCounter(0),
+    //Rensen: Removed due to unused warning
+    //stableCounter(0),
     wasOn(false)
     {
       DECLARE_PLOT("module:ZMPIPObserver2012:observedError.x[0]");
@@ -61,7 +62,10 @@ private:
   bool isStable;
   //float sensorScale;		/**< Scaling factor for the measured ZMP error. */ unused
   float localSensorScale;
-  int stableCounter;
+
+  // Rensen: Removed due to unused warning
+//  int stableCounter;
+
   Point lastRealZMP;
   bool wasOn;
 };

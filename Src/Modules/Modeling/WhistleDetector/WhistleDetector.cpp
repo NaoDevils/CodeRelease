@@ -77,7 +77,7 @@ void WhistleDetector::update(WhistleDortmund &whistle)
                 whistle.detected = false;
                 samplesLeft = WINDOW_SIZE / 2;
 
-                for (unsigned int i = 0; i < WINDOW_SIZE; i++)
+                for (unsigned int i = 0; i < static_cast<unsigned int>(WINDOW_SIZE); i++)
                 {
                     in[i].r = buffer[(i + ringPos) % WINDOW_SIZE];
                     in[i].i = 0.f;
@@ -90,7 +90,7 @@ void WhistleDetector::update(WhistleDortmund &whistle)
                 //do FFT analysis
                 kissFFT(in.data(), out.data());
 
-                for (unsigned int i = 0; i < AMP_SIZE; i++)
+                for (int i = 0; i < AMP_SIZE; i++)
                 {
                     amplitudes[i] = std::sqrt((out[i].r * out[i].r) + (out[i].i * out[i].i)); //TODO: sqrt necessary?
                 }
@@ -107,8 +107,8 @@ void WhistleDetector::update(WhistleDortmund &whistle)
                 }
                 if (amplitudes[peakPos] >= MIN_AMP)
                 {
-                    min_i = peakPos * OVERTONE_MULT_MIN_1;
-                    max_i = peakPos * OVERTONE_MULT_MAX_1;
+                    min_i = static_cast<int>(peakPos * OVERTONE_MULT_MIN_1);
+                    max_i = static_cast<int>(peakPos * OVERTONE_MULT_MAX_1);
 
                     peak1Pos = min_i;
                     for (int i = min_i; i <= max_i; i++)
@@ -119,8 +119,8 @@ void WhistleDetector::update(WhistleDortmund &whistle)
 
                     if (amplitudes[peak1Pos] >= OVERTONE_MIN_AMP_1)
                     {
-                        min_i = peakPos * OVERTONE_MULT_MIN_2;
-                        max_i = peakPos * OVERTONE_MULT_MAX_2;
+                        min_i = static_cast<int>(peakPos * OVERTONE_MULT_MIN_2);
+                        max_i = static_cast<int>(peakPos * OVERTONE_MULT_MAX_2);
 
                         peak2Pos = min_i;
                         for (int i = min_i; i <= max_i; i++)
@@ -133,7 +133,7 @@ void WhistleDetector::update(WhistleDortmund &whistle)
                         {
                             //add attack to prevent short noises to be detected as whistles
                             attackCount++;
-                            if (attackCount >= ATTACK)
+                            if (attackCount >= static_cast<unsigned int>(ATTACK))
                             {
                                 whistle.detectionState = WhistleDortmund::DetectionState::isDetected;
                                 whistle.detected = true;
@@ -154,7 +154,7 @@ void WhistleDetector::update(WhistleDortmund &whistle)
     //add release to ensure the detection plot to be smooth
     if (whistle.detectionState == WhistleDortmund::DetectionState::isDetected)
         releaseCount = 0;
-    else if (releaseCount < RELEASE)
+    else if (releaseCount < static_cast<unsigned int>(RELEASE))
     {
         whistle.detectionState = WhistleDortmund::DetectionState::isDetected;
         whistle.detected = true;
@@ -165,27 +165,27 @@ void WhistleDetector::update(WhistleDortmund &whistle)
     COMPLEX_IMAGE(FFT)
     {
         // transform sample rate to fft size to debug image size
-        int min_x = MIN_FREQ * WINDOW_SIZE / sampleRate * DEBUG_WIDTH / amplitudes.size();
-        int max_x = MAX_FREQ * WINDOW_SIZE / sampleRate * DEBUG_WIDTH / amplitudes.size();
-        int debugPeakPos = peakPos * DEBUG_WIDTH / amplitudes.size();
-        int debugPeak1Pos = peak1Pos * DEBUG_WIDTH / amplitudes.size();
-        int debugPeak2Pos = peak2Pos * DEBUG_WIDTH / amplitudes.size();
+        int min_x = MIN_FREQ * WINDOW_SIZE / sampleRate * DEBUG_WIDTH / static_cast<int>(amplitudes.size());
+        int max_x = MAX_FREQ * WINDOW_SIZE / sampleRate * DEBUG_WIDTH / static_cast<int>(amplitudes.size());
+        int debugPeakPos = peakPos * DEBUG_WIDTH / static_cast<int>(amplitudes.size());
+        int debugPeak1Pos = peak1Pos * DEBUG_WIDTH / static_cast<int>(amplitudes.size());
+        int debugPeak2Pos = peak2Pos * DEBUG_WIDTH / static_cast<int>(amplitudes.size());
 
         // draw main detection rect
         for (int x = min_x; x <= max_x; x++)
-            for (int y = MIN_AMP; y <= DEBUG_HEIGHT; y++)
+            for (int y = static_cast<int>(MIN_AMP); y <= DEBUG_HEIGHT; y++)
                 DEBUG_IMAGE_SET_PIXEL_YELLOW(FFT, x, DEBUG_HEIGHT - y);
 
         // draw detection rect for first overtone only if peak1Pos has been calculate
         if (peak1Pos >= 0)
-            for (int x = debugPeakPos * OVERTONE_MULT_MIN_1; x <= debugPeakPos * OVERTONE_MULT_MAX_1; x++)
-                for (int y = OVERTONE_MIN_AMP_1; y <= DEBUG_HEIGHT; y++)
+            for (int x = static_cast<int>(debugPeakPos * OVERTONE_MULT_MIN_1); x <= debugPeakPos * OVERTONE_MULT_MAX_1; x++)
+                for (int y = static_cast<int>(OVERTONE_MIN_AMP_1); y <= DEBUG_HEIGHT; y++)
                     DEBUG_IMAGE_SET_PIXEL_YELLOW(FFT, x, DEBUG_HEIGHT - y);
 
         // draw detection rect for second overtone only if peak2Pos has been calculate
         if (peak2Pos >= 0)
-            for (int x = debugPeakPos * OVERTONE_MULT_MIN_2; x <= debugPeakPos * OVERTONE_MULT_MAX_2; x++)
-                for (int y = OVERTONE_MIN_AMP_2; y <= DEBUG_HEIGHT; y++)
+            for (int x = static_cast<int>(debugPeakPos * OVERTONE_MULT_MIN_2); x <= debugPeakPos * OVERTONE_MULT_MAX_2; x++)
+                for (int y = static_cast<int>(OVERTONE_MIN_AMP_2); y <= DEBUG_HEIGHT; y++)
                     DEBUG_IMAGE_SET_PIXEL_YELLOW(FFT, x, DEBUG_HEIGHT - y);
 
         // draw horizontal grid
@@ -217,7 +217,7 @@ void WhistleDetector::update(WhistleDortmund &whistle)
         for (int x = 0; x<DEBUG_WIDTH; x++)
         {
             // transform FFT size to debug image size
-            int x_temp = x*amplitudes.size() / DEBUG_WIDTH;
+            int x_temp = static_cast<int>(x*amplitudes.size() / DEBUG_WIDTH);
             // remove FFT number errors to avoid possible crashes
             int y_temp = std::max(0, std::min(DEBUG_HEIGHT, (int)amplitudes[x_temp]));
 

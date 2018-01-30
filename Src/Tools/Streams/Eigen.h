@@ -15,8 +15,8 @@
 
 /**
  * Helper class to stream a fixed-sized row or column of an Eigen matrix.
- * @param T The element type of the row or column.
- * @param N The number of elements in the row or column.
+ * @tparam T The element type of the row or column.
+ * @tparam N The number of elements in the row or column.
  */
 template<typename T, int N> class EigenMatrixRow
 {
@@ -26,8 +26,8 @@ public:
 
 /**
  * Writing a row or column of an Eigen matrix to a stream.
- * @param T The element type of the row or column.
- * @param N The number of elements in the row or column.
+ * @tparam T The element type of the row or column.
+ * @tparam N The number of elements in the row or column.
  * @param stream The stream to write to.
  * @param row The row or column to write.
  */
@@ -42,8 +42,8 @@ Out& operator<<(Out& stream, const EigenMatrixRow<T, N>& row)
 
 /**
  * Reading a row or column of an Eigen matrix from a stream.
- * @param T The element type of the row or column.
- * @param N The number of elements in the row or column.
+ * @tparam T The element type of the row or column.
+ * @tparam N The number of elements in the row or column.
  * @param stream The stream to read from.
  * @param row The row or column to read.
  */
@@ -58,12 +58,12 @@ In& operator>>(In& stream, EigenMatrixRow<T, N>& row)
 
 /**
  * Writing an Eigen matrix to a stream.
- * @param T The type of the elements.
- * @param ROWS The number of rows of the matrix.
- * @param COLS The number of columns of the matrix.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
- * @param MAX_ROWS The maximum number of rows of the matrix. Must equal ROWS.
- * @param MAX_COLS The maximum number of columns of the matrix. Must equal COLS.
+ * @tparam T The type of the elements.
+ * @tparam ROWS The number of rows of the matrix.
+ * @tparam COLS The number of columns of the matrix.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam MAX_ROWS The maximum number of rows of the matrix. Must equal ROWS.
+ * @tparam MAX_COLS The maximum number of columns of the matrix. Must equal COLS.
  * @param stream The stream to write to.
  * @param matrix The matrix to write.
  */
@@ -93,10 +93,10 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROW
 
 /**
  * Writing a horizontal Eigen vector to a stream.
- * @param T The type of the elements.
- * @param ELEMS The number of elements of the vector.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
- * @param MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
+ * @tparam T The type of the elements.
+ * @tparam ELEMS The number of elements of the vector.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
@@ -163,10 +163,10 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector
 
 /**
  * Writing a vertical Eigen vector to a stream.
- * @param T The type of the elements.
- * @param ELEMS The number of elements of the vector.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
- * @param MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
+ * @tparam T The type of the elements.
+ * @tparam ELEMS The number of elements of the vector.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
@@ -210,8 +210,8 @@ Out& operator<<(Out& stream, const Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
 
 /**
  * Writing a vertical two dimensional Eigen vector to a stream.
- * @param T The type of the elements.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam T The type of the elements.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
@@ -231,8 +231,8 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector
 
 /**
  * Writing a vertical three dimensional Eigen vector to a stream.
- * @param T The type of the elements.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam T The type of the elements.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
@@ -254,12 +254,12 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector
 
 /**
  * Reading an Eigen matrix from a stream.
- * @param T The type of the elements.
- * @param ROWS The number of rows of the matrix.
- * @param COLS The number of columns of the matrix.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
- * @param MAX_ROWS The maximum number of rows of the matrix. Must equal ROWS.
- * @param MAX_COLS The maximum number of columns of the matrix. Must equal COLS.
+ * @tparam T The type of the elements.
+ * @tparam ROWS The number of rows of the matrix.
+ * @tparam COLS The number of columns of the matrix.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam MAX_ROWS The maximum number of rows of the matrix. Must equal ROWS.
+ * @tparam MAX_COLS The maximum number of columns of the matrix. Must equal COLS.
  * @param stream The stream to read from.
  * @param matrix The matrix to read.
  */
@@ -289,10 +289,10 @@ In& operator>>(In& stream, Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROWS, MAX_C
 
 /**
  * Reading a horizontal Eigen vector from a stream.
- * @param T The type of the elements.
- * @param ELEMS The number of elements of the vector.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
- * @param MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
+ * @tparam T The type of the elements.
+ * @tparam ELEMS The number of elements of the vector.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
@@ -359,10 +359,10 @@ In& operator>>(In& stream, Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector)
 
 /**
  * Reading a vertical Eigen vector from a stream.
- * @param T The type of the elements.
- * @param ELEMS The number of elements of the vector.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
- * @param MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
+ * @tparam T The type of the elements.
+ * @tparam ELEMS The number of elements of the vector.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam MAX_ELEMS The maximum number of elements of the vector. Must equal ELEMS.
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
@@ -406,8 +406,8 @@ In& operator>>(In& stream, Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
 
 /**
  * Reading a vertical Eigen vector from a stream.
- * @param T The type of the elements.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam T The type of the elements.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
@@ -427,8 +427,8 @@ In& operator>>(In& stream, Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector)
 
 /**
  * Reading a vertical Eigen vector from a stream.
- * @param T The type of the elements.
- * @param OPTIONS Mainly describes whether the matrix is row major or column major.
+ * @tparam T The type of the elements.
+ * @tparam OPTIONS Mainly describes whether the matrix is row major or column major.
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */

@@ -15,7 +15,8 @@ translator(filteredMotionSelection,
            theBallModelAfterPreview,
 		   theSpeedInfo,
        theSpeedRequest,
-           theArmMovement)
+           theArmMovement,
+  theGoalSymbols)
 {
 }
 
@@ -25,6 +26,18 @@ void RequestTranslatorModule::save(WalkingEngineParams &params, string path)
   if(stream.exists())
   {
     stream << params;
+    OUTPUT(idText, text, string("Saved ") + path);
+  }
+  else
+    OUTPUT(idText, text, string("Failed to save ") + path);
+}
+
+void RequestTranslatorModule::save(FLIPMObserverParams& flipmObserverParams, std::string path)
+{
+  OutMapFile stream(path);
+  if (stream.exists())
+  {
+    stream << flipmObserverParams;
     OUTPUT(idText, text, string("Saved ") + path);
   }
   else
@@ -50,17 +63,22 @@ void RequestTranslatorModule::update(WalkingEngineParams& walkingEngineParams)
     save(walkingEngineParams, File::getBHDir() + string("/Config/Robots/Default/walkingParams.cfg"));
   DEBUG_RESPONSE_ONCE("module:RequestTranslator:WalkingEngineParams:save_robot")
     save(walkingEngineParams, File::getBHDir() + string("/Config/Robots/") + Global::getSettings().robotName + string("/walkingParams.cfg"));
+
+  DEBUG_RESPONSE_ONCE("module:RequestTranslator:WalkingEngineParamsFLIPM:save_default")
+    save(walkingEngineParams, File::getBHDir() + string("/Config/Robots/Default/walkingParamsFLIPM.cfg"));
+  DEBUG_RESPONSE_ONCE("module:RequestTranslator:WalkingEngineParamsFLIPM:save_robot")
+    save(walkingEngineParams, File::getBHDir() + string("/Config/Robots/") + Global::getSettings().robotName + string("/walkingParamsFLIPM.cfg"));
+
 	translator.updateWalkingEngineParams(walkingEngineParams);
 }
-void RequestTranslatorModule::update(FreeLegPhaseParams& freeLegPhaseParams)
+
+void RequestTranslatorModule::update(FLIPMObserverParams& flipmObserverParams)
 {
-  DEBUG_RESPONSE_ONCE("module:RequestTranslator:FreeLegPhaseParams:save_default")
-    save(freeLegPhaseParams, File::getBHDir() + string("/Config/Robots/Default/freeLegParams.cfg"));
-  DEBUG_RESPONSE_ONCE("module:RequestTranslator:FreeLegPhaseParams:save_robot")
-    save(freeLegPhaseParams, File::getBHDir() + string("Config/Robots/") + Global::getSettings().robotName + string("/freeLegParams.cfg"));
-	translator.updateFreeLegPhaseParams(freeLegPhaseParams);
+  DEBUG_RESPONSE_ONCE("module:RequestTranslator:FLIPMObserverParams:save_default")
+    save(flipmObserverParams, File::getBHDir() + string("/Config/Robots/Default/flipmObserverParams.cfg"));
+  DEBUG_RESPONSE_ONCE("module:RequestTranslator:FLIPMObserverParams:save_robot")
+    save(flipmObserverParams, File::getBHDir() + string("/Config/Robots/") + Global::getSettings().robotName + string("/flipmObserverParams.cfg"));
+  translator.updateFLIPMObserverParams(flipmObserverParams);
 }
-
-
 
 MAKE_MODULE(RequestTranslatorModule, dortmundWalkingEngine)

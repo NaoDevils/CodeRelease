@@ -336,7 +336,7 @@ namespace Streaming
 
   /**
    * The following three functions are helpers for streaming data. (in == 0) != (out == 0).
-   * @param S The type of the variable to be streamed.
+   * @tparam S The type of the variable to be streamed.
    * @param in The stream to read from.
    * @param out The stream to write to.
    * @param name The name of the variable to be streamed.

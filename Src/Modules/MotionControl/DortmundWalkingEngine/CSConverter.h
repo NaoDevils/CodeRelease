@@ -46,6 +46,7 @@
 #include "Representations/MotionControl/ActualCoM.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/MotionControl/WalkingInfo.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/BodyTilt.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
@@ -55,6 +56,8 @@
 #include "Tools/RingBufferWithSum.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Tools/Streams/RobotParameters.h"
+#include "Representations/Sensing/ArmContact.h"
+#include "Representations/Configuration/RobotDimensions.h"
 /**
  * @class CSConverter
  * Converts the foot positions from world coordinate system to robot
@@ -62,7 +65,6 @@
  * coordinate system and the actual center of mass in the robot 
  * coordinate system.
  */
-
 
 class CSConverter
 {
@@ -82,17 +84,19 @@ public:
 		const Footpositions	  		&theFootpositions,
 		const TargetCoM			    	&theTargetCoM,
 		const WalkingEngineParams	&theWalkingEngineParams,
-		const ControllerParams		&theControllerParams,
+    const ControllerParams		&theControllerParams,
 		const ActualCoMRCS	    	&theActualCoMRCS,
 		const FallDownState	  		&theFallDownState,
 		const InertialSensorData	&theInertialSensorData,
     const FsrSensorData       &theFsrSensorData,
 		const BodyTilt			    	&theBodyTilt,
-		const FreeLegPhaseParams	&theFreeLegPhaseParams,
 		const TorsoMatrix		  	  &theTorsoMatrix,
     const RobotModel          &theRobotModel,
     const RobotInfo           &theRobotInfo,
-    const FootSteps           &theFootSteps);
+    const FootSteps           &theFootSteps,
+    const ArmContact          &theArmContact,
+    const RobotDimensions     &theRobotDimensions,
+    const WalkCalibration     &theWalkCalibration);
 
 	/** Destructor */
 	~CSConverter(void);
@@ -133,11 +137,13 @@ private:
 	const InertialSensorData	&theInertialSensorData; /**< Set by constructor */
   const FsrSensorData       &theFsrSensorData; /**< Set by constructor */
 	const BodyTilt			    	&theBodyTilt; /**< Set by constructor */
-	const FreeLegPhaseParams	&theFreeLegPhaseParams; /**< Set by constructor */
 	const TorsoMatrix	   	  	&theTorsoMatrix; /**< Set by constructor */
   const RobotModel          &theRobotModel;
   const RobotInfo           &theRobotInfo;
   const FootSteps           &theFootSteps;
+  const ArmContact          &theArmContact;
+  const RobotDimensions     &theRobotDimensions;
+  const WalkCalibration     &theWalkCalibration;
 	typedef std::list<Footposition *> FootList;
 
   Point robotPosition; /**< Position of robot body in world coordinate system. */
@@ -150,7 +156,9 @@ private:
     lastOffset[2];
 	StepData currentStep;
   bool isInstantKickRunning;
-
+  float bodyPitch[2];
+  float speedDependentTilt;
+  bool bodyTiltApplied;
 	RingBufferWithSum<float,5> accXBuffer;
 
 	bool fallingDown; /**< Is the robot falling? */

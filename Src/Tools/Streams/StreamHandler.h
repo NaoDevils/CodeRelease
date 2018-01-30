@@ -88,7 +88,7 @@ public:
    * This only works if both specifications involved have been created from a stream,
    * i.e. all type names were demangled.
    * @param other The specification data used for the second type.
-   * @param type The type the specification which will be searched in this object.
+   * @param rawType The type the specification which will be searched in this object.
    * @param otherType The type the specification which will be searched in the other object.
    * @return Is the other type compatible with this type?
    */

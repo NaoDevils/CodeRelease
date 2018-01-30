@@ -60,6 +60,92 @@ void CLIPPreprocessor::createScanLines()
   initialized = true;
 }
 
+void CLIPPreprocessor::update(IntegralImage &integralImage)
+{
+  INIT_DEBUG_IMAGE_BLACK(IntegralImageLower, 160, 120);
+  INIT_DEBUG_IMAGE_BLACK(IntegralImageUpper, 160, 120);
+  createIntegralImage(theImage, false, integralImage);
+  createIntegralImage(theImageUpper, true, integralImage);
+
+  COMPLEX_IMAGE(IntegralImageLower)
+  {
+    int rowIndex = 0;
+    int lastRowIndex = -160;
+    for (int y = 1; y < 120; y++)
+    {
+      rowIndex += 160;
+      lastRowIndex += 160;
+      for (int x = 1; x < 160; x++)
+      {
+        int pixelValue = integralImage.lowerImage[rowIndex + x]
+          + integralImage.lowerImage[lastRowIndex + x - 1]
+          - integralImage.lowerImage[rowIndex + x - 1]
+          - integralImage.lowerImage[lastRowIndex + x];
+        DEBUG_IMAGE_SET_PIXEL_YUV(IntegralImageLower, x, y, static_cast<unsigned char>(pixelValue), 127, 127);
+      }
+    }
+  }
+  COMPLEX_IMAGE(IntegralImageUpper)
+  {
+    int rowIndex = 0;
+    int lastRowIndex = -160;
+    for (int y = 1; y < 120; y++)
+    {
+      rowIndex += 160;
+      lastRowIndex += 160;
+      for (int x = 1; x < 160; x++)
+      {
+        int pixelValue = integralImage.upperImage[rowIndex + x]
+          + integralImage.upperImage[lastRowIndex + x - 1]
+          - integralImage.upperImage[rowIndex + x - 1]
+          - integralImage.upperImage[lastRowIndex + x];
+        DEBUG_IMAGE_SET_PIXEL_YUV(IntegralImageUpper, x, y, static_cast<unsigned char>(pixelValue), 127, 127);
+      }
+    }
+  }
+  SEND_DEBUG_IMAGE(IntegralImageLower);
+  SEND_DEBUG_IMAGE(IntegralImageUpper);
+}
+
+void CLIPPreprocessor::createIntegralImage(const Image& other, const bool &upper, IntegralImage& integralImage)
+{
+  const int factor = other.width / 160;
+  const int stepWidth = 4 * factor;
+  const int rowStep = 4 * other.width * factor * 2 - 4 * other.width;
+  //const int fieldColorY = theFieldColorsUpper.fieldColorArray[0].fieldColorOptY;
+  unsigned char* image_ptr = (unsigned char*)other.image;
+  std::vector<unsigned> &image = upper ? integralImage.upperImage : integralImage.lowerImage;
+  int row = 0;
+  int column = 0;
+  int index = 0;
+  int indexLastRow = 118 * 160;
+  for (unsigned x = 0; x < 160; x++)
+    integralImage.ySum[indexLastRow + x] = 0;
+  unsigned lastYSum = 0;
+  unsigned lastIISum = 0;
+  for (; row < 120; row++)
+  {
+    for (; column < 160; column++)
+    {
+      /*int imageValue = *image_ptr;
+      int diffFromGray = imageValue - theFieldColorsUpper.fieldColorArray[0].fieldColorOptY;
+      int diffFromGrayAbs = std::abs(diffFromGray);
+      imageValue = diffFromGrayAbs + (diffFromGrayAbs / 2) * -(sgn(diffFromGray) - 1);*/
+
+      lastYSum = integralImage.ySum[indexLastRow + column];
+      integralImage.ySum[index] = (lastYSum + *image_ptr);
+      image[index] = lastIISum + integralImage.ySum[index];
+      lastIISum = image[index];
+      index++;
+      image_ptr += stepWidth;
+    }
+    lastIISum = 0;
+    column = 0;
+    indexLastRow = 160 * row;
+    image_ptr += rowStep;
+  }
+}
+
 void CLIPPreprocessor::update(CLIPPointsPercept &theCLIPPointsPercept)
 {
   wasReset = false;

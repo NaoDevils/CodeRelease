@@ -133,3 +133,8 @@ STREAMABLE(BodyContour,
   (std::vector<Line>) lines, /**< The clipping lines. */
   (Vector2i) cameraResolution, /**< Only for drawing. */
 });
+
+struct BodyContourUpper : public BodyContour
+{
+  void draw() const;
+};

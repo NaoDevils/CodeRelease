@@ -32,21 +32,25 @@ mr ImageUpper default
 # Deactivate unused modules
 mr RobotHealth default
 mr Thumbnail off
+mr ThumbnailUpper off
+mr LowFrameRateImage off
+mr LowFrameRateImageUpper off
 
 # Deactivate modules depending on images
-mr FieldBoundary default
-
 mr RobotsPercept default
 mr CLIPCenterCirclePercept default
 mr CLIPGoalPercept default
 mr CLIPFieldLinesPercept default
 mr PenaltyCrossPercept default
-mr BallPercept off
+mr SideConfidence default
+mr BallPercept OracledPerceptsProvider
 mr CLIPPointsPercept off
 mr ObstacleBasePoints off
 mr BallSpots off
 mr ColorTable off
 mr BodyContour off
+mr BodyContourUpper off
 
 call Includes/DebugResponses
 call Includes/GameStates
+call Includes/FieldViewsFast

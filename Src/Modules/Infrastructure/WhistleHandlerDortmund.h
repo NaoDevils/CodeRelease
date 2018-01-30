@@ -9,7 +9,6 @@
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Modeling/TeamBallModel.h"
-#include "Representations/Modeling/Whistle.h"
 #include "Tools/Module/Module.h"
 
 MODULE(WhistleHandlerDortmund,

@@ -9,6 +9,7 @@
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/Sensing/RobotModel.h"
+#include "Representations/MotionControl/WalkingInfo.h"
 #include "Tools/Module/Module.h"
 #include "CoMProvider.h"
 #include "Representations/Infrastructure/JointAngles.h"
@@ -17,12 +18,13 @@
 
 MODULE(CoMProviderModule,
 {,
-  REQUIRES(JointAngles),
-  REQUIRES(FootSteps),
-  REQUIRES(RobotModel),
+  //REQUIRES(JointAngles),
+  //REQUIRES(FootSteps),
+  //REQUIRES(RobotModel),
   REQUIRES(ActualCoMRCS),
-  USES(JointRequest),
-  REQUIRES(WalkingEngineParams),
+  USES(WalkingInfo),
+  //USES(JointRequest),
+  //REQUIRES(WalkingEngineParams),
   PROVIDES(ActualCoM),
   PROVIDES(ActualCoMFLIPM),
 });

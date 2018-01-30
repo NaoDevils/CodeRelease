@@ -17,11 +17,15 @@
 MODULE(CoordinateSystemProvider,
 {,
   REQUIRES(CameraInfo),
+  REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
+  REQUIRES(CameraMatrixUpper),
   REQUIRES(FrameInfo),
   REQUIRES(Image), // for debugging only
+  REQUIRES(ImageUpper), // for debugging only
   REQUIRES(JointSensorData), // for timeStamp only
   PROVIDES(ImageCoordinateSystem),
+  PROVIDES(ImageCoordinateSystemUpper),
   LOADS_PARAMETERS(
   {,
     (float) imageRecordingTime, /**< Time the camera requires to take an image (in s, for motion compensation, may depend on exposure). */
@@ -35,17 +39,22 @@ class CoordinateSystemProvider : public CoordinateSystemProviderBase
    * Updates the image coordinate system provided by this module.
    */
   void update(ImageCoordinateSystem& imageCoordinateSystem);
+  void update(ImageCoordinateSystemUpper& imageCoordinateSystem);
 
   /**
    * The method calculates the scaling factors for the distored image.
    * @param a The constant part of the equation for motion distortion will be returned here.
    * @param b The linear part of the equation for motion distortion will be returned here.
    */
-  void calcScaleFactors(float& a, float& b, unsigned int abTimeDiff) const;
+  void calcScaleFactors(float& a, float& b, unsigned int abTimeDiff, bool upper) const;
 
   CameraMatrix cameraMatrixPrev;
+  CameraMatrixUpper cameraMatrixUpperPrev;
   unsigned int cameraMatrixPrevTimeStamp;
+  unsigned int cameraMatrixUpperPrevTimeStamp;
 
   DECLARE_DEBUG_IMAGE(corrected);
   DECLARE_DEBUG_IMAGE(horizonAligned);
+  DECLARE_DEBUG_IMAGE(correctedUpper);
+  DECLARE_DEBUG_IMAGE(horizonAlignedUpper);
 };

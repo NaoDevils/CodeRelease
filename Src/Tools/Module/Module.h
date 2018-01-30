@@ -128,7 +128,7 @@ public:
 
   /**
    * Calls a draw method if a representation has one.
-   * @param T The type of the representation.
+   * @tparam T The type of the representation.
    * @param t The representation.
    */
   template<typename T> static void draw(T& t)

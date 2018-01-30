@@ -30,9 +30,11 @@ MainWindow::MainWindow()
   shortcutBar->addShortcut("help", "help");
   shortcutBar->addShortcut("deploy", "deploy");
   shortcutBar->addShortcut("download logs", "downloadLogs");
+  shortcutBar->addShortcut("download camera calibrations", "downloadCameraCalibrations");
   shortcutBar->addShortcut("delete logs", "deleteLogs");
   shortcutBar->addShortcut("simulator", "sim");
   shortcutBar->addShortcut("shutdown", "shutdown -s");
+  shortcutBar->addShortcut("reboot", "restart robot");
   shortcutBar->addShortcut("bhuman restart", "restart bhuman");
   shortcutBar->addShortcut("bhuman ssh start", "ssh bhumand start");
   shortcutBar->addShortcut("bhuman stop", "ssh bhumand stop");
@@ -63,7 +65,7 @@ MainWindow::MainWindow()
   splitter->setMinimumWidth(200);
   QWidget::setMinimumHeight(widgetHeight);
   QWidget::setMinimumWidth(widgetWidth);
-  QWidget::resize(widgetWidth, widgetHeight);
+  QWidget::resize(widgetWidth+200, widgetHeight);
   QDesktopWidget desktop;
   QPoint position((desktop.width() - frameGeometry().width()) / 2, (desktop.height() - frameGeometry().height()) / 2);
   QWidget::move(position);

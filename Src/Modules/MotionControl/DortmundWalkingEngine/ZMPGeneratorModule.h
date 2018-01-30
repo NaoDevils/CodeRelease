@@ -18,10 +18,9 @@
 MODULE(ZMPGeneratorModule,
 { ,
   REQUIRES(FootSteps),
-  USES(WalkingInfo),
+  //USES(WalkingInfo),
   REQUIRES(ReferenceModificator),
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FreeLegPhaseParams),
   REQUIRES(ControllerParams),
   PROVIDES(RefZMP),
 });

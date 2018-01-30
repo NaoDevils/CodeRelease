@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "Representations/BehaviorControl/KeySymbols.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -26,6 +27,7 @@
 MODULE(RobotDetector,
 { ,
   REQUIRES(BodyContour),
+  REQUIRES(BodyContourUpper),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
@@ -39,6 +41,7 @@ MODULE(RobotDetector,
   USES(RobotPose),
   REQUIRES(ObstacleBasePoints),
   REQUIRES(OwnTeamInfo),
+  REQUIRES(KeySymbols),
   REQUIRES(TeammateData),
   PROVIDES(RobotsPercept),
   LOADS_PARAMETERS(
@@ -56,11 +59,12 @@ MODULE(RobotDetector,
     (bool) useTeamMatePoses,
     (bool) useGreenCheck,
     (bool) useWhiteCheck,
+    (bool) allowInCompleteRobots,
     (int) maxCrDiff, // max sum of diffs to fieldCr mainly to rule out goals as obstacles
     (int) shirtMinColorDiff,
     (float) featureFactor,
-    (Vector2i) ownColor,
-    (Vector2i) oppColor,
+    (Vector3i) ownColor,
+    (Vector3i) oppColor,
   }),
 });
 
@@ -89,17 +93,12 @@ private:
   bool lookForOtherLeg(Vector2f &basePoint, float &robotWidth, const float &expectedWidth, const bool &upper);
   bool verifyObstacle(Vector2f &footBase, float &robotWidth, RobotEstimate &robot, const bool &upper);
   
+  /* 
+  ** Count green pixels and return true, if less then minGreen pixels are classified as green. 
+  */
   bool checkForGreen(const float &x, const float &y, Vector2f scanDir, int maxSteps, int minGreen, const bool &upper);
 
-  /* Check leg form of possible percept.
-  * @param footBase The lower left point of the obstacle.
-  * @param robotWidth The scanned width of the legs.
-  * @param upper True, if found in upper image.
-  * @return True, if leg outlines are found.
-  */
-  bool checkForm(const Vector2f &footBase, const float &robotWidth, const bool &upper);
-  bool checkYDiffs(const Vector2f &footBase, const float &robotWidth, const bool &upper);
-  int checkForYGradient(const Vector2i &from, const Vector2i &dir, const bool &upper);
+  bool checkForFeaturesOnRobot(const int &minX, const int &maxX, const int &xStep, const int &fromY, const int &toY, const bool &upper);
 
   RobotEstimate::RobotType scanForRobotColor(
     const Vector2f &from,

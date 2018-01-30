@@ -45,7 +45,7 @@ class TiltController
 {
 public:
 	/** Constructor with all needed source data structures.
-	 * @param theSensorData Measured data.
+	 * @param theInertialSensorData Measured data.
 	 * @param theWalkingEngineParams Walking Engine Parameters.
 	 */
 	TiltController(
@@ -54,7 +54,6 @@ public:
 		const JointCalibration		&theJointCalibration,
 		const JointRequest			&theJointRequest,
 		const SpeedInfo				&theSpeedInfo,
-		const FreeLegPhaseParams	&theFreeLegPhaseParams,
 		const TargetCoM				&theTargetCoM*/);
 
 	/** Destructor */
@@ -72,7 +71,6 @@ private:
 	//const JointCalibration		&theJointCalibration;	/**< Set by constructor. */
 	//const JointRequest				&theJointRequest;			/**< Set by constructor. */
 	//const SpeedInfo           &theSpeedInfo;        /**< Set by constructor. */
-	//const FreeLegPhaseParams  &theFreeLegPhaseParams;/**< Set by constructor. */
 	//const TargetCoM				&theTargetCoM;
 	Point angleSum; /**< This is the sum of the angle over max angle and under the min angle respectively */
   PIDController2 tiltPIDController,rollPIDController;

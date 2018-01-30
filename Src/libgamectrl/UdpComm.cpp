@@ -89,6 +89,7 @@ bool UdpComm::setBroadcast(bool enable)
   }
 }
 
+
 bool UdpComm::bind(const char* addr_str, int port)
 {
   static const int yes = 1;

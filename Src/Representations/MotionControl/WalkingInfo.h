@@ -25,17 +25,20 @@
 class WalkingInfo : public Streamable {
 public:
 
-  WalkingInfo() : isLeavingPossible(true), kickPhase(freeLegNA) {};
+  WalkingInfo() : isLeavingPossible(true), isRunning(false), bodyTiltApplied(false) {};
 
   Pose2f odometryOffset; /**< Distancte between last odometry position and current */
   Pose2f robotPosition; /**< Current position of body in world coordinate system of the walking engine */
   Pose2f offsetToRobotPoseAfterPreview; /**< Future position of robot after the preview phase */
   Vector2f expectedAcc; /**< Expected acceleration of the body */
   bool isLeavingPossible; /**< Is is possible to leave the walking engine without falling? */
-  FreeLegPhase kickPhase;
   StepData lastUsedFootPositions;
   bool isInstantKickRunning;
   double accX_XOffset;
+  Vector2f desiredBodyRot;
+  bool isRunning;
+  bool bodyTiltApplied;
+  bool onFloor[2];
 
   Vector2f ballCSinWEWCS;
 
@@ -149,16 +152,15 @@ public:
 protected:
   virtual void serialize(In* in, Out* out)
   {
-    int iKickPhase = (int)kickPhase;
     STREAM_REGISTER_BEGIN;
     STREAM(odometryOffset);
     STREAM(robotPosition);
     STREAM(offsetToRobotPoseAfterPreview);
     STREAM(expectedAcc);
     STREAM(isLeavingPossible);
-    STREAM(iKickPhase);
     STREAM(isInstantKickRunning);
     STREAM(accX_XOffset);
+    STREAM(desiredBodyRot)
     STREAM_REGISTER_FINISH;
   }
 };

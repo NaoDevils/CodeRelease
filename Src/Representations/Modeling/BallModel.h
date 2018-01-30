@@ -1,9 +1,10 @@
 /**
- * @file BallModel.h
+ * \file BallModel.h
  *
- * Declaration of struct BallModel
+ * Declaration of representation BallModel
  *
- * @author <A href="mailto:timlaue@informatik.uni-bremen.de">Tim Laue</A>
+ * \author <A href="mailto:timlaue@informatik.uni-bremen.de">Tim Laue</A>
+ * \author <A href="mailto:heiner.walter@tu-dortmund.de">Heiner Walter</A>
  */
 
 #pragma once
@@ -11,11 +12,11 @@
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Math/Transformation.h"
-#include "RobotPose.h"
-#include "TeamBallModel.h"
+#include "Representations/Modeling/RobotPose.h"
+#include "Representations/Modeling/TeamBallModel.h"
 
 /**
- * @struct BallState
+ * \struct BallState
  *
  * Base struct for ball position and velocity.
  */
@@ -60,20 +61,28 @@ STREAMABLE(BallState,
 });
 
 /**
- * @struct BallModel
+ * \struct BallModel
  *
- * Contains all current knowledge about the ball.
+ * Contains all current knowledge about the ball collected from the robots own perception.
+ * For ball information from team mates see representation \c TeamBallModel.
+ *
+ * The \c BallModel is constructed by a multi hypotheses filter. The best hypothesis is output
+ * to this representation. Therefore it does not contain all ball percepts (\c theBallPercept)
+ * seen by the robot but only those which fitts to the best hypothesis.
  */
 STREAMABLE(BallModel,
 {
   /** Draws the estimate on the field */
   void draw() const,
 
-  (Vector2f)(Vector2f::Zero()) lastPerception, /**< The last seen position of the ball */
-  (BallState) estimate, /**< The state of the ball estimated from own observations; it is propagated even if the ball is not seen */
-  (unsigned)(0) timeWhenLastSeen, /**< Time stamp, indicating what its name says */
-  (unsigned)(0) timeWhenLastSeenByTeamMate, /**< Time stamp, indicating what its name says */
-  (unsigned)(0) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there */
+  /** The unfiltered last ball percept which was used to update the \c estimate. */
+  (Vector2f)(Vector2f::Zero()) lastPerception,
+  /** The filtered ball state (including position and velocity) estimated from percepts;
+   *  it is propagated even if the ball is currently not seen. */
+  (BallState) estimate,
+  (unsigned)(0) timeWhenLastSeen, /**< The time of \c lastPerception. */
+  (unsigned)(0) timeWhenLastSeenByTeamMate, /**< The time of the last ball percept of any team mate. */
+  (unsigned)(0) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there. */
   // Unused by Dortmund:
   (unsigned char)(0) seenPercentage, /**< How often was the ball seen in the recent past (0%...100%). */
   
@@ -83,7 +92,7 @@ STREAMABLE(BallModel,
 });
 
 /**
- * @struct GroundTruthBallModel
+ * \struct GroundTruthBallModel
  * The same as the BallModel, but - in general - provided by an external
  * source that has ground truth quality
  */
@@ -98,7 +107,7 @@ struct BallModelAfterPreview : public BallModel
 };
 
 /**
- * @struct BallModelCompressed
+ * \struct BallModelCompressed
  * A compressed version of BallModel used in team communication
  */
 STREAMABLE(BallModelCompressed,

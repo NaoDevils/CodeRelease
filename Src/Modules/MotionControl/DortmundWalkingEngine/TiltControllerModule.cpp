@@ -13,7 +13,6 @@ controller(
 		theJointCalibration,
 		theJointRequest,
 		theSpeedInfo,
-		theFreeLegPhaseParams,
 		theTargetCoM*/)
 {
 }

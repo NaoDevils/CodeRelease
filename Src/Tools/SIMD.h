@@ -8,7 +8,15 @@
 
 #pragma once
 
+ // TODO: check this warning
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#endif
 #include <tmmintrin.h>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 #ifdef TARGET_SIM
 inline __m128i my_mm_shuffle_epi8(const __m128i& a, const __m128i& m)

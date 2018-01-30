@@ -1,4 +1,12 @@
+// TODO: check this warning
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#endif
 #include <tmmintrin.h>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 #include "SobelDortmund.h"
 
 #include "Representations/Infrastructure/Image.h"

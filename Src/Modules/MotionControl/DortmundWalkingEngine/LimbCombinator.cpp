@@ -72,43 +72,26 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
 	walkingEngineOutput.offsetToRobotPoseAfterPreview = theWalkingInfo.offsetToRobotPoseAfterPreview;
 //set leg hardness
 	static unsigned int waitCounter=0;
-	if (theWalkingInfo.kickPhase==freeLegNA)
 	{
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipYawPitch]=theWalkingEngineParams.legJointHardness[0];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipRoll]=theWalkingEngineParams.legJointHardness[1];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipPitch]=theWalkingEngineParams.legJointHardness[2];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lKneePitch]=theWalkingEngineParams.legJointHardness[3];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnklePitch]=theWalkingEngineParams.legJointHardness[4];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnkleRoll]=theWalkingEngineParams.legJointHardness[5];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipYawPitch]=theWalkingEngineParams.legJointHardness[0];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipRoll]=theWalkingEngineParams.legJointHardness[1];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipPitch]=theWalkingEngineParams.legJointHardness[2];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rKneePitch]=theWalkingEngineParams.legJointHardness[3];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnklePitch]=theWalkingEngineParams.legJointHardness[4];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnkleRoll]=theWalkingEngineParams.legJointHardness[5];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipYawPitch]=theWalkingEngineParams.jointCalibration.legJointHardness[0];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipRoll]=theWalkingEngineParams.jointCalibration.legJointHardness[1];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipPitch]=theWalkingEngineParams.jointCalibration.legJointHardness[2];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lKneePitch]=theWalkingEngineParams.jointCalibration.legJointHardness[3];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnklePitch]=theWalkingEngineParams.jointCalibration.legJointHardness[4];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnkleRoll]=theWalkingEngineParams.jointCalibration.legJointHardness[5];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipYawPitch]=theWalkingEngineParams.jointCalibration.legJointHardness[0];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipRoll]=theWalkingEngineParams.jointCalibration.legJointHardness[1];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipPitch]=theWalkingEngineParams.jointCalibration.legJointHardness[2];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rKneePitch]=theWalkingEngineParams.jointCalibration.legJointHardness[3];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnklePitch]=theWalkingEngineParams.jointCalibration.legJointHardness[4];
+		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnkleRoll]=theWalkingEngineParams.jointCalibration.legJointHardness[5];
 		waitCounter--;
-	}
-	else // theWalkingInfo.kickPhase!=freeLegNA
-	{
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipYawPitch]=theFreeLegPhaseParams.legJointHardness[0];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipRoll]=theFreeLegPhaseParams.legJointHardness[1];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipPitch]=theFreeLegPhaseParams.legJointHardness[2];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lKneePitch]=theFreeLegPhaseParams.legJointHardness[3];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnklePitch]=theFreeLegPhaseParams.legJointHardness[4];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnkleRoll]=theFreeLegPhaseParams.legJointHardness[5];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipYawPitch]=theFreeLegPhaseParams.legJointHardness[0];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipRoll]=theFreeLegPhaseParams.legJointHardness[1];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipPitch]=theFreeLegPhaseParams.legJointHardness[2];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rKneePitch]=theFreeLegPhaseParams.legJointHardness[3];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnklePitch]=theFreeLegPhaseParams.legJointHardness[4];
-		walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnkleRoll]=theFreeLegPhaseParams.legJointHardness[5];
-		waitCounter=300;
 	}
   
   // set arm hardness
   for (int i = Joints::lShoulderPitch; i <= Joints::rElbowRoll; i++)
   {
-    walkingEngineOutput.stiffnessData.stiffnesses[i] = StiffnessData::useDefault; // TODO: BH2015 port - verify this works
+    walkingEngineOutput.stiffnessData.stiffnesses[i] = StiffnessData::useDefault;
   }
 
   for (int i = 0; i < 12; i++)

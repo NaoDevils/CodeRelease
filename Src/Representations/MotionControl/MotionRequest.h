@@ -29,7 +29,6 @@ STREAMABLE(MotionRequest,
     walk,
     kick,
     specialAction,
-    getUp,
   });
 
   /**

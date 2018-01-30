@@ -60,7 +60,7 @@ void HeadMotionEngine::update(HeadJointRequest& headJointRequest)
 
   // max speed clipping
   if(distanceToTarget / deltaTime > maxSpeed)
-    offset *= maxSpeed * deltaTime / distanceToTarget; //<=> offset.normalize(maxSpeed * deltaTime);
+    offset *= maxSpeed * deltaTime / distanceToTarget; // <=> offset.normalize(maxSpeed * deltaTime);
 
   // max acceleration clipping
   Vector2f speed(offset / deltaTime);

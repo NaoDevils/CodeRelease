@@ -9,6 +9,9 @@
 #include <QMouseEvent>
 #include <QPalette>
 #include <QProgressBar>
+#include <QMenu>
+#include <QAction>
+
 
 #include "Utils/bush/models/Robot.h"
 #include "Utils/bush/models/Team.h"
@@ -17,6 +20,9 @@
 #include "Utils/bush/ui/RobotPool.h"
 #include "Utils/bush/tools/StringTools.h"
 #include "Utils/bush/Session.h"
+#include "Platform/File.h"
+#include "Utils/bush/tools/Filesystem.h"
+
 
 void RobotView::init()
 {
@@ -26,14 +32,17 @@ void RobotView::init()
     cPlayerNumber = new QLabel(QString("<font size=5><b>") + QString::number(playerNumber) + QString("</b></font>"));
 
   statusWidget = new QWidget(this);
-  statusWidget->setMaximumSize(200, 75);
-  this->setMaximumWidth(170);
-  this->setMaximumHeight(125);
+  statusWidget->setMaximumSize(320, 160);
+  this->setMaximumWidth(190);
+  this->setMaximumHeight(135);
   QGridLayout* statusLayout = new QGridLayout(statusWidget);
+  this->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
+    this, SLOT(ShowContextMenu(const QPoint&)));
 
   QLabel* pingLabelWLAN = new QLabel("<font size=2><b>Wlan</b></font>", statusWidget);
   pingBarWLAN = new QLabel(this);
-  pingBarWLAN->setMaximumSize(50, 13);
+  pingBarWLAN->setMaximumSize(50, 20);
   pingBarWLAN->setAlignment(Qt::AlignCenter);
   setPings(WLAN, 0);
   statusLayout->addWidget(pingLabelWLAN, 0, 0, Qt::AlignLeft);
@@ -53,6 +62,7 @@ void RobotView::init()
   powerBar->setRange(0, 100);
   powerBar->setValue(0);
   powerBar->setAlignment(Qt::AlignCenter);
+  setPower(0);
   statusLayout->addWidget(powerLabel, 2, 0, Qt::AlignLeft);
   statusLayout->addWidget(powerBar, 2, 1);
 
@@ -182,24 +192,36 @@ void RobotView::setPings(ENetwork network, std::map<std::string, double>* pings)
   if(value < 2000)
     bar->setText(QString::number(value) + " ms");
   else
-    bar->setText("n/a");
+    bar->setText(QString::number(-0, 'f', 1));
 
 }
 
 void RobotView::setPower(std::map<std::string, Power>* power)
 {
   int value = 0;
-  if(power && (*power)[robot->name].isValid())
-    value = ((*power)[robot->name]).value;
+  bool powerPlugged = false;
+  bool naoqi = true;
+  if (power)
+  {
+    if ((*power)[robot->name].isValid())
+    {
+      value = ((*power)[robot->name]).value;
+      powerPlugged = ((*power)[robot->name]).powerPlugged;
+    }
+
+    naoqi = ((*power)[robot->name]).naoqi;
+  }
   powerBar->setValue(value);
 
-  QString danger = "QProgressBar::chunk {background-color: red; width: 20px;}";
-  QString safe = "QProgressBar::chunk {background-color: lime; width: 20px;}";
-
-  if ((*power)[robot->name].powerPluged)
-	  powerBar->setStyleSheet(safe);
+  if (naoqi)
+    powerBar->setFormat("%p%");
   else
-	  powerBar->setStyleSheet(danger);
+    powerBar->setFormat("NAOqi?");
+
+  if (powerPlugged)
+    powerBar->setStyleSheet("QProgressBar::chunk { background-color: lime; }");
+  else
+    powerBar->setStyleSheet("QProgressBar::chunk { background-color: red; }");
 }
 
 void RobotView::mouseMoveEvent(QMouseEvent* me)
@@ -262,3 +284,55 @@ void RobotView::setSelected(bool selected)
     cPlayerNumber->setEnabled(selected);
   }
 }
+
+void RobotView::ShowContextMenu(const QPoint& pos) // this is a slot
+{
+  // for most widgets
+  // Rensen: removed due to unused warning
+//  QPoint globalPos = statusWidget->mapToGlobal(pos);
+  // for QAbstractScrollArea and derived classes you would use:
+  // QPoint globalPos = myWidget->viewport()->mapToGlobal(pos);
+
+  QMenu myMenu;
+  QAction *action1 = myMenu.addAction("SSH LAN");
+  QAction *action2 = myMenu.addAction("SSH WLAN");
+  connect(action1, SIGNAL(triggered()), this, SLOT(Cable()));
+  connect(action2, SIGNAL(triggered()), this, SLOT(WIFI()));
+  myMenu.exec(statusWidget->mapToGlobal(pos));
+}
+
+void RobotView::openTerm(bool wlan)
+{
+  char cCurrentPath[FILENAME_MAX];
+  GetCurrentDir(cCurrentPath, sizeof(cCurrentPath));
+  cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
+  std::string path(cCurrentPath);
+
+  printf("The current working directory is %s", cCurrentPath);
+
+  std::string command;
+  static std::string keyFile = Filesystem::getNaoKey();
+  command = "ssh -i \"" + keyFile + "\"";
+  //command = "ssh -i" + path + "\\Keys\\id_rsa_nao  nao@";
+
+  if (wlan)
+
+    command = command + " nao@" + robot->wlan;
+  else
+    command = command + " nao@" + robot->lan;
+
+#ifdef WINDOWS
+  command = "start " + command;  // add "start " to be able to focus the bush window
+  system(command.c_str());
+
+#elif OSX
+  // Use AppleScript to open a new terminal window executing the command:
+  command = "/usr/bin/osascript -e 'tell application \"Terminal\" to do script \"" + command + "\"'";
+  system(command.c_str());
+#else
+  //linux stuff
+  command = "x-terminal-emulator -e '" + command + "&'";   // & to start in background and be able to focus the bush window
+  system(command.c_str());
+#endif
+}
+

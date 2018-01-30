@@ -224,6 +224,11 @@ struct FieldDimensions : public SimpleFieldDimensions
   }
 
   /**
+  * Returns true when ballPos is touching the playing fields borders.
+  */
+  bool isBallInsideField(const Vector2f &ballPos) const;
+
+  /**
    * The function clips a point to the field.
    * @param v The point.
    * @return How far was the point moved?

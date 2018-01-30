@@ -1,0 +1,74 @@
+steps = [
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = -0.08;
+          y = 0.1;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.02;
+          y = 0;
+        };
+      }
+    ];
+    duration = 24;
+    onFloor = [
+      true,
+      false
+    ];
+    footTraj = "";
+  },
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = -0.08;
+          y = 0.1;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.02;
+          y = 0;
+        };
+      }
+    ];
+    duration = 1;
+    onFloor = [
+      true,
+      true
+    ];
+    footTraj = "";
+  },
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = -0.08;
+          y = 0.1;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.02;
+          y = 0;
+        };
+      }
+    ];
+    duration = 24;
+    onFloor = [
+      false,
+      true
+    ];
+    footTraj = "";
+  }
+];

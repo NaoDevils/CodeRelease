@@ -58,10 +58,15 @@ void GyroFallDownStateDetector::update(FallDownState& fallDownState)
     if(std::abs(angleXZ) > 0.6f || std::abs(angleYZ) > 0.6f)
     {
       if (!(theMotionInfo.motion == MotionRequest::specialAction
-         && (theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::standUpBackNao 
-           || theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::standUpFrontNao)))
+         && theMotionInfo.specialActionRequest.specialAction >= SpecialActionRequest::standUpBackNao
+           && theMotionInfo.specialActionRequest.specialAction < SpecialActionRequest::numOfSpecialActionIDs))
       {
         fallDownState.state = FallDownState::falling;
+        // This is for head protection. Only front or back decision matters
+        if (angleXZ > 0.3f)
+          fallDownState.direction = FallDownState::front;
+        else if (angleXZ < -0.3f)
+          fallDownState.direction = FallDownState::back;
         fallDownTime = theFrameInfo.time;
       }
     }

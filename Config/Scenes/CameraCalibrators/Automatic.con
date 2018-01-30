@@ -1,42 +1,37 @@
-mr StandOutput CalibrationStand
-set representation:HeadAngleRequest unchanged
-mr CameraCalibration CognitionConfigurationDataProvider
-mr CameraCalibrationNext AutomaticCameraCalibrator
-mr CameraResolutionRequest AutomaticCameraCalibrator
-mr HeadAngleRequest AutomaticCameraCalibrator
-#mr GoalPercept default
+vi image jpeg lower gain 1.0
+vi imageUpper jpeg upper gain 1.0
 
-automaticCameraCalibratorInsertion lower on
-automaticCameraCalibratorInsertion upper on
-automaticCameraCalibratorDeletion lower on
-automaticCameraCalibratorDeletion upper on
+mr HeadControlRequest CMCorrector2017
+mr CameraCalibration CMCorrector2017
+mr MotionRequest CMCorrector2017
+mr RobotPose CMCorrector2017
 
-set module:AutomaticCameraCalibrator:robotPose rotation = 0; translation = {x = -750; y = 0;};
 
-vid lower representation:LinePercept:Image off
-vid lower representation:PlayersPercept:Image off
-vid lower representation:BodyContour off
-vid lower module:AutomaticCameraCalibrator:points
-vid lower module:AutomaticCameraCalibrator:drawSamples
-vid lower module:AutomaticCameraCalibrator:drawFieldLines
+echo set representation:RobotPose rotation = 90deg; translation = { x = 0; y = 0; }; validity = 0.280825;
+echo 
+echo mv 0 0 400 0 0 -90
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:HeadControlRequest unchanged
+echo dr module:CMCorrector2017:start
+echo dr module:CMCorrector2017:stop
+echo dr module:CMCorrector2017:load_config 
+echo dr module:CMCorrector2017:save_config 
+echo set representation:HeadControlRequest controlType = direct; pan = 90deg; tilt = 20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = 40deg; tilt = 20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = 0deg; tilt = 20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = -40deg; tilt = 20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = -90deg; tilt = 20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = 90deg; tilt = -20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = 40deg; tilt = -20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = 0deg; tilt = -20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = -40deg; tilt = -20deg;
+echo set representation:HeadControlRequest controlType = direct; pan = -90deg; tilt = -20deg;
+vid lower module:CameraMatrixProvider:calibrationHelper
+vid upper module:CameraMatrixProvider:calibrationHelperUpper
+vid lower representation:CLIPFieldLinesPercept:Image:Lower 
+vid upper representation:CLIPFieldLinesPercept:Image:Upper 
+vid lower representation:BallPercept:Image:Lower
+vid upper representation:BallPercept:Image:Upper
+vid lower module:CMCorrector2017:lower 
+vid upper module:CMCorrector2017:upper 
 
-vid upper representation:LinePercept:Image off
-vid upper representation:PlayersPercept:Image off
-vid upper representation:BodyContour off
-vid upper module:AutomaticCameraCalibrator:points
-vid upper module:AutomaticCameraCalibrator:drawSamples
-vid upper module:AutomaticCameraCalibrator:drawFieldLines
-
-jc press 26 dr module:AutomaticCameraCalibrator:undo
-
-get module:AutomaticCameraCalibrator:robotPose
-
-echo
-echo - Shift+Ctrl+Z: Undo last deletion
-echo set module:AutomaticCameraCalibrator:setJointOffsets true
-echo dr module:AutomaticCameraCalibrator:start
-echo dr module:AutomaticCameraCalibrator:accumulate
-echo dr module:AutomaticCameraCalibrator:stop
-echo dr module:AutomaticCameraCalibrator:optimize
-echo save representation:CameraCalibration
-echo

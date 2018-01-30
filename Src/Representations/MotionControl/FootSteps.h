@@ -87,6 +87,11 @@ public :
 		return static_cast<int>(steps.size());
 	}
 
+  bool empty() const
+  {
+    return steps.empty();
+  }
+
 	void addStep(Footposition newstep)
 	{
 		steps.push_back(newstep);

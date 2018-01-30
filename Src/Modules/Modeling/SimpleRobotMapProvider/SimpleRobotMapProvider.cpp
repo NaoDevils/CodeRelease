@@ -16,7 +16,7 @@ void SimpleRobotMapProvider::update(RobotMap &robotMap)
 
 void SimpleRobotMapProvider::update(LocalRobotMap &localRobotMap)
 {
-  // TODO BH2015 port: this is wrong, since remote percepts are not excluded
+  // TODO: this is wrong, since remote percepts are not excluded!
   execute();
   // update robot map
   (RobotMap&)localRobotMap = internalRobotMap;

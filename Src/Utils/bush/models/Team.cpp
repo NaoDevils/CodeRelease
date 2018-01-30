@@ -26,11 +26,15 @@ Team::Team()
     name(""),
     number(0),
     port(0),
-    color(""),
+    colorOwn(""),
+    colorOpp(""),
     location(""),
     wlanConfig(""),
+    walkConfig(""),
+    mocapConfig(false),
     buildConfig(""),
     volume(100),
+    micVolume(75),
     deployDevice("")
 {
   init();
@@ -42,11 +46,15 @@ Team::Team(const std::string& name, unsigned short number)
     name(name),
     number(number),
     port(0),
-    color(""),
+    colorOwn(""),
+    colorOpp(""),
     location(""),
     wlanConfig(""),
+    walkConfig(""),
+    mocapConfig(false),
     buildConfig(""),
     volume(100),
+    micVolume(75),
     deployDevice("")
 {
   init();
@@ -138,12 +146,16 @@ void Team::serialize(In* in, Out* out)
   STREAM(name);
   STREAM(number);
   STREAM(port);
-  STREAM(color);
+  STREAM(colorOwn);
+  STREAM(colorOpp);
   STREAM(location);
   STREAM(gameMode);
   STREAM(buildConfig);
   STREAM(wlanConfig);
+  STREAM(walkConfig);
+  STREAM(mocapConfig);
   STREAM(volume);
+  STREAM(micVolume);
   STREAM(deployDevice);
   std::vector<std::string> players;
   if(out)

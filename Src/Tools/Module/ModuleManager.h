@@ -60,8 +60,6 @@ private:
      * @param representation The name of the representation provided.
      * @param moduleState The moduleState that will give access to the module that provides the information.
      * @param update The update handler within the module.
-     * @param create The create handler for the representation.
-     * @param free The free handler for the representation.
      */
     Provider(const char* representation, ModuleState* moduleState, void (*update)(Streamable&)) :
       representation(representation), moduleState(moduleState), update(update)

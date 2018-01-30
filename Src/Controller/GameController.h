@@ -56,6 +56,7 @@ private:
   static const int numOfRobots = 12;
   static const int numOfFieldPlayers = numOfRobots / 2 - 2; // Keeper, Substitute
   static const int durationOfHalf = 600;
+  static const int durationOfPS = 45; /**< duration of one penalty shootout attemp. */
   static const float footLength; /**< foot length for position check and manual placement at center circle. */
   static const float safeDistance; /**< safe distance from penalty areas for manual placement. */
   static const float dropHeight; /**< height at which robots are manually placed so the fall a little bit and recognize it. */

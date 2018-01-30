@@ -3,8 +3,7 @@ vf worldState
 vfd worldState fieldLines
 vfd worldState goalFrame 
 vfd worldState fieldPolygons
+vfd worldState representation:GameInfo
 #vfd worldState module:SelfLocator:samples
 #vfd worldState module:SelfLocator:fieldOfView
 vfd worldState representation:RobotPose
-vfd worldState module:SelfLocator2016:hypothesis
-vfd worldState module:SelfLocator2016:LocalizationState

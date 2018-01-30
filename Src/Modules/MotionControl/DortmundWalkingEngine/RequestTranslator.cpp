@@ -28,7 +28,8 @@ RequestTranslator::RequestTranslator(const MotionSelection &theMotionSelection,
                                      const BallModelAfterPreview &theBallModelAfterPreview,
 									 const SpeedInfo &theSpeedInfo,
                    const SpeedRequest &theSpeedRequest,
-                                     const ArmMovement &theArmMovement
+                                     const ArmMovement &theArmMovement,
+  const GoalSymbols &theGoalSymbols
 									 ):
 theMotionSelection(theMotionSelection),
 theWalkingInfo(theWalkingInfo),
@@ -38,34 +39,56 @@ theBallModelAfterPreview(theBallModelAfterPreview),
 theSpeedInfo(theSpeedInfo),
 theSpeedRequest(theSpeedRequest),
 theArmMovement(theArmMovement),
+theGoalSymbols(theGoalSymbols),
 timer(300)
 {
-  InMapFile file("walkingParams.cfg");
-  if(file.exists())
-    file >> walkParams;
+
+  InMapFile stream("modules.cfg");
+  if (stream.exists())
+  {
+    stream >> config;
+  }
   else
   {
     ASSERT(false);
   }
-  
-  InMapFile flpfile("freeLegParams.cfg");
-  if(flpfile.exists())
-    flpfile >> flpParams;
-  else
-  {
-    ASSERT(false);
+
+  bool flipm = false;
+  for (ModuleManager::Configuration::RepresentationProvider por : config.representationProviders) {
+    if (por.representation == "TargetCoM" && por.provider == "FLIPMController") {
+      flipm = true;
+      break;
+    }
   }
-  
+
+  if (flipm) {
+    InMapFile file("walkingParamsFLIPM.cfg");
+    if (file.exists())
+      file >> walkParams;
+    else
+    {
+      ASSERT(false);
+    }
+  } else {
+    InMapFile file("walkingParams.cfg");
+    if (file.exists())
+      file >> walkParams;
+    else
+    {
+      ASSERT(false);
+    }
+  }
+
   lastN=0;
  
   walkStarted = false;
   
   for (int i=0; i<3; i++)
-    filter[i].createBuffer(walkParams.walkRequestFilterLen);
+    filter[i].createBuffer(walkParams.acceleration.walkRequestFilterLen);
   
-  ASSERT(walkParams.accDelayX <= MAX_ACC_WINDOW);
-  ASSERT(walkParams.accDelayY <= MAX_ACC_WINDOW);
-  ASSERT(walkParams.accDelayR <= MAX_ACC_WINDOW);
+  ASSERT(walkParams.acceleration.accDelayX <= MAX_ACC_WINDOW);
+  ASSERT(walkParams.acceleration.accDelayY <= MAX_ACC_WINDOW);
+  ASSERT(walkParams.acceleration.accDelayR <= MAX_ACC_WINDOW);
 
   /* init data for accX-criterion*/
   tempMaxSpeed = 100;
@@ -135,13 +158,13 @@ Pose2f RequestTranslator::gotoPointController(const Pose2f &target, const Pose2f
 {
   float vx = paramsGoToRequest.kpx * target.translation.x();
   if (vx > max.translation.x()) vx = max.translation.x();
-  if (std::abs(target.translation.x()) < 20) vx = 0;
+ // if (std::abs(target.translation.x()) < 20) vx = 150;
   
   float vy = paramsGoToRequest.kpy * target.translation.y();
   if (vy > max.translation.y()) vy = max.translation.y();
   if (vy < -max.translation.y()) vy = -max.translation.y();
   
-  if (std::abs(target.translation.y()) < 20) vy = 0;
+ // if (std::abs(target.translation.y()) < 20) vy = 150;
   
   int distFac = ((int)target.translation.x() - 50);
   if (distFac < 1) distFac = 1;
@@ -182,7 +205,7 @@ Pose2f RequestTranslator::gotoBallAndStand()
   Vector2f target(theBallModelAfterPreview.estimate.position.x() - theMotionSelection.walkRequest.request.translation.x(),
                            theBallModelAfterPreview.estimate.position.y() + theMotionSelection.walkRequest.request.translation.y());
   return gotoPointController(target,
-    Pose2f(walkParams.maxSpeedR, (float)walkParams.maxSpeedXForward, (float)walkParams.maxSpeedY));
+    Pose2f(walkParams.speedLimits.r, walkParams.speedLimits.xForward, walkParams.speedLimits.y));
 }
 
 Pose2f RequestTranslator::gotoBallAndKick()
@@ -190,7 +213,7 @@ Pose2f RequestTranslator::gotoBallAndKick()
   Vector2f target(theBallModelAfterPreview.estimate.position.x() - theMotionSelection.walkRequest.request.translation.x(),
                            theBallModelAfterPreview.estimate.position.y() + theMotionSelection.walkRequest.request.translation.y());
   return gotoPointController(target,
-    Pose2f(walkParams.maxSpeedR, (float)walkParams.maxSpeedXForward, (float)walkParams.maxSpeedY));
+    Pose2f(walkParams.speedLimits.r, walkParams.speedLimits.xForward, walkParams.speedLimits.y));
 }
 
 /*
@@ -263,9 +286,17 @@ float RequestTranslator::getLimitFac(Point &v, float maxAcc, int accDelay, int a
 
 Point RequestTranslator::accelerate(Point p)
 {
-  float fx = getLimitFac(p, walkParams.maxAccX, walkParams.accDelayX, 0, accBufferX);
-  float fy = getLimitFac(p, walkParams.maxAccY, walkParams.accDelayY, 1, accBufferY);
-  float fr = getLimitFac(p, walkParams.maxAccR, walkParams.accDelayR, 5, accBufferR);
+  // TODO auslagern in Parameter
+  float fx;
+  if (theSpeedInfo.speed.translation.x() > 0.02) {
+    fx = getLimitFac(p, walkParams.acceleration.maxAccX, walkParams.acceleration.accDelayX, 0, accBufferX);
+  }
+  else {
+    fx = getLimitFac(p, (walkParams.acceleration.maxAccX/2.f), walkParams.acceleration.accDelayX, 0, accBufferX);
+  }
+
+  float fy = getLimitFac(p, walkParams.acceleration.maxAccY, walkParams.acceleration.accDelayY, 1, accBufferY);
+  float fr = getLimitFac(p, walkParams.acceleration.maxAccR, walkParams.acceleration.accDelayR, 5, accBufferR);
 
   float f = std::min(std::min(fx,fy),fr);
 
@@ -283,7 +314,10 @@ void RequestTranslator::updatePatternGenRequest(PatternGenRequest & patternGenRe
   DECLARE_DEBUG_DRAWING( "module:RequestTranslator:Path", "drawingOnField"); // should be displayed relative to RobotPoseAfterPreview
   DECLARE_DEBUG_DRAWING( "module:RequestTranslator:HowTranslated", "drawingOnField");
   DECLARE_DEBUG_DRAWING( "module:RequestTranslator:TranslationResultAsSpeed", "drawingOnField");
-  
+  Point offset(-200, 0);
+  offset.rotate2D(theGoalSymbols.centerAngleBallToOppGoalWC);
+  Vector2f target = theBallModelAfterPreview.estimate.position + Vector2f(offset.x, offset.y);
+  Pose2f max(1, 250, 200);
   switch (theMotionSelection.walkRequest.requestType)
   {
     case WalkRequest::speed:
@@ -312,6 +346,9 @@ void RequestTranslator::updatePatternGenRequest(PatternGenRequest & patternGenRe
         patternGenRequest.speed = gotoBallAndStand();
     }
       break;
+    case WalkRequest::dribble:
+       patternGenRequest.speed = gotoPointController(target, max);
+      break;
     default:
       // TODO: do error handling here
       break;
@@ -322,20 +359,6 @@ void RequestTranslator::updatePatternGenRequest(PatternGenRequest & patternGenRe
   PLOT("module:RequestTranslator:speed_before_clipping.y",patternGenRequest.speed.translation.y());
   PLOT("module:RequestTranslator:speed_before_clipping.r",patternGenRequest.speed.rotation);
 
-
-  if (patternGenRequest.speed.translation.x()!=0 ||
-      patternGenRequest.speed.translation.y()!=0 ||
-      patternGenRequest.speed.rotation!=0)
-  {
-    if (patternGenRequest.pitch>walkParams.maxWalkPitch)
-      patternGenRequest.pitch=walkParams.maxWalkPitch;
-  }
-  else
-  {
-    if (patternGenRequest.pitch>walkParams.maxStandPitch)
-      patternGenRequest.pitch=walkParams.maxStandPitch;
-  }
-  
   clipping(patternGenRequest.speed);
    
   patternGenRequest.speed.translation.x()/=1000;
@@ -378,12 +401,7 @@ void RequestTranslator::clipping(Pose2f &speed)
   // Check for instabilities and adapt walking speed
   deceleratedByInstability = false;
   deceleratedByMax = false;
-
-  WalkingEngineParams *wP = &walkParams;
-  if (theMotionSelection.walkRequest.kickStrength > 0)
-    wP = &flpParams;
   
-  // TODO BH2015 port: check if acc data is in the same range as in old Framework
   //fill accX_data buffer with sensor data, if in range (-10,10);
   //else fill with copy of last data
   if(theFallDownState.state==FallDownState::upright){
@@ -410,10 +428,10 @@ void RequestTranslator::clipping(Pose2f &speed)
   PLOT("module:RequestTranslator:factor",theFactor);
   float angleX = theInertialSensorData.angle.x();
   float angleY =theInertialSensorData.angle.y();
-  if (angleX < walkParams.fallDownAngleMinMaxX[0] ||
-      angleX > walkParams.fallDownAngleMinMaxX[1] ||
-	    angleY < walkParams.fallDownAngleMinMaxY[0] ||
-      angleY > walkParams.fallDownAngleMinMaxY[1] ||
+  if (angleX < walkParams.walkTransition.fallDownAngleMinMaxX[0] ||
+      angleX > walkParams.walkTransition.fallDownAngleMinMaxX[1] ||
+	    angleY < walkParams.walkTransition.fallDownAngleMinMaxY[0] ||
+      angleY > walkParams.walkTransition.fallDownAngleMinMaxY[1] ||
       theFallDownState.state!=FallDownState::upright)
     timer = 0;
 
@@ -434,69 +452,69 @@ void RequestTranslator::clipping(Pose2f &speed)
   }
 
   
-  if (speed.translation.x()>wP->maxSpeedXForward)
+  if (speed.translation.x()>walkParams.speedLimits.xForward)
   {
-    speed.translation.x() = (float)wP->maxSpeedXForward;
+    speed.translation.x() = walkParams.speedLimits.xForward;
     deceleratedByMax = true;
   }
   
-  if (speed.translation.x()<-wP->maxSpeedXBack)
+  if (speed.translation.x()<-walkParams.speedLimits.xBackward)
   {
-    speed.translation.x() = (float)(-wP->maxSpeedXBack);
+    speed.translation.x() = (-walkParams.speedLimits.xBackward);
     deceleratedByMax = true;
   }
   
-  if (speed.translation.y()>wP->maxSpeedY)
+  if (speed.translation.y()>walkParams.speedLimits.y)
   {
-    speed.translation.y() = (float)wP->maxSpeedY;
+    speed.translation.y() = walkParams.speedLimits.y;
     deceleratedByMax = true;
   }
   
-  if (speed.translation.y()<-wP->maxSpeedY)
+  if (speed.translation.y()<-walkParams.speedLimits.y)
   {
-    speed.translation.y() = (float)(-wP->maxSpeedY);
+    speed.translation.y() = (-walkParams.speedLimits.y);
     deceleratedByMax = true;
   }
   
-  if (speed.rotation<-wP->maxSpeedR)
+  if (speed.rotation<-walkParams.speedLimits.r)
   {
-    speed.rotation=-wP->maxSpeedR;
+    speed.rotation=-walkParams.speedLimits.r;
     deceleratedByMax = true;
   }
   
-  if (speed.rotation>wP->maxSpeedR)
+  if (speed.rotation>walkParams.speedLimits.r)
   {
-    speed.rotation=wP->maxSpeedR;
+    speed.rotation= walkParams.speedLimits.r;
     deceleratedByMax = true;
   }
   
-  if (speed.translation.x() > wP->maxSpeedXForwardOmni && speed.rotation > wP->maxSpeedR / 2)
+  if (speed.translation.x() > walkParams.speedLimits.xForwardOmni && speed.rotation > walkParams.speedLimits.r / 2)
   {
-    speed.translation.x() = (float)wP->maxSpeedXForwardOmni;
-    speed.rotation = wP->maxSpeedR / 2;
+    speed.translation.x() = walkParams.speedLimits.xForwardOmni;
+    speed.rotation = walkParams.speedLimits.r / 2;
   }
   
-  if (speed.translation.x() > wP->maxSpeedXForwardOmni && speed.rotation < -wP->maxSpeedR / 2)
+  if (speed.translation.x() > walkParams.speedLimits.xForwardOmni && speed.rotation < -walkParams.speedLimits.r / 2)
   {
-    speed.translation.x() = (float)wP->maxSpeedXForwardOmni;
-    speed.rotation = -wP->maxSpeedR / 2;
+    speed.translation.x() = walkParams.speedLimits.xForwardOmni;
+    speed.rotation = -walkParams.speedLimits.r / 2;
   }
   
-  if (speed.translation.x() > wP->maxSpeedXForwardOmni && speed.translation.y() > wP->maxSpeedY / 2)
+  if (speed.translation.x() > walkParams.speedLimits.xForwardOmni && speed.translation.y() > walkParams.speedLimits.y / 2)
   {
-    speed.translation.x() = (float)wP->maxSpeedXForwardOmni;
-    speed.translation.y() = (float)(wP->maxSpeedY / 2);
+    speed.translation.x() = walkParams.speedLimits.xForwardOmni;
+    speed.translation.y() = walkParams.speedLimits.y / 2;
   }
   
-  if (speed.translation.x() > wP->maxSpeedXForwardOmni && speed.translation.y() < -wP->maxSpeedY / 2)
+  if (speed.translation.x() > walkParams.speedLimits.xForwardOmni && speed.translation.y() < -walkParams.speedLimits.y / 2)
   {
-    speed.translation.x() = (float)wP->maxSpeedXForwardOmni;
-    speed.translation.y() = (float)(-wP->maxSpeedY / 2);
+    speed.translation.x() = walkParams.speedLimits.xForwardOmni;
+    speed.translation.y() = -walkParams.speedLimits.y / 2;
   }
   
-  if (theArmMovement.armsInContactAvoidance && speed.translation.x() > wP->maxSpeedXForwardOmni)
+  if (theArmMovement.armsInContactAvoidance && speed.translation.x() > walkParams.speedLimits.xForwardArmContact)
   {
-    speed.translation.x() = (float)wP->maxSpeedXForwardOmni;
+    speed.translation.x() = walkParams.speedLimits.xForwardArmContact;
   }
   
   float speedAbsY = std::abs(speed.translation.y());
@@ -510,15 +528,15 @@ void RequestTranslator::clipping(Pose2f &speed)
     deceleratedByMax = true;
   }
   
-  if (speed.translation.y()>wP->maxSpeedY)
+  if (speed.translation.y()>walkParams.speedLimits.y)
   {
-    speed.translation.y() = (float)wP->maxSpeedY;
+    speed.translation.y() = walkParams.speedLimits.y;
     deceleratedByMax = true;
   }
   
-  if (speed.translation.y()<-wP->maxSpeedY)
+  if (speed.translation.y()<-walkParams.speedLimits.y)
   {
-    speed.translation.y() = (float)(-wP->maxSpeedY);
+    speed.translation.y() = -walkParams.speedLimits.y;
     deceleratedByMax = true;
   }
  
@@ -602,10 +620,10 @@ void RequestTranslator::clipping(Pose2f &speed)
 			  speedchange = 5;
           }
 		  //inrease the speedchange if result is not faster than maxSpeedXForward, else use maxSpeedXForward as tempMaxSpeed
-          if(tempMaxSpeed + speedchange <= wP->maxSpeedXForward){ 
+          if(tempMaxSpeed + speedchange <= walkParams.speedLimits.xForward){
             tempMaxSpeed += speedchange;
-          } else if(tempMaxSpeed < wP->maxSpeedXForward){
-            tempMaxSpeed = (float)wP->maxSpeedXForward;
+          } else if(tempMaxSpeed < walkParams.speedLimits.xForward){
+            tempMaxSpeed = walkParams.speedLimits.xForward;
           }
         }
       }
@@ -621,15 +639,12 @@ void RequestTranslator::clipping(Pose2f &speed)
 void RequestTranslator::updateWalkingEngineParams(WalkingEngineParams & walkingEngineParams)
 {
   MODIFY("representation:WalkingEngineParams", walkParams);
-  if (theWalkingInfo.kickPhase!=freeLegNA)
-    walkingEngineParams=flpParams;
-  else
-    walkingEngineParams=walkParams;
+  walkingEngineParams=walkParams;
 }
 
-void RequestTranslator::updateFreeLegPhaseParams(FreeLegPhaseParams & freeLegPhaseParams)
+void RequestTranslator::updateFLIPMObserverParams(FLIPMObserverParams & flipmObserverParams)
 {
-  MODIFY("representation:FreeLegPhaseParams", flpParams);
-  freeLegPhaseParams=flpParams;
+  MODIFY("representation:FLIPMObserverParams", observerParams);
+  flipmObserverParams = observerParams;
 }
 

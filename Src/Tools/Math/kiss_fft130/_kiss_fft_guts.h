@@ -125,17 +125,17 @@ struct kiss_fft_state{
 
 
 #ifdef FIXED_POINT
-#  define KISS_FFT_COS(phase)  floor(.5+SAMP_MAX * cos (phase))
-#  define KISS_FFT_SIN(phase)  floor(.5+SAMP_MAX * sin (phase))
+#  define KISS_FFT_COS(phase)  floor((kiss_fft_scalar).5+SAMP_MAX * cos (phase))
+#  define KISS_FFT_SIN(phase)  floor((kiss_fft_scalar).5+SAMP_MAX * sin (phase))
 #  define HALF_OF(x) ((x)>>1)
 #elif defined(USE_SIMD)
 #  define KISS_FFT_COS(phase) _mm_set1_ps( cos(phase) )
 #  define KISS_FFT_SIN(phase) _mm_set1_ps( sin(phase) )
-#  define HALF_OF(x) ((x)*_mm_set1_ps(.5))
+#  define HALF_OF(x) ((x)*_mm_set1_ps((kiss_fft_scalar).5))
 #else
 #  define KISS_FFT_COS(phase) (kiss_fft_scalar) cos(phase)
 #  define KISS_FFT_SIN(phase) (kiss_fft_scalar) sin(phase)
-#  define HALF_OF(x) ((x)*.5)
+#  define HALF_OF(x) ((x)*(kiss_fft_scalar).5)
 #endif
 
 #define  kf_cexp(x,phase) \

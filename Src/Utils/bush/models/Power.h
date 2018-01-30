@@ -4,14 +4,11 @@ class Power
 {
 public:
   int value;
-
-  bool powerPluged;
+  bool powerPlugged = false;
+  bool naoqi = true;
 
   Power();
-
-  Power(int value);
-
-  Power(bool powerPluged);
+  Power(int value, bool powerPlugged, bool naoqi = true);
 
   bool isValid();
   

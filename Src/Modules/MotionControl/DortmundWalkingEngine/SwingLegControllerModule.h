@@ -18,18 +18,19 @@
 #include "Representations/MotionControl/ObservedError.h"
 #include "Representations/MotionControl/ControllerParams.h"
 #include "Representations/MotionControl/ReferenceModificator.h"
+#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 
 MODULE(SwingLegControllerModule,
 { ,
   REQUIRES(WalkingEngineParams),
   REQUIRES(ControllerParams),
-  REQUIRES(FreeLegPhaseParams),
   REQUIRES(FootSteps),
   REQUIRES(MotionRequest),
   REQUIRES(ObservedError),
   REQUIRES(BallModel),
   REQUIRES(PatternGenRequest),
   REQUIRES(FallDownState),
+  REQUIRES(InertialSensorData),
   USES(WalkingInfo),
   PROVIDES_WITHOUT_MODIFY(Footpositions),
   PROVIDES_WITHOUT_MODIFY(ReferenceModificator),

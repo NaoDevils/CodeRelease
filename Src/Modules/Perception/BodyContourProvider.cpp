@@ -34,33 +34,62 @@ void BodyContourProvider::update(BodyContour& bodyContour)
   add(theRobotModel.limbs[Limbs::footRight], foot, -1, bodyContour);
 }
 
-void BodyContourProvider::add(const Pose3f& origin, const std::vector<Vector3f >& c, float sign,
-                              BodyContour& bodyContour)
+void BodyContourProvider::update(BodyContourUpper& bodyContour)
 {
+  DECLARE_DEBUG_DRAWING3D("module:BodyContourProvider:contourUpper", "robot");
+
+  bodyContour.cameraResolution.x() = theCameraInfoUpper.width;
+  bodyContour.cameraResolution.y() = theCameraInfoUpper.height;
+  bodyContour.lines.clear();
+
+  robotCameraMatrixInvertedUpper = theRobotCameraMatrixUpper.inverse();
+  add(Pose3f(), torso, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::bicepsLeft], shoulder, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::bicepsRight], shoulder, -1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::bicepsLeft], upperArm, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::bicepsRight], upperArm, -1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::foreArmLeft], lowerArm, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::foreArmRight], lowerArm, -1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::foreArmLeft], lowerArm2, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::foreArmRight], lowerArm2, -1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::thighLeft], upperLeg1, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::thighRight], upperLeg1, -1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::thighLeft], upperLeg2, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::thighRight], upperLeg2, -1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::footLeft], foot, 1, bodyContour, true);
+  add(theRobotModel.limbs[Limbs::footRight], foot, -1, bodyContour, true);
+}
+
+void BodyContourProvider::add(const Pose3f& origin, const std::vector<Vector3f >& c, float sign,
+                              BodyContour& bodyContour, bool upper)
+{
+  const CameraInfo &ci = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+  const ImageCoordinateSystem &ics = upper ? (ImageCoordinateSystem&)theImageCoordinateSystemUpper : theImageCoordinateSystem;
+  
   Vector2i q1,
                q2;
   Vector3f p1 = origin * Vector3f(c[0].x(), c[0].y() * sign, c[0].z());
-  bool valid1 = calculatePointInImage(p1, q1);
+  bool valid1 = calculatePointInImage(p1, q1, upper);
   if(valid1)
   {
-    Vector2f v = theImageCoordinateSystem.fromCorrectedApprox(q1);
+    Vector2f v = ics.fromCorrectedApprox(q1);
     q1 = Vector2i(int(floor(v.x())), int(floor(v.y())));
   }
 
   for(unsigned i = 1; i < c.size(); ++i)
   {
     Vector3f p2 = origin * Vector3f(c[i].x(), c[i].y() * sign, c[i].z());
-    bool valid2 = calculatePointInImage(p2, q2);
+    bool valid2 = calculatePointInImage(p2, q2, upper);
     if(valid2)
     {
-      Vector2f v = theImageCoordinateSystem.fromCorrectedApprox(q2);
+      Vector2f v = ics.fromCorrectedApprox(q2);
       q2 = Vector2i(int(floor(v.x())), int(floor(v.y())));
     }
 
     if(valid1 && valid2 &&
-       (q1.y() < theCameraInfo.height || q2.y() < theCameraInfo.height) &&
+       (q1.y() < ci.height || q2.y() < ci.height) &&
        (q1.x() >= 0 || q2.x() >= 0) &&
-       (q1.x() < theCameraInfo.width || q2.x() < theCameraInfo.width))
+       (q1.x() < ci.width || q2.x() < ci.width))
       bodyContour.lines.push_back(BodyContour::Line(q1, q2));
 
     q1 = q2;
@@ -74,13 +103,15 @@ void BodyContourProvider::add(const Pose3f& origin, const std::vector<Vector3f >
   }
 }
 
-bool BodyContourProvider::calculatePointInImage(const Vector3f& pointInWorld, Vector2i& pointInImage) const
+bool BodyContourProvider::calculatePointInImage(const Vector3f& pointInWorld, Vector2i& pointInImage, bool upper) const
 {
-  Vector3f pointInCamera(robotCameraMatrixInverted * pointInWorld);
+  const Pose3f &rcm = upper ? robotCameraMatrixInvertedUpper : robotCameraMatrixInverted;
+  Vector3f pointInCamera(rcm * pointInWorld);
   if(pointInCamera.x() > 1.0f)
   {
-    pointInCamera *= theCameraInfo.focalLength / pointInCamera.x();
-    const Vector2f resultFloat(theCameraInfo.opticalCenter - Vector2f(pointInCamera.y(), pointInCamera.z()));
+    const CameraInfo &ci = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+    pointInCamera *= ci.focalLength / pointInCamera.x();
+    const Vector2f resultFloat(ci.opticalCenter - Vector2f(pointInCamera.y(), pointInCamera.z()));
     pointInImage.x() = (int)(resultFloat.x() + 0.5f);
     pointInImage.y() = (int)(resultFloat.y() + 0.5f);
     return true;

@@ -39,7 +39,6 @@ public:
 class Footposition : public StepData
 {
 public:
-  FreeLegPhase kickPhase;
   bool instantKickRunning;
   unsigned int timestamp;
   WalkRequest::StepRequest customStep;
@@ -56,7 +55,7 @@ public:
     this->StepData::operator =(p);
   }
 
-  Footposition() : kickPhase(freeLegNA), instantKickRunning(false) {};
+  Footposition() : instantKickRunning(false) {};
 };
 
 
@@ -77,6 +76,8 @@ public:
   const static int phaseToZMPFootMap[];
 
   unsigned int timestamp;
+
+  float direction;
 
   ZMP(float x, float y)
   {

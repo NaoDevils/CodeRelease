@@ -48,9 +48,7 @@ class ZMPIPController2012
 public:
   
 	/** Constructor with all needed source data structures.
-	 * @param theRobotModel Model of the robot.
 	 * @param theRefZMP The desired ZMP.
-	 * @param theSensorData Data from sensors.
 	 * @param theWalkingEngineParams Walking Engine Parameters.
 	 * @param thePatternGenRequest The request received by the PatternGenerator.
 	 * @param theFallDownState Information about the current state. If the robt has fallen down stop walking engine.

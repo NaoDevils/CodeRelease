@@ -412,6 +412,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
     else
       showFullScreen();
   }
+  else if (event->key() == Qt::Key_Escape)
+  {
+    if (isFullScreen())
+      showNormal();
+  }
 
   QMainWindow::keyPressEvent(event);
 }

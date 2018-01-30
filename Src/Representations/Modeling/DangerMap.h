@@ -47,7 +47,7 @@ struct DangerMap : public Streamable
     return *this;
   }
 
-  /*< @return Maximum danger in selected zone (square defined by distance parameter) */
+  /** @return Maximum danger in selected zone (square defined by distance parameter) */
   inline float getDangerAt(const Vector2f &posOnField, const FieldDimensions &fieldDimensions, const float &distance) const
   {
     const int distanceInCells = (int)distance / stepSize;
@@ -84,7 +84,7 @@ struct DangerMap : public Streamable
       (float)((cellNo%numOfCellsY)*stepSize - fieldDimensions.yPosLeftSideline + stepSize / 2));
   }
 
-  float danger[numOfCells]; /*< indicating possible pressure of opponent on area [0..1] */
+  float danger[numOfCells]; /**< indicating possible pressure of opponent on area [0..1] */
 
 private:
   void serialize(In* in, Out* out)

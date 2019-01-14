@@ -5,35 +5,20 @@ option(Start)
     transition
     {
       if (SystemCall::getMode() == SystemCall::simulatedRobot)
-        goto standUp; // Don't wait for the button in SimRobot
-
-      if (action_done) // chest button pressed and released
-        goto standUp;
+        goto startBehavior; // Don't wait for the button in SimRobot
 
       // Skip playDead state at a restart after a crash
       else if (Global::getSettings().recover)
-        goto standUp;
-    }
-    
-    action
-    {
-      SpecialAction(SpecialActionRequest::playDead);
-      ButtonPressedAndReleased(KeyStates::chest, 1000, 0);
-    }
-  }
-  
+        goto startBehavior;
 
-  state(standUp)
-  {
-    transition
-    {
-      if(action_done || state_time > 5000)
+      // libbhuman starts transition to bhuman (chest button was pressed once)
+      if (theRobotInfo.transitionToBhuman > 0.f)
         goto startBehavior;
     }
     
     action
     {
-      SpecialAction(SpecialActionRequest::stand);
+      SpecialAction(SpecialActionRequest::playDead);
     }
   }
 
@@ -41,7 +26,8 @@ option(Start)
   {
     transition
     {
-      if (action_done)
+      // libbhuman stopped bhuman (chest button was pressed three times)
+      if (theRobotInfo.transitionToBhuman == 0.f)
         goto sitDown;
     }
     action
@@ -71,15 +57,13 @@ option(Start)
   {
     transition
     {
-      if (action_done)
-      {
-        goto standUp;
-      }
+      // libbhuman starts transition to bhuman (chest button was pressed once)
+      if (theRobotInfo.transitionToBhuman > 0.f)
+        goto startBehavior;
     }
     action
     {
       SpecialAction(SpecialActionRequest::playDead);
-      SwitchBehaviorState();
     }
   }
 }

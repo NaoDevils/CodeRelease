@@ -1,6 +1,7 @@
 #include <iostream>
 #include "Platform/File.h"
 #include <QString>
+#include <QColor>
 #include <QStringList>
 #include "Utils/bush/agents/PingAgent.h"
 #include "Utils/bush/cmdlib/Context.h"
@@ -11,8 +12,11 @@
 #include "Utils/bush/tools/Platform.h"
 #include "Utils/bush/Session.h"
 #include "Utils/bush/models/Team.h"
+#include "Tools/ColorModelConversions.h"
 
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 DeployCmd DeployCmd::theDeployCmd;
 
@@ -46,11 +50,13 @@ bool DeployCmd::DeployTask::execute()
   args.push_back(QString::number(team->number));
   args.push_back(QString("-o"));
   args.push_back(QString::number(team->port));
-  args.push_back(QString("-t"));
-  args.push_back(team->colorOwn.c_str());
+  //args.push_back(QString("-t"));
+  //args.push_back(team->colorOwn.c_str());
   args.push_back(QString("-own"));
+  //args.push_back(mapColorToConf(team->colorOwn).c_str());
   args.push_back(mapColorToConf(team->colorOwn).c_str());
   args.push_back(QString("-opp"));
+  //args.push_back(mapColorToConf(team->colorOpp).c_str());
   args.push_back(mapColorToConf(team->colorOpp).c_str());
   args.push_back(QString("-p"));
   args.push_back(QString::number(team->getPlayerNumber(*robot)));
@@ -91,7 +97,7 @@ bool DeployCmd::DeployTask::execute()
   }
 }
 
-std::string DeployCmd::mapColorToConf(std::string color)
+/*std::string DeployCmd::mapColorToConf(std::string color)
 {
   if (color == "black")
     return "x = 50; y = 128; z = 128;";
@@ -105,6 +111,34 @@ std::string DeployCmd::mapColorToConf(std::string color)
     return "x = 128; y = 100; z = 100;";
   else // if (color == "gray")
     return "x = 150; y = 128; z = 128;";
+}*/
+
+std::string DeployCmd::mapColorToConf(int color)
+{
+    unsigned char y;
+    unsigned char cb;
+    unsigned char cr;
+
+    int r = color/(256*256);
+    int g = color%(256*256)/256;
+    int b = color%256;
+
+    ColorModelConversions::fromRGBToYCbCr(color/(256*256),
+                                          color%(256*256)/256,
+                                          color%256,
+                                          y,
+                                          cb, cr);
+
+    std::stringstream config;
+    config << "x = " << static_cast<int>(y)
+           << "; y = " << static_cast<int>(cb)
+           << "; z = " << static_cast<int>(cr) << ";" ;
+    std::cout << config.str() << "\n";
+    std::cout << "rgb( " <<  color << ")"
+              << r << " "
+              << g << " "
+              << b << " " << "\n";
+    return config.str();
 }
 
 DeployCmd::DeployCmd()

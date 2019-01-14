@@ -32,27 +32,32 @@ void FieldCoverageProvider::update(FieldCoverage &fieldCoverage)
 {
   DECLARE_DEBUG_DRAWING("representation:FieldCoverage", "drawingOnField");
 
-  checkBallLostThisFrame();
-
-  /*bool ballWasSeenThisFrame = (theBallModel.timeWhenLastSeen == theFrameInfo.time)
-                              || (theBallModel.timeWhenLastSeenByTeamMate == theFrameInfo.time);*/
-  if(ballLostThisFrame)
+  if (theBehaviorConfiguration.behavior2015Parameters.useBallSearch2017)
   {
-    resetAllFieldCoverages();
-    localFieldCoverage.interestingCellInSearchArea = localFieldCoverage.getCellNumber(theTeamBallModel.position, theFieldDimensions);
+
+    checkBallLostThisFrame();
+
+    /*bool ballWasSeenThisFrame = (theBallModel.timeWhenLastSeen == theFrameInfo.time)
+                                || (theBallModel.timeWhenLastSeenByTeamMate == theFrameInfo.time);*/
+    if (ballLostThisFrame)
+    {
+      resetAllFieldCoverages();
+      localFieldCoverage.interestingCellInSearchArea = localFieldCoverage.getCellNumber(theTeamBallModel.position, theFieldDimensions);
+    }
+    else
+    {
+      findInterestingPoints();
+
+      updateValidity();
+    }
+
+    combineCells();
+
+    determineInterestingCellInSearchArea();
+
+    fieldCoverage = localFieldCoverage;
+
   }
-  else
-  {
-    findInterestingPoints();
-
-    updateValidity();
-  }
-
-  combineCells();
-
-  determineInterestingCellInSearchArea();
-
-  fieldCoverage = localFieldCoverage;
 
   DEBUG_RESPONSE("debug drawing:representation:FieldCoverage")
   {

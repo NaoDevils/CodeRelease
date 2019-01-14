@@ -48,6 +48,7 @@ void RobotInfo::serialize(In* in, Out* out)
   STREAM(naoVersion);
   STREAM(naoBodyType);
   STREAM(naoHeadType);
+  STREAM(transitionToBhuman);
   STREAM(penalty); // PENALTY_NONE, PENALTY_BALL_HOLDING, ...
   STREAM(secsTillUnpenalised); // estimate of time till unpenalised.
   STREAM_REGISTER_FINISH;

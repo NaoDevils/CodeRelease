@@ -37,7 +37,7 @@
 #include <algorithm>
 #include "StepData.h"
 
-#include "Representations/MotionControl/ControllerParams.h"
+#include "Representations/MotionControl/FLIPMControllerParams.h"
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/Footpositions.h"
@@ -81,22 +81,22 @@ public:
 	 * @param theBodyTilt The current target roll and pitch of body.
 	 */
 	CSConverter(
-		const Footpositions	  		&theFootpositions,
-		const TargetCoM			    	&theTargetCoM,
-		const WalkingEngineParams	&theWalkingEngineParams,
-    const ControllerParams		&theControllerParams,
-		const ActualCoMRCS	    	&theActualCoMRCS,
-		const FallDownState	  		&theFallDownState,
-		const InertialSensorData	&theInertialSensorData,
-    const FsrSensorData       &theFsrSensorData,
-		const BodyTilt			    	&theBodyTilt,
-		const TorsoMatrix		  	  &theTorsoMatrix,
-    const RobotModel          &theRobotModel,
-    const RobotInfo           &theRobotInfo,
-    const FootSteps           &theFootSteps,
-    const ArmContact          &theArmContact,
-    const RobotDimensions     &theRobotDimensions,
-    const WalkCalibration     &theWalkCalibration);
+		const Footpositions	  		  &theFootpositions,
+		const TargetCoM			    	  &theTargetCoM,
+		const WalkingEngineParams	  &theWalkingEngineParams,
+    const FLIPMControllerParams	&theFLIPMControllerParams,
+		const ActualCoMRCS	    	  &theActualCoMRCS,
+		const FallDownState	  		  &theFallDownState,
+		const InertialSensorData	  &theInertialSensorData,
+    const FsrSensorData         &theFsrSensorData,
+		const BodyTilt			    	  &theBodyTilt,
+		const TorsoMatrix		  	    &theTorsoMatrix,
+    const RobotModel            &theRobotModel,
+    const RobotInfo             &theRobotInfo,
+    const FootSteps             &theFootSteps,
+    const ArmContact            &theArmContact,
+    const RobotDimensions       &theRobotDimensions,
+    const WalkCalibration       &theWalkCalibration);
 
 	/** Destructor */
 	~CSConverter(void);
@@ -128,22 +128,22 @@ private:
   END_ROBOT_PARAMETERS
 
 
-	const Footpositions			  &theFootpositions; /**< Set by constructor */
-	const TargetCoM			    	&theTargetCoM; /**< Set by constructor */
-	const WalkingEngineParams	&theWalkingEngineParams; /**< Set by constructor */
-	const ControllerParams		&theControllerParams; /**< Set by constructor */
-	const ActualCoMRCS		    &theActualCoMRCS; /**< Set by constructor */
-	const FallDownState		  	&theFallDownState; /**< Set by constructor */
-	const InertialSensorData	&theInertialSensorData; /**< Set by constructor */
-  const FsrSensorData       &theFsrSensorData; /**< Set by constructor */
-	const BodyTilt			    	&theBodyTilt; /**< Set by constructor */
-	const TorsoMatrix	   	  	&theTorsoMatrix; /**< Set by constructor */
-  const RobotModel          &theRobotModel;
-  const RobotInfo           &theRobotInfo;
-  const FootSteps           &theFootSteps;
-  const ArmContact          &theArmContact;
-  const RobotDimensions     &theRobotDimensions;
-  const WalkCalibration     &theWalkCalibration;
+	const Footpositions			      &theFootpositions; /**< Set by constructor */
+	const TargetCoM			    	    &theTargetCoM; /**< Set by constructor */
+	const WalkingEngineParams	    &theWalkingEngineParams; /**< Set by constructor */
+	const FLIPMControllerParams		&theFLIPMControllerParams; /**< Set by constructor */
+	const ActualCoMRCS		        &theActualCoMRCS; /**< Set by constructor */
+	const FallDownState		  	    &theFallDownState; /**< Set by constructor */
+	const InertialSensorData	    &theInertialSensorData; /**< Set by constructor */
+  const FsrSensorData           &theFsrSensorData; /**< Set by constructor */
+	const BodyTilt			    	    &theBodyTilt; /**< Set by constructor */
+	const TorsoMatrix	   	  	    &theTorsoMatrix; /**< Set by constructor */
+  const RobotModel              &theRobotModel;
+  const RobotInfo               &theRobotInfo;
+  const FootSteps               &theFootSteps;
+  const ArmContact              &theArmContact;
+  const RobotDimensions         &theRobotDimensions;
+  const WalkCalibration         &theWalkCalibration;
 	typedef std::list<Footposition *> FootList;
 
   Point robotPosition; /**< Position of robot body in world coordinate system. */
@@ -176,7 +176,7 @@ private:
 	 *  @param curPos Target foot positions in world coordinates.
 	 *  @param CoM Actual CoM in robot coordinate system.
 	 */
-	void toRobotCoords(StepData *requiredOffset, Point newCoMTarget, Footposition curPos, Point CoM);
+	void toRobotCoords(StepData *requiredOffset, Point &newCoMTarget, Footposition &curPos, Point CoM);
 	/** Resets the converter. */
 	void reset();
 	/** Deletes no more needed elements in footPositions. */

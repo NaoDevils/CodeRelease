@@ -33,6 +33,7 @@ STREAMABLE_WITH_BASE(RobotPose, Pose2f,
   void draw() const,
 
   (float)(0) validity,                         /**< The validity of the robot pose. (0 = invalid, 1 = perfect) */
+  (float)(0) symmetry,                         /**< The symmetry confidence of the robot pose. (0 = invalid, 1 = perfect) */
 });
 
 /**
@@ -90,4 +91,5 @@ STREAMABLE(RobotPoseCompressed,
   (Vector2s) translation,
   (short) rotation,
   (unsigned char) validity,
+  (unsigned char) symmetry,
 });

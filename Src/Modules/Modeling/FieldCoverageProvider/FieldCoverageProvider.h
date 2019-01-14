@@ -9,6 +9,7 @@
 #pragma once
 
 #include <algorithm>
+#include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
@@ -30,6 +31,7 @@ MODULE(FieldCoverageProvider,
 { ,
   REQUIRES(BallModel),
   REQUIRES(BallSearchArea),
+  REQUIRES(BehaviorConfiguration),
   USES(BehaviorData),
   REQUIRES(CameraInfo),
   REQUIRES(FieldDimensions),

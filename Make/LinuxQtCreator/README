@@ -25,3 +25,10 @@ cd _NDevils2015Root_/Make/LinuxQTCreator
 11. Done
 
 You can try to compile now (Ctrl+b)
+
+
+
+KNOWN ISSUES
+
+error: compiler message "/usr/bin/ld: cannot find -lGL"
+solve: possibly linkage is broken, try: "ln -s /usr/lib/libGL.so.xx.xx.xx /usr/lib/libGL.so"

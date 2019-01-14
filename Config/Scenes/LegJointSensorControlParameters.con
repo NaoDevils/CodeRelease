@@ -1,0 +1,31 @@
+echo --- Motion Requests ---
+echo
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = playDead; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 1; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = playDead; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+
+echo
+echo
+echo --- Reset all PID parameters to zero --- 
+echo
+echo set representation:LegJointSensorControlParameters walkBalanceParams = { targetAngleX = 2deg; targetAngleY = 0deg; gyroX_p = 0; gyroX_i = 0; gyroX_d = 0; gyroY_p = 0; gyroY_i = 0; gyroY_d = 0; angleX_p = 0; angleX_i = 0; angleX_d = 0; angleY_p = 0; angleY_i = 0; angleY_d = 0; comX_p = 0; angleGyroRatioX = 0.8; angleGyroRatioY = 0.9; hipRollFactor = -0.5; hipPitchFactor = 0.5; kneeFactor = 0.5; footPitchFactor = -0.5; footRollFactor = 0.5; activateCOMStabilisation = false; activateNewIngmarsStuff = true; errorX_p = 0; errorX_i = 0; errorX_d = 0; errorY_p = 0; errorY_i = 0; errorY_d = 0; accelerationImpactX = 0; accelerationImpactY = 0; }; specialActionBalanceParams = { targetAngleX = 0deg; targetAngleY = 0deg; gyroX_p = 0; gyroX_i = 0; gyroX_d = 0; gyroY_p = 0; gyroY_i = 0; gyroY_d = 0; angleX_p = 0; angleX_i = 0; angleX_d = 0; angleY_p = 0; angleY_i = 0; angleY_d = 0; comX_p = 0; angleGyroRatioX = 0; angleGyroRatioY = 0; hipRollFactor = 0; hipPitchFactor = 0.5; kneeFactor = 0.5; footPitchFactor = -0.5; footRollFactor = 0; activateCOMStabilisation = false; activateNewIngmarsStuff = false; errorX_p = 0; errorX_i = 0; errorX_d = 0; errorY_p = 0; errorY_i = 0; errorY_d = 0; accelerationImpactX = 0; accelerationImpactY = 0; };
+echo
+echo --- Saves ---
+echo
+echo save representation:LegJointSensorControlParameters
+
+#vd and plots
+vd representation:LegJointSensorControlParameters 
+vp angle 1000 -0.5 0.5
+vpd angle module:MotionCombinator:UpperBodyBalancer:angleX red
+vpd angle module:MotionCombinator:UpperBodyBalancer:angleY blue
+
+vp filteredOffset 1000 -1 1
+vpd filteredOffset module:MotionCombinator:UpperBodyBalancer:filteredOffsetY black
+vpd filteredOffset module:MotionCombinator:UpperBodyBalancer:filteredOffsetX green
+
+vp gyro 1000 -1 1
+vpd gyro module:MotionCombinator:UpperBodyBalancer:gyroX red
+vpd gyro module:MotionCombinator:UpperBodyBalancer:gyroY blue

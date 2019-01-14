@@ -43,7 +43,6 @@ MODULE(CLIPBallPerceptor,
   REQUIRES(FrameInfo),
   REQUIRES(Image),
   REQUIRES(ImageUpper),
-  REQUIRES(IntegralImage),
   REQUIRES(BallSpots),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(RobotsPercept),
@@ -72,24 +71,13 @@ MODULE(CLIPBallPerceptor,
     (float) lowestValidity, // Minimum validity for a ball spot to become a ball percept.
     (float) lowerImageUpperBorderDistanceFactor, // Factor*radius min distance from upper image border in lower image (goal post along with wrong cameramatrix..)
     (float) minRadiusInImage, // minimal radius in image to accept the ball
-    (float) minRadiusInImageForFeatures, // for features on ball, below this only accept ballpercepts lying free on the field
-    (float) radiusForNoFeatureCheck, // below this radius, balls can be accepted without features on ball if hull check ok
-    (bool) useFeaturesForGoodLargeBalls, // if active, feature check is needed for larger balls even if hullState is good
-    (float) expectedBallFeatureSize, // compared to radius, i.e. 0.5 means diameter is half as big as radius
-    (float) maxBallFeatureSizeDeviation, // max difference to expected size
-    (float) expectedBallFeatureDistance, // compared to radius, i.e. 0.5 means distance is half as big as radius
-    (float) maxBallFeatureDistanceDeviation, // max difference to expected distance
-    (int) maxWrongColorDiv, // for feature scan -> if wrong color count on possible is greater than ball pixel count divided by this, reject
     (bool) useRobotPose, // If true, ball percepts that are seen outside of the field area are neglected.
     (bool) allowBallObstacleOverlap, // If true, ball percept overlapping with obstacles (goal,robots) will be accepted. Dangerous!
-    (int) maxBallFeatureScore, // Max percent of black pixels on ball
-    (int) minBallFeatureScore, // Min percent of black pixels on ball
-    (int) maxBallWhiteScore, // Max percent of pixels counted as white on ball without black in between
-    (int) minCornerResponses, // Minimum number of positive responses to 'darker corner' check on II
-    (int) minWBResponses, // Minimum number of gradient responses on II
-    (float) minScore, // Minimum number of gradient responses on II
+    (float) minScore, // min confidence of cnn on lower image
+    (float) minScoreUpper, // min confidence of cnn on upper image
     (bool) logPositives,
     (bool) useBallValidity, // If false, validity of ball percept is always 1
+    (int) cnnIndex, // Use the CNN with this index
   }),
 });
 
@@ -131,7 +119,6 @@ public:
   {
     void reset()
     {
-      ballFeatures.clear();
       overlapAreas.clear();
       featureCheckNeeded = false;
       detailedCheckNeeded = false;
@@ -140,12 +127,10 @@ public:
       ballObstacleOverlap = false;
       ballOnFieldLine = false;
       ballScannedOnce = false;
-      integralImageResponse = -1;
       cnnCheck = false;
       ballOnField = Vector2f::Zero();
       validity = 0;
     }
-    std::vector<BallFeature> ballFeatures;
     std::vector<OverlapArea> overlapAreas;
     bool featureCheckNeeded;
     bool detailedCheckNeeded;
@@ -155,7 +140,6 @@ public:
     // for possible ball on field line - do not use scan lines ending on field line
     bool ballOnFieldLine;
     bool ballScannedOnce;
-    int integralImageResponse;
     int yHistogram[32];
     bool cnnCheck;
     Vector2f ballOnField;
@@ -232,25 +216,6 @@ private:
 
   bool verifyBallSizeAndPosition(const Vector2f &posInImage, const float &radius, const bool &upper);
 
-  // counts y jumps on ball (for white black ball)
-  // TODO: make more reliable (using distance, distribution?)
-  bool checkYJumps(BallSpot &spot, const bool &upper);
-
-  // check features 
-  bool checkFeatures(const BallSpot &spot, const bool &upper);
-
-  // feature check using integral image, replaces 'checkFeatures' method
-  bool checkFeaturesWithIntegralImage(const BallSpot &spot, const bool &upper);
-
-  // check feature distribution on ball
-  bool checkFeatureDistribution(const BallSpot &spot, const bool &upper);
-
-  bool scanForOverlap(const BallSpot &spot, const bool &upper);
-
-  bool checkOverlap(const BallSpot &spot, const bool &upper);
-
-  bool scanFeature(BallFeature &feature, const Vector2f &center, const float &expectedSize, const bool &upper);
-
   /*
   * Calculates number of fitting points on a circle.
   *
@@ -265,9 +230,6 @@ private:
   // extra scan lines if ball was not found
   void additionalBallSpotScan();
   void runBallSpotScanLine(int fromX, int toX, int stepX, int stepY, int steps, const bool &upper);
-
-  // there should be no green on ball spot
-  int countGreenOnBallSpot(BallSpot &spot, const bool &upper);
 
   inline bool isPixelBallColor(unsigned char y, unsigned char cb, unsigned char cr, const FieldColors &fieldColor)
   {

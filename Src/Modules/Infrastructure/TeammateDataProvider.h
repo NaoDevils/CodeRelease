@@ -14,6 +14,7 @@
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/Perception/CameraMatrix.h"
 #include "Tools/ProcessFramework/TeamHandler.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Network/NTP.h"
@@ -27,15 +28,18 @@ MODULE(TeammateDataProvider,
   REQUIRES(MotionInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
+  REQUIRES(CameraMatrix),
+  REQUIRES(CameraMatrixUpper),
   USES(MotionRequest),
   USES(RobotPose), // to compare team model to own
   USES(BallModel), // to compare team model to own
   PROVIDES(TeammateData),
   DEFINES_PARAMETERS(
   {,
-    (int)(200) sendInterval, /** <  Time in ms between two messages that are sent to the teammates */
+    (int)(334) sendInterval, /** <  Time in ms between two messages that are sent to the teammates */
     (int)(4000) networkTimeout, /**< Time in ms after which teammates are considered as unconnected */
-    (int)(1000) badWifiTimeout, /**< Time in ms after which a package is considered too old and discarded. */
+    (int)(2000) badWifiTimeout, /**< Time in ms after which a package is considered too old and discarded. */
+    (bool)(false) useMixedTeamBallModel,
     (float)(-0.5f) minSanityForTeammates,
   }),
 });

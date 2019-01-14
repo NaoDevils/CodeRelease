@@ -267,7 +267,7 @@ private:
 
   inline int getGauss(const RingBufferWithSum<int, 5> &buf)
   {
-    return -yBuffer[4] - 2 * yBuffer[3] + 2 * yBuffer[1] + yBuffer[4];
+    return -yBuffer[0] - 2 * yBuffer[1] + 2 * yBuffer[3] + yBuffer[4];
   }
 
 };

@@ -4,12 +4,12 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/MotionControl/ActualCoM.h"
-#include "Representations/MotionControl/PatternGenRequest.h"
+#include "Representations/MotionControl/MotionSelection.h"
 
 MODULE(CoMRCSProvider,
 { ,
   REQUIRES(RobotModel),
-  REQUIRES(PatternGenRequest),
+  REQUIRES(MotionSelection),
   PROVIDES(ActualCoMRCS),
   LOADS_PARAMETERS(
   {,

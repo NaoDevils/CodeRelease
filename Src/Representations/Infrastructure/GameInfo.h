@@ -21,6 +21,7 @@ private:
 
 public:
   unsigned timeLastPackageReceived = 0;
+  bool whistleCausedPlay = false;
 
   GameInfo();
 

@@ -1,0 +1,13 @@
+vd representation:LegJointSensorControlParameters 
+vp comX 1000 -10 10
+vpd comX module:MotionCombinator:UpperBodyBalancer:comX
+vp comY 1000 -10 10
+vpd comY module:MotionCombinator:UpperBodyBalancer:comY
+vp errorX 1000 -5 5
+vpd errorX module:MotionCombinator:UpperBodyBalancer:errorX
+vp errorY 1000 -5 5
+vpd errorY module:MotionCombinator:UpperBodyBalancer:errorY
+
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standUpFrontNao; mirror = false; }; walkRequest = { requestType = speed ; request = { rotation = 0deg; translation = { x = 1; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+
+

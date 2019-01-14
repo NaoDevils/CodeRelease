@@ -1,6 +1,7 @@
 call Includes/Fast
-
+call Includes/Behavior
 #msg off
 
 echo call FLIPMPlots
 echo gc playing
+echo get representation:MotionRequest 

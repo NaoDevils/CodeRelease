@@ -46,14 +46,14 @@ void TeammateDataProvider::update(TeammateData& teammateData)
   // (new information has already been coming via handleMessages)
   for(auto & teammate : teammateData.teammates)
   {
-    if(teammate.behaviorData.soccerState == BehaviorData::penalized || theOwnTeamInfo.players[teammate.number - 1].penalty != PENALTY_NONE)
+    if(teammate.behaviorData.soccerState == BehaviorData::penalized || theOwnTeamInfo.players[teammate.number - 1].penalty != PENALTY_NONE || teammate.isPenalized)
       teammate.status = Teammate::INACTIVE;
     else if(!teammate.isUpright)
       teammate.status = Teammate::ACTIVE;
     else
       teammate.status = Teammate::FULLY_ACTIVE;
     teammate.isGoalkeeper = teammate.number == 1;
-    teammate.sanity = std::max(0.f, teammate.sanity - 0.005f);
+    teammate.sanity = std::max(0.f, teammate.sanity - 0.0025f);
   }
 
   // Remove elements that are too old:
@@ -77,10 +77,9 @@ void TeammateDataProvider::update(TeammateData& teammateData)
   }
 
   // Sending interval and NTP synchronization:
-  teammateData.sendThisFrame =
+  teammateData.sendThisFrame = 
 #ifdef TARGET_ROBOT
-    !(theMotionRequest.motion == MotionRequest::specialAction && theMotionRequest.specialActionRequest.specialAction == SpecialActionRequest::playDead) &&
-    !(theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::playDead) &&
+    theRobotInfo.transitionToBhuman == 1.f &&
 #endif
     theFrameInfo.getTimeSince(lastSentTimestamp) >= sendInterval;
   if(teammateData.sendThisFrame)
@@ -143,8 +142,7 @@ void TeammateDataProvider::handleMessages(TeamDataIn& teamReceiver)
     teamReceiver.queue.handleAllMessages(*theInstance);
   if (theInstance && theInstance->currentTeammate && !(theInstance->currentTeammate->isNDevilsPlayer) &&
     (Global::getSettings().gameMode == Settings::mixedTeam
-    || theInstance->theGameInfo.gameType == GAME_MIXEDTEAM_PLAYOFF
-    || theInstance->theGameInfo.gameType == GAME_MIXEDTEAM_ROUNDROBIN))
+    || theInstance->theGameInfo.competitionType == COMPETITION_TYPE_MIXEDTEAM))
   {
     for (std::vector<RoboCup::SPLStandardMessage>::const_iterator i = teamReceiver.messages.begin(); i != teamReceiver.messages.end(); ++i)
     {
@@ -177,14 +175,16 @@ bool TeammateDataProvider::handleMessage(InMessage& message)
         currentTeammate->isNDevilsPlayer = (teamID == 12);
         if (!currentTeammate->isNDevilsPlayer)
         {
-          currentTeammate->whistle.detected = false;
+          currentTeammate->whistle.detected = false; // TODO: check
           currentTeammate->whistleCausedPlay = false;
+          message.bin >> currentTeammate->behaviorData.role;
         }
         currentTeammate->timeWhenSent = currentTeammateSentTimestamp;
       }
       else
       {
         // dummy
+        message.bin >> teamID;
         message.bin >> teamID;
         message.bin >> teamID;
       }
@@ -292,13 +292,23 @@ void TeammateDataProvider::handleMixedTeamPackage(const RoboCup::SPLStandardMess
   currentTeammate->pose.translation.x() = msg.pose[0];
   currentTeammate->pose.translation.y() = msg.pose[1];
   currentTeammate->pose.rotation = Angle::normalize(msg.pose[2]);
-  currentTeammate->ball.estimate.position.x() = msg.ball[0];
-  currentTeammate->ball.estimate.position.y() = msg.ball[1];
-  currentTeammate->ball.estimate.velocity.x() = msg.ballVel[0];
-  currentTeammate->ball.estimate.velocity.y() = msg.ballVel[1];
-  currentTeammate->ball.validity = 0.5f; // TODO
-  currentTeammate->behaviorData.timeSinceBallWasSeen = static_cast<int>(msg.ballAge * 1000.f);
-  if (currentTeammate->behaviorData.timeSinceBallWasSeen >= 0)
+  if (!useMixedTeamBallModel)
+  {
+    currentTeammate->ball.estimate.position.x() = msg.ball[0];
+    currentTeammate->ball.estimate.position.y() = msg.ball[1];
+    currentTeammate->ball.estimate.velocity = Vector2f::Zero(); // TODO
+    currentTeammate->ball.validity = 0.f; // TODO
+    currentTeammate->behaviorData.timeSinceBallWasSeen = 100000;
+  }
+  else
+  {
+    currentTeammate->ball.estimate.position.x() = msg.ball[0];
+    currentTeammate->ball.estimate.position.y() = msg.ball[1];
+    currentTeammate->ball.estimate.velocity = Vector2f::Zero(); // TODO
+    currentTeammate->ball.validity = 0.5f; // TODO
+    currentTeammate->behaviorData.timeSinceBallWasSeen = static_cast<int>(msg.ballAge * 1000.f);
+  }
+  if (currentTeammate->behaviorData.timeSinceBallWasSeen >= 0 && currentTeammate->behaviorData.timeSinceBallWasSeen < 1000)
   {
     currentTeammate->behaviorData.ballPositionRelative.x() = static_cast<short>(msg.ball[0]);
     currentTeammate->behaviorData.ballPositionRelative.y() = static_cast<short>(msg.ball[1]);
@@ -317,52 +327,33 @@ void TeammateDataProvider::handleMixedTeamPackage(const RoboCup::SPLStandardMess
   if (!theFieldDimensions.isInsideCarpet(currentTeammate->pose.translation) ||
     theFieldDimensions.isInsideCarpet(currentTeammate->ball.estimate.position) ||
     currentTeammate->ball.estimate.velocity.norm() > 1000 ||
-    msg.currentSideConfidence > 100 ||
-    msg.currentSideConfidence < 0 ||
-    msg.currentPositionConfidence > 100 ||
-    msg.currentPositionConfidence < 0 ||
     msg.numOfDataBytes > SPL_STANDARD_MESSAGE_DATA_SIZE ||
-    msg.version != SPL_STANDARD_MESSAGE_STRUCT_VERSION ||
-    !theFieldDimensions.isInsideCarpet(Vector2f(msg.walkingTo[0], msg.walkingTo[1])))
+    msg.version != SPL_STANDARD_MESSAGE_STRUCT_VERSION)
   {
     currentTeammate->sanity = 0.f;
     return;
   }
   // update sanity value
   // TODO: need local ball model here for comparison!!
-  if ((Transformation::robotToField(currentTeammate->pose, currentTeammate->ball.estimate.position) -
-    Transformation::robotToField(theRobotPose, theBallModel.estimate.position)).norm() < 500.f)
+  /*if ((Transformation::robotToField(currentTeammate->pose, currentTeammate->ball.estimate.position) -
+    Transformation::robotToField(theRobotPose, theBallModel.estimate.position)).norm() < 1000.f)
   {
     float oldSanity = currentTeammate->sanity;
     currentTeammate->sanity += 0.1f;
     if (oldSanity < minSanityForTeammates && currentTeammate->sanity > minSanityForTeammates)
       currentTeammate->sanity += 0.1f; //hysteresis
-  }
-  if (currentTeammate->sanity > minSanityForTeammates && 
-    msg.currentPositionConfidence > 50 && msg.currentSideConfidence > 50)
+    currentTeammate->sanity = 1.f;
+  }*/
+  if (currentTeammate->sanity > minSanityForTeammates)
   {
     currentTeammate->status = msg.fallen ? Teammate::ACTIVE : Teammate::FULLY_ACTIVE;
-    currentTeammate->pose.validity = msg.currentPositionConfidence / 100.f;
-    currentTeammate->behaviorData.soccerState = BehaviorData::positioning;
-    switch (msg.intention)
-    {
-    case 1:
-      currentTeammate->behaviorData.role = BehaviorData::keeper;
-      break;
-    case 2:
-      currentTeammate->behaviorData.role = BehaviorData::defender;
-      break;
-    case 3:
-      currentTeammate->behaviorData.role = BehaviorData::striker;
-      if (currentTeammate->behaviorData.timeSinceBallWasSeen < 5000)
-        currentTeammate->behaviorData.soccerState = BehaviorData::controlBall;
-      break;
-    default:
-      currentTeammate->behaviorData.role = BehaviorData::supporterDef;
-    }
-    currentTeammate->sideConfidence.sideConfidence = msg.currentSideConfidence / 100.f;
-    if (theOwnTeamInfo.players[msg.playerNum].penalty != PENALTY_NONE)
+    currentTeammate->pose.validity = 1.f; // TODO
+    if (theOwnTeamInfo.players[currentTeammate->number].penalty != PENALTY_NONE)
       currentTeammate->behaviorData.soccerState = BehaviorData::penalized;
+    else if (currentTeammate->behaviorData.role == BehaviorData::supporterDef) // TODO: hacked, this is actually striker
+      currentTeammate->behaviorData.soccerState = BehaviorData::controlBall;
+    else
+      currentTeammate->behaviorData.soccerState = BehaviorData::positioning;
   }
 }
 

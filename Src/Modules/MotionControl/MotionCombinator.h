@@ -8,58 +8,30 @@
 #pragma once
 
 #include "Representations/Configuration/OdometryCorrectionTable.h"
+#include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/JointAngles.h"
 #include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/MotionControl/HeadJointRequest.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/MotionControl/SpecialActionsOutput.h"
+#include "Representations/MotionControl/StandEngineOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/MotionControl/WalkingInfo.h"
+#include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/InertialData.h"
 #include "Representations/Sensing/RobotModel.h"
+#include "Representations/Configuration/MassCalibration.h"
+#include "Representations/Configuration/RobotDimensions.h"
 #include "Tools/Module/Module.h"
-
-STREAMABLE(BalanceParameters,
-{ ,
-  (Angle) targetAngle,
-  (float) gyroX_p,
-  (float) gyroX_d,
-  (float) gyroY_p,
-  (float) gyroY_d,
-  (float) angleX_p,
-  (float) angleX_i,
-  (float) angleY_p,
-  (float) angleY_i,
-  (float) comX_p,
-  (float) angleGyroRatioX,
-  (float) angleGyroRatioY,
-  (float) hipRollFactor,
-  (float) hipPitchFactor,
-  (float) kneeFactor,
-  (float) footPitchFactor,
-  (float) footRollFactor,
-});
-
-STREAMABLE(SpecialActionBalanceList,
-{
-  STREAMABLE(SpecialActionBalanceEntry,
-  {,
-    ((SpecialActionRequest) SpecialActionID) specialAction,
-    (int)(1000) balanceStartTime,
-    (int)(4000) specialActionDuration,
-    (Angle)(10_deg) maxXAngle,
-    (Angle)(10_deg) maxYAngle,
-  }),
-  (std::vector<SpecialActionBalanceEntry>) specialActionBalanceEntries,
-});
 
 MODULE(MotionCombinator,
 { ,
@@ -69,18 +41,24 @@ MODULE(MotionCombinator,
   REQUIRES(HeadJointRequest),
   REQUIRES(InertialData),
   REQUIRES(InertialSensorData),
+  REQUIRES(JointSensorData),
   REQUIRES(RobotModel),
   REQUIRES(JointAngles),
   REQUIRES(KickEngineOutput),
   REQUIRES(MotionSelection),
   REQUIRES(SpecialActionsOutput),
+  REQUIRES(StandEngineOutput),
   REQUIRES(RobotInfo),
   REQUIRES(StiffnessSettings),
+  REQUIRES(MotionSettings),
+  REQUIRES(LegJointSensorControlParameters),
   REQUIRES(WalkingEngineOutput),
   REQUIRES(WalkingInfo),
   REQUIRES(SpeedInfo),
   PROVIDES(JointRequest),
   REQUIRES(JointRequest),
+  REQUIRES(MassCalibration),
+  REQUIRES(RobotDimensions),
   PROVIDES(MotionInfo),
   PROVIDES(OdometryData),
   LOADS_PARAMETERS(
@@ -89,13 +67,6 @@ MODULE(MotionCombinator,
     (unsigned) recoveryTime, /**< The number of frames to interpolate after emergency-stop. */
     (bool) useBalancing, // use yOffset and balanceParams for balancing upper body
     (float) yOffset, // upper body y offset (for asymmetry)
-    (bool)(false) usePlayDeadBalancing,
-    (Angle) hipPitch_playDead,
-    (float) angleY_playDead,
-    (int) stiffness_playDead,
-    (BalanceParameters) balanceParamsWalk,
-    (BalanceParameters) balanceParams,
-    (SpecialActionBalanceList) specialActionBalanceList,
   }),
 });
 
@@ -119,13 +90,24 @@ private:
   unsigned fallingFrame;
 
   // for balancing
-  float lastComX;
-  SpecialActionRequest::SpecialActionID lastBalancedSpecialAction;
-  unsigned timeWhenSpecialActionStarted;
-  bool wasInBalance;
+  SpecialActionRequest::SpecialActionID lastBalancedSpecialAction = SpecialActionRequest::stand;
+  unsigned timeWhenSpecialActionStarted = 0;
+  bool wasInBalance = false;
+  float lastComX = 0;
 
   OdometryData lastOdometryData;
   JointRequest lastJointRequest;
+  float pidGyroX_sum = 0;
+  float pidGyroY_sum = 0;
+  float pidGyroX_last = 0;
+  float pidGyroY_last = 0;
+  float pidAngleX_sum = 0;
+  float pidAngleY_sum = 0;
+  float pidAngleX_last = 0;
+  float pidAngleY_last = 0;
+
+  float spid_sumX = 0;
+  float spid_sumY = 0;
 
 public:
   /**
@@ -165,4 +147,7 @@ private:
   void interpolate(const JointRequest& from, const JointRequest& to, float fromRatio, JointRequest& target, bool interpolateStiffness,
     const Joints::Joint startJoint = static_cast<Joints::Joint>(0),
     const Joints::Joint endJoint = static_cast<Joints::Joint>(Joints::numOfJoints - 1)) const;
+
+  void calcUpperBodyCOM(Vector3f& com);
+  Vector3f rotateVectorOverLine(Vector3f vec, Vector3f sv, Vector3f rv, float angle);
 };

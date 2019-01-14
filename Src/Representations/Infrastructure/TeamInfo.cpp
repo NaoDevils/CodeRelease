@@ -54,29 +54,14 @@ TeamInfo::TeamInfo()
 
 void TeamInfo::serialize(In* in, Out* out)
 {
-  PlayerInfo(&players)[4] = reinterpret_cast<PlayerInfo(&)[4]>(this->players);
-  PlayerInfo& coach = reinterpret_cast<PlayerInfo&>(this->coach);
-  char buf[sizeof(this->coachMessage) + 1];
-  strncpy(buf, (const char*) this->coachMessage, sizeof(this->coachMessage));
-  buf[sizeof(this->coachMessage)] = 0;
-  std::string coachMessage = buf;
-
+  PlayerInfo(&players)[5] = reinterpret_cast<PlayerInfo(&)[5]>(this->players);
+  
   STREAM_REGISTER_BEGIN;
   STREAM(teamNumber); // unique team number
-  STREAM(teamColor); // TEAM_BLUE, TEAM_RED, TEAM_YELLOW, TEAM_BLACK
+  STREAM(teamColour); // TEAM_BLUE, TEAM_RED, TEAM_YELLOW, TEAM_BLACK
   STREAM(score); // team's score
-  STREAM(coachMessage); // last coach message received
-  STREAM(coach); // team's coach
   STREAM(players); // the team's players
   STREAM_REGISTER_FINISH;
-
-  if(in)
-  {
-    if(coachMessage.empty())
-      this->coachMessage[0] = 0;
-    else
-      strncpy((char*) this->coachMessage, &coachMessage[0], sizeof(this->coachMessage));
-  }
 }
 
 static void drawDigit(int digit, const Vector3f& pos, float size, int teamColor)
@@ -127,15 +112,15 @@ void TeamInfo::draw() const
 {
   DECLARE_DEBUG_DRAWING3D("representation:TeamInfo", "field");
   {
-    float x = teamColor == TEAM_BLUE ? -1535.f : 1465.f;
-    drawDigit(score / 10, Vector3f(x, 3500, 1000), 200, teamColor);
-    drawDigit(score % 10, Vector3f(x + 270, 3500, 1000), 200, teamColor);
+    float x = teamColour == TEAM_BLUE ? -1535.f : 1465.f;
+    drawDigit(score / 10, Vector3f(x, 3500, 1000), 200, teamColour);
+    drawDigit(score % 10, Vector3f(x + 270, 3500, 1000), 200, teamColour);
   };
 }
 
 OwnTeamInfo::OwnTeamInfo()
 {
-  teamColor = Global::settingsExist() ? Global::getSettings().teamColor : TEAM_BLUE;
+  teamColour = Global::settingsExist() ? Global::getSettings().teamColor : TEAM_YELLOW;
 }
 
 void OwnTeamInfo::draw() const
@@ -145,11 +130,11 @@ void OwnTeamInfo::draw() const
 
   DEBUG_DRAWING("representation:OwnTeamInfo", "drawingOnField")
   {
-    DRAWTEXT("representation:OwnTeamInfo", -5000, -3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor) teamColor));
+    DRAWTEXT("representation:OwnTeamInfo", -5000, -3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor) teamColour));
   }
 }
 
 OpponentTeamInfo::OpponentTeamInfo()
 {
-  teamColor = 1 ^ (Global::settingsExist() ? Global::getSettings().teamColor : TEAM_BLUE);
+  teamColour = 1 ^ (Global::settingsExist() ? Global::getSettings().teamColor : TEAM_RED);
 }

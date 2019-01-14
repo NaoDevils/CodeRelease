@@ -15,7 +15,6 @@
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Configuration/RobotDimensions.h"
-#include "Modules/MotionControl/DortmundWalkingEngine/PatternGenerator.h"
 
 #ifndef WALKING_SIMULATOR
 #include "Tools/Module/Module.h"

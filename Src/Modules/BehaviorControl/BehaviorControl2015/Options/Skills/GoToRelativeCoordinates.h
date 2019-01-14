@@ -29,11 +29,14 @@ option(GoToRelativeCoordinates,
         || std::abs(y) > thresh_y+10 || std::abs(rot) > thresh_rot+10)
         goto positioning;
     }
-    
-    action
+
+      action
     {
       if (stop_at_target)
-        Walk(WalkRequest::speed, 0,0,0);
+        if (state_time > 3000)
+          Stand();
+        else
+          Walk(WalkRequest::speed, 0, 0, 0);
       else
       {
         Walk(WalkRequest::destination, x, y, rot);

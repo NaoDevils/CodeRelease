@@ -196,35 +196,51 @@ void InText::readDouble(double& d, PhysicalInStream& stream)
     buf += theChar;
     nextChar(stream);
   }
-  while(!isEof(stream) && isdigit(theChar))
+  if(!isEof(stream) && theChar == 'i')
   {
-    buf += theChar;
     nextChar(stream);
+    if (!isEof(stream) && theChar == 'n')
+    {
+      nextChar(stream);
+      if (!isEof(stream) && theChar == 'f')
+      {
+        buf += "inf";
+        nextChar(stream);
+      }
+    }
   }
-  if(!isEof(stream) && theChar == '.')
+  else
   {
-    buf += theChar;
-    nextChar(stream);
-  }
-  while(!isEof(stream) && isdigit(theChar))
-  {
-    buf += theChar;
-    nextChar(stream);
-  }
-  if(!isEof(stream) && (theChar == 'e' || theChar == 'E'))
-  {
-    buf += theChar;
-    nextChar(stream);
-  }
-  if(!isEof(stream) && (theChar == '-' || theChar == '+'))
-  {
-    buf += theChar;
-    nextChar(stream);
-  }
-  while(!isEof(stream) && isdigit(theChar))
-  {
-    buf += theChar;
-    nextChar(stream);
+    while (!isEof(stream) && isdigit(theChar))
+    {
+      buf += theChar;
+      nextChar(stream);
+    }
+    if (!isEof(stream) && theChar == '.')
+    {
+      buf += theChar;
+      nextChar(stream);
+    }
+    while (!isEof(stream) && isdigit(theChar))
+    {
+      buf += theChar;
+      nextChar(stream);
+    }
+    if (!isEof(stream) && (theChar == 'e' || theChar == 'E'))
+    {
+      buf += theChar;
+      nextChar(stream);
+    }
+    if (!isEof(stream) && (theChar == '-' || theChar == '+'))
+    {
+      buf += theChar;
+      nextChar(stream);
+    }
+    while (!isEof(stream) && isdigit(theChar))
+    {
+      buf += theChar;
+      nextChar(stream);
+    }
   }
   d = atof(buf.c_str());
   skipWhitespace(stream);

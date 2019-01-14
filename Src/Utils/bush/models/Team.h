@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <QColor>
 #include "Tools/Streams/Streamable.h"
 
 struct Robot;
@@ -19,8 +20,10 @@ public:
   std::string name;
   unsigned short number;
   unsigned short port;
-  std::string colorOwn;
-  std::string colorOpp;
+  //std::string colorOwn;
+  //std::string colorOpp;
+  int colorOwn;
+  int colorOpp;
   std::string location;
   std::string gameMode;
   std::string wlanConfig;

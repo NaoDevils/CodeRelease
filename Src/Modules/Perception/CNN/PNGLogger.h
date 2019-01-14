@@ -55,6 +55,8 @@ private:
   std::string filepath;
 
   void logImage(bool upper);
+  void logImageYFull(bool upper);
+  void logImageY(bool upper);
 
   std::string getDate();
 
@@ -65,5 +67,7 @@ private:
   unsigned char targetLower[320*240*3];
   unsigned char targetUpper[640*480*3];
 
+  unsigned char targetLowerFull[640*480*3];
+  unsigned char targetUpperFull[1280*960*3];
 
 };

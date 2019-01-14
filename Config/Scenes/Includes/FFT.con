@@ -5,7 +5,7 @@ vp detect 800 -2 2
 vpd detect representation:Whistle:detected red
 
 #set setState (2) directly
-set representation:GameInfo gameType = 0; state = 2; firstHalf = 1; kickOffTeam = 1; secondaryState = 0; dropInTeam = 0; dropInTime = 65535; secsRemaining = 588; timeLastPackageReceived = 22393;
+set representation:GameInfo competitionPhase = 0; competitionType = 0; state = 2; firstHalf = 1; kickingTeam = 1; gamePhase = 0; setPlay = 0; dropInTeam = 0; dropInTime = 65535; secsRemaining = 599; timeLastPackageReceived = 11343;
 get representation:GameInfo
 
 echo ===
@@ -23,5 +23,15 @@ get module:WhistleDetector:OVERTONE_MIN_AMP_2
 echo ===
 get module:WhistleDetector:RELEASE
 get module:WhistleDetector:ATTACK
+get module:WhistleDetector:ATTACK_TIMEOUT_MS
+get module:WhistleDetector:PEAK_DIFF
 echo ===
 get module:WhistleDetector:USE_HANN_WINDOWING
+get module:WhistleDetector:USE_NUTTALL_WINDOWING
+echo ===
+
+# enable pseudo audio file
+set module:AudioProviderDortmund:simulateWhistleInSimulator true
+get module:AudioProviderDortmund:simulateWhistleInSimulator
+get module:AudioProviderDortmund:simulateSinusInSimulator
+get module:AudioProviderDortmund:simulateNoiseInSimulator

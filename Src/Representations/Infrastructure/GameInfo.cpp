@@ -95,14 +95,17 @@ std::string GameInfo::getStateAsString() const
 void GameInfo::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
-  STREAM(gameType); // type of the game (GAME_ROUNDROBIN, GAME_PLAYOFF, GAME_MIXEDTEAM_PLAYOFF, GAME_MIXEDTEAM_ROUNDROBIN)
+  STREAM(competitionPhase); // phase of the game (COMPETITION_PHASE_ROUNDROBIN, COMPETITION_PHASE_PLAYOFF)
+  STREAM(competitionType); // type of game (COMPETITION_TYPE_NORMAL, COMPETITION_TYPE_MIXEDTEAM, ..)
   STREAM(state); // STATE_READY, STATE_PLAYING, ...
   STREAM(firstHalf); // 1 = game in first half, 0 otherwise
-  STREAM(kickOffTeam); // team number
-  STREAM(secondaryState);  // Extra state information - (STATE2_NORMAL, STATE2_PENALTYSHOOT, etc)
+  STREAM(kickingTeam); // team number of team with kick off/free kick off
+  STREAM(gamePhase);  // game phase - (GAME_PHASE_NORMAL, GAME_PHASE_PENALTYSHOOT, etc)
+  STREAM(setPlay); // special set phases within game i.e. setting up for free kick (SET_PLAY_NONE, SET_PLAY_GOAL_FREE_KICK, ..)
   STREAM(dropInTeam); // team number
   STREAM(dropInTime); // number of seconds passed since the last drop in. -1 before first dropin.
   STREAM(secsRemaining); // estimate of number of seconds remaining in the half.
   STREAM(timeLastPackageReceived) // used to decide whether a gameController is running
+  STREAM(whistleCausedPlay);
   STREAM_REGISTER_FINISH;
 }

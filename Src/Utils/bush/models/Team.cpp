@@ -5,6 +5,8 @@
 #include "Utils/bush/models/Team.h"
 #include "Utils/bush/tools/Platform.h"
 
+//TODO: remove color as string from Team
+
 static const size_t MAX_PLAYERS = 6;
 
 void Team::init()
@@ -26,8 +28,10 @@ Team::Team()
     name(""),
     number(0),
     port(0),
-    colorOwn(""),
-    colorOpp(""),
+    colorOwn(0xFFFF00),
+    colorOpp(0x000000),
+    //colorOwn(QColor(255,255,0)),
+    //colorOpp(QColor(0,0,0)),
     location(""),
     wlanConfig(""),
     walkConfig(""),
@@ -46,8 +50,10 @@ Team::Team(const std::string& name, unsigned short number)
     name(name),
     number(number),
     port(0),
-    colorOwn(""),
-    colorOpp(""),
+    //colorOwn(""),
+    //colorOpp(""),
+    colorOwn(0xFFFF00),
+    colorOpp(0x000000),
     location(""),
     wlanConfig(""),
     walkConfig(""),

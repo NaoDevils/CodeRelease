@@ -27,7 +27,6 @@ private:
 private slots:
   void stand();
   void sitDown();
-  void setPlayDead();
   void setStand();
   void setSitDown();
   void headAngle(bool active);

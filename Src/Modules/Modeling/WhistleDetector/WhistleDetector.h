@@ -34,6 +34,8 @@ MODULE(WhistleDetector,
     (int) RELEASE,
     (int) ATTACK,
     (bool) USE_HANN_WINDOWING,
+    (bool) USE_NUTTALL_WINDOWING,
+    (int) ATTACK_TIMEOUT_MS,
   }),
 });
 
@@ -50,6 +52,8 @@ class WhistleDetector : public WhistleDetectorBase
   std::vector<float> buffer;
   std::vector<kiss_fft_cpx> in, out;
   std::vector<float> amplitudes;
+  
+  unsigned lastAttackTime = 0;
 
 public:
   WhistleDetector();

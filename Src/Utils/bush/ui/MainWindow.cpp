@@ -28,7 +28,8 @@ MainWindow::MainWindow()
   ShortcutBar* shortcutBar = new ShortcutBar(console);
   addToolBar(Qt::BottomToolBarArea, shortcutBar);
   shortcutBar->addShortcut("help", "help");
-  shortcutBar->addShortcut("deploy", "deploy");
+  shortcutBar->addShortcut("deploy", "deploy", true);
+  //shortcutBar->setItemData( 1, QColor( Qt::red ), Qt::ForegroundRole );
   shortcutBar->addShortcut("download logs", "downloadLogs");
   shortcutBar->addShortcut("download camera calibrations", "downloadCameraCalibrations");
   shortcutBar->addShortcut("delete logs", "deleteLogs");

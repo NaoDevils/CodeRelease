@@ -23,7 +23,7 @@ bool TeamRobot::main()
     
     uint8_t teamColor = 0,
             swapSides = 0;
-    MODIFY("teamColor", ownTeamInfo.teamColor);
+    MODIFY("teamColor", ownTeamInfo.teamColour);
     MODIFY("swapSides", swapSides);
 
     if(SystemCall::getTimeSince(robotPoseReceived) < 1000)

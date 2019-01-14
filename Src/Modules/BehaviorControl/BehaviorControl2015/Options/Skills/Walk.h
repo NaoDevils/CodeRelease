@@ -1,6 +1,5 @@
 /**
 * Walk Skill
-* rotation in degrees!
 */
 option(Walk, ((WalkRequest) RequestType) requestType, (float) x, (float) y, (float) rot, ((WalkRequest) StepRequest)(WalkRequest::StepRequest::none) stepRequest)
 {

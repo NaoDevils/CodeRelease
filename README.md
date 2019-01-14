@@ -1,9 +1,7 @@
-Nao Devils Code Release 2017
+Nao Devils Code Release 2018
 =================
 
-This is the 2017 Nao Devils Code Release based on the [B-Human code release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
-
-The code release from 2016 is tagged with [CodeRelease2016](https://github.com/NaoDevils/CodeRelease/tree/CodeRelease2016).
+This is the 2018 Nao Devils Code Release based on the [B-Human code release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
 
 Getting started
 ---------------

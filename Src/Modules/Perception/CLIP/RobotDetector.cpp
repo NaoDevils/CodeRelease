@@ -196,6 +196,7 @@ RobotEstimate::RobotType RobotDetector::scanForRobotColor(
   const bool &upper)
 {
   // TODO: save color-center and scan around to verify
+  // TODO: rewrite, since green/grey/white shirts are all allowed
   const Image &image = upper ? (Image&)theImageUpper : theImage;
   const FieldColors &fieldColor = upper ? (FieldColorsUpper&)theFieldColorsUpper : theFieldColors;
 
@@ -218,10 +219,13 @@ RobotEstimate::RobotType RobotDetector::scanForRobotColor(
       //&& (p.y < std::min(2 * fieldColor.fieldColorArray[0].fieldColorOptY / 3,80) || std::max(abs(p.cb - 128), abs(p.cr - 128)) > shirtMinColorDiff))
     {
       int diffToOwnColor = std::abs(p.cb - ownColor.y()) + std::abs(p.cr - ownColor.z());
-      if (ownColor.x() != 128)
+      bool isNonColorShirt = std::abs(ownColor.y() - 128) + std::abs(ownColor.z() - 128) < 15;
+      
+      // if shirt is only black&white, use distinction from robot color as indication.
+      if (isNonColorShirt)
         diffToOwnColor += 60 * (sgn(p.y - 128) != sgn(ownColor.x() - 128));
       int diffToOppColor = std::abs(p.cb - oppColor.y()) + std::abs(p.cr - oppColor.z());
-      if (oppColor.x() != 128)
+      if (isNonColorShirt)
         diffToOppColor += 60 * (sgn(p.y - 128) != sgn(oppColor.x() - 128));
       if (diffToOwnColor > 15 || diffToOppColor > 15)
       {

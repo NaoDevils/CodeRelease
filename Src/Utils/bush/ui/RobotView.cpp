@@ -50,7 +50,7 @@ void RobotView::init()
 
   QLabel* pingLabelLAN = new QLabel("<font size=2><b>Lan</b></font>", statusWidget);
   pingBarLAN = new QLabel(this);
-  pingBarLAN->setMaximumSize(50, 13);
+  pingBarLAN->setMaximumSize(50, 20);
   pingBarLAN->setAlignment(Qt::AlignCenter);
   setPings(LAN, 0);
   statusLayout->addWidget(pingLabelLAN, 1, 0, Qt::AlignLeft);
@@ -58,7 +58,7 @@ void RobotView::init()
 
   QLabel* powerLabel = new QLabel("<font size=2><b>Power</b></font>", statusWidget);
   powerBar = new QProgressBar(this);
-  powerBar->setMaximumSize(50, 13);
+  powerBar->setMaximumSize(50, 20);
   powerBar->setRange(0, 100);
   powerBar->setValue(0);
   powerBar->setAlignment(Qt::AlignCenter);

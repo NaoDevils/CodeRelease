@@ -42,7 +42,6 @@ MODULE(CLIPPreprocessor,
   PROVIDES(CLIPPointsPercept),
   PROVIDES(BallSpots),
   PROVIDES(ObstacleBasePoints),
-  PROVIDES(IntegralImage),
   LOADS_PARAMETERS(
   { ,
     // TODO: initialized has to be changed when changing parameters!!
@@ -72,9 +71,7 @@ public:
 
   DECLARE_DEBUG_IMAGE(SIPField);
   DECLARE_DEBUG_IMAGE(SIPFieldUpper);
-  DECLARE_DEBUG_IMAGE(IntegralImageLower);
-  DECLARE_DEBUG_IMAGE(IntegralImageUpper);
-
+  
   /** Destructor */
   ~CLIPPreprocessor();
 
@@ -177,10 +174,7 @@ private:
   void update(CLIPPointsPercept& theCLIPPointsPercept);
   void update(BallSpots& ballSpots);
   void update(ObstacleBasePoints& obstacleBasePoints);
-  void update(IntegralImage& integralImage);
-
-  void createIntegralImage(const Image& other, const bool &upper, IntegralImage& integralImage);
-
+  
   /*
   * Reset all local percepts, only to be called once a frame!
   */

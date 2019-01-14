@@ -34,6 +34,7 @@ struct CameraSettings : public Streamable
     TargetGain, /* The target analog gain [0 .. 65535] */
     MinGain, /* The minimum value for the analog gain that AE Track is permitted to use [0 .. 65535] */
     MaxGain, /* The maximum value for the analog gain that AE Track is permitted to use [0 .. 65535] */
+    AeMode, /* AE mode (indoor, ...) [0 .. 255] */
   });
 
   STREAMABLE(V4L2Setting,

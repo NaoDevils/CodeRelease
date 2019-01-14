@@ -201,14 +201,22 @@ void Image::copyAndResizeArea(const int xPos, const int yPos, int sizeX, int siz
   int pixelNo = 0;
   int lastX = 0;
   int lastY = 0;
+
+  // precompute x offsets
+  std::vector<int> xIncs(sizeXNew);
+  for (int i = 0; i < sizeXNew; i++)
+  {
+    xPrecise += xStep;
+    xIncs[i] = static_cast<int>(xPrecise + 0.5) - lastX;
+    lastX += xIncs[i];
+  }
+
   for (int y = 0; y < sizeYNew; y++)
   {
     for (int x = 0; x < sizeXNew; x++)
     {
       result[pixelNo] = *image_ptr;
-      xPrecise += xStep;
-      int xInc = static_cast<int>(xPrecise + 0.5) - lastX;
-      lastX += xInc;
+      int xInc = xIncs[x];
       image_ptr += xInc * 4;
       pixelNo++;
     }

@@ -52,12 +52,13 @@ private:
     {typeTransition, to_label, 18*0, execMotionRequest}
     */
 
-    void toJointRequest(JointRequest& jointRequest, int& dataRepetitionCounter, bool& interpolationMode, bool& deShakeMode) const
+    void toJointRequest(JointRequest& jointRequest, int& dataRepetitionCounter, bool& interpolationMode, bool& sinInterpolation, bool& deShakeMode) const
     {
       for(int i = 0; i < Joints::numOfJoints; ++i)
         jointRequest.angles[i] = static_cast<float>(d[i + 1]);
       interpolationMode = (static_cast<int>(d[Joints::numOfJoints + 1]) & 1) != 0;
-      deShakeMode = (static_cast<int>(d[Joints::numOfJoints + 1]) & 2) != 0;
+      sinInterpolation = (static_cast<int>(d[Joints::numOfJoints + 1]) & 2) != 0;
+      deShakeMode = (static_cast<int>(d[Joints::numOfJoints + 1]) & 4) != 0;
       dataRepetitionCounter = static_cast<int>(d[Joints::numOfJoints + 2]);
     }
 
@@ -158,6 +159,7 @@ private:
   JointRequest currentRequest, /**< Current joint data. */
                lastRequest; /**< Last data for interpolation. */
   bool interpolationMode, /**< True if values should be interpolated. */
+       sinInterpolation, /**< True if values should be interpolated using sin function. */
        deShakeMode; /**< True if shaking of arms should be prevented. */
   int dataRepetitionLength, /**< Length of current data line in cycles. */
       dataRepetitionCounter; /**< Cycle counter for current data line. */

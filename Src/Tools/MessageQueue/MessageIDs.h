@@ -100,6 +100,7 @@ ENUM(MessageID,
   idThumbnailUpper,
   idRemoteBallModel,
   idBodyContourUpper,
+  idRobotPoseHypothesesCompressed,
 
   numOfDataMessageIDs, /**< everything below this does not belong into log files */
 

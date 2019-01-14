@@ -220,9 +220,9 @@ void MultiKalmanModel<hypothesis_t>::updateBestHypothesis()
   
   float minValidity = minValidityForChangingBestHypothesis;
 
-  // If there was no best hypothesis in the last iteration, use the 
-  // current best one without limitations on validity.
-  if (m_lastBestHypothesisIndex == static_cast<size_t>(-1)) // Maximum size_t number
+  // If there was no best hypothesis in the last iteration or there is only one hypothesis,
+  // use the current best one without limitations on validity.
+  if (m_lastBestHypothesisIndex == static_cast<size_t>(-1) || m_hypotheses.size() == size_t(1))
   {
     minValidity = 0.f;
   }

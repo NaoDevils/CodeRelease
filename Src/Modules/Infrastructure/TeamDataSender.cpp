@@ -43,7 +43,6 @@ void TeamDataSender::update(TeamDataSenderOutput& teamDataSenderOutput)
 
     // Robot status
     TEAM_OUTPUT(idTeammateIsPenalized, bin, (theRobotInfo.penalty != PENALTY_NONE));
-    TEAM_OUTPUT(idTeammateHasGroundContact, bin, (theGroundContactState.contact));
     TEAM_OUTPUT(idTeammateIsUpright, bin, (theFallDownState.state == theFallDownState.upright));
     if(theGroundContactState.contact)
     {
@@ -51,7 +50,7 @@ void TeamDataSender::update(TeamDataSenderOutput& teamDataSenderOutput)
     }
 
     TEAM_OUTPUT(idWhistleDortmund, bin, theWhistleDortmund);
-    TEAM_OUTPUT(idWhistle, bin, (theGameInfo.state == STATE_PLAYING && theRawGameInfo.state == STATE_SET));
+    TEAM_OUTPUT(idWhistle, bin, theGameInfo.whistleCausedPlay);
     
     if(sendFrames % 20 == 0)
       TEAM_OUTPUT(idRobotHealth, bin, theRobotHealth);
@@ -74,7 +73,7 @@ void TeamDataSender::fillStandardMessage()
 #else
   header.timeStampSent = static_cast<uint64_t>(SystemCall::getCurrentSystemTime());
 #endif
-  header.dummy = 0;
+  header.intention = (theBehaviorData.soccerState == BehaviorData::controlBall) ? 3 : 0;
   header.isPenalized = (theRobotInfo.penalty != PENALTY_NONE);
   header.whistleDetected = theWhistleDortmund.detected;
   OutBinarySize sizeStream;
@@ -96,56 +95,10 @@ void TeamDataSender::fillStandardMessage()
   message.playerNum = static_cast<int8_t>(theRobotInfo.number);
   message.teamNum = theOwnTeamInfo.teamNumber;
   message.ballAge = theBallModel.timeWhenLastSeen ? static_cast<float>(theFrameInfo.getTimeSince(theBallModel.timeWhenLastSeen)) / 1000.f : -1.f; // time in seconds
-  message.ballVel[0] = theBallModel.estimate.velocity.x();
-  message.ballVel[1] = theBallModel.estimate.velocity.y();
   message.ball[0] = theBallModel.estimate.position.x();
   message.ball[1] = theBallModel.estimate.position.y();
   message.pose[0] = theRobotPose.translation.x();
   message.pose[1] = theRobotPose.translation.y();
   message.pose[2] = theRobotPose.rotation;
-  message.currentPositionConfidence = static_cast<int8_t>(theRobotPose.validity*100.f);
-  message.currentSideConfidence = static_cast<int8_t>(theSideConfidence.sideConfidence*100.f);
   message.fallen = theFallDownState.state != FallDownState::upright;
-  message.shootingTo[0] = message.pose[0];
-  message.shootingTo[1] = message.pose[1];
-  message.shootingTo[0] = theKickSymbols.kickTarget.x();
-  message.shootingTo[1] = theKickSymbols.kickTarget.y();
-  switch (theBehaviorData.soccerState)
-  {
-  case BehaviorData::positioning:
-    switch (theBehaviorData.role)
-    {
-    case BehaviorData::defender:
-      message.intention = 2;
-      break;
-    default:
-      message.intention = 1;
-    }
-    break;
-  case BehaviorData::controlBall:
-    message.intention = 3;
-    break;
-  default:
-    message.intention = 0;
-    break;
-  }
-  if (theBehaviorData.soccerState <= BehaviorData::numOfUnsafeActions ||
-    theSideConfidence.confidenceState != SideConfidence::CONFIDENT ||
-    theRobotPose.validity < 0.4f)
-    message.intention = 4; // lost
-  for (int i = 0; i < 5; i++)
-    message.suggestion[i] = 0;
-  if (theMotionRequest.walkRequest.requestType == WalkRequest::destination)
-  {
-    Vector2f walkingTargetField = Transformation::robotToField(theRobotPose, theMotionRequest.walkRequest.request.translation);
-    message.walkingTo[0] = walkingTargetField.x(); // in field coordinates
-    message.walkingTo[1] = walkingTargetField.y();
-  }
-  else
-  {
-    message.walkingTo[0] = message.pose[0];
-    message.walkingTo[1] = message.pose[1];
-  }
-  message.averageWalkSpeed = static_cast<int16_t>(avgWalkingSpeed);
-  message.maxKickDistance = static_cast<int16_t>(maxKickDistance);
 }

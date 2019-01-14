@@ -24,7 +24,7 @@ STREAMABLE(Path,
   {
     wayPoints.clear();
     nearestObstacle = 10000.f;
-    distanceToBall = 10000.f;
+    length = 0.f;
     useExtraBallPoint = false;
   };
   /**
@@ -80,7 +80,7 @@ STREAMABLE(Path,
   (bool)(false) useExtraBallPoint,
   (std::vector<Pose2f>) wayPoints, /**< The wayPoints in absolute field coordinates. */
   (float)(10000.f) nearestObstacle,
-  (float)(100.f) distanceToBall, /**< The distance to the ball calculated from the path to the ball and the rotation towards the ball */  
+  (float)(0.f) length, /**< The distance to the target calculated from the path. */  
 });
 
 #endif //__Path_h_

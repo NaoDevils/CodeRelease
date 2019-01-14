@@ -142,7 +142,9 @@ enum LBHSensorIds
   // battery sensors
   batteryCurrentSensor,
   batteryChargeSensor,
+  batteryStatusSensor,
   batteryTemperatureSensor,
+  batteryTemperatureStatusSensor,
 
   // fsr sensors
   lFSRFrontLeftSensor,
@@ -356,4 +358,12 @@ struct LBHData
   BHState state;
   int teamInfo[lbhNumOfTeamInfoIds];
   uint64_t bhumanStartTime;
+
+  /*
+   * I don't think triple buffering is really necessary here.
+   * In my opinion this would be harder than for the other data
+   * as we have to pass data from setActuators() function to the framework,
+   * what is no intended by the current design.
+   */
+  float transitionToBhuman; /** If libbhuman has given full control to bhuman. (0 = libbhuman, 1 = bhuman) Range: [0.0, 1.0] */
 };

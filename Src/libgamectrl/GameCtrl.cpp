@@ -93,13 +93,13 @@ private:
 	const float* buttons[numOfButtons]; /**< Pointers to where ALMemory stores the current button states. */
 	const int* playerNumber; /** Points to where ALMemory stores the player number. */
 	const int* teamNumberPtr; /** Points to where ALMemory stores the team number. The number be set to 0 after it was read. */
-	const int* defaultTeamColour; /** Points to where ALMemory stores the default team color. */
+	const int* defaultTeamColour; /** Points to where ALMemory stores the default team Colour. */
 	int teamNumber; /**< The team number. */
 	RoboCupGameControlData gameCtrlData; /**< The local copy of the GameController packet. */
 	uint8_t previousState; /**< The game state during the previous cycle. Used to detect when LEDs have to be updated. */
-	uint8_t previousSecondaryState; /**< The secondary game state during the previous cycle. Used to detect when LEDs have to be updated. */
-	uint8_t previousKickOffTeam; /**< The kick-off team during the previous cycle. Used to detect when LEDs have to be updated. */
-	uint8_t previousTeamColour; /**< The team colour during the previous cycle. Used to detect when LEDs have to be updated. */
+	uint8_t previousGamePhase; /**< The secondary game state during the previous cycle. Used to detect when LEDs have to be updated. */
+	uint8_t previousKickingTeam; /**< The kick-off team during the previous cycle. Used to detect when LEDs have to be updated. */
+	uint8_t previousTeamColour; /**< The team Colour during the previous cycle. Used to detect when LEDs have to be updated. */
 	uint8_t previousPenalty; /**< The penalty set during the previous cycle. Used to detect when LEDs have to be updated. */
 	bool previousChestButtonPressed; /**< Whether the chest button was pressed during the previous cycle. */
 	bool previousLeftFootButtonPressed; /**< Whether the left foot bumper was pressed during the previous cycle. */
@@ -117,8 +117,8 @@ private:
 	{
 		memset(&gameControllerAddress, 0, sizeof(gameControllerAddress));
 		previousState = (uint8_t)-1;
-		previousSecondaryState = (uint8_t)-1;
-		previousKickOffTeam = (uint8_t)-1;
+		previousGamePhase = (uint8_t)-1;
+		previousKickingTeam = (uint8_t)-1;
 		previousTeamColour = (uint8_t)-1;
 		previousPenalty = (uint8_t)-1;
 		previousChestButtonPressed = false;
@@ -130,6 +130,20 @@ private:
 		whenPacketWasReceived = 0;
 		whenPacketWasSent = 0;
 		memset(&gameCtrlData, 0, sizeof(gameCtrlData));
+
+
+    if (udp) delete udp;
+    udp = new UdpComm();
+    if (!udp->setBlocking(false) ||
+      !udp->setBroadcast(true) ||
+      !udp->bind("0.0.0.0", GAMECONTROLLER_DATA_PORT) ||
+      !udp->setLoopback(false))
+    {
+      fprintf(stderr, "libgamectrl: Could not open UDP port\n");
+      delete udp;
+      udp = 0;
+      // continue, because button interface will still work
+    }
 	}
 
 	/**
@@ -147,8 +161,8 @@ private:
 		{
 			const TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == teamNumber ? 0 : 1];
 			if (gameCtrlData.state != previousState ||
-				gameCtrlData.secondaryState != previousSecondaryState ||
-				gameCtrlData.kickOffTeam != previousKickOffTeam ||
+				gameCtrlData.gamePhase != previousGamePhase ||
+				gameCtrlData.kickingTeam != previousKickingTeam ||
 				team.teamColour != previousTeamColour ||
 				team.players[*playerNumber - 1].penalty != previousPenalty)
 			{
@@ -168,16 +182,16 @@ private:
 				}
 
 				if (gameCtrlData.state == STATE_INITIAL &&
-					gameCtrlData.secondaryState == STATE2_PENALTYSHOOT &&
-					gameCtrlData.kickOffTeam == team.teamNumber)
+					gameCtrlData.gamePhase == GAME_PHASE_PENALTYSHOOT &&
+					gameCtrlData.kickingTeam == team.teamNumber)
 					setLED(rightFootRed, 0.f, 1.f, 0.f);
 				else if (gameCtrlData.state == STATE_INITIAL &&
-					gameCtrlData.secondaryState == STATE2_PENALTYSHOOT &&
-					gameCtrlData.kickOffTeam != team.teamNumber)
+					gameCtrlData.gamePhase == GAME_PHASE_PENALTYSHOOT &&
+					gameCtrlData.kickingTeam != team.teamNumber)
 					setLED(rightFootRed, 1.f, 1.0f, 0.f);
 				else if (now - whenPacketWasReceived < GAMECONTROLLER_TIMEOUT &&
 					gameCtrlData.state <= STATE_SET &&
-					gameCtrlData.kickOffTeam == team.teamNumber)
+					gameCtrlData.kickingTeam == team.teamNumber)
 					setLED(rightFootRed, 1.f, 1.f, 1.f);
 				else
 					setLED(rightFootRed, 0.f, 0.f, 0.f);
@@ -200,20 +214,24 @@ private:
 						setLED(chestRed, 0.f, 0.f, 0.f);
 					}
 
-				ledRequest[4][0] = (int)now;
-				proxy->setAlias(ledRequest);
+        ledRequest[4][0] = (int)now;
+        proxy->setAlias(ledRequest);
 
 				previousState = gameCtrlData.state;
-				previousSecondaryState = gameCtrlData.secondaryState;
-				previousKickOffTeam = gameCtrlData.kickOffTeam;
+				previousGamePhase = gameCtrlData.gamePhase;
+				previousKickingTeam = gameCtrlData.kickingTeam;
 				previousTeamColour = team.teamColour;
 				previousPenalty = team.players[*playerNumber - 1].penalty;
 			}
+      
+      if (now - whenPacketWasReceived < GAMECONTROLLER_TIMEOUT &&
+        now - whenPacketWasSent >= ALIVE_DELAY &&
+        whenChestButtonStateChanged && // only send data after chest button was pressed once
+        send(GAMECONTROLLER_RETURN_MSG_ALIVE))
+      {
+        whenPacketWasSent = now;
+      }
 
-			if (now - whenPacketWasReceived < GAMECONTROLLER_TIMEOUT &&
-				now - whenPacketWasSent >= ALIVE_DELAY &&
-				send(GAMECONTROLLER_RETURN_MSG_ALIVE))
-				whenPacketWasSent = now;
 		}
 	}
 
@@ -285,18 +303,11 @@ private:
 						if (player.penalty == PENALTY_NONE)
 						{
 							player.penalty = PENALTY_MANUAL;
-							if (now - whenPacketWasReceived < GAMECONTROLLER_TIMEOUT &&
-								send(GAMECONTROLLER_RETURN_MSG_MAN_PENALISE))
-								whenPacketWasSent = now;
 						}
 						else
 						{
 							player.penalty = PENALTY_NONE;
-							if (now - whenPacketWasReceived < GAMECONTROLLER_TIMEOUT &&
-								send(GAMECONTROLLER_RETURN_MSG_MAN_UNPENALISE))
-								whenPacketWasSent = now;
-							else
-								gameCtrlData.state = STATE_PLAYING;
+							gameCtrlData.state = STATE_PLAYING;
 						}
 						publish();
 					}
@@ -324,15 +335,15 @@ private:
 					{
 						if (rightFootButtonPressed)
 						{
-							if (gameCtrlData.secondaryState == STATE2_NORMAL)
+							if (gameCtrlData.gamePhase == GAME_PHASE_NORMAL)
 							{
-								gameCtrlData.secondaryState = STATE2_PENALTYSHOOT;
-								gameCtrlData.kickOffTeam = team.teamNumber;
+								gameCtrlData.gamePhase = GAME_PHASE_PENALTYSHOOT;
+								gameCtrlData.kickingTeam = team.teamNumber;
 							}
-							else if (gameCtrlData.kickOffTeam == team.teamNumber)
-								gameCtrlData.kickOffTeam = 0;
+							else if (gameCtrlData.kickingTeam == team.teamNumber)
+								gameCtrlData.kickingTeam = 0;
 							else
-								gameCtrlData.secondaryState = STATE2_NORMAL;
+								gameCtrlData.gamePhase = GAME_PHASE_NORMAL;
 							publish();
 						}
 						previousRightFootButtonPressed = rightFootButtonPressed;
@@ -347,8 +358,7 @@ private:
 
 	/**
 	* Sends the return packet to the GameController.
-	* @param message The message contained in the packet (GAMECONTROLLER_RETURN_MSG_MAN_PENALISE,
-	*                GAMECONTROLLER_RETURN_MSG_MAN_UNPENALISE or GAMECONTROLLER_RETURN_MSG_ALIVE).
+	* @param message The message contained in the packet (GAMECONTROLLER_RETURN_MSG_ALIVE).
 	*/
 	bool send(uint8_t message)
 	{
@@ -486,7 +496,7 @@ public:
 			for (int i = 0; i < numOfButtons; ++i)
 				buttons[i] = (float*)memory->getDataPtr(buttonNames[i]);
 
-			// If no color was set, set it to black (no LED).
+			// If no Colour was set, set it to black (no LED).
 			// This actually has a race condition.
 			if (memory->getDataList("GameCtrl/teamColour").empty())
 				memory->insertData("GameCtrl/teamColour", TEAM_BLACK);
@@ -499,18 +509,6 @@ public:
 			theInstance = this;
 			proxy->getGenericProxy()->getModule()->atPreProcess(&onPreProcess);
 			proxy->getGenericProxy()->getModule()->atPostProcess(&onPostProcess);
-
-			udp = new UdpComm();
-			if (!udp->setBlocking(false) ||
-				!udp->setBroadcast(true) ||
-				!udp->bind("0.0.0.0", GAMECONTROLLER_DATA_PORT) ||
-				!udp->setLoopback(false))
-			{
-				fprintf(stderr, "libgamectrl: Could not open UDP port\n");
-				delete udp;
-				udp = 0;
-				// continue, because button interface will still work
-			}
 
 			publish();
 		}

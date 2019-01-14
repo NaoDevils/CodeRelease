@@ -92,8 +92,8 @@ void InertialDataFilter::update(InertialData& inertialData)
   safeRawAngle = theInertialSensorData.angle.head<2>().cast<float>();
   bool useFeet = true;
   MODIFY("module:InertialDataFilter:useFeet", useFeet);
-  if(useFeet &&
-     (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick ||
+  if (useFeet &&
+    (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick || theMotionInfo.motion == MotionRequest::stand ||
       (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::standHigh) ||
        (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::stand)) &&
      std::abs(safeRawAngle.x()) < calculatedAccLimit.x() && std::abs(safeRawAngle.y()) < calculatedAccLimit.y())

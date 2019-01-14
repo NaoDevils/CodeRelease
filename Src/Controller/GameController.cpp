@@ -30,16 +30,19 @@ timeWhenLastRobotMoved(0),
 timeWhenStateBegan(0),
 automatic(true)
 {
-  gameInfo.gameType = GAME_ROUNDROBIN;
+  gameInfo.competitionPhase = COMPETITION_PHASE_ROUNDROBIN;
+  gameInfo.competitionType = COMPETITION_TYPE_NORMAL;
+  gameInfo.gamePhase = GAME_PHASE_NORMAL;
+  gameInfo.setPlay = SET_PLAY_NONE;
   gameInfo.playersPerTeam = numOfRobots / 2;
   gameInfo.firstHalf = 1;
-  gameInfo.kickOffTeam = 1;
+  gameInfo.kickingTeam = 1;
   gameInfo.dropInTime = -1;
   gameInfo.secsRemaining = durationOfHalf;
   teamInfos[TEAM_BLUE].teamNumber = 1;
-  teamInfos[TEAM_BLUE].teamColor = TEAM_BLUE;
+  teamInfos[TEAM_BLUE].teamColour = TEAM_BLUE;
   teamInfos[TEAM_RED].teamNumber = 2;
-  teamInfos[TEAM_RED].teamColor = TEAM_RED;
+  teamInfos[TEAM_RED].teamColour = TEAM_RED;
 }
 
 void GameController::registerSimulatedRobot(int robot, SimulatedRobot& simulatedRobot)
@@ -87,8 +90,8 @@ bool GameController::handleGlobalCommand(const std::string& command)
       {
         placeGoalie(0);
         placeGoalie(numOfRobots / 2);
-        placeDefensivePlayers(gameInfo.kickOffTeam == 1 ? numOfRobots / 2 + 1 : 1);
-        placeOffensivePlayers(gameInfo.kickOffTeam == 1 ? 1 : numOfRobots / 2 + 1);
+        placeDefensivePlayers(gameInfo.kickingTeam == 1 ? numOfRobots / 2 + 1 : 1);
+        placeOffensivePlayers(gameInfo.kickingTeam == 1 ? 1 : numOfRobots / 2 + 1);
         executePlacement();
       }
 
@@ -118,7 +121,7 @@ bool GameController::handleGlobalCommand(const std::string& command)
     if (Global::getSettings().gameMode != Settings::penaltyShootout)
     {
       gameInfo.state = STATE_PLAYING;
-      if (gameInfo.gameType == GAME_PLAYOFF || !timeWhenHalfStarted)
+      if (gameInfo.competitionPhase == COMPETITION_PHASE_PLAYOFF || !timeWhenHalfStarted)
         timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfHalf - gameInfo.secsRemaining) * 1000;
     }
     else
@@ -136,12 +139,12 @@ bool GameController::handleGlobalCommand(const std::string& command)
   }
   else if(command == "kickOffBlue")
   {
-    gameInfo.kickOffTeam = 1;
+    gameInfo.kickingTeam = 1;
     return true;
   }
   else if(command == "kickOffRed")
   {
-    gameInfo.kickOffTeam = 2;
+    gameInfo.kickingTeam = 2;
     return true;
   }
   else if(command == "outByBlue")
@@ -158,23 +161,27 @@ bool GameController::handleGlobalCommand(const std::string& command)
   }
   else if(command == "gamePlayoff")
   {
-    gameInfo.gameType = GAME_PLAYOFF;
+    gameInfo.competitionPhase = COMPETITION_PHASE_PLAYOFF;
+    gameInfo.competitionType = COMPETITION_TYPE_NORMAL;
     return true;
   }
   else if(command == "gameRoundRobin")
   {
-    gameInfo.gameType = GAME_ROUNDROBIN;
+    gameInfo.competitionPhase = COMPETITION_PHASE_ROUNDROBIN;
+    gameInfo.competitionType = COMPETITION_TYPE_NORMAL;
     return true;
   }
   // Removed drop in here, because RoboCupGameControlData v10 has no GAME_DROPIN
   else if(command == "gameMixedTeamRoundRobin")
   {
-    gameInfo.gameType = GAME_MIXEDTEAM_ROUNDROBIN;
+    gameInfo.competitionPhase = COMPETITION_PHASE_ROUNDROBIN;
+    gameInfo.competitionType = COMPETITION_TYPE_MIXEDTEAM;
     return true;
   }
   else if (command == "gameMixedTeamPlayOff")
   {
-    gameInfo.gameType = GAME_MIXEDTEAM_PLAYOFF;
+    gameInfo.competitionPhase = COMPETITION_PHASE_PLAYOFF;
+    gameInfo.competitionType = COMPETITION_TYPE_MIXEDTEAM;
     return true;
   }
   return false;
@@ -465,7 +472,7 @@ void GameController::referee()
         if(SystemCall::getTimeSince(timeWhenStateBegan) < 2000)
           timeWhenLastRobotMoved = 0;
         if(SystemCall::getTimeSince(timeWhenStateBegan) >= 45000 ||
-           (timeWhenLastRobotMoved && SystemCall::getTimeSince(timeWhenLastRobotMoved) > 2000))
+           (timeWhenLastRobotMoved && SystemCall::getTimeSince(timeWhenLastRobotMoved) > 5000))
           handleGlobalCommand("set");
         break;
 
@@ -546,7 +553,7 @@ void GameController::writeGameInfo(Out& stream)
     gameInfo.dropInTime = (unsigned short) (SystemCall::getTimeSince(timeOfLastDropIn) / 1000);
   else
     gameInfo.dropInTime = -1;
-  if (gameInfo.state == STATE_PLAYING || (gameInfo.gameType != GAME_PLAYOFF && timeWhenHalfStarted))
+  if (gameInfo.state == STATE_PLAYING || (gameInfo.competitionPhase != COMPETITION_PHASE_PLAYOFF && timeWhenHalfStarted))
   {
     if (Global::getSettings().gameMode != Settings::penaltyShootout)
       gameInfo.secsRemaining = (uint16_t)(durationOfHalf - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);

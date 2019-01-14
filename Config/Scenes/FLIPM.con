@@ -1,0 +1,29 @@
+vd representation:WalkingEngineParams
+vd representation:FLIPMObserverParams
+vd representation:FLIPMControllerParams
+vd representation:LegJointSensorControlParameters 
+
+#####################
+# FLIPM Config Load #
+#####################
+echo vd representation:JointCalibration
+echo vd parameters:MotionCombinator
+echo ======================================
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 10; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest unchanged
+echo ======================================
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo ======================================
+echo set representation:ArmContact timeStampLeft = 0; timeStampRight = 0; armContactStateLeft = None; armContactStateRight = None;
+echo ======================================
+echo save representation:WalkingEngineParams
+echo save representation:LegJointSensorControlParameters 
+echo ======================================
+echo save representation:FLIPMObserverParams
+echo
+echo dr module:WalkParamsProvider:walkParamsProvider:load 
+echo
+echo dr representation:InertialSensorData 
+echo dr representation:JointSensorData

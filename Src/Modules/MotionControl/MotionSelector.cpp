@@ -34,6 +34,7 @@ void MotionSelector::update(MotionSelection& motionSelection)
   interpolationTimes[MotionRequest::kick] = 200;
   //interpolationTimes[MotionRequest::dmpKick] = 200;
   interpolationTimes[MotionRequest::specialAction] = 200;
+  interpolationTimes[MotionRequest::stand] = 1500;
   //interpolationTimes[MotionRequest::stand] = 600;
 
   static const int playDeadDelay(2000);
@@ -56,7 +57,8 @@ void MotionSelector::update(MotionSelection& motionSelection)
     if((lastMotion == MotionRequest::walk && 
           (theWalkingEngineOutput.isLeavingPossible || !theGroundContactState.contact)) ||
        (lastMotion == MotionRequest::specialAction && theSpecialActionsOutput.isLeavingPossible) ||
-       (lastMotion == MotionRequest::kick && theKickEngineOutput.isLeavingPossible)) //never immediatly leave kick or get up
+       (lastMotion == MotionRequest::kick && theKickEngineOutput.isLeavingPossible) || //never immediatly leave kick or get up
+      (lastMotion == MotionRequest::stand && theStandEngineOutput.isLeavingPossible))
     {
       motionSelection.targetMotion = requestedMotion;
     }
@@ -90,7 +92,6 @@ void MotionSelector::update(MotionSelection& motionSelection)
     if(motionSelection.specialActionMode == MotionSelection::active && motionSelection.specialActionRequest.specialAction != SpecialActionRequest::numOfSpecialActionIDs)
       lastActiveSpecialAction = motionSelection.specialActionRequest.specialAction;
 
-   
   }
 
   if(lastMotion != motionSelection.targetMotion)
@@ -100,11 +101,16 @@ void MotionSelector::update(MotionSelection& motionSelection)
 
   PLOT("module:MotionSelector:ratios:walk", motionSelection.ratios[MotionRequest::walk]);
   PLOT("module:MotionSelector:ratios:specialAction", motionSelection.ratios[MotionRequest::specialAction]);
+  PLOT("module:MotionSelector:ratios:stand", motionSelection.ratios[MotionRequest::stand]);
   PLOT("module:MotionSelector:lastMotion", lastMotion);
   PLOT("module:MotionSelector:prevMotion", prevMotion);
   PLOT("module:MotionSelector:targetMotion", motionSelection.targetMotion);
 
   lastExecution = theFrameInfo.time;
+
+  for (unsigned int i = 0; i < MotionRequest::numOfMotions; i++)
+    if (motionSelection.ratios[i] > 0.f)
+      motionSelection.timeStampLastExecuted[i] = theFrameInfo.time;
 
 #ifndef NDEBUG
   const Rangef& ratioLimits = Rangef::ZeroOneRange();

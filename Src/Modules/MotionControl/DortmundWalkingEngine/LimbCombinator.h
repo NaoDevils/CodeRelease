@@ -8,6 +8,9 @@
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/Footpositions.h"
+#include "Representations/MotionControl/FootSteps.h"
+#include "Representations/MotionControl/TargetCoM.h"
 #include "Tools/RingBuffer.h"
 #include "Tools/Math/Filter/FastFilter.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
@@ -15,6 +18,10 @@
 
 MODULE(LimbCombinator,
 { ,
+  REQUIRES(SpeedRequest),
+  REQUIRES(Footpositions),
+  REQUIRES(FootSteps),
+  REQUIRES(TargetCoM),
   REQUIRES(SpeedInfo),
   REQUIRES(KinematicOutput),
   REQUIRES(ArmMovement),

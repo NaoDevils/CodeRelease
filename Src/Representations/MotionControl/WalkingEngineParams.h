@@ -6,6 +6,8 @@
 #pragma once
 #ifndef WALKING_SIMULATOR
 #include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Math/Angle.h"
 #else
 #include "bhumanstub.h"
 #endif
@@ -53,14 +55,10 @@ struct SpeedLimits
 
 struct Acceleration
 {
-  float maxAccX; // in mm / accDelayX
-  int accDelayX; // in frames
-  float maxAccY; // in mm / accDelayY
-  int accDelayY; // in frames
-  float maxAccR; // in rad / accDelayR
-  int accDelayR; // in frames
-  int speedApplyDelay; // in frames
-  int walkRequestFilterLen; // buffer length for speed buffer
+  float maxAccXForward; // in m/s
+  float maxAccXBackward; // in m/s
+  float maxAccY; // in m/s
+  float maxAccR; // in rad / s
 };
 
 struct SensorControl
@@ -86,7 +84,7 @@ struct FootMovement
   float footPitch;
   float footPitchPD[2];
   float footRoll;
-  float stepHeight[3]; // first: normal, second: value for max y speed
+  float stepHeight[3]; // first: front, second: back, third: sidwards
   float doubleSupportRatio;
   float maxStepDuration;
   float minStepDuration;
@@ -154,14 +152,10 @@ struct WalkingEngineParams : public Streamable
   void serialize(In* in, Out* out)
   {
     STREAM_REGISTER_BEGIN;
-      STREAM(acceleration.accDelayR)
-      STREAM(acceleration.accDelayX)
-      STREAM(acceleration.accDelayY)
       STREAM(acceleration.maxAccR)
-      STREAM(acceleration.maxAccX)
+      STREAM(acceleration.maxAccXForward)
+      STREAM(acceleration.maxAccXBackward)
       STREAM(acceleration.maxAccY)
-      STREAM(acceleration.speedApplyDelay)
-      STREAM(acceleration.walkRequestFilterLen)
       STREAM(armFactor)
       STREAM(arms1)
       STREAM(comOffsets.tiltFixed)
@@ -226,6 +220,57 @@ struct WalkingEngineParams : public Streamable
   {};
 
 };
+
+STREAMABLE(BalanceParameters,
+{ ,
+  (Angle) targetAngleX,
+  (Angle) targetAngleY,
+  (float) gyroX_p,
+  (float) gyroX_d,
+  (float) gyroY_p,
+  (float) gyroY_d,
+  (float) angleX_p,
+  (float) angleX_i,
+  (float) angleY_p,
+  (float) angleY_i,
+  (float) comX_p,
+  (float) angleGyroRatioX,
+  (float) angleGyroRatioY,
+  (float) hipRollFactor,
+  (float) hipPitchFactor,
+  (float) kneeFactor,
+  (float) footPitchFactor,
+  (float) footRollFactor,
+  (bool) activateUpperBodyPID,
+  (float) pidAngleGyroRatioX,
+  (float) pidAngleGyroRatioY,
+  (float) pidGyroX_p,
+  (float) pidGyroX_i,
+  (float) pidGyroX_d,
+  (float) pidGyroY_p,
+  (float) pidGyroY_i,
+  (float) pidGyroY_d,
+  (float) pidAngleX_p,
+  (float) pidAngleX_i,
+  (float) pidAngleX_d,
+  (float) pidAngleY_p,
+  (float) pidAngleY_i,
+  (float) pidAngleY_d,
+  (bool) activateUpperBodyBalancing,
+  (bool) activateSinglePIDAllSensors,
+  (float) spidX_p,
+  (float) spidX_i,
+  (float) spidX_d,
+  (float) spidY_p,
+  (float) spidY_i,
+  (float) spidY_d,
+});
+
+STREAMABLE(LegJointSensorControlParameters,
+{,
+  (BalanceParameters) walkBalanceParams,
+  (BalanceParameters) specialActionBalanceParams,
+});
 
 //struct FreeLegPhaseParams : public WalkingEngineParams { };
 

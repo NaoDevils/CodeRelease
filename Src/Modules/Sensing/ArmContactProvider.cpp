@@ -7,6 +7,7 @@
 #include "ArmContactProvider.h"
 #include "Tools/Math/Transformation.h"
 #include "Tools/Debugging/DebugDrawings.h"
+#include "Tools/Settings.h"
 
 ArmContactProvider::ArmContactProvider()
 {
@@ -45,7 +46,8 @@ void ArmContactProvider::update(ArmContact& armContact)
   if (enableAvoidArmContact && (theGameInfo.state == STATE_READY || theGameInfo.state == STATE_PLAYING) &&
     lastMotionType == MotionRequest::walk &&
     theFrameInfo.getTimeSince(timeWhenWalkStarted) > 2000 && // a little time to get started here to not move arms immediately on walk start
-    theFallDownState.state == FallDownState::upright)
+    theFallDownState.state == FallDownState::upright &&
+      Global::getSettings().gameMode != Settings::penaltyShootout) // no robots to contact in penalty shootout
   {
     localArmContact.armContactStateLeft = ArmContact::ArmContactState::None;
     localArmContact.armContactStateRight = ArmContact::ArmContactState::None;
@@ -147,6 +149,17 @@ void ArmContactProvider::update(ArmContact& armContact)
   {
     localArmContact.armContactStateLeft = ArmContact::None;
     localArmContact.armContactStateRight = ArmContact::None;
+  }
+  else if (bothArmsBack)
+  {
+    if (localArmContact.armContactStateLeft == ArmContact::None && localArmContact.armContactStateRight != ArmContact::None) 
+    {
+      localArmContact.armContactStateLeft = localArmContact.armContactStateRight;
+    }
+    else if (localArmContact.armContactStateLeft != ArmContact::None && localArmContact.armContactStateRight == ArmContact::None)
+    {
+      localArmContact.armContactStateRight = localArmContact.armContactStateLeft;
+    }
   }
 
   PLOT("module:ArmContactProvider:bufferLeft", bufferLeft.sum());

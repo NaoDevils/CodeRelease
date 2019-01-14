@@ -54,7 +54,7 @@ void CognitionConfigurationDataProvider::update(FieldDimensions& fieldDimensions
     delete theFieldDimensions;
     theFieldDimensions = 0;
   }
-  fieldDimensions.drawPolygons(theOwnTeamInfo.teamColor);
+  fieldDimensions.drawPolygons(theOwnTeamInfo.teamColour);
 }
 
 void CognitionConfigurationDataProvider::update(CameraCalibration& cameraCalibration)

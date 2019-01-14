@@ -43,6 +43,7 @@ void Motion::terminate()
 
 bool Motion::main()
 {
+  MotionSelector::move();
   // there has been no new package from Cognition in more than 500ms and thus we let the robot stand.
   if(theCognitionToMotionReceiver.timeStamp != 0 && SystemCall::getTimeSince(theCognitionToMotionReceiver.timeStamp) > 500)
   {

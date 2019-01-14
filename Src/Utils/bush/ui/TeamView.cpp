@@ -16,116 +16,182 @@
 #include <QSlider>
 #include <QToolTip>
 #include <QCursor>
+#include <QColorDialog>
+#include <QString>
 
 // for file modification (robotDetector and modules.cfg)
 #include <iostream>
 #include "Platform/File.h"
 #include <fstream>
+#include <sstream>
+#include <iomanip>
+
+QString intToStylesheet(int color)
+{
+    std::stringstream stream;
+    stream << "background-color:#" << std::setfill('0') << std::setw(6) << std::hex << (color) << ";";
+    return QString(stream.str().c_str());
+}
 
 void TeamView::init()
 {
   if(team)
   {
-    QFormLayout* layout = new QFormLayout();
+    //QFormLayout* layout = new QFormLayout();
+    TeamView::layout = new QFormLayout();
     QHBoxLayout * settingsGrid = new QHBoxLayout();
     settingsGrid->setSpacing(6);
     settingsGrid->setAlignment(Qt::AlignmentFlag::AlignLeft);
 
-    pbSave = new QPushButton(QIcon(":icons/disk.png"), "");
+
+    /* SAVE */
+    pbSave = new QPushButton(QIcon(":icons/disk.png"), "Save");
     pbSave->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_S));
     pbSave->setToolTip("Save Team Configuration");
     settingsGrid->addWidget(pbSave);
     connect(pbSave, SIGNAL(clicked()), teamSelector, SLOT(saveTeams()));
 
-    cbColorOwn = new QComboBox(this);
-    cbColorOwn->addItem("red");
-    cbColorOwn->addItem("blue");
-    cbColorOwn->addItem("yellow");
-    cbColorOwn->addItem("black");
-    cbColorOwn->addItem("green");
-    cbColorOwn->addItem("gray");
-    cbColorOwn->setCurrentIndex(cbColorOwn->findText(fromString(team->colorOwn)));
-    settingsGrid->addWidget(new QLabel("Color:", cbColorOwn));
-    settingsGrid->addWidget(cbColorOwn);
-    connect(cbColorOwn, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(colorOwnChanged(const QString&)));
-    colorOwnChanged(fromString(team->colorOwn));
+    /* COLOR OWN PICKER */
+    QHBoxLayout * colorOwnLayout = new QHBoxLayout();
+    colorOwnLayout->setDirection(QBoxLayout::TopToBottom);
+    openOwnColorPicker = new QPushButton("");
+    openOwnColorPicker->setStyleSheet(intToStylesheet(team->colorOwn));
+    openOwnColorPicker->setMaximumHeight(20);
+    openOwnColorPicker->setMaximumWidth(20);
 
-    cbColorOpp = new QComboBox(this);
-    cbColorOpp->addItem("red");
-    cbColorOpp->addItem("blue");
-    cbColorOpp->addItem("yellow");
-    cbColorOpp->addItem("black");
-    cbColorOpp->addItem("green");
-    cbColorOpp->addItem("gray");
-    cbColorOpp->setCurrentIndex(cbColorOpp->findText(fromString(team->colorOpp)));
-    settingsGrid->addWidget(new QLabel("OppColor:", cbColorOpp));
-    settingsGrid->addWidget(cbColorOpp);
-    connect(cbColorOpp, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(colorOppChanged(const QString&)));
-    colorOppChanged(fromString(team->colorOpp));
+    colorOwnLayout->addWidget(new QLabel("Color:"));
+    colorOwnLayout->addWidget(openOwnColorPicker);
+    settingsGrid->addLayout(colorOwnLayout);
 
+    connect(openOwnColorPicker, SIGNAL(clicked()), this, SLOT(showCPOwn()));
+    //
+    //settingsGrid->addWidget(cpColorOwn);
+    cpColorOwn = new QColorDialog();
+    cpColorOwn->setWindowTitle("Team Color");
+    cpColorOwn->setCustomColor(0, 0xFFFF00); //yellow
+    cpColorOwn->setCustomColor(1, 0x000000); //black
+    cpColorOwn->setCustomColor(2, 0xFF00FF); //magenta
+    cpColorOwn->setCustomColor(3, 0x00FFFF); //cyan
+    cpColorOwn->setCustomColor(4, 0x0000FF); //blue
+    cpColorOwn->setCustomColor(5, 0xCECECE); //grey
+    cpColorOwn->setCurrentColor(team->colorOwn);
+
+    /* COLOR OPP PICKER */
+    QHBoxLayout * colorOppLayout = new QHBoxLayout();
+    colorOppLayout->setDirection(QBoxLayout::TopToBottom);
+    openOppColorPicker = new QPushButton("");
+    openOppColorPicker->setStyleSheet(intToStylesheet(team->colorOpp));
+    openOppColorPicker->setMaximumHeight(20);
+    openOppColorPicker->setMaximumWidth(20);
+
+    colorOppLayout->addWidget(new QLabel("Opp Color:"));
+    colorOppLayout->addWidget(openOppColorPicker);
+    settingsGrid->addLayout(colorOppLayout);
+
+    connect(openOppColorPicker, SIGNAL(clicked()), this, SLOT(showCPOpp()));
+    //
+    //settingsGrid->addWidget(cpColorOwn);
+    cpColorOpp = new QColorDialog();
+    cpColorOpp->setWindowTitle("Opponent Color");
+    cpColorOpp->setCustomColor(0, 0xFFFF00); //yellow
+    cpColorOpp->setCustomColor(1, 0x000000); //black
+    cpColorOpp->setCustomColor(2, 0xFF00FF); //magenta
+    cpColorOpp->setCustomColor(3, 0x00FFFF); //cyan
+    cpColorOpp->setCustomColor(4, 0x0000FF); //blue
+    cpColorOpp->setCustomColor(5, 0xCECECE); //grey
+    cpColorOpp->setCurrentColor(team->colorOpp);
+
+
+    /* TEAMNUMBER */
+    QHBoxLayout * teamnumberLayout = new QHBoxLayout();
+    teamnumberLayout->setDirection(QBoxLayout::TopToBottom);
     sbNumber = new QSpinBox(this);
     sbNumber->setRange(1, 99);
     sbNumber->setButtonSymbols(QAbstractSpinBox::NoButtons);
-    sbNumber->setMaximumWidth(18);
+    sbNumber->setMaximumWidth(36);
     sbNumber->setValue(team->number);
-    settingsGrid->addWidget(new QLabel("Number:", sbNumber));
-    settingsGrid->addWidget(sbNumber);
+    teamnumberLayout->addWidget(new QLabel("Number:", sbNumber));
+    teamnumberLayout->addWidget(sbNumber);
+    settingsGrid->addLayout(teamnumberLayout);
     connect(sbNumber, SIGNAL(valueChanged(int)), this, SLOT(numberChanged(int)));
+
+    /* LOCATION */
+    QHBoxLayout * locationLayout = new QHBoxLayout();
+    locationLayout->setDirection(QBoxLayout::TopToBottom);
 
     cbLocation = new QComboBox(this);
     std::vector<std::string> locations = Filesystem::getLocations();
     for(size_t i = 0; i < locations.size(); ++i)
       cbLocation->addItem(fromString(locations[i]));
     cbLocation->setCurrentIndex(cbLocation->findText(fromString(team->location)));
-    settingsGrid->addWidget(new QLabel("Location:", lePort));
-    settingsGrid->addWidget(cbLocation);
+    locationLayout->addWidget(new QLabel("Location:", lePort));
+    locationLayout->addWidget(cbLocation);
+    settingsGrid->addLayout(locationLayout);
     connect(cbLocation, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(locationChanged(const QString&)));
 
+    /* GAMEMODE */
+    QHBoxLayout * gameModeLayout = new QHBoxLayout();
+    gameModeLayout->setDirection(QBoxLayout::TopToBottom);
     cbGameMode = new QComboBox(this);
     cbGameMode->addItem("mixedTeam");
     cbGameMode->addItem("preliminary");
     cbGameMode->addItem("playOff");
     cbGameMode->addItem("penaltyShootout");
     cbGameMode->setCurrentIndex(cbGameMode->findText(fromString(team->gameMode)));
-    settingsGrid->addWidget(new QLabel("Mode:", lePort));
-    settingsGrid->addWidget(cbGameMode);
+    gameModeLayout->addWidget(new QLabel("Mode:", lePort));
+    gameModeLayout->addWidget(cbGameMode);
+    settingsGrid->addLayout(gameModeLayout);
     connect(cbGameMode, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(gameModeChanged(const QString&)));
 
+    /* WLANCONFIG */
+    QHBoxLayout * wlanConfigLayout = new QHBoxLayout();
+    wlanConfigLayout->setDirection(QBoxLayout::TopToBottom);
     cbWlanConfig = new QComboBox(this);
     std::vector<std::string> configs = Filesystem::getWlanConfigs();
     for(size_t i = 0; i < configs.size(); ++i)
       cbWlanConfig->addItem(fromString(configs[i]));
     cbWlanConfig->setCurrentIndex(cbWlanConfig->findText(fromString(team->wlanConfig)));
-    settingsGrid->addWidget(new QLabel("Wlan:", cbWlanConfig));
-    settingsGrid->addWidget(cbWlanConfig);
+    wlanConfigLayout->addWidget(new QLabel("Wlan:", cbWlanConfig));
+    wlanConfigLayout->addWidget(cbWlanConfig);
+    settingsGrid->addLayout(wlanConfigLayout);
     connect(cbWlanConfig, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(wlanConfigChanged(const QString&)));
 
+    /* BUILDCONFIG */
+    QHBoxLayout * buildConfigLayout = new QHBoxLayout();
+    buildConfigLayout->setDirection(QBoxLayout::TopToBottom);
     cbBuildConfig = new QComboBox(this);
     cbBuildConfig->addItem("Develop");
     cbBuildConfig->addItem("Release");
     cbBuildConfig->addItem("Debug");
     cbBuildConfig->setCurrentIndex(cbBuildConfig->findText(fromString(team->buildConfig)));
-    settingsGrid->addWidget(new QLabel("Conf:", cbBuildConfig));
-    settingsGrid->addWidget(cbBuildConfig);
+    buildConfigLayout->addWidget(new QLabel("Build:", cbBuildConfig));
+    buildConfigLayout->addWidget(cbBuildConfig);
+    settingsGrid->addLayout(buildConfigLayout);
     connect(cbBuildConfig, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(buildConfigChanged(const QString&)));
 
+    /* WALKCONFIG */
+    QHBoxLayout * walkConfigLayout = new QHBoxLayout();
+    walkConfigLayout->setDirection(QBoxLayout::TopToBottom);
     cbWalkConfig = new QComboBox(this);
     cbWalkConfig->addItem("LIPM");
     cbWalkConfig->addItem("FLIPM");
     cbWalkConfig->setCurrentIndex(cbWalkConfig->findText(fromString(team->walkConfig)));
     // saving space
-    //settingsGrid->addWidget(new QLabel("Walk:", cbWalkConfig));
-    settingsGrid->addWidget(cbWalkConfig);
+    walkConfigLayout->addWidget(new QLabel("Walk:", cbWalkConfig));
+    walkConfigLayout->addWidget(cbWalkConfig);
+    settingsGrid->addLayout(walkConfigLayout);
     connect(cbWalkConfig, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(walkConfigChanged(const QString&)));
     walkConfigChanged(fromString(team->walkConfig));
 
+    /* MOCAP */
     cbMocapConfig = new QCheckBox(this);
     cbMocapConfig->setChecked(team->mocapConfig);
-    settingsGrid->addWidget(new QLabel("GT:", cbMocapConfig));
+    settingsGrid->addWidget(new QLabel("Mocap:", cbMocapConfig));
     settingsGrid->addWidget(cbMocapConfig);
     connect(cbMocapConfig, SIGNAL(clicked(bool)), this, SLOT(mocapConfigChanged(bool)));
     mocapConfigChanged(cbMocapConfig->isChecked());
 
+    /* VOLUME */
     sVolume = new QSlider(this);
     sVolume->setMinimum(0);
     sVolume->setMaximum(100);
@@ -135,6 +201,7 @@ void TeamView::init()
     settingsGrid->addWidget(sVolume);
     connect(sVolume, SIGNAL(valueChanged(int)), this, SLOT(volumeChanged(const int)));
 
+    /* MICVOLUME */
     sMicVolume = new QSlider(this);
     sMicVolume->setMinimum(0);
     sMicVolume->setMaximum(100);
@@ -146,13 +213,17 @@ void TeamView::init()
 
     settingsGrid->addStretch();
 
+    /* DEVICE */
+    QHBoxLayout * deviceLayout = new QHBoxLayout();
+    deviceLayout->setDirection(QBoxLayout::TopToBottom);
     cbDeployDevice = new QComboBox(this);
     cbDeployDevice->addItem("auto");
     cbDeployDevice->addItem("lan");
     cbDeployDevice->addItem("wlan");
     cbDeployDevice->setCurrentIndex(cbDeployDevice->findText(fromString(team->deployDevice)));
-    settingsGrid->addWidget(new QLabel("Device:", cbDeployDevice));
-    settingsGrid->addWidget(cbDeployDevice);
+    deviceLayout->addWidget(new QLabel("Device:", cbDeployDevice));
+    deviceLayout->addWidget(cbDeployDevice);
+    settingsGrid->addLayout(deviceLayout);
     connect(cbDeployDevice, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(deployDeviceChanged(const QString&)));
 
     layout->addRow(settingsGrid);
@@ -173,8 +244,8 @@ TeamView::TeamView(TeamSelector* parent, Team* team)
     teamSelector(parent),
     team(team),
     robotViews(),
-    cbColorOwn(0),
-    cbColorOpp(0),
+    //cbColorOwn(0),
+    //cbColorOpp(0),
     sbNumber(0),
     lePort(0),
     cbLocation(0),
@@ -211,20 +282,23 @@ void TeamView::update(size_t index)
   robotViews[index]->update();
 }
 
-void TeamView::colorOwnChanged(const QString& color)
+void TeamView::colorOwnChanged(const QColor color)
 {
-  if (team)
-  {
-    team->colorOwn = toString(color);
-  }
+    if (team)
+    {
+        team->colorOwn = color.rgb()-4278190080;
+        openOwnColorPicker->setStyleSheet(intToStylesheet(team->colorOwn));
+    }
 }
 
-void TeamView::colorOppChanged(const QString& color)
+
+void TeamView::colorOppChanged(const QColor color)
 {
-  if (team)
-  {
-    team->colorOpp = toString(color);
-  }
+    if (team)
+    {
+        team->colorOpp = color.rgb()-4278190080;
+        openOppColorPicker->setStyleSheet(intToStylesheet(team->colorOpp));
+    }
 }
 
 void TeamView::numberChanged(int number)
@@ -294,4 +368,20 @@ void TeamView::deployDeviceChanged(const QString& device)
 {
   if(team)
     team->deployDevice = toString(device);
+}
+
+void TeamView::showCPOwn()
+{
+    cpColorOwn->open();
+
+    connect(cpColorOwn, SIGNAL(colorSelected(QColor)), this, SLOT(colorOwnChanged(QColor)));
+
+}
+
+void TeamView::showCPOpp()
+{
+    cpColorOpp->open();
+
+    connect(cpColorOpp, SIGNAL(colorSelected(QColor)), this, SLOT(colorOppChanged(QColor)));
+
 }

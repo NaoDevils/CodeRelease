@@ -1,5 +1,5 @@
 #include "LimbCombinator.h"
-
+#include <cmath>
 
 #define LOGGING
 #include "Tools/Debugging/CSVLogger.h"
@@ -41,14 +41,27 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
 		init=true;
 	}
 
-	for (int i=0; i<Joints::numOfJoints; i++)
+  for (int i = 0; i < Joints::numOfJoints; i++)
+  {
+    walkingEngineOutput.angles[i] = filter[i].nextValue(theKinematicOutput.angles[i]);
+    if (std::isnan((float)walkingEngineOutput.angles[i]))
     {
-	  walkingEngineOutput.angles[i]=filter[i].nextValue(theKinematicOutput.angles[i]);
-	  if (walkingEngineOutput.angles[i] != walkingEngineOutput.angles[i])
-	  {
-	    ASSERT(walkingEngineOutput.angles[i] == walkingEngineOutput.angles[i]);
-	  }
+      OutMapFile map("logs/limbCombinator.cfg");
+      map << "fpL.x " << theFootpositions.footPos[0].x << "\n";
+      map << "fpL.y " << theFootpositions.footPos[0].y << "\n";
+      map << "fpL.z " << theFootpositions.footPos[0].z << "\n";
+      map << "fpR.x " << theFootpositions.footPos[1].x << "\n";
+      map << "fpR.y " << theFootpositions.footPos[1].y << "\n";
+      map << "fpR.y " << theFootpositions.footPos[1].z << "\n";
+      map << "tC.x " << theTargetCoM.x << "\n";
+      map << "tC.y " << theTargetCoM.y << "\n";
+      map << "tC.z " << theTargetCoM.z << "\n";
+      map << "sR.x " << theSpeedRequest.translation.x() << "\n";
+      map << "sR.y " << theSpeedRequest.translation.y() << "\n";
+      map << "sR.r " << theSpeedRequest.rotation << "\n";
+      ASSERT(false);
     }
+  }
 
 	if (theArmMovement.usearms)
 	{

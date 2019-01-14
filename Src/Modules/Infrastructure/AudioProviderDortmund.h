@@ -17,11 +17,13 @@
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/MotionControl/MotionInfo.h"
 
 MODULE(AudioProviderDortmund,
 { ,
   REQUIRES(GameInfo),
   REQUIRES(FrameInfo),
+  REQUIRES(MotionInfo),
   PROVIDES_WITHOUT_MODIFY(AudioDataDortmund),
   DEFINES_PARAMETERS(
   {,
@@ -32,6 +34,8 @@ MODULE(AudioProviderDortmund,
     (unsigned)(10000) maxFrames, /**< Maximum number of frames read in one cycle. */
     (bool)(false) connectionEstablished, /**< is set during initializing sound card connection */
     (bool)(false) simulateWhistleInSimulator, /**< if enabled a whistle sound is send in set to robots inside the simulator */
+    (int)(-1) simulateSinusInSimulator,
+    (float)(0.0f) simulateNoiseInSimulator,
   }),
 });
 

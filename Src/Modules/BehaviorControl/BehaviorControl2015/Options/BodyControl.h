@@ -56,7 +56,7 @@ option(BodyControl)
     
     action
     {
-      SpecialAction(SpecialActionRequest::standHigh);
+      Stand();
     }
   }
 

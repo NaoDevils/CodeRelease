@@ -40,6 +40,7 @@ MODULE(ArmContactProvider,
     (float) maxRobotDist,
     (Angle) maxSum,
     (Angle) minAngleDiff,
+    (bool) bothArmsBack,
   }),
 });
 

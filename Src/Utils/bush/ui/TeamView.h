@@ -5,8 +5,10 @@
 #include <vector>
 
 class Team;
+class QFormLayout;
 class QPushButton;
 class QComboBox;
+class QColorDialog;
 //class QColorDialog; TODO: use this for color picking
 class QLineEdit;
 class QSpinBox;
@@ -24,9 +26,14 @@ class TeamView : public QFrame
   Team* team;
 
   std::vector<RobotView*> robotViews;
+  QFormLayout* layout;
   QPushButton* pbSave;
-  QComboBox* cbColorOwn;
-  QComboBox* cbColorOpp;
+  QPushButton* openOwnColorPicker;
+  QPushButton* openOppColorPicker;
+  QColorDialog* cpColorOwn;
+  QColorDialog* cpColorOpp;
+  //QComboBox* cbColorOwn;
+  //QComboBox* cbColorOpp;
   QSpinBox* sbNumber;
   QLineEdit* lePort;
   QComboBox* cbLocation;
@@ -46,8 +53,12 @@ public:
   void update(size_t index);
 
 private slots:
-  void colorOwnChanged(const QString& color);
-  void colorOppChanged(const QString& color);
+  void showCPOwn();
+  void showCPOpp();
+  //void colorOwnChanged(const QString& color);
+  //void colorOppChanged(const QString& color);
+  void colorOwnChanged(const QColor color);
+  void colorOppChanged(const QColor color);
   void numberChanged(int number);
   void locationChanged(const QString& location);
   void gameModeChanged(const QString& gameMode);

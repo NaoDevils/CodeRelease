@@ -14,6 +14,7 @@
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
+#include "Representations/MotionControl/StandEngineOutput.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/Sensing/GroundContactState.h"
@@ -23,6 +24,7 @@ MODULE(MotionSelector,
   USES(SpecialActionsOutput),
   USES(WalkingEngineOutput),
   USES(KickEngineOutput),
+  USES(StandEngineOutput),
   REQUIRES(FrameInfo),
   REQUIRES(MotionRequest),
   REQUIRES(MotionSettings),
@@ -36,8 +38,7 @@ class MotionSelector : public MotionSelectorBase
 private:
   static PROCESS_LOCAL MotionSelector* theInstance; /**< The only instance of this module. */
 
-
-  bool forceStand;
+  bool forceStand = false;
   MotionRequest::Motion lastMotion;
   MotionRequest::Motion prevMotion;
   unsigned lastExecution; //FIXME: Value is used uninitialized
@@ -55,7 +56,7 @@ public:
   static void stand();
   static void move();
   
-  MotionSelector() :
+  MotionSelector() : 
     lastMotion(MotionRequest::specialAction), prevMotion(MotionRequest::specialAction),
     lastActiveSpecialAction(SpecialActionRequest::playDead)
   {

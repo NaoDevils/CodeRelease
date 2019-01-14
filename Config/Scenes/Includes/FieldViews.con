@@ -1,4 +1,5 @@
 call Includes/FieldViews1
+call Includes/FieldViewsLoca
 
 # ground truth view layers
 vfd worldState representation:GroundTruthRobotPose

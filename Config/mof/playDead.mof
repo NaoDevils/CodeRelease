@@ -5,5 +5,15 @@ label start
 
 "   HY     HP    LSP    LSR    LEY    LER  _LWY_  _LH_     RSP    RSR    REY    RER  _RWY_   _RH_   LHYP    LHR    LHP    LKP    LAP    LAR   RHYP    RHR    RHP    RKP    RAP    RAR Int  Dur
      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -      -   0  100
+transition playDead playDead start
 
-transition allMotions extern start
+" dont execute sitDown motion if in playDead
+transition sitDown playDead start
+
+" execute standUp motions from playDead immediately
+transition standUpBackNao standUpBackNao start
+transition standUpFrontNao standUpFrontNao start
+transition standUpSideNao standUpSideNao start
+
+" go to stand first when leaving playDead
+transition allMotions stand fromPlayDead

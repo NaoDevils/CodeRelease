@@ -102,6 +102,7 @@ CameraSettings::CameraSettings()
   settings[TargetGain] = V4L2Setting(V4L2_MT9M114_AE_TARGET_GAIN, 128, 0, 65535);
   settings[MinGain] = V4L2Setting(V4L2_MT9M114_AE_MIN_VIRT_GAIN, 32, 0, 65535);
   settings[MaxGain] = V4L2Setting(V4L2_MT9M114_AE_MAX_VIRT_GAIN, 256, 0, 65535);
+  settings[AeMode] = V4L2Setting(V4L2_MT9M114_AE_MODE, 0, 0, 255);
 
   weights[ 0] = 25;  weights[ 1] = 25;  weights[ 2] = 25;  weights[ 3] = 25;  weights[ 4] = 25;
   weights[ 5] = 25;  weights[ 6] = 75;  weights[ 7] = 75;  weights[ 8] = 75;  weights[ 9] = 25;
@@ -155,6 +156,7 @@ void CameraSettings::serialize(In* in, Out* out)
   V4L2Setting& targetGain = settings[TargetGain];
   V4L2Setting& minGain = settings[MinGain];
   V4L2Setting& maxGain = settings[MaxGain];
+  V4L2Setting& aeMode = settings[AeMode];
 
   STREAM_REGISTER_BEGIN;
   STREAM(autoExposure);
@@ -176,6 +178,7 @@ void CameraSettings::serialize(In* in, Out* out)
   STREAM(targetGain);
   STREAM(minGain);
   STREAM(maxGain);
+  STREAM(aeMode);
   STREAM(weights);
   STREAM_REGISTER_FINISH;
 

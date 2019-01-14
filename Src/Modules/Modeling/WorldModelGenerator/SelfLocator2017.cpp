@@ -10,7 +10,7 @@ namespace
   /** Helper functions **/
   Pose2f getSymmetricPoseOnField(const Pose2f& pose)
   {
-    return Pose2f(Angle::normalize(pose.rotation + pi), pose.translation * -1);
+    return pose.dotMirror();
   }
 
 
@@ -20,6 +20,12 @@ namespace
       ||
       ((p1.translation.x() >= 0) && (p2.translation.x() >= 0))
       );
+  }
+
+  bool isPoseOnOwnFieldSide(const Pose2f &p)
+  {
+    static const Pose2f own(-1000, 0);
+    return isPoseOnSameFieldSide(p, own);
   }
 
   bool arePosesCloseToEachOther(const Pose2f &p1, const Pose2f &p2, const SelfLocator2017Parameters &parameters)
@@ -51,13 +57,13 @@ namespace
 
 
 SelfLocator2017::SelfLocator2017() :
-lastExecuteTimeStamp(0),
-penalizedTimeStamp(0),
-unpenalizedTimeStamp(0),
-lastPenalty(PENALTY_NONE),
-lastNonPlayingTimeStamp(0),
-timeStampFirstReadyState(0),
-lastBestHypothesisUniqueId(0)
+  lastExecuteTimeStamp(0),
+  penalizedTimeStamp(0),
+  unpenalizedTimeStamp(0),
+  lastPenalty(PENALTY_NONE),
+  lastNonPlayingTimeStamp(0),
+  timeStampFirstReadyState(0),
+  lastBestHypothesisUniqueId(0)
 {
   initialized = false;
 
@@ -75,61 +81,32 @@ SelfLocator2017::~SelfLocator2017()
 void SelfLocator2017::update(RobotPose& robotPose)
 {
   executeCommonCode();
-
-  const PoseHypothesis2017 &bestHyp = getBestHypothesis();
-  bestHyp.getRobotPose(robotPose);
-  robotPose.validity = getRobotPoseValidity(bestHyp);
-  if (localizationState != positionLost)
-  {
-    foundGoodPosition = true;
-    timeStampLastGoodPosition = theFrameInfo.time;
-    lastGoodPosition = robotPose;
-    distanceTraveledFromLastGoodPosition = Pose2f();
-  }
-  else
-    distanceTraveledFromLastGoodPosition += (theOdometryData - lastOdometryData);
+  robotPose = m_robotPose;
 }
 
 void SelfLocator2017::update(SideConfidence& confidence)
 {
   executeCommonCode();
-
-  const PoseHypothesis2017 &bestHyp = getBestHypothesis();
-  confidence.sideConfidence = static_cast<float>(bestHyp.getSymmetryConfidence());
-  confidence.confidenceState = bestHyp.getSymmetryConfidenceState();
+  confidence = m_sideConfidence;
 }
 
 
 void SelfLocator2017::update(RobotPoseHypothesis& robotPoseHypothesis)
 {
   executeCommonCode();
-
-  const PoseHypothesis2017 &bestRobotPoseHypothesis = getBestHypothesis();
-
-  RobotPoseHypothesis ph;
-  ph.validity = getRobotPoseValidity(bestRobotPoseHypothesis);
-  bestRobotPoseHypothesis.getRobotPose((Pose2f&)ph, ph.covariance);
-  robotPoseHypothesis.covariance = ph.covariance;
-  robotPoseHypothesis.robotPoseReceivedMeasurementUpdate = ph.robotPoseReceivedMeasurementUpdate;
-  robotPoseHypothesis.translation = ph.translation;
-  robotPoseHypothesis.rotation = ph.rotation;
-  robotPoseHypothesis.validity = ph.validity;
+  robotPoseHypothesis = m_robotPoseHypothesis;
 }
 
 void SelfLocator2017::update(RobotPoseHypotheses& robotPoseHypotheses)
 {
   executeCommonCode();
+  robotPoseHypotheses = m_robotPoseHypotheses;
+}
 
-  robotPoseHypotheses.hypotheses.clear();
-  //  getBestHypothesis(robotPoseHypotheses.indexOfBestHypothesis);
-  for (auto &hypothesis : poseHypotheses)
-  {
-    RobotPoseHypothesis ph;
-    hypothesis->getRobotPose((Pose2f&)ph, ph.covariance);
-    ph.robotPoseReceivedMeasurementUpdate = true;
-    ph.validity = getRobotPoseValidity(*hypothesis);
-    robotPoseHypotheses.hypotheses.push_back(ph);
-  }
+void SelfLocator2017::update(RobotPoseHypothesesCompressed& robotPoseHypotheses)
+{
+  executeCommonCode();
+  robotPoseHypotheses = RobotPoseHypothesesCompressed(m_robotPoseHypotheses);
 }
 
 
@@ -137,6 +114,8 @@ void SelfLocator2017::predictHypotheses()
 {
   Pose2f odometryDelta = theOdometryData - lastOdometryData;
   lastOdometryData = theOdometryData;
+
+  distanceTraveledFromLastFallDown += odometryDelta.translation.norm();
 
   for (auto &hypothesis : poseHypotheses)
   {
@@ -175,21 +154,50 @@ void SelfLocator2017::updateHypothesesSymmetryConfidence()
 {
   for (auto &hypothesis : poseHypotheses)
   {
-    if (theGameInfo.state == STATE_PLAYING && parameters.symmetryUpdate.updateWithRemoteModels) // no ball on the field in READY! (which is the strongest/only symmetry indicator)
+    // Update symmetry only when playing (no ball on the field in READY! which is the strongest/only symmetry indicator)
+    if (theGameInfo.state == STATE_PLAYING && parameters.symmetryUpdate.updateWithRemoteModels)
     {
       hypothesis->updateSymmetryByComparingRemoteToLocalModels(theBallModel, theRemoteBallModel, theLocalRobotMap, theRemoteRobotMap, theTeammateData, theFrameInfo, parameters);
     }
     else
     {
-      hypothesis->setSymmetryConfidence(1., parameters.localizationStateUpdate);
+      hypothesis->setSymmetryConfidence(1.f);
     }
 
     // no symmetrie loss for goalie. ever.
     if (theBehaviorData.role == BehaviorData::keeper)
     {
-      hypothesis->setSymmetryConfidence(1., parameters.localizationStateUpdate);
+      hypothesis->setSymmetryConfidence(1.f);
     }
   }
+
+  std::underlying_type<SideConfidence::ConfidenceState>::type cs = m_sideConfidence.confidenceState;
+  float bestSymmetryConfidence = getBestHypothesis().getSymmetryConfidence();
+
+  if (bestSymmetryConfidence > lastBestSymmetryConfidence)
+  {
+    if (bestSymmetryConfidence == 1.f)
+    {
+      cs = SideConfidence::CONFIDENT;
+    }
+    // The lower the more confident -> So increase if best hypo switched
+    symmetryPosUpdate = ++symmetryPosUpdate % symmetryUpdatesBeforeAdjustingState;
+    if (symmetryPosUpdate == 0)
+      cs--;
+  }
+  else if (bestSymmetryConfidence < lastBestSymmetryConfidence)
+  {
+    symmertryNegUpdate = ++symmertryNegUpdate % symmetryUpdatesBeforeAdjustingState;
+    if (symmertryNegUpdate == 0)
+      cs++;
+  }
+
+  cs = std::min(std::underlying_type<SideConfidence::ConfidenceState>::type(SideConfidence::numOfConfidenceStates - 1),
+    std::max(std::underlying_type<SideConfidence::ConfidenceState>::type(SideConfidence::CONFIDENT), cs));
+
+  m_sideConfidence.confidenceState = static_cast<SideConfidence::ConfidenceState>(cs);
+
+  lastBestSymmetryConfidence = bestSymmetryConfidence;
 }
 
 
@@ -199,6 +207,8 @@ void SelfLocator2017::executeCommonCode()
   {
     addHypothesesOnInitialKickoffPositions();
     addHypothesesOnManualPositioningPositions();
+    // Initialize distance with in a way it will cause spawns on 1st fall down
+    distanceTraveledFromLastFallDown = parameters.spawning.minDistanceBetweenFallDowns;
     initialized = true;
   }
 
@@ -216,7 +226,7 @@ void SelfLocator2017::executeCommonCode()
   Pose2f pose;
   bestHypothesis.getRobotPose(pose);
   float pc = bestHypothesis.getPositionConfidence();
-  double sc = bestHypothesis.getSymmetryConfidence();
+  float sc = bestHypothesis.getSymmetryConfidence();
 
   // Predict new position
   predictHypotheses();
@@ -224,7 +234,7 @@ void SelfLocator2017::executeCommonCode()
   // Fill matrices for update
   for (auto &hyp : poseHypotheses)
     hyp->fillCorrectionMatrices(theLineMatchingResult, theCLIPCenterCirclePercept, theCLIPGoalPercept, thePenaltyCrossPercept, theFieldDimensions,
-    theCameraMatrix, theCameraMatrixUpper, parameters);
+      theCameraMatrix, theCameraMatrixUpper, parameters);
 
   // Update state of hypotheses
   updateHypothesesState();
@@ -246,16 +256,39 @@ void SelfLocator2017::executeCommonCode()
 
   doGlobalDebugging();
 
-  // re-add latest best hypothesis if no more are left
+  // reset hypotheses if no more are left
   if (poseHypotheses.empty())
   {
-    OUTPUT_ERROR("SelfLocator2017 pruned all hypotheses because of their state -> re-add best one!");
+    OUTPUT_ERROR("SelfLocator2017 pruned all hypotheses because of their state -> resetting!");
 
-    // re-add best one from before
-    poseHypotheses.push_back(pose, pc * .8f, sc, theFrameInfo.time, parameters);
+    // readd the best last with a small validity bonus, if it was inside carpet
+
+    Vector2f lastPosition = pose.translation;
+    if (theFieldDimensions.clipToCarpet(lastPosition) < 100)
+      poseHypotheses.push_back(pose, std::max(pc * .8f, parameters.spawning.positionConfidenceWhenPositionedManually + 0.1f), sc, theFrameInfo.time, parameters);
+
+    // re-add best one from before as well as some poses around the field
+    // TODO: if it was an state update error and the position was good, maybe we only want new hypotheses from line matches?
+    addHypothesesOnManualPositioningPositions();
+    addHypothesesOnPenaltyPositions(0.2f);
+    addNewHypothesesFromLineMatches();
+
+    // mirror the hypothesis if old best was on the opp field side
+    if (pose.translation.x() > 0)
+    {
+      for (auto& ph : poseHypotheses)
+      {
+        ph->setSymmetryConfidence(0.f);
+      }
+      addNewHypothesesWhenSymmetryLost();
+    }
+
   }
-}
 
+  // Fill local storage for representations
+  generateOutputData();
+
+}
 
 void SelfLocator2017::normalizeWeights()
 {
@@ -272,45 +305,60 @@ void SelfLocator2017::normalizeWeights()
 }
 
 
-void SelfLocator2017::pruneHypothesesGoalie()
-{
-  // Let's simply assume that the keeper will never be in the opponent half!  :)
-  if (theBehaviorData.role == BehaviorData::keeper)
-  {
-    PoseHypotheses2017::iterator it = poseHypotheses.begin();
-    while (it != poseHypotheses.end() && poseHypotheses.size() > 1)
-    {
-      Pose2f keeperPose;
-      (*it)->getRobotPose(keeperPose);
-      if (keeperPose.translation.x() > 0) // keeper is NOT in the opponent half. Per definition.
-      {
-        it = poseHypotheses.erase(it);
-      }
-      else
-      {
-        it++;
-      }
-    }
-  } // end of keeper specific pruning
-}
-
 void SelfLocator2017::pruneHypothesesInOwnHalf()
 {
-    PoseHypotheses2017::iterator it = poseHypotheses.begin();
-    while (it != poseHypotheses.end() && poseHypotheses.size() > 1)
+  PoseHypotheses2017::iterator it = poseHypotheses.begin();
+  while (it != poseHypotheses.end() && poseHypotheses.size() > 1)
+  {
+    Pose2f strikerPose;
+    (*it)->getRobotPose(strikerPose);
+    if (strikerPose.translation.x() < 0) // striker will never reach the own half because of manually placement.
     {
-      Pose2f strikerPose;
-      (*it)->getRobotPose(strikerPose);
-      if (strikerPose.translation.x() < 0) // striker will never reach the own half because of manually placement.
-      {
-        it = poseHypotheses.erase(it);
-      }
-      else
-      {
-        it++;
-      }
+      it = poseHypotheses.erase(it);
     }
+    else
+    {
+      it++;
+    }
+  }
   // end
+}
+
+void SelfLocator2017::pruneHypothesesInOpponentHalf()
+{
+  PoseHypotheses2017::iterator it = poseHypotheses.begin();
+  while (it != poseHypotheses.end() && poseHypotheses.size() > 1)
+  {
+    Pose2f keeperPose;
+    (*it)->getRobotPose(keeperPose);
+    if (keeperPose.translation.x() > 0)
+    {
+      it = poseHypotheses.erase(it);
+    }
+    else
+    {
+      it++;
+    }
+  }
+}
+
+void SelfLocator2017::pruneHypothesesOutsideField()
+{
+  for (PoseHypotheses2017::iterator it = poseHypotheses.begin();
+    it != poseHypotheses.end();)
+  {
+    const PoseHypotheses2017::element_type hypothesis = (*it);
+    if (hypothesis->isInsideFieldPlusX(theFieldDimensions, 100))
+    {
+      //advance
+      it++;
+    }
+    else
+    {
+      //delete and auto advance
+      it = poseHypotheses.erase(it);
+    }
+  }
 }
 
 void SelfLocator2017::pruneHypothesesOutsideCarpet()
@@ -318,19 +366,19 @@ void SelfLocator2017::pruneHypothesesOutsideCarpet()
   for (PoseHypotheses2017::iterator it = poseHypotheses.begin();
     it != poseHypotheses.end();)
   {
-    const PoseHypothesis2017 *hypothesis = (*it);
-    if (!hypothesis->isInsideCarpet(theFieldDimensions))
+    const PoseHypotheses2017::element_type hypothesis = (*it);
+    if (hypothesis->isInsideCarpet(theFieldDimensions))
+    {
+      //advance
+      it++;
+    }
+    else
     {
       if (parameters.debugging.displayWarnings)
         OUTPUT_WARNING("SelfLocator2017 detected hypothesis position that is outside of carpet -> deleting hypothesis");
 
       //delete and auto advance
       it = poseHypotheses.erase(it);
-    }
-    else
-    {
-      //advance
-      it++;
     }
   }
 }
@@ -340,7 +388,7 @@ void SelfLocator2017::pruneHypothesesWithInvalidValues()
   for (PoseHypotheses2017::iterator it = poseHypotheses.begin();
     it != poseHypotheses.end();)
   {
-    const PoseHypothesis2017 *hypothesis = (*it);
+    const PoseHypotheses2017::element_type hypothesis = (*it);
     if (hypothesis->containsInvalidValues())
     {
       OUTPUT_ERROR("SelfLocator2017 detected impossible state (NaN) -> deleting hypothesis");
@@ -358,17 +406,29 @@ void SelfLocator2017::pruneHypothesesWithInvalidValues()
 void SelfLocator2017::pruneHypotheses()
 {
   if (poseHypotheses.empty())
+  {
+    OUTPUT_WARNING("SelfLocator2017:no hypotheses left before pruning!");
     return;
+  }
 
-  pruneHypothesesGoalie(); // special case: no position on opp side
   pruneHypothesesOutsideCarpet();
   pruneHypothesesWithInvalidValues();
+
+  // special case: no position on opp side
+  if (theBehaviorData.role == BehaviorData::keeper // Let's simply assume that the keeper will never be in the opponent half!  :)
+    || (theGameInfo.state == STATE_SET && Global::getSettings().gameMode != Settings::penaltyShootout)) // Cannot be in opponent half in set
+    pruneHypothesesInOpponentHalf();
 
   // in penalty shootout the striker will never reach the own half because of manually placement
   if (Global::getSettings().gameMode == Settings::penaltyShootout && theBehaviorData.role != BehaviorData::keeper)
     pruneHypothesesInOwnHalf();
 
-  // first, as a safety measure, delete everything which comes too close to the symmetric position of our best hypothesis
+  // Prune hypothesis outside of field in set state. We can be sure to be inside of field after set!
+  if (theGameInfo.state == STATE_SET && Global::getSettings().gameMode != Settings::penaltyShootout)
+    pruneHypothesesOutsideField();
+
+
+  // Delete positions that seem to be symmetric
   for (PoseHypotheses2017::size_type i = 0; i < poseHypotheses.size(); i++)
   {
     Pose2f mirrorOfHypothesis;
@@ -381,7 +441,7 @@ void SelfLocator2017::pruneHypotheses()
       // Identify mirror hypotheses and remove the worse one
       if (arePosesCloseToEachOther(mirrorOfHypothesis, hypoPose, parameters)
         // Identify "better" mirror hypotheses if symmetry is not lost
-        && (symmetryLost || fabs(poseHypotheses[i]->getSymmetryConfidence() - poseHypotheses[j]->getSymmetryConfidence()) > 0.2))
+        && (symmetryLost || fabs(poseHypotheses[i]->getSymmetryConfidence() - poseHypotheses[j]->getSymmetryConfidence()) > 0.2f))
       {
         if (poseHypotheses[i]->getSymmetryConfidence() < poseHypotheses[j]->getSymmetryConfidence())
         {
@@ -407,11 +467,6 @@ void SelfLocator2017::pruneHypotheses()
       double likelihood = gd1.normalizedProbabilityAt(gd2.mean) * gd2.normalizedProbabilityAt(gd1.mean);
       if (likelihood > parameters.pruning.likelihoodTresholdForMerging)
       {
-        // just set the confidence of the less confident one to zero, 
-        // it will be deleted automatically in the next step
-        double newSymmetryConfidence = std::max(poseHypotheses[k]->getSymmetryConfidence(), poseHypotheses[j]->getSymmetryConfidence());
-        poseHypotheses[k]->setSymmetryConfidence(newSymmetryConfidence, parameters.localizationStateUpdate);
-        poseHypotheses[j]->setSymmetryConfidence(newSymmetryConfidence, parameters.localizationStateUpdate);
         if (poseHypotheses[k]->getPositionConfidence() > poseHypotheses[j]->getPositionConfidence())
         {
           poseHypotheses[j]->scalePositionConfidence(0);
@@ -607,7 +662,7 @@ void SelfLocator2017::evaluateLocalizationState()
 
 void SelfLocator2017::handleFallDown()
 {
-  if(parameters.localizationStateUpdate.symmetryLostWhenFallDownInCenterCircle)
+  if (parameters.localizationStateUpdate.symmetryLostWhenFallDownInCenterCircle)
   {
     // Handle fall down in center circle
     const PoseHypothesis2017 &bestHyp = getBestHypothesis();
@@ -617,7 +672,7 @@ void SelfLocator2017::handleFallDown()
     {
       for (auto &hypothesis : poseHypotheses)
       {
-        hypothesis->setSymmetryConfidence(0, parameters.localizationStateUpdate); //only case where symmetry is set to 0
+        hypothesis->setSymmetryConfidence(0.f); //only case where symmetry is set to 0
       }
     }
   }
@@ -625,23 +680,25 @@ void SelfLocator2017::handleFallDown()
 
 void SelfLocator2017::handleGettingUpAfterFallDown()
 {
-  // Copy current hypotheses to iterate over them
-  // Cannot be done on poseHypotheses directly as new hypotheses get added to it!
-  std::vector<PoseHypothesis2017*> currentHypotheses;
-  for (auto &hypothesis : poseHypotheses)
+  // Check if moved far enough that it makes sense to spawn new hypothesis
+  if (distanceTraveledFromLastFallDown < parameters.spawning.minDistanceBetweenFallDowns)
   {
-    currentHypotheses.push_back(hypothesis);
+    return;
   }
+  distanceTraveledFromLastFallDown = 0.f;
 
   // if we fell on the side, we might end up with +/- 90° orientation errors,
   // so add those hypotheses...
-  for (auto &hypothesis : currentHypotheses)
+  std::size_t size = poseHypotheses.size();
+  for (std::size_t i = 0; i < size; i++)
   {
+    PoseHypotheses2017::element_type &hypothesis = poseHypotheses[i];
+
     hypothesis->scalePositionConfidence(parameters.sensorUpdate.confidenceScaleFactorAfterFallDown); // = 0.75
     for (unsigned char j = 1; j <= parameters.spawning.noAdditionalHypothesisAfterFallDown; ++j)
     {
       poseHypotheses.push_back(*hypothesis, theFrameInfo.time); // copy hypotheses
-      PoseHypothesis2017 *p1 = poseHypotheses.back(); // Get new hypothesis
+      PoseHypotheses2017::element_type p1 = poseHypotheses.back(); // Get new hypothesis
 
       const float rot = pi2 * float(j) / (parameters.spawning.noAdditionalHypothesisAfterFallDown + 1);
       const float scale = 1 - std::abs(Angle::normalize(rot)) / pi;
@@ -720,34 +777,41 @@ void SelfLocator2017::handleSetState()
       else
       {
         //also reset symmetry confidence of existing hypotheses
-        (*i)->setSymmetryConfidence(parameters.spawning.symmetryConfidenceWhenPositionedManually, parameters.localizationStateUpdate);
+        (*i)->setSymmetryConfidence(parameters.spawning.symmetryConfidenceWhenPositionedManually);
         i++;
       }
     }
   }
-
-  addHypothesesOnManualPositioningPositions();
-  localizationState = positionTracking; // since we know our symmetry for sure
 }
 
 void SelfLocator2017::handleInitialState()
 {
   timeStampFirstReadyState = theFrameInfo.time;
-  addHypothesesOnInitialKickoffPositions();
-  localizationState = positionTracking; // since we know our symmetry for sure
 }
 
 
 void SelfLocator2017::addHypothesesOnManualPositioningPositions()
 {
-  bool ownKickoff = theGameInfo.kickOffTeam == theOwnTeamInfo.teamNumber;
+  const float sc = parameters.spawning.symmetryConfidenceWhenPositionedManually;
+
+  bool ownKickoff = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber;
   // special position for goalie
   const bool isGoalKeeper = (theBehaviorData.role == BehaviorData::keeper);
   if (isGoalKeeper)
   {
-    poseHypotheses.push_back(Pose2f(0, positionsByRules.goaliePosition),
-      parameters.spawning.positionConfidenceWhenPositionedManuallyForGoalKeeper, parameters.spawning.symmetryConfidenceWhenPositionedManually,
-      theFrameInfo.time, parameters);
+    // penalty shootout
+    if (Global::getSettings().gameMode == Settings::penaltyShootout)
+    {
+      poseHypotheses.push_back(Pose2f(0, positionsByRules.penaltyShootoutGoaliePosition),
+        parameters.spawning.positionConfidenceWhenPositionedManuallyForGoalKeeper, sc,
+        theFrameInfo.time, parameters);
+    }
+    else
+    {
+      poseHypotheses.push_back(Pose2f(0, positionsByRules.goaliePosition),
+        parameters.spawning.positionConfidenceWhenPositionedManuallyForGoalKeeper, sc,
+        theFrameInfo.time, parameters);
+    }
   }
   // one of the field positions for field players
   else
@@ -755,18 +819,14 @@ void SelfLocator2017::addHypothesesOnManualPositioningPositions()
     // penalty shootout
     if (Global::getSettings().gameMode == Settings::penaltyShootout)
     {
-      poseHypotheses.push_back(Pose2f(0, positionsByRules.penaltyShootOutPosition),
-        parameters.spawning.positionConfidenceWhenPositionedManually,
-        parameters.spawning.symmetryConfidenceWhenPositionedManually,
-        theFrameInfo.time,
-        parameters);
+      addPenaltyStrikerStartingHypothesis();
     }
     else
     {
       for (auto &position : (ownKickoff ? positionsByRules.fieldPlayerPositionsOwnKickoff : positionsByRules.fieldPlayerPositionsOppKickoff))
       {
         poseHypotheses.push_back(Pose2f(0, position),
-          parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually,
+          parameters.spawning.positionConfidenceWhenPositionedManually, sc,
           theFrameInfo.time, parameters);
       }
     }
@@ -777,18 +837,31 @@ void SelfLocator2017::addHypothesesOnInitialKickoffPositions()
 {
   if (Global::getSettings().gameMode != Settings::penaltyShootout)
   {
-    poseHypotheses.push_back(Pose2f(-pi_2, theFieldDimensions.xPosOwnGroundline / 4.f, theFieldDimensions.yPosLeftSideline), parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually, theFrameInfo.time, parameters);
-    poseHypotheses.push_back(Pose2f(pi_2, theFieldDimensions.xPosOwnGroundline / 4.f, theFieldDimensions.yPosRightSideline), parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually, theFrameInfo.time, parameters);
-    poseHypotheses.push_back(Pose2f(-pi_2, theFieldDimensions.xPosOwnGroundline / 2.f, theFieldDimensions.yPosLeftSideline), parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually, theFrameInfo.time, parameters);
-    poseHypotheses.push_back(Pose2f(pi_2, theFieldDimensions.xPosOwnGroundline / 2.f, theFieldDimensions.yPosRightSideline), parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually, theFrameInfo.time, parameters);
-    poseHypotheses.push_back(Pose2f(-pi_2, 3 * theFieldDimensions.xPosOwnGroundline / 4.f, theFieldDimensions.yPosLeftSideline), parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually, theFrameInfo.time, parameters);
-    poseHypotheses.push_back(Pose2f(pi_2, 3 * theFieldDimensions.xPosOwnGroundline / 4.f, theFieldDimensions.yPosRightSideline), parameters.spawning.positionConfidenceWhenPositionedManually, parameters.spawning.symmetryConfidenceWhenPositionedManually, theFrameInfo.time, parameters);
+    addHypothesesOnPenaltyPositions(parameters.spawning.positionConfidenceWhenPositionedManually);
   }
   else
   {
-    poseHypotheses.push_back(Pose2f(0, positionsByRules.penaltyShootOutPosition),
+    addPenaltyStrikerStartingHypothesis();
+  }
+}
+
+void SelfLocator2017::addPenaltyStrikerStartingHypothesis()
+{
+  // in 2018 rules: starting position on circle around penalty mark
+  Vector2f penaltyMarkPos = Vector2f(
+    theFieldDimensions.xPosOpponentPenaltyMark,
+    theFieldDimensions.yPosCenterGoal);
+
+  Vector2f backTransl = Vector2f(positionsByRules.penaltyShootStartingRadius, 0);
+  Vector2f rot;
+
+  const float sc = parameters.spawning.symmetryConfidenceWhenPositionedManually;
+
+  for (int angle : positionsByRules.penaltyShootAngles) {
+    Vector2f rot = Vector2f(backTransl).rotate(Angle::fromDegrees(angle));
+    poseHypotheses.push_back(Pose2f(rot.angle(), penaltyMarkPos - rot),
       parameters.spawning.positionConfidenceWhenPositionedManually,
-      parameters.spawning.symmetryConfidenceWhenPositionedManually,
+      sc,
       theFrameInfo.time,
       parameters);
   }
@@ -798,14 +871,16 @@ void SelfLocator2017::addHypothesesOnPenaltyPositions(float newPositionConfidenc
 {
   if (Global::getSettings().gameMode != Settings::penaltyShootout)
   {
-    for (auto &position : positionsByRules.penaltyPositions)
+    float sc = parameters.spawning.symmetryConfidenceWhenPositionedManually;
+
+    for (const auto &offset : positionsByRules.xOffsetPenaltyPositions)
     {
-      poseHypotheses.push_back(Pose2f(pi_2, position.x(), theFieldDimensions.yPosRightSideline), newPositionConfidence,
-        parameters.spawning.symmetryConfidenceWhenPositionedManually,
+      poseHypotheses.push_back(Pose2f(pi_2, offset, theFieldDimensions.yPosRightSideline), newPositionConfidence,
+        sc,
         theFrameInfo.time,
         parameters);
-      poseHypotheses.push_back(Pose2f(-pi_2, position.x(), theFieldDimensions.yPosLeftSideline), newPositionConfidence,
-        parameters.spawning.symmetryConfidenceWhenPositionedManually,
+      poseHypotheses.push_back(Pose2f(-pi_2, offset, theFieldDimensions.yPosLeftSideline), newPositionConfidence,
+        sc,
         theFrameInfo.time,
         parameters);
     }
@@ -814,18 +889,15 @@ void SelfLocator2017::addHypothesesOnPenaltyPositions(float newPositionConfidenc
 
 bool SelfLocator2017::addNewHypothesesWhenSymmetryLost()
 {
-  // Copy current hypotheses to iterate over them
-  // Cannot be done on poseHypotheses directly as new hypotheses get added to it!
-  std::vector<PoseHypothesis2017*> currentHypotheses;
-  for (auto &hypothesis : poseHypotheses)
-  {
-    currentHypotheses.push_back(hypothesis);
-  }
+  // Remember number of hypothesis as new ones will be added
+  PoseHypotheses2017::size_type size = poseHypotheses.size();
 
   bool added = false;
   //for each Hypotheses that has a lost symmetry ... duplicate it?
-  for (auto &hypothesis : currentHypotheses)
+  for (PoseHypotheses2017::size_type i = 0; i < size; i++)
   {
+    PoseHypotheses2017::element_type hypothesis = poseHypotheses[i];
+
     /** Symmeric positions will be reintroduced
         AUTHOR: D.Hauschildt
         TODO:   Local Symmetry in penalty area is not considered
@@ -839,7 +911,7 @@ bool SelfLocator2017::addNewHypothesesWhenSymmetryLost()
       poseHypotheses.push_back(
         symmetricPose,
         hypothesis->getPositionConfidence(),
-        hypothesis->getSymmetryConfidence(),
+        hypothesis->getSymmetryConfidence() + .1f,
         theFrameInfo.time,
         parameters);
 
@@ -857,7 +929,7 @@ bool SelfLocator2017::addNewHypothesesFromLineMatches()
   Pose2f hypoPose;
   bestHypo.getRobotPose(hypoPose);
 
-  std::vector<HypothesesBase> additionalHypotheses;
+  std::vector<HypothesisBase> additionalHypotheses;
   size_t size = theLineMatchingResult.poseHypothesis.size();
   if (size > 0)
   {
@@ -888,10 +960,10 @@ bool SelfLocator2017::addNewHypothesesFromPenaltyCrossLine()
   float poseConfidence = 0.f;
   float bestHypoConfidence = std::max(getBestHypothesis().getPositionConfidence(), 0.5f);
 
-  std::vector<HypothesesBase> additionalHypotheses;
+  std::vector<HypothesisBase> additionalHypotheses;
   if (PoseGenerator::getPoseFromPenaltyCrossAndLine(theFieldDimensions, theCLIPFieldLinesPercept, thePenaltyCrossPercept, pose, poseConfidence))
   {
-    float confidence = bestHypoConfidence*poseConfidence*parameters.spawning.penaltyCrossBaseConfidence;
+    float confidence = bestHypoConfidence * poseConfidence*parameters.spawning.penaltyCrossBaseConfidence;
     addPoseToHypothesisVector(pose, additionalHypotheses, confidence);
   }
 
@@ -914,10 +986,10 @@ bool SelfLocator2017::addNewHypothesesFromCenterCirleAndLine()
   float poseConfidence = 0.f;
   float bestHypoConfidence = std::max(getBestHypothesis().getPositionConfidence(), 0.5f);
 
-  std::vector<HypothesesBase> additionalHypotheses;
+  std::vector<HypothesisBase> additionalHypotheses;
   if (PoseGenerator::getPoseFromCenterCircleAndCenterLine(theCLIPFieldLinesPercept, theCLIPCenterCirclePercept, pose, poseConfidence) > 0)
   {
-    float confidence = bestHypoConfidence*poseConfidence*parameters.spawning.centerCircleBaseConfidence;
+    float confidence = bestHypoConfidence * poseConfidence*parameters.spawning.centerCircleBaseConfidence;
     addPoseToHypothesisVector(pose, additionalHypotheses, confidence);
   }
 
@@ -934,7 +1006,7 @@ bool SelfLocator2017::addNewHypothesesFromGoal()
   const bool isGoalKeeper = (theBehaviorData.role == BehaviorData::keeper);
   if (isGoalKeeper) return false; // Do not use for goalie
 
-  std::vector<HypothesesBase> additionalHypotheses;
+  std::vector<HypothesisBase> additionalHypotheses;
   if (theCLIPGoalPercept.numberOfGoalPosts >= 2)
   {
     float poseConfidence = 0.f;
@@ -946,7 +1018,7 @@ bool SelfLocator2017::addNewHypothesesFromGoal()
     if (getLeftAndRightGoalPostFromGoalPercept(theCLIPGoalPercept, leftPost, rightPost, poseConfidence)
       && PoseGenerator::getPoseFromGoalObservation(theFieldDimensions, leftPost, rightPost, pose))
     {
-      float confidence = bestHypoConfidence*poseConfidence*parameters.spawning.goalBaseConfidence;
+      float confidence = bestHypoConfidence * poseConfidence*parameters.spawning.goalBaseConfidence;
       addPoseToHypothesisVector(pose, additionalHypotheses, confidence);
     }
   }
@@ -970,10 +1042,52 @@ bool SelfLocator2017::addNewHypotheses()
 {
   bool added = false;
 
+  // Add hypothesis in initial all the time
+  if (theGameInfo.state == STATE_INITIAL)
+  {
+    addHypothesesOnInitialKickoffPositions();
+    added = true;
+  }
+
+  if (theGameInfo.state == STATE_SET)
+  {
+    if (!gotPickedUpInSet && theFrameInfo.getTimeSince(timeStampWhenEnteredSetState) > 3000)
+    {
+      accDataBuffer.push_front(theInertialData.acc);
+
+      if (accDataBuffer.full())
+      {
+        float minZ = std::numeric_limits<float>::max(), maxZ = std::numeric_limits<float>::min();
+        for (const auto &data : accDataBuffer)
+        {
+          if (data.z() < minZ)
+            minZ = data.z();
+
+          if (data.z() > maxZ)
+            maxZ = data.z();
+        }
+
+        gotPickedUpInSet = std::abs(maxZ - minZ) > parameters.spawning.accZforPickedUpDifference;
+      }
+    }
+  }
+  else
+  {
+    timeStampWhenEnteredSetState = theFrameInfo.time;
+    gotPickedUpInSet = false;
+    accDataBuffer.clear();
+  }
+
   switch (localizationState)
   {
   case positionLost:
-    if (parameters.spawning.landmarkBasedHypothesesSpawn & SelfLocator2017Parameters::Spawning::spawnIfPositionLost)
+    // Add hypothesis for set state
+    if (theGameInfo.state == STATE_SET)
+    {
+      addHypothesesOnManualPositioningPositions();
+      added = true;
+    }
+    else if (parameters.spawning.landmarkBasedHypothesesSpawn & SelfLocator2017Parameters::Spawning::spawnIfPositionLost)
     {
       added |= addNewHypothesesFromLineMatches();
       added |= addNewHypothesesFromLandmark();
@@ -981,8 +1095,14 @@ bool SelfLocator2017::addNewHypotheses()
     break;
 
   case positionTracking:
-    if (parameters.spawning.landmarkBasedHypothesesSpawn & SelfLocator2017Parameters::Spawning::spawnIfPositionTracking
-        && getBestHypothesis().getPositionConfidence() < parameters.spawning.spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold)
+    // Add hypothesis for set state
+    if (theGameInfo.state == STATE_SET && (gotPickedUpInSet || Global::getSettings().gameMode == Settings::penaltyShootout))
+    {
+      addHypothesesOnManualPositioningPositions();
+      added = true;
+    }
+    else if (parameters.spawning.landmarkBasedHypothesesSpawn & SelfLocator2017Parameters::Spawning::spawnIfPositionTracking
+      && getBestHypothesis().getPositionConfidence() < parameters.spawning.spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold)
     {
       added |= addNewHypothesesFromLineMatches();
       added |= addNewHypothesesFromLandmark();
@@ -1023,13 +1143,12 @@ float SelfLocator2017::getRobotPoseValidity(const PoseHypothesis2017 & poseHypot
 
 inline void SelfLocator2017::initDebugging()
 {
-  DECLARE_DEBUG_DRAWING("module:SelfLocator2017:hypotheses", "drawingOnField");
+  //DECLARE_DEBUG_DRAWING("module:SelfLocator2017:hypotheses", "drawingOnField");
   DECLARE_DEBUG_DRAWING("module:SelfLocator2017:correspondences", "drawingOnField");
   DECLARE_DEBUG_DRAWING("module:SelfLocator2017:LocalizationState", "drawingOnField");
   DECLARE_DEBUG_DRAWING("module:SelfLocator2017:poseFromCenterCircle", "drawingOnField");
   DECLARE_DEBUG_DRAWING("module:SelfLocator2017:poseFromPenaltyCross", "drawingOnField");
-
-  MODIFY("module:SelfLocator2017:parameters", parameters);
+  DECLARE_DEBUG_DRAWING("module:SelfLocator2017:GaussianTools:covarianceEllipse", "drawingOnField");
 }
 
 void SelfLocator2017::doGlobalDebugging()
@@ -1046,44 +1165,95 @@ void SelfLocator2017::doGlobalDebugging()
   if (!bestHyp.isInsideCarpet(theFieldDimensions))
     return;
 
+  /* NOT NEEDED; Can be observed by representation
   COMPLEX_DRAWING("module:SelfLocator2017:hypotheses")
   {
     for (auto &hypothesis : poseHypotheses)
     {
       float factor = std::max(std::min(theFrameInfo.getTimeSince(hypothesis->getCreationTime()) / parameters.debugging.durationHighlightAddedHypothesis, 1.f), 0.f);
-      hypothesis->draw(ColorRGBA(255, static_cast<unsigned char>(factor * 255), static_cast<unsigned char>(factor * 255), (unsigned char)(255.0*hypothesis->getPositionConfidence())));
+      hypothesis->draw(ColorRGBA(255, static_cast<unsigned char>(factor * 255), static_cast<unsigned char>(factor * 255), static_cast<unsigned char>(255.0*hypothesis->getPositionConfidence())));
     }
 
     //recolor the best
     bestHyp.draw(ColorRGBA(255, 0, 0, (unsigned char)(255.0*bestHyp.getPositionConfidence())));
   }
+  */
 
   switch (localizationState)
   {
   case positionTracking:
-    DRAWTEXT("module:SelfLocator2017:LocalizationState", -500, -2200, 50, ColorRGBA(255, 255, 255), "LocalizationState: positionTracking");
+    DRAWTEXT("module:SelfLocator2017:LocalizationState", -1000, -3500, 100, ColorRGBA(255, 255, 255), "LocalizationState: positionTracking");
     break;
   case positionLost:
-    DRAWTEXT("module:SelfLocator2017:LocalizationState", -500, -2200, 50, ColorRGBA(255, 255, 255), "LocalizationState: positionLost");
+    DRAWTEXT("module:SelfLocator2017:LocalizationState", -1000, -3500, 100, ColorRGBA(255, 255, 255), "LocalizationState: positionLost");
     break;
   case fallenDown:
-    DRAWTEXT("module:SelfLocator2017:LocalizationState", -500, -2200, 50, ColorRGBA(255, 255, 255), "LocalizationState: fallenDown");
+    DRAWTEXT("module:SelfLocator2017:LocalizationState", -1000, -3500, 100, ColorRGBA(255, 255, 255), "LocalizationState: fallenDown");
     break;
   case penalized:
-    DRAWTEXT("module:SelfLocator2017:LocalizationState", -500, -2200, 50, ColorRGBA(255, 255, 255), "LocalizationState: penalized");
+    DRAWTEXT("module:SelfLocator2017:LocalizationState", -1000, -3500, 100, ColorRGBA(255, 255, 255), "LocalizationState: penalized");
     break;
   default:
-    DRAWTEXT("module:SelfLocator2017:LocalizationState", -500, -2200, 50, ColorRGBA(255, 255, 255), "LocalizationState: default... should never happen!");
+    DRAWTEXT("module:SelfLocator2017:LocalizationState", -1000, -3500, 100, ColorRGBA(255, 255, 255), "LocalizationState: default... should never happen!");
     // should never happen!
     break;
+  }
+}
+
+void SelfLocator2017::generateOutputData()
+{
+  // Get best hypothesis
+  const PoseHypothesis2017 &bestRobotPoseHypothesis = getBestHypothesis();
+
+  // Fill robot pose
+  bestRobotPoseHypothesis.getRobotPose(m_robotPose);
+  m_robotPose.validity = getRobotPoseValidity(bestRobotPoseHypothesis);
+  m_robotPose.symmetry = bestRobotPoseHypothesis.getSymmetryConfidence();
+  if (m_robotPose.validity > parameters.spawning.spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold)
+  {
+    foundGoodPosition = true;
+    timeStampLastGoodPosition = theFrameInfo.time;
+    lastGoodPosition = m_robotPose;
+    distanceTraveledFromLastGoodPosition = Pose2f();
+  }
+  else if (foundGoodPosition)
+  {
+    distanceTraveledFromLastGoodPosition += (theOdometryData - lastOdometryData);
+  }
+
+  // Fill side confidence
+  m_sideConfidence.sideConfidence = bestRobotPoseHypothesis.getSymmetryConfidence();
+
+  // Helper
+  GaussianDistribution3D gd;
+
+  // Fill best hypothesis
+  bestRobotPoseHypothesis.extractGaussianDistribution3DFromStateEstimation(gd);
+  m_robotPoseHypothesis.validity = getRobotPoseValidity(bestRobotPoseHypothesis);
+  m_robotPoseHypothesis.covariance = gd.covariance;
+  m_robotPoseHypothesis.robotPoseReceivedMeasurementUpdate = bestRobotPoseHypothesis.performedSensorUpdate();
+  bestRobotPoseHypothesis.getRobotPose((Pose2f&)m_robotPoseHypothesis, m_robotPoseHypothesis.covariance);
+
+  // Fill all hypotheses
+  m_robotPoseHypotheses.hypotheses.clear();
+  for (const auto &hypothesis : poseHypotheses)
+  {
+    RobotPoseHypothesis ph;
+    hypothesis->extractGaussianDistribution3DFromStateEstimation(gd);
+    ph.validity = getRobotPoseValidity(*hypothesis);
+    ph.symmetry = hypothesis->getSymmetryConfidence();
+    ph.covariance = gd.covariance;
+    ph.robotPoseReceivedMeasurementUpdate = hypothesis->performedSensorUpdate();
+    hypothesis->getRobotPose((Pose2f&)ph, ph.covariance);
+    m_robotPoseHypotheses.hypotheses.push_back(ph);
   }
 }
 
 
 const PoseHypothesis2017 &SelfLocator2017::getBestHypothesis()
 {
-  const PoseHypothesis2017 *current = 0;
-  const PoseHypothesis2017 *best = 0;
+  PoseHypotheses2017::element_type current = 0;
+  PoseHypotheses2017::element_type best = 0;
   float bestConfidence = 0;
 
   // Search for overall best and current hypothesis
@@ -1105,11 +1275,22 @@ const PoseHypothesis2017 &SelfLocator2017::getBestHypothesis()
   if (!current ||
     // if overall best is not currently used hypothesis
     (best != current &&
-    // Check if best confidence is much better than currently used hypothesis
+      // Check if best confidence is much better than currently used hypothesis
     (bestConfidence - current->getPositionConfidence()) > parameters.processUpdate.positionConfidenceHysteresisForKeepingBestHypothesis))
   {
+    if (lastBestHypothesisUniqueId && (theFrameInfo.getTimeSince(lastNonPlayingTimeStamp) > 15000))
+    {
+      std::underlying_type<SideConfidence::ConfidenceState>::type cs = m_sideConfidence.confidenceState;
+
+      cs = std::min(std::underlying_type<SideConfidence::ConfidenceState>::type(SideConfidence::numOfConfidenceStates - 1),
+        std::max(std::underlying_type<SideConfidence::ConfidenceState>::type(SideConfidence::CONFIDENT), ++cs)); // The lower the more confident -> So increase if best hypo switched
+
+      m_sideConfidence.confidenceState = static_cast<SideConfidence::ConfidenceState>(cs);
+    }
+
     // Set new best hypothesis
     lastBestHypothesisUniqueId = best->getUniqueId();
+
     return *best;
   }
   else
@@ -1118,84 +1299,90 @@ const PoseHypothesis2017 &SelfLocator2017::getBestHypothesis()
   }
 }
 
-void SelfLocator2017::addPoseToHypothesisVector(const Pose2f &pose, std::vector<HypothesesBase> &additionalHypotheses,
-  const float &poseConfidence)
+void SelfLocator2017::addPoseToHypothesisVector(const Pose2f &pose, std::vector<HypothesisBase> &additionalHypotheses, const float &poseConfidence)
 {
-  const bool isLost = localizationState == positionLost;
-  Pose2f symmetricPose = getSymmetricPoseOnField(pose);
-
   const PoseHypothesis2017 &bestHypo = getBestHypothesis();
 
-  Pose2f nearestPose;
-  bool allowToSpawn = false;
-  double symmetryConfidence = 0;
+  const Pose2f symmetricPose = getSymmetricPoseOnField(pose), *nearestPose = 0;
 
-  if (parameters.spawning.confidenceIntervalForCheckOfHypothesis < 0)
+  float symmetryConfidence = 0;
+
+  // Determine minimum position confidence for hypothesis to check for closest position
+  const float minConfidence = std::max(
+    parameters.localizationStateUpdate.positionLostWhenBestConfidenceBelowThisThreshold,
+    bestHypo.getPositionConfidence() - parameters.spawning.confidenceIntervalForCheckOfHypothesis);
+
+  double bestDistance = -1;
+  for (auto &hypo : poseHypotheses)
   {
-    // Legacy behaviour
-    Pose2f hypoPose;
-    bestHypo.getRobotPose(hypoPose);
-    float distanceToPose = (pose - hypoPose).translation.norm();
-    float distanceToSymPose = (symmetricPose - hypoPose).translation.norm();
-    nearestPose = (distanceToPose <= distanceToSymPose) ? pose : symmetricPose;
-
-    const int timeSinceLastGoodPosition = theFrameInfo.getTimeSince(timeStampLastGoodPosition);
-
-    allowToSpawn = isPoseOnSameFieldSide(hypoPose, nearestPose);
-    allowToSpawn |= ((theFrameInfo.getTimeSince(timeStampFirstReadyState) > 10000)
-                     && (theFrameInfo.getTimeSince(unpenalizedTimeStamp) > 10000));
-
-    const float distTraveled = distanceTraveledFromLastGoodPosition.translation.norm();
-    const float distToPose = (lastGoodPosition - nearestPose).translation.norm();
-
-    allowToSpawn &= //!parameters.useOdometryForSpawning ||
-        (timeSinceLastGoodPosition > 20000 || (std::abs(distTraveled - distToPose) < std::min(2000., timeSinceLastGoodPosition * .5)));
-
-    symmetryConfidence = bestHypo.getSymmetryConfidence();
-  }
-  else
-  {
-    // Determine minimum position confidence for hypothesis to check for closest position
-    const float minConfidence = std::max(
-          parameters.localizationStateUpdate.positionLostWhenBestConfidenceBelowThisThreshold,
-          bestHypo.getPositionConfidence() - parameters.spawning.confidenceIntervalForCheckOfHypothesis);
-
-    double bestDistance = -1;
-    for (auto &hypo : poseHypotheses)
+    // Check hypothesis qualifies for check
+    if (hypo->getPositionConfidence() >= minConfidence)
     {
-      // Check hypothesis qualifies for check
-      if (hypo->getPositionConfidence() >= minConfidence)
-      {
-        Pose2f hypoPose;
-        hypo->getRobotPose(hypoPose);
-        const float distanceToPose = (pose - hypoPose).translation.norm();
-        const float distanceToSymPose = (symmetricPose - hypoPose).translation.norm();
+      Pose2f hypoPose;
+      hypo->getRobotPose(hypoPose);
+      const float distanceToPose = (pose - hypoPose).translation.norm();
+      const float distanceToSymPose = (symmetricPose - hypoPose).translation.norm();
 
-        // Check if pose is closer than best distance
-        if (bestDistance < 0 || (distanceToPose < bestDistance))
-        {
-          bestDistance = distanceToPose;
-          nearestPose = pose;
-          symmetryConfidence = hypo->getSymmetryConfidence();
-        }
-        // Check if symmetric pose is closer than best distance
-        if (distanceToSymPose < bestDistance)
-        {
-          bestDistance = distanceToSymPose;
-          nearestPose = symmetricPose;
-          symmetryConfidence = hypo->getSymmetryConfidence();
-        }
+      // Check closest pose for this hypothesis
+      const Pose2f *current_closest;
+      float distance;
+      if (distanceToPose <= distanceToSymPose)
+      {
+        distance = distanceToPose;
+        current_closest = &pose;
+      }
+      else
+      {
+        distance = distanceToSymPose;
+        current_closest = &symmetricPose;
+      }
+
+      // Do not spawn if pose is on other side of the field but we are still entering the field (initial or penalized)
+      const int limit = static_cast<int>(parameters.spawning.limitSpawningToOwnSideTimeout);
+      if (((theFrameInfo.getTimeSince(timeStampFirstReadyState) < limit) || (theFrameInfo.getTimeSince(unpenalizedTimeStamp) < limit)) &&
+        !isPoseOnOwnFieldSide(*current_closest))
+        continue;
+
+      // Check if pose is closer than best distance
+      if (bestDistance < 0 || (distance < bestDistance))
+      {
+        bestDistance = distance;
+        nearestPose = current_closest;
+        symmetryConfidence = hypo->getSymmetryConfidence();
       }
     }
-    allowToSpawn = bestDistance > 0;
   }
 
-  if (isLost || allowToSpawn)
+  // Check if odometry from is better than others
+  if (parameters.spawning.useOdometryForSpawning && foundGoodPosition)
+  {
+    Pose2f odometryPose = (lastGoodPosition + distanceTraveledFromLastGoodPosition);
+    const float distanceToPose = (pose - odometryPose).translation.norm();
+    const float distanceToSymPose = (symmetricPose - odometryPose).translation.norm();
+
+    // Check closest pose for this hypothesis
+    const Pose2f *current_closest = (distanceToPose <= distanceToSymPose) ? &pose : &symmetricPose;
+
+    if (bestDistance < 0 || (odometryPose - *current_closest).translation.norm() < bestDistance)
+    {
+      nearestPose = current_closest;
+      symmetryConfidence = parameters.localizationStateUpdate.symmetryFoundAgainWhenBestConfidenceAboveThisThreshold * bestHypo.getSymmetryConfidence();
+    }
+  }
+
+  // Check if we found a decent pose to spawn
+  if (nearestPose)
   {
     // Only spawn if confidence higher than lost threshold
-    const float &pc = isLost ? parameters.localizationStateUpdate.positionLostWhenBestConfidenceBelowThisThreshold : poseConfidence;
-    if (pc >= parameters.localizationStateUpdate.positionLostWhenBestConfidenceBelowThisThreshold)
-      additionalHypotheses.push_back(HypothesesBase(nearestPose, pc, symmetryConfidence));
+    if (poseConfidence >= parameters.localizationStateUpdate.positionLostWhenBestConfidenceBelowThisThreshold)
+      additionalHypotheses.push_back(HypothesisBase(*nearestPose, poseConfidence, symmetryConfidence));
+  }
+  else if (localizationState == positionLost)
+  {
+    // Add the normal pose if loca has been lost
+    additionalHypotheses.push_back(HypothesisBase(pose,
+      parameters.localizationStateUpdate.positionLostWhenBestConfidenceBelowThisThreshold,
+      parameters.localizationStateUpdate.symmetryLostWhenBestConfidenceBelowThisThreshold));
   }
 }
 

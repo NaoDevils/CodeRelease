@@ -15,7 +15,7 @@ converter(
 		theFootpositions,
 		theTargetCoM,
 		theWalkingEngineParams,
-		theControllerParams,
+		theFLIPMControllerParams,
 		theActualCoMRCS,
 		theFallDownState,
 		theInertialSensorData,

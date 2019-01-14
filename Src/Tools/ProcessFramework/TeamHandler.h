@@ -19,7 +19,7 @@ struct NDevilsHeader
   unsigned char teamID;
   bool isPenalized;
   bool whistleDetected;
-  unsigned char dummy;
+  unsigned char intention;
 };
 
 const int teamCommHeaderSize = sizeof(RoboCup::SPLStandardMessage) - SPL_STANDARD_MESSAGE_DATA_SIZE;

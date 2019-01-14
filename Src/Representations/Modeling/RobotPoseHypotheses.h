@@ -20,7 +20,7 @@
 class RobotPoseHypothesis: public RobotPose
 {
 public:
-  RobotPoseHypothesis() { covariance = Matrix3d::Identity(); };
+  RobotPoseHypothesis() : robotPoseReceivedMeasurementUpdate(false) { covariance = Matrix3d::Identity(); };
 
   RobotPoseHypothesis(const Pose2f & pose, const Matrix3d & covariance):
     covariance(covariance)
@@ -35,6 +35,7 @@ private:
     STREAM_REGISTER_BEGIN;
       STREAM_BASE(RobotPose)
       STREAM(covariance)
+      STREAM(robotPoseReceivedMeasurementUpdate)
     STREAM_REGISTER_FINISH;
   }
 
@@ -110,8 +111,36 @@ public:
     return *this;
   }
 
-  
-
   /** Draws the hypotheses to the field view*/
   void draw();
 };
+
+STREAMABLE(RobotPoseHypothesesCompressed,
+{
+  RobotPoseHypothesesCompressed() = default;
+  RobotPoseHypothesesCompressed(const RobotPoseHypotheses &other)
+  {
+    for (const auto &item : other.hypotheses)
+    {
+      hypotheses.push_back(RobotPoseCompressed(item));
+    }
+  }
+
+  operator RobotPoseHypotheses() const
+  {
+    RobotPoseHypotheses robotPoseHypotheses;
+    robotPoseHypotheses.hypotheses.clear();
+
+    for (auto &item : hypotheses)
+    {
+      RobotPoseHypothesis rph;
+      ((RobotPose&)rph) = item;
+      robotPoseHypotheses.hypotheses.push_back(rph);
+    }
+
+    return robotPoseHypotheses;
+  },
+
+  (std::vector<RobotPoseCompressed>) hypotheses,
+
+});

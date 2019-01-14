@@ -155,7 +155,7 @@ scriptPath=$(echo $0 | sed "s|^\.\./|`pwd`/../|" | sed "s|^\./|`pwd`/|")
 basePath=$(dirname "${scriptPath}")
 currPath=$(pwd)
 keyFile=../../Config/Keys/id_rsa_nao
-sshoptions="-c arcfour -i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet"
+sshoptions="-i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet"
 if [[ $(uname) == *CYGWIN* ]]; then
   pingoptions="-w 1 -n 1"
 elif [ $(uname) == "Darwin" ]; then

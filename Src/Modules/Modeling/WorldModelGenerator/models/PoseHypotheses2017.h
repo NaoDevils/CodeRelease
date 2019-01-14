@@ -13,19 +13,22 @@
 
 #include "PoseHypothesis2017.h"
 
+#include <vector>
+
 class PoseHypotheses2017
 {
 public:
-  typedef std::vector<PoseHypothesis2017*>::iterator iterator;
-  typedef std::vector<PoseHypothesis2017*>::const_iterator const_iterator;
-  typedef std::vector<PoseHypothesis2017*>::reverse_iterator reverse_iterator;
-  typedef std::vector<PoseHypothesis2017*>::const_reverse_iterator const_reverse_iterator;
-  typedef std::vector<PoseHypothesis2017*>::reference reference;
-  typedef std::vector<PoseHypothesis2017*>::const_reference const_reference;
-  typedef std::vector<PoseHypothesis2017*>::size_type size_type;
+  typedef PoseHypothesis2017* element_type;
+  typedef std::vector<element_type>::iterator iterator;
+  typedef std::vector<element_type>::const_iterator const_iterator;
+  typedef std::vector<element_type>::reverse_iterator reverse_iterator;
+  typedef std::vector<element_type>::const_reverse_iterator const_reverse_iterator;
+  typedef std::vector<element_type>::reference reference;
+  typedef std::vector<element_type>::const_reference const_reference;
+  typedef std::vector<element_type>::size_type size_type;
 
 private:
-  std::vector<PoseHypothesis2017*> hypotheses;
+  std::vector<element_type> hypotheses;
 
 public:
   ~PoseHypotheses2017()
@@ -55,9 +58,13 @@ public:
     }
   }
 
-  iterator erase(const iterator &it) { delete *it; return hypotheses.erase(it); }
+  iterator erase(const iterator &it)
+  {
+    delete *it;
+    return hypotheses.erase(it);
+  }
 
-  void push_back(const Pose2f &newPose, float positionConfidence, double symmetryConfidence, const unsigned &timestamp, const SelfLocator2017Parameters &parameters)
+  void push_back(const Pose2f &newPose, float positionConfidence, float symmetryConfidence, const unsigned &timestamp, const SelfLocator2017Parameters &parameters)
   {
     hypotheses.push_back(new PoseHypothesis2017(newPose, positionConfidence, symmetryConfidence, timestamp, parameters));
   }
@@ -65,7 +72,11 @@ public:
   {
     hypotheses.push_back(new PoseHypothesis2017(hypothesis, timeStamp));
   }
-  void pop_back() { delete hypotheses[hypotheses.size() - 1]; hypotheses.pop_back(); }
+  void pop_back()
+  {
+    delete hypotheses[hypotheses.size() - 1];
+    hypotheses.pop_back();
+  }
 
   size_type size() const { return hypotheses.size(); }
 

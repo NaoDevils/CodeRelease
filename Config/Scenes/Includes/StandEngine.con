@@ -1,0 +1,18 @@
+dr representation:JointSensorData 
+dr representation:JointRequest 
+dr representation:InertialSensorData 
+dr representation:FsrSensorData 
+dr representation:SystemSensorData 
+vp angleCorrection 1000 -0.2 0.2
+vpd angleCorrection module:StandEngine:angleCorrection red
+vpd angleCorrection module:StandEngine:angleError blue
+vpd angleCorrection module:StandEngine:pitchOffset green
+vp angle 1000 -1 1
+vpd angle module:StandEngine:imuAngleY red
+vpd angle module:StandEngine:angleY green
+echo get representation:MotionRequest 
+echo set representation:MotionRequest motion = stand; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = playDead; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo dr module:StandEngine:ignoreFsr
+get parameters:StandEngine

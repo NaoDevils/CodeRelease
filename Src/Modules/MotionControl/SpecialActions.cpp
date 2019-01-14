@@ -14,6 +14,25 @@ MAKE_MODULE(SpecialActions, motionControl)
 
 PROCESS_LOCAL SpecialActions* SpecialActions::theInstance = 0;
 
+
+
+static const float sitDownAngles[12] =
+{
+  0.f,
+  0.f,
+  -0.855f,
+  2.16f,
+  -1.18f,
+  0.f,
+
+  0.f,
+  0.f,
+  -0.855f,
+  2.16f,
+  -1.18f,
+  0.f
+};
+
 void SpecialActions::MotionNetData::load(std::vector<float>& motionData)
 {
   int dataCounter = 0;
@@ -160,12 +179,26 @@ bool SpecialActions::getNextData(const SpecialActionRequest& specialActionReques
     }
   }
 
-  motionNetData.nodeArray[currentNode].toJointRequest(currentRequest, dataRepetitionLength, interpolationMode, deShakeMode);
+  motionNetData.nodeArray[currentNode].toJointRequest(currentRequest, dataRepetitionLength, interpolationMode, sinInterpolation, deShakeMode);
   dataRepetitionCounter = dataRepetitionLength;
 
   specialActionsOutput.executedSpecialAction.specialAction = motionNetData.nodeArray[currentNode++].getSpecialActionID();
   specialActionsOutput.executedSpecialAction.mirror = mirror;
   specialActionsOutput.isMotionStable = infoTable[specialActionsOutput.executedSpecialAction.specialAction].isMotionStable;
+
+  // play dead is stable when legs are in sit down position
+  if(specialActionsOutput.executedSpecialAction.specialAction == SpecialActionRequest::playDead)
+  {
+    specialActionsOutput.isMotionStable = true;
+    for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
+    {
+      if (std::abs(theJointAngles.angles[i] - sitDownAngles[i - Joints::lHipYawPitch]) > 0.3f)
+      {
+        specialActionsOutput.isMotionStable = false;
+        break;
+      }
+    }
+  }
 
   //get currently executed special action from motion net traversal:
   if(specialActionsOutput.executedSpecialAction.specialAction != lastSpecialAction)
@@ -194,14 +227,19 @@ void SpecialActions::calculateJointRequest(JointRequest& jointRequest)
         t = currentRequest.mirror(static_cast<Joints::Joint>(i));
       // if fromAngle is off or ignore use JointAngles for further calculation
       if(f == JointAngles::off || f == JointAngles::ignore)
-        f = theJointAngles.angles[i];
+        f = lastRequest.angles[i] = theJointAngles.angles[i];
 
       // if toAngle is off or ignore -> turn joint off/ignore
       if(t == JointAngles::off || t == JointAngles::ignore)
         jointRequest.angles[i] = t;
       //interpolate
       else
-        jointRequest.angles[i] = static_cast<float>(t + (f - t) * ratio);
+      {
+        if(sinInterpolation)
+          jointRequest.angles[i] = static_cast<float>(t + (f - t) * (std::cos(ratio * pi) - 1.f) / -2.f);
+        else
+          jointRequest.angles[i] = static_cast<float>(t + (f - t) * ratio);
+      }
     }
   }
   else

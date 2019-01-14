@@ -1,6 +1,7 @@
 #include "Options/ButtonPressedAndReleased.h"
 #include "Options/Skills/GoToFieldCoordinates.h"
 #include "Options/Skills/SpecialAction.h"
+#include "Options/Skills/Stand.h"
 #include "Options/Skills/StandUp.h"
 #include "Options/Skills/Walk.h"
 #include "Options/Skills/GoToRelativeCoordinates.h"

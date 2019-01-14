@@ -34,14 +34,15 @@ void RobotPose::draw() const
     ColorRGBA::black
   };
   const ColorRGBA ownTeamColorForDrawing = colors[Blackboard::getInstance().exists("OwnTeamInfo") ?
-    static_cast<const OwnTeamInfo&>(Blackboard::getInstance()["OwnTeamInfo"]).teamColor : TEAM_BLUE];
+    static_cast<const OwnTeamInfo&>(Blackboard::getInstance()["OwnTeamInfo"]).teamColour : TEAM_BLUE];
   LINE("representation:RobotPose", translation.x(), translation.y(), dirVec.x(), dirVec.y(),
        20, Drawings::solidPen, ColorRGBA::white);
   POLYGON("representation:RobotPose", 4, bodyPoints, 20, Drawings::solidPen,
           ownTeamColorForDrawing, Drawings::solidBrush, ColorRGBA::white);
   CIRCLE("representation:RobotPose", translation.x(), translation.y(), 42, 0,
          Drawings::solidPen, ownTeamColorForDrawing, Drawings::solidBrush, ownTeamColorForDrawing);
-  DRAWTEXT("representation:RobotPose", translation.x()+100, translation.y()+100, 100, ColorRGBA::white, "validity: " << validity);
+  DRAWTEXT("representation:RobotPose", translation.x()+100, translation.y()+200, 100, ColorRGBA::white, "validity: " << validity);
+  DRAWTEXT("representation:RobotPose", translation.x()+100, translation.y()+100, 100, ColorRGBA::white, "symmetry: " << symmetry);
 
   DECLARE_DEBUG_DRAWING("representation:RobotPose:deviation", "drawingOnField");
   DEBUG_DRAWING3D("representation:RobotPose", "field")
@@ -149,6 +150,7 @@ RobotPoseCompressed::RobotPoseCompressed(const RobotPose& robotPose)
   translation = robotPose.translation.cast<short>();
   rotation = static_cast<short>(robotPose.rotation.toDegrees());
   validity = static_cast<unsigned char>(robotPose.validity * 255.f);
+  symmetry = static_cast<unsigned char>(robotPose.symmetry * 255.f);
 }
 
 RobotPoseCompressed::operator RobotPose() const
@@ -157,5 +159,6 @@ RobotPoseCompressed::operator RobotPose() const
   robotPose.translation = translation.cast<float>();
   robotPose.rotation = Angle::fromDegrees(rotation);
   robotPose.validity = validity / 255.f;
+  robotPose.symmetry = symmetry / 255.f;
   return robotPose;
 }

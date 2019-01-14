@@ -42,6 +42,9 @@ MODULE(PathToSpeedStable,
   REQUIRES(TeammateData),
   LOADS_PARAMETERS(
   {,
+    (float)(0.75f) speedPercentageWhenNotChasingBall, /** fixed percentage of speed for all robots who are not going to the ball except goalie */
+    (bool)(false) useDistanceBasedSpeedPercentageInReady, /** dynamic speed percentage, depending on distance to walk in ready state; TODO: any timed state? */
+    (float)(0.6f) minSpeedPercentageInReady,
     (float) targetStateSwitchDistance,
     (float) targetStateSwitchDistanceHysteresis,
     (float) omniStateSwitchDistance,
@@ -67,9 +70,10 @@ public:
 
 private:
 
-  PathFollowState state;
-  bool inOwnGoalArea;
-  bool inDribbling;
+  PathFollowState state = far;
+  bool inOwnGoalArea = false;
+  bool inDribbling = false;
+  bool atBall = false;
 
   void update(SpeedRequest& speedRequest);
 };

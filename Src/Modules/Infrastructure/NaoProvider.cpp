@@ -245,6 +245,7 @@ void NaoProvider::update(RobotInfo& robotInfo)
   robotInfo.naoVersion = naoVersion;
   robotInfo.naoBodyType = naoBodyType;
   robotInfo.naoHeadType = naoHeadType;
+  robotInfo.transitionToBhuman = naoBody.getTransitionToBhuman();
 }
 
 void NaoProvider::update(SystemSensorData& systemSensorData)

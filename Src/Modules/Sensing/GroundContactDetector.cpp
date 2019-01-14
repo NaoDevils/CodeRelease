@@ -24,7 +24,7 @@ void GroundContactDetector::update(GroundContactState& groundContactState)
   // TODO: BHuman 2015 port
   bool ignoreSensors = (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::standHigh) ||
                        (theMotionRequest.motion == MotionRequest::specialAction && theMotionRequest.specialActionRequest.specialAction != SpecialActionRequest::standHigh);
-  if (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick ||
+  if (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick || theMotionInfo.motion == MotionRequest::stand ||
     (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::standHigh) ||
     (theMotionRequest.motion == MotionRequest::specialAction && theMotionRequest.specialActionRequest.specialAction != SpecialActionRequest::standHigh) ||
     (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::stand) ||

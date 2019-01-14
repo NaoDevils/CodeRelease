@@ -59,6 +59,9 @@ public:
   /** Accesses CPU temperature sensor */
   float getCPUTemperature();
 
+  /** If libbhuman has given full control to bhuman. (0 = libbhuman, 1 = bhuman) Range: [0.0, 1.0] */
+  float getTransitionToBhuman();
+
   /** Determine status of wlan hardware. */
   bool getWlanStatus();
 

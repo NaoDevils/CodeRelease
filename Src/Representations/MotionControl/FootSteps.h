@@ -32,20 +32,13 @@ public :
 	/** Is the controller running? */
 	bool running;
 
+  State walkState;
+
 	/** Immediate stop in case of emergency. */
 	bool emergencyStop;
 
-	/** Target pitch. Obsolete. */
-	double pitch;
-
   /** Position of the robot after the whole preview phase is executed */
   Point robotPoseAfterStep;
-
-  /** Duration of one step, obsolete */
-	int cycleLength;
-  
-  /** Position in this step, obsolete */
-  int positionInCycle;
 
  /**
   * The provided time is the number of the frame when the currently created foot step
@@ -58,7 +51,6 @@ public :
 	{
 		STREAM_REGISTER_BEGIN;
 		STREAM(running)
-		STREAM(pitch)
     STREAM(time)
 		STREAM_REGISTER_FINISH;
 	};
@@ -103,8 +95,16 @@ public :
 		return steps[i];
 	}
 
-private:
-	
+  void popStep()
+  {
+    steps.pop_back();
+  }
+
+  void popFront()
+  {
+    steps.erase(steps.begin());
+  }
+
 	/** 
 	 *	Buffer for target foot steps. There might be more than one step
 	 *	per frame to fill the preview buffer needed by the preview controller

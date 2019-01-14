@@ -226,6 +226,8 @@
 #define _STREAM_VAR_2_II(...) _STREAM_VAR_2_III
 #define _STREAM_VAR_2_III(...)
 
+#ifndef __CLION_IDE__
+
 /** Generate streaming code from declaration. */
 #define _STREAM_SER(seq) {auto& _var = _STREAM_VAR(seq); Streaming::streamIt(in, out, #seq, _var, Streaming:: _STREAM_SER_I seq));}
 #define _STREAM_SER_I(...) _STREAM_JOIN(_STREAM_SER_, _STREAM_SEQ_SIZE(__VA_ARGS__))(__VA_ARGS__)
@@ -253,6 +255,23 @@
 #define _STREAM_INIT_III_1(...) _STREAM_INIT_IV __VA_ARGS__
 #define _STREAM_INIT_IV(...) __VA_ARGS__::_STREAM_DROP(
 #define _STREAM_INIT_V(...) _STREAM_DROP(
+
+#else
+
+#include <boost/preprocessor.hpp>
+
+/** Generate streaming code from declaration. */
+#define _STREAM_SER(seq) {auto& _var = _STREAM_VAR(seq); Streaming::streamIt(in, out, #seq, _var, nullptr);}
+
+/** Generate the actual declaration. */
+#define _STREAM_DECL(seq) decltype(Streaming::TypeWrapper<BOOST_PP_SEQ_HEAD(seq)>::type) _STREAM_VAR(seq) _STREAM_INIT(seq);
+
+/** Generate the initialisation code from the declaration if required. */
+#define _STREAM_INIT(seq) _STREAM_JOIN(_STREAM_INIT_I_, _STREAM_SEQ_SIZE(seq))(seq)
+#define _STREAM_INIT_I_1(seq)
+#define _STREAM_INIT_I_2(seq) = decltype(Streaming::TypeWrapper<BOOST_PP_SEQ_HEAD(seq)>::type)(BOOST_PP_SEQ_ELEM(1, seq))
+
+#endif
 
 /** Generate streamable class. */
 #define _STREAM_STREAMABLE(name, base, streamBase, header, ...) \

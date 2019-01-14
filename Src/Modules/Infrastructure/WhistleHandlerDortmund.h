@@ -4,26 +4,35 @@
 
 #pragma once
 
+#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/Modeling/TeamBallModel.h"
+#include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/RemoteBallModel.h"
+#include "Representations/Modeling/RobotPose.h"
 #include "Tools/Module/Module.h"
+#include "Representations/Modeling/WhistleDortmund.h"
 
 MODULE(WhistleHandlerDortmund,
 {,
+  REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RawGameInfo),
   REQUIRES(TeammateData),
-  REQUIRES(TeamBallModel),
+  REQUIRES(RemoteBallModel),
+  REQUIRES(BallModel),
+  REQUIRES(RobotPose),
   REQUIRES(WhistleDortmund),
   PROVIDES(GameInfo),
-  DEFINES_PARAMETERS(
-{,
+  LOADS_PARAMETERS(
+  {,
     (int) (1000) timeWindow,
     (int) (49) percentOfTeamAgrees,
+    (bool) (true) useBallPosition,
+    (float) (600.f) maxBallToMiddleDistance,
   }),
 });
 
@@ -31,7 +40,7 @@ class WhistleHandlerDortmund : public WhistleHandlerDortmundBase
 {
 private:
   std::vector<unsigned> penaltyTimes;
-  unsigned whistleTimestamps[MAX_NUM_PLAYERS];
+  unsigned whistleTimestamps[MAX_NUM_PLAYERS+1];
 
   unsigned timeOfLastSetState = 0;
   unsigned lastGameState = STATE_INITIAL;
@@ -39,4 +48,6 @@ private:
 
   void update(GameInfo& gameInfo);
   bool checkWhistles();
+  bool checkBall();
+  bool checkForIllegalMotionPenalty();
 };

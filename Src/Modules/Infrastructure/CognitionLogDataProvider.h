@@ -27,6 +27,7 @@
 #include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
+#include "Representations/Modeling/RobotPoseHypotheses.h"
 #include "Representations/Modeling/SideConfidence.h"
 #include "Representations/Modeling/TeamBallModel.h"
 #include "Representations/MotionControl/MotionInfo.h"
@@ -44,6 +45,8 @@
 #include "Representations/Modeling/MocapBallModel.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Tools/Module/Module.h"
+
+#include <memory>
 
 MODULE(CognitionLogDataProvider,
 {,
@@ -89,6 +92,7 @@ MODULE(CognitionLogDataProvider,
   PROVIDES(RobotMap),
   PROVIDES(RobotsPercept),
   PROVIDES(RobotPose),
+  PROVIDES_WITHOUT_MODIFY(RobotPoseHypotheses),
   PROVIDES(SideConfidence),
   PROVIDES(TeamBallModel),
   PROVIDES(TeammateData),
@@ -103,6 +107,7 @@ private:
   LowFrameRateImageUpper* lowFrameRateImageUpper; /**< This will be allocated when a low frame rate image was received. */
   Image lastImages; /**< Stores images per camera received as low frame rate images. */
   ImageUpper lastImagesUpper; /**< Stores images per camera received as low frame rate images. */
+  std::unique_ptr<RobotPoseHypothesesCompressed> robotPoseHypothesesCompressed; /**< Stores robot pose hypotheses .*/
 
   DECLARE_DEBUG_IMAGE(corrected);
   DECLARE_DEBUG_IMAGE(correctedUpper);
@@ -144,6 +149,7 @@ private:
   void update(RobotInfo&) {}
   void update(RobotMap&) {}
   void update(RobotPose&) {}
+  void update(RobotPoseHypotheses& robotPoseHypotheses);
   void update(RobotsPercept&) {}
   void update(SideConfidence&) {}
   void update(TeamBallModel&) {}

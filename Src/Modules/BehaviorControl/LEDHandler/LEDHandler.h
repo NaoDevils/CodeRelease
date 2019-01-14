@@ -21,6 +21,7 @@
 #include "Representations/BehaviorControl/BehaviorLEDRequest.h"
 #include "Representations/Modeling/WhistleDortmund.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
+#include "Representations/MotionControl/StandEngineOutput.h"
 
 MODULE(LEDHandler,
 { ,
@@ -38,6 +39,7 @@ MODULE(LEDHandler,
   REQUIRES(TeammateData),
   REQUIRES(WhistleDortmund),
   REQUIRES(GameSymbols),
+  REQUIRES(StandEngineOutput),
   PROVIDES(LEDRequest),
 });
 
@@ -57,4 +59,5 @@ private:
   void setRightEye(LEDRequest& ledRequest);
   void setHead(LEDRequest& ledRequest);
   void setChestButton(LEDRequest& ledRequest);
+  void setFeet(LEDRequest& ledRequest);
 };

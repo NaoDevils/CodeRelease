@@ -9,22 +9,22 @@ FLIPMController::FLIPMController()
     reset();
 }
 
-void FLIPMController::Shrink()
-{
-    while (pRef.begin() != kElement)
-    {
-        pRef.pop_front();
-    }
-
-    while (pRef_RCS.begin() != kElement_RCS)
-    {
-        pRef_RCS.pop_front();
-
-        Footposition *footPos = footPositions.front();
-        footPositions.pop_front();
-        delete footPos;
-    }
-}
+//void FLIPMController::Shrink()
+//{
+//    while (pRef.begin() != kElement)
+//    {
+//        pRef.pop_front();
+//    }
+//
+//    while (pRef_RCS.begin() != kElement_RCS)
+//    {
+//        pRef_RCS.pop_front();
+//
+//        Footposition *footPos = footPositions.front();
+//        footPositions.pop_front();
+//        delete footPos;
+//    }
+//}
 
 void FLIPMController::reset()
 {
@@ -37,144 +37,147 @@ void FLIPMController::reset()
     x_RCS.y() = Eigen::Matrix<float, 6, 1>::Zero();
     v_RCS = Vector2f::Zero();
 
-    pRef.clear();
-    pRef_RCS.clear();
+    //pRef.clear();
+    //pRef_RCS.clear();
 
-    kElementEmpty = true;
-    kElementRCSEmpty = true;
+    //kElementEmpty = true;
+    //kElementRCSEmpty = true;
 
     isRunning = false;
 }
 
-ZMP FLIPMController::getReferenceZMP()
-{
-    if (isRunning)
-    {
-        return *kElement;
-    }
-    else return ZMP();
-}
+//ZMP FLIPMController::getReferenceZMP()
+//{
+//    if (isRunning)
+//    {
+//        return *kElement;
+//    }
+//    else return ZMP();
+//}
 
 //Rensen: Removed due to unknown attribute warning
 //#ifdef TARGET_ROBOT
 //__attribute__((optimize("unroll-loops")))
 //#endif
-void FLIPMController::executeController(Dimension d, const Eigen::Matrix< float, 1, static_N>  &refZMP)
+void FLIPMController::executeController(Dimension d, const Eigen::Matrix< float, 1, PREVIEW_LENGTH>  &refZMP)
 {
     Eigen::Matrix< float, 6, 1> err = theObservedFLIPMError.ObservedError[d]; //+ theReferenceModificator.handledErr[d];
-    /*Eigen::Matrix< float, 6, 1> offsetFromParameters = Eigen::Matrix<float, 6, 1>::Zero();
+    
+    /*
+    Eigen::Matrix< float, 6, 1> offsetFromParameters = Eigen::Matrix<float, 6, 1>::Zero();
     offsetFromParameters(0, 0) = theWalkingEngineParams.comOffsets.xFixed;
     float yOffset = theWalkingEngineParams.comOffsets.ySpeedDependent[theFootpositions.speed.y < 0] * 1000.0f * std::fabs(theFootpositions.speed.y * 1000.0f) / theWalkingEngineParams.speedLimits.y;
-    offsetFromParameters(1, 0) = theWalkingEngineParams.comOffsets.yFixed + yOffset;*/
+    offsetFromParameters(1, 0) = theWalkingEngineParams.comOffsets.yFixed + yOffset;
+    */
 
     if (d == X) {
-        float u1 = paramsFLIPMContX.Gi * v[d];
-        float u2 = paramsFLIPMContX.Gx * x[d];
-        float u3 = refZMP * paramsFLIPMContX.Gd;
+        float u1 = theFLIPMControllerParams.paramsX.Gi * v[d];
+        float u2 = theFLIPMControllerParams.paramsX.Gx * x[d];
+        float u3 = refZMP * theFLIPMControllerParams.paramsX.Gd;
         float u = -u1 - u2 - u3;
-        Eigen::Matrix< float, 6, 1> x1 = paramsFLIPMContX.A * x[d];
-        Eigen::Matrix< float, 6, 1> x2 = paramsFLIPMContX.b * u;
+        Eigen::Matrix< float, 6, 1> x1 = theFLIPMControllerParams.paramsX.A * x[d];
+        Eigen::Matrix< float, 6, 1> x2 = theFLIPMControllerParams.paramsX.b * u;
         x[d] = x1 + x2 + err; // +offsetFromParameters;
-        float v1 = paramsFLIPMContX.c * x[d];
-        float v2 = (*kElement)[d];
+        float v1 = theFLIPMControllerParams.paramsX.c * x[d];
+        float v2 = refZMP[0];
         v[d] += v1 - v2;
     }
     else {
-        float u1 = paramsFLIPMContY.Gi * v[d];
-        float u2 = paramsFLIPMContY.Gx * x[d];
-        float u3 = refZMP * paramsFLIPMContY.Gd;
+        float u1 = theFLIPMControllerParams.paramsY.Gi * v[d];
+        float u2 = theFLIPMControllerParams.paramsY.Gx * x[d];
+        float u3 = refZMP * theFLIPMControllerParams.paramsY.Gd;
         float u = -u1 - u2 - u3;
-        Eigen::Matrix< float, 6, 1> x1 = paramsFLIPMContY.A * x[d];
-        Eigen::Matrix< float, 6, 1> x2 = paramsFLIPMContY.b * u;
+        Eigen::Matrix< float, 6, 1> x1 = theFLIPMControllerParams.paramsY.A * x[d];
+        Eigen::Matrix< float, 6, 1> x2 = theFLIPMControllerParams.paramsY.b * u;
         x[d] = x1 + x2 + err;// +offsetFromParameters;
-        float v1 = paramsFLIPMContY.c * x[d];
-        float v2 = (*kElement)[d];
+        float v1 = theFLIPMControllerParams.paramsY.c * x[d];
+        float v2 = refZMP[0];
         v[d] += v1 - v2;
     }
 
 }
 
-void FLIPMController::executeRCSController(Dimension d, const Eigen::Matrix< float, 1, static_N>  &refZMP)
+void FLIPMController::executeRCSController(Dimension d, const Eigen::Matrix< float, 1, PREVIEW_LENGTH>  &refZMP)
 {
     Eigen::Matrix< float, 6, 1> err = theObservedFLIPMError.ObservedError[d]; //+ theReferenceModificator.handledErr[d];
 
     if (d == X) {
-        float u1 = paramsFLIPMContX.Gi * v_RCS[d];
-        float u2 = paramsFLIPMContX.Gx * x_RCS[d];
-        float u3 = refZMP * paramsFLIPMContX.Gd;
+        float u1 = theFLIPMControllerParams.paramsX.Gi * v_RCS[d];
+        float u2 = theFLIPMControllerParams.paramsX.Gx * x_RCS[d];
+        float u3 = refZMP * theFLIPMControllerParams.paramsX.Gd;
         float u = -u1 - u2 - u3;
-        Eigen::Matrix< float, 6, 1> x1 = paramsFLIPMContX.A * x_RCS[d];
-        Eigen::Matrix< float, 6, 1> x2 = paramsFLIPMContX.b * u;
+        Eigen::Matrix< float, 6, 1> x1 = theFLIPMControllerParams.paramsX.A * x_RCS[d];
+        Eigen::Matrix< float, 6, 1> x2 = theFLIPMControllerParams.paramsX.b * u;
         x_RCS[d] = x1 + x2 + err;
-        float v1 = paramsFLIPMContX.c * x_RCS[d];
-        float v2 = (*kElement_RCS)[d];
+        float v1 = theFLIPMControllerParams.paramsX.c * x_RCS[d];
+        float v2 = refZMP[0];
         v_RCS[d] += v1 - v2;
     }
     else {
-        float u1 = paramsFLIPMContY.Gi * v_RCS[d];
-        float u2 = paramsFLIPMContY.Gx * x_RCS[d];
-        float u3 = refZMP * paramsFLIPMContY.Gd;
+        float u1 = theFLIPMControllerParams.paramsY.Gi * v_RCS[d];
+        float u2 = theFLIPMControllerParams.paramsY.Gx * x_RCS[d];
+        float u3 = refZMP * theFLIPMControllerParams.paramsY.Gd;
         float u = -u1 - u2 - u3;
-        Eigen::Matrix< float, 6, 1> x1 = paramsFLIPMContY.A * x_RCS[d];
-        Eigen::Matrix< float, 6, 1> x2 = paramsFLIPMContY.b * u;
+        Eigen::Matrix< float, 6, 1> x1 = theFLIPMControllerParams.paramsY.A * x_RCS[d];
+        Eigen::Matrix< float, 6, 1> x2 = theFLIPMControllerParams.paramsY.b * u;
         x_RCS[d] = x1 + x2 + err;
-        float v1 = paramsFLIPMContY.c * x_RCS[d];
-        float v2 = (*kElement_RCS)[d];
+        float v1 = theFLIPMControllerParams.paramsY.c * x_RCS[d];
+        float v2 = refZMP[0];
         v_RCS[d] += v1 - v2;
     }
 
 }
+
 Point FLIPMController::controllerStep()
 {
-    PLOT("module:FLIPMController:refZMP.x", kElement->x());
-    PLOT("module:FLIPMController:refZMP.y", kElement->y());
-    PLOT("module:FLIPMController:refZMP_RCS.x", kElement_RCS->x());
-    PLOT("module:FLIPMController:refZMP_RCS.y", kElement_RCS->y());
+    Eigen::Matrix<Eigen::Matrix<float, 1, PREVIEW_LENGTH>, 2, 1> refZMP;
 
-    Eigen::Matrix<Eigen::Matrix<float, 1, static_N>, 2, 1> refZMP;
-
-    ZMPList::iterator _pRef;
-    _pRef = kElement;
+    /*ZMPList::iterator _pRef;
+    _pRef = kElement;*/
 
     //Rensen: added because of warning above
 #ifdef TARGET_ROBOT
 #pragma unroll
 #endif
-    for (int i = 0; i < static_N; i++) {
-        refZMP(0)(0, i) = _pRef->x();
-        refZMP(1)(0, i) = _pRef->y();
-
-        _pRef++;
+    for (int i = 0; i < PREVIEW_LENGTH; i++) 
+    {
+      refZMP(0)(0, i) = theRefZMP2018.zmpWCS[i].x();
+      refZMP(1)(0, i) = theRefZMP2018.zmpWCS[i].y();
     }
+
+    PLOT("module:FLIPMController:refZMP.x", theRefZMP2018.zmpWCS[0].x());
+    PLOT("module:FLIPMController:refZMP.y", theRefZMP2018.zmpWCS[0].y());
+
     executeController(X, refZMP.x());
     executeController(Y, refZMP.y());
+    
 
-    kElement++;
 
-    Eigen::Matrix<Eigen::Matrix<float, 1, static_N>, 2, 1> refZMP_RCS;
-    ZMPList::iterator _pRef_RCS;
+    Eigen::Matrix<Eigen::Matrix<float, 1, PREVIEW_LENGTH>, 2, 1> refZMP_RCS;
+    /*ZMPList::iterator _pRef_RCS;
     _pRef_RCS = kElement_RCS;
-
+*/
     //Rensen: added because of warning above
 #ifdef TARGET_ROBOT
 #pragma unroll
 #endif
-    for (int i = 0; i < static_N; i++) {
-        refZMP_RCS(0)(0, i) = _pRef_RCS->x();
-        refZMP_RCS(1)(0, i) = _pRef_RCS->y();
-
-        _pRef_RCS++;
+    for (int i = 0; i < PREVIEW_LENGTH; i++) 
+    {
+      refZMP_RCS(0)(0, i) = theRefZMP2018.zmpRCS[i].x();
+      refZMP_RCS(1)(0, i) = theRefZMP2018.zmpRCS[i].y();
     }
+
+    PLOT("module:FLIPMController:refZMP_RCS.x", theRefZMP2018.zmpRCS[0].x());
+    PLOT("module:FLIPMController:refZMP_RCS.y", theRefZMP2018.zmpRCS[0].y());
+
     executeRCSController(X, refZMP_RCS.x());
     executeRCSController(Y, refZMP_RCS.y());
 
     Pose2f robotPosition(theWalkingInfo.robotPosition.rotation, Vector2f(theWalkingInfo.robotPosition.translation.x(), theWalkingInfo.robotPosition.translation.y()));
     Point targetCOM(x_RCS(0)(3, 0), x_RCS(1)(3, 0));
 
-    float direction = kElement_RCS->direction;
-    targetCOM.rotate2D(direction);
-
-    kElement_RCS++;
+    //float direction = kElement_RCS->direction;
+    //targetCOM.rotate2D(direction);
 
     PLOT("module:FLIPMController:targetCoM_RCS.x", targetCOM.x);
     PLOT("module:FLIPMController:targetCoM_RCS.y", targetCOM.y);
@@ -183,11 +186,11 @@ Point FLIPMController::controllerStep()
     PLOT("module:FLIPMController:targetCoMDiff.x", x(0)(3, 0) - targetCOM.x);
     PLOT("module:FLIPMController:targetCoMDiff.y", x(1)(3, 0) - targetCOM.y);
 
-    if (theFLIPMObserverParams.useRCS) {
-        return Point(targetCOM.x, targetCOM.y, paramsFLIPMContX.z_h);
+    if (theFLIPMControllerParams.useRCS) {
+        return Point(targetCOM.x, targetCOM.y, theFLIPMControllerParams.paramsX.z_h);
     }
     else {
-        return Point(x(0)(3, 0), x(1)(3, 0), paramsFLIPMContX.z_h);
+        return Point(x(0)(3, 0), x(1)(3, 0), theFLIPMControllerParams.paramsX.z_h);
     }
 }
 
@@ -205,35 +208,35 @@ Point FLIPMController::controllerStep()
     return a;
 }*/
 
-void FLIPMController::addRefZMP(ZMP zmp)
-{
-    pRef.push_back(zmp);
-
-    if (kElementEmpty)
-    {
-        kElement = pRef.begin();
-        kElementEmpty = false;
-    }
-}
-
-void FLIPMController::addRefZMP_RCS(ZMP zmp)
-{
-    pRef_RCS.push_back(zmp);
-
-    if (kElementRCSEmpty)
-    {
-        kElement_RCS = pRef_RCS.begin();
-        kElementRCSEmpty = false;
-    }
-}
-
-void FLIPMController::addFootsteps(const Footposition &fp)
-{
-    Footposition *newpos = new Footposition;
-    *newpos = fp;
-
-    footPositions.push_back(newpos);
-}
+//void FLIPMController::addRefZMP(ZMP zmp)
+//{
+//    pRef.push_back(zmp);
+//
+//    if (kElementEmpty)
+//    {
+//        kElement = pRef.begin();
+//        kElementEmpty = false;
+//    }
+//}
+//
+//void FLIPMController::addRefZMP_RCS(ZMP zmp)
+//{
+//    pRef_RCS.push_back(zmp);
+//
+//    if (kElementRCSEmpty)
+//    {
+//        kElement_RCS = pRef_RCS.begin();
+//        kElementRCSEmpty = false;
+//    }
+//}
+//
+//void FLIPMController::addFootsteps(const Footposition &fp)
+//{
+//    Footposition *newpos = new Footposition;
+//    *newpos = fp;
+//
+//    footPositions.push_back(newpos);
+//}
 
 void FLIPMController::update(TargetCoM & targetCoM)
 {
@@ -265,26 +268,23 @@ void FLIPMController::update(TargetCoM & targetCoM)
     DECLARE_PLOT("module:FLIPMController:targetCoMDiff.x");
     DECLARE_PLOT("module:FLIPMController:targetCoMDiff.y");
 
-    paramsFLIPMContX.handle();
-    paramsFLIPMContY.handle();
-
-    if (!isRunning && theRefZMP.running) /* if the controller isn't running, but we have several new reference ZMP's*/
+    if (!isRunning && theRefZMP2018.running) /* if the controller isn't running, but we have several new reference ZMP's*/
     {
         Start();
         isRunning = true;
     }
 
-    for (int i = 0; i < theFootSteps.getNumOfSteps(); i++)
+    /*for (int i = 0; i < theFootSteps.getNumOfSteps(); i++)
         addFootsteps(theFootSteps.getStep(i));
-
-    for (int i = 0; i < theRefZMP.numOfZMP_RCS; i++) /* Fetch the new reference ZMP's and push them in our ZMPList*/
-    {
-        addRefZMP_RCS(theRefZMP.getZMP_RCS(i));
-    }
-    for (int i = 0; i < theRefZMP.numOfZMP; i++) /* Fetch the new reference ZMP's and push them in our ZMPList*/
-    {
-        addRefZMP(theRefZMP.getZMP(i));
-    }
+    */
+    //for (int i = 0; i < theRefZMP.numOfZMP_RCS; i++) /* Fetch the new reference ZMP's and push them in our ZMPList*/
+    //{
+    //    addRefZMP_RCS(theRefZMP.getZMP_RCS(i));
+    //}
+    //for (int i = 0; i < theRefZMP.numOfZMP; i++) /* Fetch the new reference ZMP's and push them in our ZMPList*/
+    //{
+    //    addRefZMP(theRefZMP.getZMP(i));
+    //}
 
     targetCoM.x = targetCoM.y = 0; /* reset the target COM*/
     for (int i = 0; i < 6; i++) {
@@ -292,7 +292,7 @@ void FLIPMController::update(TargetCoM & targetCoM)
         targetCoM.state_y[i] = 0.0;
     }
 
-    if (isRunning && !theRefZMP.running) /* if the controller is running, but we have no new reference ZMP's*/
+    if (isRunning && !theRefZMP2018.running) /* if the controller is running, but we have no new reference ZMP's*/
     {
         End();
         isRunning = false;
@@ -323,8 +323,8 @@ void FLIPMController::update(TargetCoM & targetCoM)
 
     if (isRunning)
     {
-        ASSERT(pRef.size() > 0);
-        ASSERT(pRef_RCS.size() > 0);
+        //ASSERT(pRef.size() > 0);
+        //ASSERT(pRef_RCS.size() > 0);
 
         // Elemente, die vom ZMPGenerator modifiziert wurden und im selben Frame rausgeschickt wurden,
         // werden hier eingehangen und dann nochmal modififiert.
@@ -337,21 +337,21 @@ void FLIPMController::update(TargetCoM & targetCoM)
 
         ASSERT(x[0] == x[0]);
 
-        Shrink();
+        //Shrink();
 
         PLOT("module:FLIPMController:x1", x(0)(0, 0)); /*x1 Position*/
         PLOT("module:FLIPMController:x2", x(0)(3, 0)); /*x2 Position*/
         PLOT("module:FLIPMController:y1", x(1)(0, 0)); /*y1 Position*/
-        PLOT("module:FLIPMController:y2", x(1)(3, 0)); /*y2 Position*/
-        PLOT("module:FLIPMController:calcZMP.y", paramsFLIPMContX.c * x(1));
-        PLOT("module:FLIPMController:calcZMP.x", paramsFLIPMContY.c * x(0));
+        PLOT("module:FLIPMController:y2", x(1)(3, 0)); /*y2 Position*/        
+        PLOT("module:FLIPMController:calcZMP.x", theFLIPMControllerParams.paramsX.c * x(0));
+        PLOT("module:FLIPMController:calcZMP.y", theFLIPMControllerParams.paramsY.c * x(1));
 
         PLOT("module:FLIPMController:x1_RCS", x_RCS(0)(0, 0)); /*x1 Position*/
         PLOT("module:FLIPMController:x2_RCS", x_RCS(0)(3, 0)); /*x2 Position*/
         PLOT("module:FLIPMController:y1_RCS", x_RCS(1)(0, 0)); /*y1 Position*/
         PLOT("module:FLIPMController:y2_RCS", x_RCS(1)(3, 0)); /*y2 Position*/
-        PLOT("module:FLIPMController:calcZMP_RCS.x", paramsFLIPMContX.c * x_RCS(0));
-        PLOT("module:FLIPMController:calcZMP_RCS.y", paramsFLIPMContY.c * x_RCS(1));
+        PLOT("module:FLIPMController:calcZMP_RCS.x", theFLIPMControllerParams.paramsX.c * x_RCS(0));
+        PLOT("module:FLIPMController:calcZMP_RCS.y", theFLIPMControllerParams.paramsY.c * x_RCS(1));
 
         PLOT("module:FLIPMController:calcAcc.y", x(1)(2, 0));
         PLOT("module:FLIPMController:calcAcc.x", x(0)(2, 0));
@@ -370,10 +370,10 @@ void FLIPMController::update(TargetCoM & targetCoM)
         LOG("FLIPMController", "y2p", x(1)(3, 0)); /*y2 Position*/
         LOG("FLIPMController", "y2s", x(1)(4, 0)); /*y2 Speed*/
         LOG("FLIPMController", "y2a", x(1)(5, 0)); /*y2 Acceleration*/
-        LOG("FLIPMController", "calcZMPx", paramsFLIPMContX.c * x(0));
-        LOG("FLIPMController", "calcZMPy", paramsFLIPMContY.c * x(1));
-        LOG("FLIPMController", "pRefX", kElement->x());
-        LOG("FLIPMController", "pRefY", kElement->y());
+        LOG("FLIPMController", "calcZMPx", theFLIPMControllerParams.paramsX.c * x(0));
+        LOG("FLIPMController", "calcZMPy", theFLIPMControllerParams.paramsY.c * x(1));
+        LOG("FLIPMController", "pRefX", theRefZMP2018.zmpRCS[0].x());
+        LOG("FLIPMController", "pRefY", theRefZMP2018.zmpRCS[0].y());
     }
 
     targetCoM.isRunning = isRunning;

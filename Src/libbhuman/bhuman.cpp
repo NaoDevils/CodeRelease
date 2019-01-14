@@ -164,7 +164,9 @@ static const char* sensorNames[] =
   // battery sensors
   "Device/SubDeviceList/Battery/Current/Sensor/Value",
   "Device/SubDeviceList/Battery/Charge/Sensor/Value",
+  "Device/SubDeviceList/Battery/Charge/Sensor/Status",
   "Device/SubDeviceList/Battery/Temperature/Sensor/Value",
+  "Device/SubDeviceList/Battery/Temperature/Sensor/Status",
   
   // fsr sensors
   "Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value",
@@ -329,7 +331,7 @@ static const char* actuatorNames[] =
 static const char* teamInfoNames[] =
 {
   "GameCtrl/teamNumber",
-  "GameCtrl/teamColour",
+  "GameCtrl/teamColor",
   "GameCtrl/playerNumber"
 };
 
@@ -354,15 +356,81 @@ static const float sitDownAngles[25] =
 
   0.f,
   0.f,
-  -0.87f,
+  -0.855f,
   2.16f,
   -1.18f,
   0.f,
 
   0.f,
-  -0.87f,
+  -0.855f,
   2.16f,
   -1.18f,
+  0.f
+};
+
+static const float sitDownAnglesHighArms[25] =
+{
+  0.f,
+  0.f,
+
+  0.712f,
+  0.164f,
+  0.080f,
+  -0.045f,
+  -1.57f,
+  0.f,
+
+  0.712f,
+  -0.164f,
+  -0.080f,
+  0.045f,
+  1.57f,
+  0.f,
+
+  0.f,
+  0.f,
+  -0.855f,
+  2.16f,
+  -1.18f,
+  0.f,
+
+  0.f,
+  -0.855f,
+  2.16f,
+  -1.18f,
+  0.f
+};
+
+static const float standHighAngles[25] =
+{
+  0.f,
+  0.349f,
+  
+  1.571f,
+  0.201f,
+  1.571f,
+  0.f,
+  -1.571f,
+  0.f,
+  
+  1.571f,
+  -0.201f,
+  -1.571f,
+  0.f,
+  1.571f,
+  0.f,
+  
+  0.f,
+  -0.035f,
+  0.157f,
+  -0.087f,
+  0.035f,
+  0.f,
+  
+  -0.035f,
+  0.157f,
+  -0.087f,
+  0.035f,
   0.f
 };
 
@@ -405,8 +473,16 @@ private:
   float startAngles[lbhNumOfPositionActuatorIds]; /**< Start angles for standing up or sitting down. */
   float startStiffness[lbhNumOfPositionActuatorIds]; /**< Start stiffness for sitting down. */
 
+  bool stabilizationStatus; // If the robots is in sitDown position and stabilizing
+  bool chargingStatus; // If the robot is currently charging or not
+
   int startPressedTime; /**< The last time the chest button was not pressed. */
   uint64_t lastBHumanStartTime; /**< The last time bhuman was started. */
+
+  int triplePressStart;
+  int triplePressCount;
+  bool triplePressLastButtonState;
+  bool triplePressSitDownRequested;
 
   /** Close all resources acquired. Called when initialization failed or during destruction. */
   void close()
@@ -465,22 +541,58 @@ private:
   }
 
   /**
-   * Shows the battery state in the right ear if the robot is in the standing state
-   * and bhuman has not used one of these LEDs in the past 5 seconds.
-   * @param actuators The actuator values a part of which will be set by this method.
-   */
+  * Shows the battery state in the right ear if the robot is in the standing state
+  * and bhuman has not used one of these LEDs in the past 5 seconds.
+  * @param actuators The actuator values a part of which will be set by this method.
+  */
   void setBatteryLeds(float* actuators)
   {
-    for(int i = earsLedRight0DegActuator; i <= earsLedRight324DegActuator; ++i)
-      if(actuators[i] != requestedActuators[i])
+    for (int i = earsLedRight0DegActuator; i <= earsLedRight324DegActuator; ++i)
+      if (actuators[i] != requestedActuators[i])
       {
         rightEarLEDsChangedTime = dcmTime;
         requestedActuators[i] = actuators[i];
       }
 
-    if(state != standing || dcmTime - rightEarLEDsChangedTime > 5000)
-      for(int i = 0; i < int(*sensorPtrs[batteryChargeSensor] * 10.f) && i < 10; ++i)
+    if (state != standing || dcmTime - rightEarLEDsChangedTime > 5000)
+      for (int i = 0; i < int(*sensorPtrs[batteryChargeSensor] * 10.f) && i < 10; ++i)
         actuators[earsLedRight0DegActuator + i] = 1.f;
+
+    if(chargingStatus) {
+      float blink = float(dcmTime / 500 & 1);
+      actuators[headLedRearLeft0Actuator] = 1.f - blink;
+      actuators[headLedRearLeft1Actuator] = 1.f - blink;
+      actuators[headLedRearLeft2Actuator] = 1.f - blink;
+      actuators[headLedRearRight0Actuator] = blink;
+      actuators[headLedRearRight1Actuator] = blink;
+      actuators[headLedRearRight2Actuator] = blink;
+      actuators[headLedMiddleRight0Actuator] = blink;
+      actuators[headLedFrontRight0Actuator] = blink;
+      actuators[headLedFrontRight1Actuator] = blink;
+      actuators[headLedFrontLeft0Actuator] = 1.f - blink;
+      actuators[headLedFrontLeft1Actuator] = 1.f - blink;
+      actuators[headLedMiddleLeft0Actuator] = 1.f - blink;
+    }
+  }
+
+  /**
+   * Shows the stabilization state with the head LEDs
+   * @param actuators The actuator values a part of which will be set by this method.
+   */
+  void setStabilizationLeds(float* actuators)
+  {
+    if (stabilizationStatus)
+    {
+      for (int i = headLedRearLeft0Actuator; i <= headLedMiddleLeft0Actuator; i++)
+        if(actuators[i] == 0.f) actuators[i] = 0.1f;
+    }
+
+    if (state == sitting || triplePressSitDownRequested)
+    {
+      actuators[chestBoardLedRedActuator] = 0.f;
+      actuators[chestBoardLedGreenActuator] = 0.f;
+      actuators[chestBoardLedBlueActuator] = float(dcmTime / 500 & 1);
+    }
   }
 
   /**
@@ -502,6 +614,71 @@ private:
   }
 
   /**
+    * Stabilize robot if in sitDown position.
+    */
+  void stabilize(float* controlledActuators)
+  {
+    stabilizationStatus = true;
+
+    // check if robot is sitting correctly and stabilization should be enabled
+    for (int i = lHipYawPitchPositionActuator; i < lbhNumOfPositionActuatorIds; ++i)
+    {
+      // don't stabilize if joint is not close enough to sitDown position
+      if (std::abs(*sensorPtrs[i * 3] - sitDownAngles[i]) > 0.3f)
+      {
+        stabilizationStatus = false;
+        break;
+      }
+    }
+    
+    static bool handsClosed[2] = { false, false };
+    
+    // set joints to sitDown position
+    if (stabilizationStatus)
+    {
+      for (int i = 0; i < lbhNumOfPositionActuatorIds; ++i)
+      {
+        // skip arms
+        if ((i >= lShoulderPitchPositionActuator && i <= lWristYawPositionActuator)
+          || (i >= rShoulderPitchPositionActuator && i <= rWristYawPositionActuator))
+          continue;
+
+        // skip head
+        if (i == headYawPositionActuator || i == headPitchPositionActuator)
+          continue;
+
+        if (i == lHandPositionActuator || i == rHandPositionActuator){
+            // close hands if opened
+            if(std::abs(*sensorPtrs[i * 3] - sitDownAngles[i]) > 0.25f)
+                handsClosed[i == rHandPositionActuator] = false;
+            
+            // skip closing hands if closed
+            if(std::abs(*sensorPtrs[i * 3] - sitDownAngles[i]) < 0.05f)
+                handsClosed[i == rHandPositionActuator] = true;
+            
+            if(handsClosed[i == rHandPositionActuator]) continue;
+        }
+
+        // only stabilize hip pitches and yaw
+        if (i >= lHipYawPitchPositionActuator
+          && i != lHipYawPitchPositionActuator
+          && i != lHipPitchPositionActuator
+          && i != rHipPitchPositionActuator)
+          continue;
+
+        controlledActuators[i] = sitDownAngles[i];
+        controlledActuators[i + headYawStiffnessActuator] = 0.1f;
+
+        // head pitch and fingers need more stiffness
+        if (i == headPitchPositionActuator)
+          controlledActuators[i + headYawStiffnessActuator] = 0.3f;
+        if (i == lHandPositionActuator || i == rHandPositionActuator)
+          controlledActuators[i + headYawStiffnessActuator] = 0.4f;
+      }
+    }
+  }
+
+  /**
    * Handles the different states libbhuman can be in.
    * @param actuators The actuator values requested. They will not be changed, but might
    *                  be used as result of this method.
@@ -512,17 +689,27 @@ private:
   float* handleState(float* actuators)
   {
     static float controlledActuators[lbhNumOfActuatorIds];
+    stabilizationStatus = false;
 
     switch(state)
     {
       sitting:
         state = sitting;
+        lastBHumanStartTime = 0; // force gamectrl reinit when sitting
 
       case sitting:
         memset(controlledActuators, 0, sizeof(controlledActuators));
-        if(frameDrops > allowedFrameDrops ||
-           (actuators[lHipPitchStiffnessActuator] == 0.f && actuators[rHipPitchStiffnessActuator] == 0.f))
+        data->transitionToBhuman = 0.f;
+
+        stabilize(controlledActuators);
+        triplePressSitDownRequested = false;
+
+        // stay here as long as framework is not running or chest button is not pressed
+        if(frameDrops > allowedFrameDrops || triplePressCount == 0)
           return controlledActuators;
+
+        // don't count first press for triplePressSitDown
+        triplePressCount = 0;
 
         for(int i = 0; i < lbhNumOfPositionActuatorIds; ++i)
           startAngles[i] = *sensorPtrs[i * 3];
@@ -535,26 +722,44 @@ private:
         if(phase < 1.f && frameDrops <= allowedFrameDrops)
         {
           memset(controlledActuators, 0, sizeof(controlledActuators));
-          phase = std::min(phase + 0.005f, 1.f);
+          phase = std::min(phase + 0.004f, 1.f);
+          data->transitionToBhuman = phase;
           for(int i = 0; i < lbhNumOfPositionActuatorIds; ++i)
           {
-            controlledActuators[i] = actuators[i] * phase + startAngles[i] * (1.f - phase);
+            float sinPhase = (std::cos(phase * 3.1416f) - 1.f) / -2.f;
+            controlledActuators[i] = actuators[i] * sinPhase + startAngles[i] * (1.f - sinPhase);
             float h = std::min(actuators[i + headYawStiffnessActuator], 0.5f);
-            controlledActuators[i + headYawStiffnessActuator] = actuators[i + headYawStiffnessActuator] * phase + h * (1.f - phase);
+            controlledActuators[i + headYawStiffnessActuator] = actuators[i + headYawStiffnessActuator] * sinPhase + h * (1.f - sinPhase);
           }
           return controlledActuators;
         }
         state = standing;
 
       case standing:
-        if(frameDrops <= allowedFrameDrops)
-          return actuators; // use original actuators
+        // framework is running and no sitDown is requested
+        if(frameDrops <= allowedFrameDrops && !triplePressSitDownRequested)
+        {
+          // stabilize if robot has no stiffness
+          if(!hasStiffness(actuators))
+          {
+            // memcopy here to keep LED requests from framework and avoid modifing the original data
+            memcpy(controlledActuators, actuators, sizeof(controlledActuators));
+            stabilize(controlledActuators);
+            return controlledActuators;
+          }
+          else
+          {
+            return actuators; // use original actuators
+          }
+        }
 
       case preShuttingDown:
         for(int i = 0; i < lbhNumOfPositionActuatorIds; ++i)
         {
           startAngles[i] = positionRequest[5][i][0];
-          if(actuators[lHipPitchStiffnessActuator] == 0.f && actuators[rHipPitchStiffnessActuator] == 0.f)
+          if(isStandHigh())
+            startStiffness[i] = (i >= lShoulderPitchPositionActuator && i <= rElbowRollPositionActuator) ? 0.4f : 0.3f;
+          else if(!hasStiffness(actuators))
             startStiffness[i] = 0.f;
           else if(i >= lShoulderPitchPositionActuator && i <= rElbowRollPositionActuator)
             startStiffness[i] = 0.4f;
@@ -567,21 +772,36 @@ private:
       case sittingDown:
       case shuttingDown:
       shuttingDown:
-        if((phase < 1.f && frameDrops > allowedFrameDrops) || state == shuttingDown)
+        // sit down if framework is stopped, sitDown is requested or system is shutting down
+        if((phase < 1.f && (frameDrops > allowedFrameDrops || triplePressSitDownRequested)) || state == shuttingDown)
         {
           memset(controlledActuators, 0, sizeof(controlledActuators));
           phase = std::min(phase + 0.005f, 1.f);
+          data->transitionToBhuman = 1.f - phase;
+          
+          float sinPhase;
+          if(phase < 0.75f) {
+            sinPhase = (std::cos(phase / 0.75f * 3.1416f) - 1.f) / -2.f;
+          }else{
+            sinPhase = (std::cos((phase - 0.75f) / 0.25f * 3.1416f) - 1.f) / -2.f;
+          }
+          
           for(int i = 0; i < lbhNumOfPositionActuatorIds; ++i)
           {
-            controlledActuators[i] = sitDownAngles[i] * phase + startAngles[i] * (1.f - phase);
+            if(phase < 0.75f) {
+              controlledActuators[i] = sitDownAnglesHighArms[i] * sinPhase + startAngles[i] * (1.f - sinPhase);
+            }else{
+              controlledActuators[i] = sitDownAngles[i] * sinPhase + sitDownAnglesHighArms[i] * (1.f - sinPhase);
+            }
+            
             controlledActuators[i + headYawStiffnessActuator] = startStiffness[i];
           }
           return controlledActuators;
         }
-        else if(frameDrops <= allowedFrameDrops)
+        else if(frameDrops <= allowedFrameDrops && !triplePressSitDownRequested)
         {
           for(int i = 0; i < lbhNumOfPositionActuatorIds; ++i)
-            startAngles[i] = positionRequest[5][i][0];
+            startAngles[i] = *sensorPtrs[i * 3];
           goto standingUp;
         }
         else
@@ -595,7 +815,47 @@ private:
         goto shuttingDown;
     }
   }
-
+  
+  /** This method disables the framework if the robot has no stiffness and starts charging. */
+  void disableFrameworkWhenCharging(float* actuators) {
+    static bool lastChargingStatus = false;
+    if(state == standing &&
+      !hasStiffness(actuators) &&
+      !isStandHigh() &&
+      chargingStatus &&
+      !lastChargingStatus)
+      triplePressSitDownRequested = true;
+    
+    
+    lastChargingStatus = chargingStatus;
+  }
+  
+  /** This method checks if the given actuator request has stiffness > 0 */
+  bool hasStiffness(float* actuators) {
+    for (int i = 0; i < lbhNumOfPositionActuatorIds; ++i) {
+      if(actuators[i + headYawStiffnessActuator] > 0.f) return true;
+    }
+    
+    return false;
+  }
+  
+  /** This method checks if the robot is in stand high pose */
+  bool isStandHigh() {
+    for (int i = lHipYawPitchPositionActuator; i < lbhNumOfPositionActuatorIds; ++i)
+    {
+      if (std::abs(*sensorPtrs[i * 3] - standHighAngles[i]) > 0.2f)
+      {
+        return false;
+      }
+    }
+    
+    // check if body is upright
+    if(std::abs(*sensorPtrs[angleXSensor]) > 0.2f) return false;
+    if(std::abs(*sensorPtrs[angleYSensor]) > 0.2f) return false;
+    
+    return true;
+  }
+  
   /** The method sets all actuators. */
   void setActuators()
   {
@@ -615,6 +875,7 @@ private:
         actuatorDrops = 0;
       lastReadingActuators = data->readingActuators;
       float* readingActuators = data->actuators[data->readingActuators];
+      disableFrameworkWhenCharging(readingActuators);
       float* actuators = handleState(readingActuators);
 
       if(state != standing)
@@ -625,6 +886,7 @@ private:
           copyNonServos(readingActuators, actuators);
       }
       setBatteryLeds(actuators);
+      setStabilizationLeds(actuators);
 
       // set position actuators
       positionRequest[4][0] = dcmTime; // 0 delay!
@@ -721,6 +983,8 @@ private:
 
       data->newestSensors = writingSensors;
 
+
+
       // detect shutdown request via chest-button
       if(*sensorPtrs[chestButtonSensor] == 0.f)
         startPressedTime = dcmTime;
@@ -729,6 +993,21 @@ private:
         (void) !system("( /home/nao/bin/bhumand stop && sudo shutdown -h now ) &");
         state = state == sitting ? preShuttingDownWhileSitting : preShuttingDown;
       }
+
+      // detect triple button press for sitdown
+      if (triplePressLastButtonState != static_cast<bool>(*sensorPtrs[chestButtonSensor]) && *sensorPtrs[chestButtonSensor] == 1.f)
+      {
+          if (triplePressCount == 0) triplePressStart = dcmTime;
+          triplePressCount++;
+      }
+      triplePressLastButtonState = static_cast<bool>(*sensorPtrs[chestButtonSensor]);
+
+      if (dcmTime - triplePressStart > 2000 || triplePressSitDownRequested) triplePressCount = 0;
+      if (triplePressCount == 3 && *sensorPtrs[chestButtonSensor] == 0.f)
+        triplePressSitDownRequested = true;
+
+      // detect charing status
+      chargingStatus = !(static_cast<int>(*sensorPtrs[batteryStatusSensor]) & 0b100000);
     }
     catch(AL::ALError& e)
     {
@@ -783,7 +1062,7 @@ public:
    */
   BHuman(boost::shared_ptr<AL::ALBroker> pBroker) :
     ALModule(pBroker, "BHuman"),
-    data((LBHData*) MAP_FAILED),
+    data((LBHData*)MAP_FAILED),
     sem(SEM_FAILED),
     proxy(0),
     memory(0),
@@ -795,8 +1074,14 @@ public:
     phase(0.f),
     ledIndex(0),
     rightEarLEDsChangedTime(0),
+    stabilizationStatus(false),
+    chargingStatus(false),
     startPressedTime(0),
-    lastBHumanStartTime(0)
+    lastBHumanStartTime(0),
+    triplePressStart(0),
+    triplePressCount(0),
+    triplePressLastButtonState(false),
+    triplePressSitDownRequested(false)
   {
     setModuleDescription("A module that provides basic ipc NaoQi DCM access using shared memory.");
     fprintf(stderr, "libbhuman: Starting.\n");

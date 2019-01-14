@@ -2,6 +2,8 @@ call Includes/FieldViews1
 
 # ground truth view layers
 vfd worldState representation:GroundTruthRobotPose
+vfd worldState module:PatternGenerator2017:leftFoot 
+vfd worldState module:PatternGenerator2017:rightFoot 
 # from now, relative to ground truth robot pose
 vfd worldState origin:GroundTruthRobotPose
 vfd worldState representation:GroundTruthBallModel

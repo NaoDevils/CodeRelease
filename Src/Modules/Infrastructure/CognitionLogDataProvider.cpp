@@ -166,6 +166,13 @@ void CognitionLogDataProvider::update(ImageCoordinateSystemUpper& imageCoordinat
     }
   }
 }
+void CognitionLogDataProvider::update(RobotPoseHypotheses& robotPoseHypotheses)
+{
+  if (robotPoseHypothesesCompressed)
+    robotPoseHypotheses = *robotPoseHypothesesCompressed;
+  else
+    robotPoseHypotheses.hypotheses.clear();
+}
 
 bool CognitionLogDataProvider::handleMessage(InMessage& message)
 {
@@ -191,8 +198,14 @@ bool CognitionLogDataProvider::handleMessage2(InMessage& message)
   switch(message.getMessageID())
   {
     case idFrameInfo:
-      if(handle(message) && Blackboard::getInstance().exists("Image"))
-        ((Image&) Blackboard::getInstance()["Image"]).timeStamp = ((const FrameInfo&) Blackboard::getInstance()["FrameInfo"]).time;
+      if (handle(message))
+      {
+        if (Blackboard::getInstance().exists("Image"))
+          ((Image&)Blackboard::getInstance()["Image"]).timeStamp = ((const FrameInfo&)Blackboard::getInstance()["FrameInfo"]).time;
+
+        if (Blackboard::getInstance().exists("ImageUpper"))
+          ((ImageUpper&)Blackboard::getInstance()["ImageUpper"]).timeStamp = ((const FrameInfo&)Blackboard::getInstance()["FrameInfo"]).time;
+      }
       return true;
 
     case idImage:
@@ -273,6 +286,13 @@ bool CognitionLogDataProvider::handleMessage2(InMessage& message)
           lowFrameRateImageUpper = new LowFrameRateImageUpper;
         message.bin >> *lowFrameRateImageUpper;
       }
+      return true;
+
+    case idRobotPoseHypothesesCompressed:
+      if (!robotPoseHypothesesCompressed)
+        robotPoseHypothesesCompressed.reset(new RobotPoseHypothesesCompressed);
+      
+      message.bin >> *robotPoseHypothesesCompressed;
       return true;
 
     default:

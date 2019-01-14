@@ -14,4 +14,4 @@ jc press 4 call Includes/Joystick
 
 # game state should initially be set to "set" in Penalty Shootout
 # its important to call "gc set" before "gc playing" for SelfLocator!
- gc set
+gc initial

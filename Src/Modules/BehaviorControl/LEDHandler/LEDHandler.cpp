@@ -21,6 +21,7 @@ void LEDHandler::update(LEDRequest& ledRequest)
   setLeftEye(ledRequest);
   setChestButton(ledRequest);
   setHead(ledRequest);
+  setFeet(ledRequest);
 }
 
 void LEDHandler::setRightEar(LEDRequest& ledRequest)
@@ -32,17 +33,6 @@ void LEDHandler::setRightEar(LEDRequest& ledRequest)
 
   for(int i = 0; i <= onLEDs; i++)
     ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
-
-  // in set override ears for battery with ears for whistle detection
-  if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
-  {
-    if (theWhistleDortmund.detected)
-      state = LEDRequest::LEDState::on;
-    else
-      state = LEDRequest::LEDState::off;
-    for (int i = 0; i <= 9; i++)
-      ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
-  }
 }
 
 void LEDHandler::setLeftEar(LEDRequest& ledRequest)
@@ -238,6 +228,19 @@ void LEDHandler::setHead(LEDRequest& ledRequest)
     for (unsigned i = LEDRequest::headLedMiddleRight0; i <= LEDRequest::headLedMiddleLeft0; i++)
       ledRequest.ledStates[i] = LEDRequest::off;
   }
+
+  // in set override ears for battery with ears for whistle detection
+  if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
+  {
+    LEDRequest::LEDState state;
+    if (theWhistleDortmund.detected)
+      state = LEDRequest::LEDState::on;
+    else
+      state = LEDRequest::LEDState::off;
+
+    for (unsigned i = LEDRequest::headLedRearLeft0; i <= LEDRequest::headLedMiddleLeft0; i++)
+      ledRequest.ledStates[i] = state;
+  }
 }
 
 void LEDHandler::setChestButton(LEDRequest& ledRequest)
@@ -249,11 +252,19 @@ void LEDHandler::setChestButton(LEDRequest& ledRequest)
   // for the penalty status of the robot to not deactivate the red penalty light.
   if(theGameInfo.state == STATE_SET || theRobotInfo.penalty != PENALTY_NONE)
     ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::on;
-  else if (theBehaviorData.soccerState == BehaviorData::inactive)
+}
+
+void LEDHandler::setFeet(LEDRequest& ledRequest)
+{
+  if (theStandEngineOutput.stiffnessTransition > 0.f && theStandEngineOutput.stiffnessTransition < 1.f)
   {
-    ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::off;
-    ledRequest.ledStates[LEDRequest::chestGreen] = LEDRequest::off;
-    ledRequest.ledStates[LEDRequest::chestBlue] = LEDRequest::blinking;
+    for (int i = LEDRequest::footLeftRed; i <= LEDRequest::footRightBlue; i++)
+      ledRequest.ledStates[i] = LEDRequest::blinking;
+  }
+  else if (theStandEngineOutput.stiffnessTransition >= 1.f)
+  {
+    for (int i = LEDRequest::footLeftRed; i <= LEDRequest::footRightBlue; i++)
+      ledRequest.ledStates[i] = LEDRequest::on;
   }
 }
 

@@ -1,0 +1,7 @@
+log stop
+log goto 1
+log once
+set parameters:CLIPBallPerceptor addExtraScan = true; numberOfScanLines = 16; useCNN = true; useCNNOnly = true; logTestCircles = false; minFittingPoints = 5; minFittingPointsForSafeBall = 8; maxFarPointsOnHull = 0; minDistFromImageBorder = 4; maxColorDiff = 30; maxColorJumpDiff = 15; minNumberOfYJumps = 8; validityFactor = 20; minValidity = 0.65; lowestValidity = 0.5; lowerImageUpperBorderDistanceFactor = 1.5; minRadiusInImage = 8; useRobotPose = true; allowBallObstacleOverlap = true; minScore = 0.99; logPositives = true; useBallValidity = false; cnnIndex = 1;
+echo vid upper module:CLIPBallPerceptor:testCircles:upper
+set representation:FallDownState state = upright; direction = none; sidewards = noot; odometryRotationOffset = 0;
+log start

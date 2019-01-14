@@ -70,8 +70,10 @@ ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
   representationToFile["representation:CameraIntrinsics"] = "cameraIntrinsics.cfg";
   representationToFile["parameters:WalkingEngine"] = "walkingEngine.cfg";
   representationToFile["parameters:DmpKickEngine"] = "dmpKickEngine.cfg";
+  representationToFile["parameters:PatternGenerator2017"] = "patternGenerator2017.cfg";
   representationToFile["representation:FLIPMObserverParams"] = "flipmObserverParams.cfg"; 
-  representationToFile["parameters:MotionCombinator"] = "motionCombinator.cfg";
+  representationToFile["representation:LegJointSensorControlParameters"] = "legJointSensorControlParameters.cfg";
+  representationToFile["parameters:StandEngine"] = "standEngine.cfg";
   
   std::ifstream infile(std::string(File::getBHDir()) + "/Config/Locations/Default/modules.cfg");
   std::string line;

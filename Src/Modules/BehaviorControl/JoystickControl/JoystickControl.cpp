@@ -257,6 +257,10 @@ void JoystickControl::generateActionRequest()
       }
     }
   }
+
+  // Unassigned button was pressed -> clear states!
+  for (size_t b = 0; b < state.pressedButtons.size(); b++)
+    state.pressedButtons[b] = false;
 }
 
 bool JoystickControl::standing()

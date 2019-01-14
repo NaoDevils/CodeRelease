@@ -33,7 +33,7 @@ public:
   Vector2f expectedAcc; /**< Expected acceleration of the body */
   bool isLeavingPossible; /**< Is is possible to leave the walking engine without falling? */
   StepData lastUsedFootPositions;
-  bool isInstantKickRunning;
+  bool isCustomStepRunning;
   double accX_XOffset;
   Vector2f desiredBodyRot;
   bool isRunning;
@@ -158,7 +158,7 @@ protected:
     STREAM(offsetToRobotPoseAfterPreview);
     STREAM(expectedAcc);
     STREAM(isLeavingPossible);
-    STREAM(isInstantKickRunning);
+    STREAM(isCustomStepRunning);
     STREAM(accX_XOffset);
     STREAM(desiredBodyRot)
     STREAM_REGISTER_FINISH;

@@ -112,13 +112,13 @@ private:
 
     ASSERT(Blackboard::getInstance().exists("RobotInfo"));
     const RobotInfo& robotInfo = static_cast<const RobotInfo&>(Blackboard::getInstance()["RobotInfo"]);
-    ASSERT(Blackboard::getInstance().exists("MotionRequest"));
-    const MotionRequest& motionRequest = static_cast<const MotionRequest&>(Blackboard::getInstance()["MotionRequest"]);
+    ASSERT(Blackboard::getInstance().exists("MotionInfo"));
+    const MotionRequest& motionInfo = static_cast<const MotionRequest&>(Blackboard::getInstance()["MotionInfo"]);
 
     const bool isInactive =
       robotInfo.penalty != PENALTY_NONE
-      || (motionRequest.motion == MotionRequest::Motion::specialAction && motionRequest.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::playDead)
-      || (motionRequest.motion == MotionRequest::Motion::specialAction && motionRequest.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::sitDown);
+      || (motionInfo.motion == MotionRequest::Motion::specialAction && motionInfo.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::playDead)
+      || robotInfo.transitionToBhuman == 0.f;
 
     initial_state(initial)
     {

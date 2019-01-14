@@ -115,11 +115,14 @@ private:
   };
   PathFollowState state;
   bool wasBlockingWayToGoal;
+  bool isGoalieInOwnPenaltyArea = false;
   
   float distanceToClosestObstacle;
   std::vector<Pose2f> wayPoints;
   std::vector<Obstacle> obstacles;
-  bool ballIsObstacle;
+  bool ballIsObstacle = false;
+  bool avoidBallLeft = false;
+  bool inBallApproach = false;
   Vector2f goalAreaDownLeft;
   Vector2f goalAreaDownRight;
   Vector2f goalAreaUpRight;

@@ -163,6 +163,7 @@ void TeamHandler::addDataToQueue(const RoboCup::SPLStandardMessage& msg, const u
   in.queue.out.bin << header.teamID;
   in.queue.out.bin << header.isPenalized;
   in.queue.out.bin << header.whistleDetected;
+  in.queue.out.bin << header.intention;
   in.queue.out.finishMessage(idNTPHeader);
   if (std::abs(static_cast<int64_t>(timeStampSent) - static_cast<int64_t>(SystemCall::getCurrentSystemTime())) > 5000 || header.teamID != 12)
     return;

@@ -30,5 +30,6 @@ class DeployCmd : public RobotCommand
 public:
   static DeployCmd theDeployCmd;
 private:
-  static std::string mapColorToConf(std::string color);
+  //static std::string mapColorToConf(std::string color);
+  static std::string mapColorToConf(int color);
 };

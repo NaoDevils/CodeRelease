@@ -30,23 +30,12 @@ QMenu* BHToolBar::createUserMenu() const
 
 void BHToolBar::stand()
 {
-  setPlayDead();
-  QTimer::singleShot(300, this, SLOT(setStand()));
+  setStand();
 }
 
 void BHToolBar::sitDown()
 {
   setSitDown();
-  QTimer::singleShot(4000, this, SLOT(setPlayDead()));
-}
-
-void BHToolBar::setPlayDead()
-{
-  MotionRequest moReq;
-  moReq.motion = MotionRequest::Motion::specialAction;
-  moReq.specialActionRequest.specialAction = SpecialActionRequest::SpecialActionID::playDead;
-
-  console.setRepresentation("MotionRequest", moReq);
 }
 
 void BHToolBar::setSitDown()

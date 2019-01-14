@@ -31,7 +31,8 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 
 DECLARE_INTERPOLATE(orientationDelta, float, 0.01f, 0)
 DECLARE_INTERPOLATE(speedDependentTilt, float, 0.01f, 0)
-DECLARE_INTERPOLATE(xOffset, float, 0.0005f, 0)
+DECLARE_INTERPOLATE(xOffset, float, 0.0001f, 0)
+DECLARE_INTERPOLATE(yOffset, float, 0.0001f, 0)
 DECLARE_INTERPOLATE_ARRAY(offsetRight, float, 0.0005f, 6)
 DECLARE_INTERPOLATE_ARRAY(offsetLeft, float, 0.0005f, 6)
 DECLARE_INTERPOLATE_VAR(CoMHeightOffset, float, 0)
@@ -43,7 +44,7 @@ CSConverter::CSConverter(
   const Footpositions         &theFootpositions,
   const TargetCoM             &theTargetCoM,
   const WalkingEngineParams   &theWalkingEngineParams,
-  const ControllerParams      &theControllerParams,
+  const FLIPMControllerParams &theFLIPMControllerParams,
   const ActualCoMRCS          &theActualCoMRCS,
   const FallDownState         &theFallDownState,
   const InertialSensorData    &theInertialSensorData,
@@ -59,7 +60,7 @@ CSConverter::CSConverter(
   theFootpositions(theFootpositions),
   theTargetCoM(theTargetCoM),
   theWalkingEngineParams(theWalkingEngineParams),
-  theControllerParams(theControllerParams),
+  theFLIPMControllerParams(theFLIPMControllerParams),
   theActualCoMRCS(theActualCoMRCS),
   theFallDownState(theFallDownState),
   theInertialSensorData(theInertialSensorData),
@@ -94,7 +95,7 @@ void CSConverter::reset()
   bodyPitch[0] = bodyPitch[1] = 0.f;
 }
 
-void CSConverter::toRobotCoords(StepData *requiredOffset, Point newCoMTarget, Footposition curPos, Point CoM)
+void CSConverter::toRobotCoords(StepData *requiredOffset, Point &newCoMTarget, Footposition &curPos, Point CoM)
 {
   StepData tempStep;
   Point temp;
@@ -103,7 +104,7 @@ void CSConverter::toRobotCoords(StepData *requiredOffset, Point newCoMTarget, Fo
 
   // Calculate an extra angle to rotate around y if robot tilts, but apply only for swinging leg
   // Must be done here to avoid preview
-  if (!curPos.instantKickRunning)
+  if (!curPos.customStepRunning)
   {
 #if 0
     if (theWalkingEngineParams.sensorControlRatio[0] > 0)
@@ -403,12 +404,18 @@ void CSConverter::updateKinematicRequest(KinematicRequest &kinematicRequest)
   }
 
 
-  if (!isRunning && theFootpositions.running)
+  if (!isRunning &&
+    theFootpositions.running &&
+    theFootpositions.currentState != goingToReady &&
+    theFootpositions.currentState != goingToStandby)
   {
     isRunning = true;
   }
 
-  if (isRunning && !theFootpositions.running)
+  if (isRunning &&
+    (!theFootpositions.running ||
+      theFootpositions.currentState == goingToReady ||
+      theFootpositions.currentState == goingToStandby))
   {
     reset();
     isRunning = false;
@@ -434,7 +441,7 @@ void CSConverter::updateKinematicRequest(KinematicRequest &kinematicRequest)
     fp.pitch += theBodyTilt.y + INTERPOLATE(speedDependentTilt, speedDependentTilt);
     fp.roll += theBodyTilt.x;
 
-    isInstantKickRunning = fp.instantKickRunning;
+    isInstantKickRunning = fp.customStepRunning;
 
     targetCoM = theTargetCoM;
     targetCoM += theWalkCalibration.fixedOffset;
@@ -471,29 +478,14 @@ void CSConverter::updateKinematicRequest(KinematicRequest &kinematicRequest)
     bodyPitch[0] = bodyPitch[1] = 0.f;
   }
 
-  Point speed = (targetCoM - lastTargetCoM) / theControllerParams.dt;
+  Point speed = (targetCoM - lastTargetCoM) / theFLIPMControllerParams.paramsX.dt;
   lastTargetCoM = targetCoM;
 
-  acc = speed - lastSpeed / theControllerParams.dt;
+  acc = speed - lastSpeed / theFLIPMControllerParams.paramsX.dt;
   lastSpeed = speed;
 
 
-  isLeavingPossible = false;
-  if (isRunning)
-  {
-    // check if the robot stands on both feets (CoM in the middle),
-    // and does not move (speed of CoM < 0.01)
-    if (std::abs(currentStep.footPos[LEFT_FOOT].x) < theWalkingEngineParams.walkTransition.stopPosThresholdX &&
-      std::abs(currentStep.footPos[RIGHT_FOOT].x) < theWalkingEngineParams.walkTransition.stopPosThresholdX &&
-      std::abs(currentStep.footPos[LEFT_FOOT].y + currentStep.footPos[RIGHT_FOOT].y) < theWalkingEngineParams.walkTransition.stopPosThresholdY &&
-      std::abs(speed.x) < theWalkingEngineParams.walkTransition.stopSpeedThresholdX &&
-      std::abs(speed.y) < theWalkingEngineParams.walkTransition.stopSpeedThresholdY)
-      isLeavingPossible = true;
-  }
-  else
-  {
-    isLeavingPossible = true;
-  }
+  isLeavingPossible = theFootpositions.currentState == standby;
 
   if (currentStep.onFloor[LEFT_FOOT] && currentStep.onFloor[RIGHT_FOOT])
     kinematicRequest.kinematicType = KinematicRequest::feet;
@@ -523,7 +515,9 @@ void CSConverter::updateKinematicRequest(KinematicRequest &kinematicRequest)
   if (!(theFootpositions.speed == Point()))
     zerocount = 0;
 
-  double xOffset = curparams.comOffsets.xFixed;
+  float xOffset = curparams.comOffsets.xFixed;
+  float yOffset = curparams.comOffsets.yFixed;
+
   if (zerocount < 100)
   {
     accXBuffer.push_front(rotAcc.x() * -0.01558f);
@@ -562,11 +556,13 @@ void CSConverter::updateKinematicRequest(KinematicRequest &kinematicRequest)
   }
   // Handle ArmContact while walking - Arne 10.02.17 //
 
-  double yOffset;
+  float dynYOffset = 0;
   int yDir = theFootpositions.speed.y < 0;
-  yOffset = theWalkingEngineParams.comOffsets.ySpeedDependent[yDir] * 1000 * std::abs(theFootpositions.speed.y * 1000) / theWalkingEngineParams.speedLimits.y;
+  dynYOffset = theWalkingEngineParams.comOffsets.ySpeedDependent[yDir] * std::abs(theFootpositions.speed.y * 1000) / theWalkingEngineParams.speedLimits.y;
 
-  double dynXOffset = 0;
+  yOffset += dynYOffset;
+
+  float dynXOffset = 0;
   if (theFootpositions.speed.x > 0)
     dynXOffset = theWalkingEngineParams.comOffsets.xSpeedDependent * theFootpositions.speed.x * 1000 / theWalkingEngineParams.speedLimits.xForward;
 
@@ -574,12 +570,12 @@ void CSConverter::updateKinematicRequest(KinematicRequest &kinematicRequest)
 
   // position left foot
   kinematicRequest.leftFoot[0] = (float)(currentStep.footPos[LEFT_FOOT].x * 1000 - (INTERPOLATE(xOffset, (float)xOffset) * 1000) - (INTERPOLATE(comXShift, (float)comXShift) * 1000));
-  kinematicRequest.leftFoot[1] = (float)(currentStep.footPos[LEFT_FOOT].y * 1000 - yOffset - theWalkingEngineParams.comOffsets.yFixed * 1000 - (INTERPOLATE(comYShift, (float)comYShift) * 1000)) ;
+  kinematicRequest.leftFoot[1] = (float)(currentStep.footPos[LEFT_FOOT].y * 1000 - (INTERPOLATE(yOffset, (float)yOffset) * 1000) - (INTERPOLATE(comYShift, (float)comYShift) * 1000)) ;
   kinematicRequest.leftFoot[2] = (float)(currentStep.footPos[LEFT_FOOT].z * 1000);
 
   // position right foot
   kinematicRequest.rightFoot[0] = (float)(currentStep.footPos[RIGHT_FOOT].x * 1000 - (INTERPOLATE(xOffset, (float)xOffset) * 1000) - (INTERPOLATE(comXShift, (float)comXShift) * 1000));
-  kinematicRequest.rightFoot[1] = (float)(currentStep.footPos[RIGHT_FOOT].y * 1000 - yOffset - theWalkingEngineParams.comOffsets.yFixed * 1000 - (INTERPOLATE(comYShift, (float)comYShift) * 1000));
+  kinematicRequest.rightFoot[1] = (float)(currentStep.footPos[RIGHT_FOOT].y * 1000 - (INTERPOLATE(yOffset, (float)yOffset) * 1000) - (INTERPOLATE(comYShift, (float)comYShift) * 1000));
   kinematicRequest.rightFoot[2] = (float)(currentStep.footPos[RIGHT_FOOT].z * 1000);
 
   kinematicRequest.leftFoot[3] = (float)(currentStep.footPos[LEFT_FOOT].rx);
@@ -649,7 +645,7 @@ void CSConverter::updateWalkingInfo(WalkingInfo &walkingInfo)
   walkingInfo.robotPosition.translation.x() = robotPosition.x;
   walkingInfo.robotPosition.translation.y() = robotPosition.y;
   walkingInfo.robotPosition.rotation = robotPosition.r;
-  walkingInfo.isInstantKickRunning = isInstantKickRunning;
+  walkingInfo.isCustomStepRunning = isInstantKickRunning;
   walkingInfo.isRunning = isRunning;
   walkingInfo.bodyTiltApplied = bodyTiltApplied;
   walkingInfo.desiredBodyRot.y() = 0;

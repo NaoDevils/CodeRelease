@@ -103,10 +103,10 @@ std::string Logger::generateFilename() const
       {
         std::string filename = team.name + "_";
         const GameInfo& gameInfo = static_cast<const GameInfo&>(Blackboard::getInstance()["GameInfo"]);
-        filename += gameInfo.secondaryState == STATE2_PENALTYSHOOT ? "ShootOut_" :
+        filename += gameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT ? "ShootOut_" :
                     gameInfo.firstHalf ? "1stHalf_" : "2ndHalf_";
         filename += static_cast<char>(Global::getSettings().playerNumber + '0');
-		std::cout << "Log to: " << parameters.logFilePath << filename << std::endl;
+        std::cout << "Log to: " << parameters.logFilePath << filename << std::endl;
         return parameters.logFilePath + filename;
       }
   }

@@ -1,22 +1,17 @@
-vd representation:WalkingEngineParams
-vd representation:FLIPMObserverParams
-vd representation:JointCalibration
-vd parameters:MotionCombinator
-
-#dr representation:JointSensorData
+call FLIPM
 
 #########################
 # Current Step Duration #
 #########################
 vp curStepDuration 1000 0.3 0.6 
-vpd curStepDuration module:PatternGenerator2016:curStepDurationCalcWalkParams red
-vpd curStepDuration module:PatternGenerator2016:curStepDurationAddStep green
+vpd curStepDuration module:PatternGenerator2017:curStepDurationCalcWalkParams red
+vpd curStepDuration module:PatternGenerator2017:curStepDurationAddStep green
 
 ############################
 # Walking Plots Controller #
 ############################
 vp Walking.x 1000 0 0.25
-vpd Walking.x module:FLIPMController:refZMP.x yellow
+vpd Walking.x module:FLIPMController:refZMP.x orange
 vpd Walking.x module:FLIPMController:x1 blue
 vpd Walking.x module:FLIPMController:x2 green
 vpd Walking.x module:FLIPMController:calcZMP.x  red
@@ -24,7 +19,7 @@ vpd Walking.x module:FLIPMController:targetCoM.x
 #vpd Walking.x module:FLIPMController:calcAcc.x
 
 vp Walking.y 1000 -0.1 0.1
-vpd Walking.y module:FLIPMController:refZMP.y yellow
+vpd Walking.y module:FLIPMController:refZMP.y orange
 vpd Walking.y module:FLIPMController:y1 blue 
 vpd Walking.y module:FLIPMController:y2 green 
 vpd Walking.y module:FLIPMController:calcZMP.y  red
@@ -32,14 +27,14 @@ vpd Walking.y module:FLIPMController:targetCoM.y
 #vpd Walking.y module:FLIPMController:calcAcc.y
 
 #vp WalkingRCS.x 1000 -0.1 0.25
-#vpd WalkingRCS.x module:FLIPMController:refZMP_RCS.x yellow
+#vpd WalkingRCS.x module:FLIPMController:refZMP_RCS.x orange
 #vpd WalkingRCS.x module:FLIPMController:x1_RCS blue
 #vpd WalkingRCS.x module:FLIPMController:x2_RCS green
 #vpd WalkingRCS.x module:FLIPMController:calcZMP_RCS.x  red
 #vpd WalkingRCS.x module:FLIPMController:targetCoM_RCS.x
 
 #vp WalkingRCS.y 1000 -0.1 0.1
-#vpd WalkingRCS.y module:FLIPMController:refZMP_RCS.y yellow
+#vpd WalkingRCS.y module:FLIPMController:refZMP_RCS.y orange
 #vpd WalkingRCS.y module:FLIPMController:y1_RCS blue 
 #vpd WalkingRCS.y module:FLIPMController:y2_RCS green 
 #vpd WalkingRCS.y module:FLIPMController:calcZMP_RCS.y  red
@@ -110,40 +105,4 @@ vpd CoM2DIFF.x module:FLIPMObserver:realCoM1.x red
 vpd CoM2DIFF.x module:FLIPMObserver:realCoM2.x green
 vpd CoM2DIFF.x module:FLIPMObserver:Delayed_CoM2.x orange
 vpd CoM2DIFF.x module:FLIPMObserver:CoM2diff.x black
-#vpd CoM2DIFF.x module:FLIPMObserver:CoM2diffRatio.x yellow	
-
-
-#####################
-# FLIPM Config Load #
-#####################
-dr module:FLIPMController:FLIPMContX:load
-dr module:FLIPMObserver:FLIPMObsvX:load
-dr module:FLIPMController:FLIPMContY:load
-dr module:FLIPMObserver:FLIPMObsvY:load
-
-echo dr module:FLIPMController:FLIPMContX:load
-echo dr module:FLIPMObserver:FLIPMObsvX:load
-echo dr module:FLIPMController:FLIPMContY:load
-echo dr module:FLIPMObserver:FLIPMObsvY:load
-echo ======================================
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 10; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo set representation:MotionRequest unchanged
-echo ======================================
-echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo ======================================
-echo set representation:ArmContact timeStampLeft = 0; timeStampRight = 0; armContactStateLeft = None; armContactStateRight = None;
-echo ======================================
-echo save representation:WalkingEngineParams
-echo save parameters:MotionCombinator
-echo ======================================
-echo save representation:FLIPMObserverParams
-
-#echo mr TargetCoM ZMPIPController2012Module
-#echo mr TargetCoM FLIPMController
-#echo ======================================
-#echo get representation:WalkingEngineParams
-#echo get representation:JointCalibration
-#echo dr module:RequestTranslator:WalkingEngineParams:save_robot
-#echo dr module:RequestTranslator:FLIPMObserverParams:save_robot
+#vpd CoM2DIFF.x module:FLIPMObserver:CoM2diffRatio.x yellow

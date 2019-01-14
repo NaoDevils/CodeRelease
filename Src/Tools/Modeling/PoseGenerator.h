@@ -72,16 +72,16 @@ public:
     Vector2f pcOnField = Vector2f(pcp.pointOnField.cast<float>());
     if (!pcp.penaltyCrossWasSeen || pcOnField.norm() > 2500)
       return false;
-    Vector2f pcWC = Vector2f(fd.xPosOpponentPenaltyMark, 0.f);
+    Vector2f pcWC = Vector2f(fd.xPosOwnPenaltyMark, 0.f);
     std::vector<CLIPFieldLinesPercept::FieldLine>::const_iterator fl = flp.lines.begin();
-    const float distPCToPenaltyArea = std::abs(fd.xPosOpponentPenaltyArea - fd.xPosOpponentPenaltyMark);
+    const float distPCToPenaltyArea = std::abs(fd.xPosOwnPenaltyArea - fd.xPosOwnPenaltyMark);
     for (; fl != flp.lines.end(); ++fl)
     {
       Geometry::Line line;
-      line.base.x() = (float)fl->startOnField.x();
-      line.base.y() = (float)fl->startOnField.y();
-      line.direction.x() = (float)(fl->endOnField.x() - fl->startOnField.x());
-      line.direction.y() = (float)(fl->endOnField.y() - fl->startOnField.y());
+      line.base.x() = static_cast<float>(fl->startOnField.x());
+      line.base.y() = static_cast<float>(fl->startOnField.y());
+      line.direction.x() = static_cast<float>(fl->endOnField.x() - fl->startOnField.x());
+      line.direction.y() = static_cast<float>(fl->endOnField.y() - fl->startOnField.y());
       float distToPC = Geometry::getDistanceToLine(line, pcOnField);
       if (std::abs(std::abs(distToPC) - distPCToPenaltyArea) < 100)
       {
@@ -103,12 +103,12 @@ public:
         // case: between pc and center circle
         if (distToPC < myDistToLine && distToPC > 0)
         {
-          position.translation.x() = fd.xPosOpponentPenaltyArea - myDistToLine;
+          position.translation.x() = fd.xPosOwnPenaltyArea - myDistToLine;
         }
         // case: between pc and line
         else
         {
-          position.translation.x() = fd.xPosOpponentPenaltyArea - myDistToLine;
+          position.translation.x() = fd.xPosOwnPenaltyArea - myDistToLine;
           Vector2f temp = position.translation;
           temp.x() += 2 * myDistToLine;
           if (std::abs((position.translation - pcWC).norm() - myDistToPC) > std::abs((temp - pcWC).norm() - myDistToPC))
@@ -116,7 +116,7 @@ public:
         }
 
         position = getPoseFromLandmarkAndLine(pcWC, pcOnField, position, line.direction.angle());
-        perceptWeight = (float) fl->validity;
+        perceptWeight = static_cast<float>(fl->validity);
         return true;
       }
     }

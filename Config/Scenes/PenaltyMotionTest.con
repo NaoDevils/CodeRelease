@@ -1,0 +1,10 @@
+call Penalty2016
+
+# load motion to test
+set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = penaltyGoaliePrepareDive; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = goalkeeperDefendPenalty; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+
+vid upper module:PSKickDetector:Upper:ScanLines
+vid upper module:PSKickDetector:Upper:AveragePosition
+vd representation:PSGoalieTrigger

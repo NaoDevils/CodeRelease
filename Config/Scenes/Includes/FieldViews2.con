@@ -15,14 +15,8 @@ vfd worldState representation:RobotsPercept:Field
 vfd worldState origin:RobotPoseAfterPreview
 vfd worldState representation:MotionRequest
 
-# local obstacle grid view
-# usually commented out as it is quite bandwidth/time consuming
-# vfd worldState origin:Odometry
-
 # back to global coordinates
 vfd worldState origin:Reset
 
 #vfd worldState representation:TeamBallModel
 #vfd worldState module:BallModelProvider:remote:hypotheses
-vfd worldState module:SelfLocator2017:hypotheses
-vfd worldState module:SelfLocator2017:LocalizationState

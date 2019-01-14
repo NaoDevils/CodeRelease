@@ -117,6 +117,7 @@ void ArmAnimator::update(ArmMovement& armMovement)
       return;
     }
 
+
     // arm movement
     // Left Arm
     int timeSinceContact = theFrameInfo.getTimeSince(leftTimeWhenContact);

@@ -23,10 +23,19 @@ public :
 
 	/** Is the controller running? */
 	bool running;
+  State currentState;
 
 	void serialize(In* in,Out* out)
 	{
-		STREAM_REGISTER_BEGIN;
+    Vector3f leftFootPos(this->footPos[0].x, this->footPos[0].y, this->footPos[0].z);
+    Vector3f leftFootRot(this->footPos[0].rx, this->footPos[0].ry, this->footPos[0].r);
+    Vector3f rightFootPos(this->footPos[1].x, this->footPos[1].y, this->footPos[1].z);
+    Vector3f rightFootRot(this->footPos[1].rx, this->footPos[1].ry, this->footPos[1].r);
+    STREAM_REGISTER_BEGIN;
+    STREAM(leftFootPos)
+    STREAM(leftFootRot)
+    STREAM(rightFootPos)
+    STREAM(rightFootRot)
 		STREAM_REGISTER_FINISH;
 	};
 

@@ -7,7 +7,7 @@ mr MotionRequest CMCorrector2017
 mr RobotPose CMCorrector2017
 
 
-echo set representation:RobotPose rotation = 90deg; translation = { x = 0; y = 0; }; validity = 0.280825;
+get representation:RobotPose
 echo 
 echo mv 0 0 400 0 0 -90
 echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };

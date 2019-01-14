@@ -12,7 +12,7 @@
 #include "Tools/Module/Module.h"
 #include "Representations/MotionControl/TargetCoM.h"
 #include "Representations/MotionControl/ActualCoM.h"
-#include "Representations/MotionControl/ControllerParams.h"
+#include "Representations/MotionControl/FLIPMControllerParams.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/MotionControl/WalkingInfo.h"
@@ -32,7 +32,7 @@ MODULE(CSConverterModule,
 { ,
   REQUIRES(TargetCoM),
   REQUIRES(WalkingEngineParams),
-  REQUIRES(ControllerParams),
+  REQUIRES(FLIPMControllerParams),
   REQUIRES(ActualCoMRCS),
   REQUIRES(BodyTilt),
   REQUIRES(TorsoMatrix),

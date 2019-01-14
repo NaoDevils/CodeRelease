@@ -19,4 +19,4 @@ STREAMABLE(GameSymbols,
   (bool)(false) ownKickOff,
   (int)(100000) timeSincePlayingState,
   (int)(100000) timeSinceLastPenalty,
-});
+  (uint8_t)(0) lastGameState,  (int)(0) timeSinceGameState,});

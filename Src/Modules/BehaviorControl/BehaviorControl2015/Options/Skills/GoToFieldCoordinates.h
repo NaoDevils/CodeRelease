@@ -64,7 +64,9 @@ option(GoToFieldCoordinates,
     action
     {
       if (stop_at_target)
-        Walk(WalkRequest::speed, 0,0,0);
+      {
+        Walk(WalkRequest::speed, 0, 0, 0);
+      }
       else
       {
         Walk(WalkRequest::destination,destRel.translation.x(), destRel.translation.y(), toDegrees(destRel.rotation));

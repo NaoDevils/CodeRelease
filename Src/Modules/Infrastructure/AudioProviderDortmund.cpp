@@ -72,12 +72,14 @@ AudioProviderDortmund::~AudioProviderDortmund()
 
 void AudioProviderDortmund::update(AudioDataDortmund& audioData)
 {
+
     audioData.channels = channels;
     audioData.sampleRate = sampleRate;
     audioData.isValid = false;
 
     if (theGameInfo.state != STATE_SET ||
         Global::getSettings().gameMode == Settings::penaltyShootout ||
+        (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::playDead) ||
         !connectionEstablished)
         return;
 
@@ -136,6 +138,10 @@ AudioProviderDortmund::~AudioProviderDortmund()
 
 void AudioProviderDortmund::update(AudioDataDortmund& audioData)
 {
+  MODIFY("module:AudioProviderDortmund:simulateWhistleInSimulator", simulateWhistleInSimulator);
+  MODIFY("module:AudioProviderDortmund:simulateSinusInSimulator", simulateSinusInSimulator);
+  MODIFY("module:AudioProviderDortmund:simulateNoiseInSimulator", simulateNoiseInSimulator);
+
     audioData.channels = channels;
     audioData.sampleRate = sampleRate;
     audioData.isValid = false;
@@ -146,40 +152,48 @@ void AudioProviderDortmund::update(AudioDataDortmund& audioData)
         !simulateWhistleInSimulator)
         return;
 
-    ////create 3 sinus tones plus noise as pseudo audio data
-    //audioData.samples.resize(1000);
-    //for (int i = 0; i < audioData.samples.size(); i++)
-    //{
-    //    audioData.samples[i] = 0.f;
-    //    //add noise
-    //    audioData.samples[i] += (float)((std::rand() % 201) - 100) / 100.f;
-    //    //add sinus
-    //    audioData.samples[i] += std::sin((float)i / 2);
-    //    audioData.samples[i] += std::sin(i);
-    //    audioData.samples[i] += std::sin(i*2);
-    //}
+    if (simulateSinusInSimulator >= 0) {
+      //create 3 sinus tones plus noise as pseudo audio data
+      audioData.samples.resize(1000);
+      for (unsigned i = 0; i < audioData.samples.size(); i++)
+      {
+          audioData.samples[i] = 0.f;
+          //add sinus
+          if (simulateSinusInSimulator >= 1)
+            audioData.samples[i] += std::sin((float)i / 2);
+          if (simulateSinusInSimulator >= 2)
+            audioData.samples[i] += std::sin(i);
+          if (simulateSinusInSimulator >= 3)
+          audioData.samples[i] += std::sin(i*2);
+      }
+    } else {
+      int deltaTime = theFrameInfo.getTimeSince(timestamp);
+      audioData.samples.resize(sampleRate * deltaTime / 1000);
+      timestamp = theFrameInfo.time;
 
-    int deltaTime = theFrameInfo.getTimeSince(timestamp);
-    audioData.samples.resize(sampleRate * deltaTime / 1000);
-    timestamp = theFrameInfo.time;
-
-    float element;
-    size_t i = 0;
-    while (i < audioData.samples.size())
-    {
-        if (fread(&element, sizeof(element), 1, audioFile) == 1)
-        {
-            audioData.samples[i] = element;
-            i++;
-        }
-        else
-        {
-            if (feof(audioFile))
-                rewind(audioFile);
-            else
-                OUTPUT_ERROR("Could not read pseudo audio and did not reach EOF.");
-        }   
+      float element;
+      size_t i = 0;
+      while (i < audioData.samples.size())
+      {
+          if (fread(&element, sizeof(element), 1, audioFile) == 1)
+          {
+              audioData.samples[i] = element;
+              i++;
+          }
+          else
+          {
+              if (feof(audioFile))
+                  rewind(audioFile);
+              else
+                  OUTPUT_ERROR("Could not read pseudo audio and did not reach EOF.");
+          }
+      }
     }
+    //add noise
+    if (simulateNoiseInSimulator != 0.0f)
+      for (unsigned i = 0; i < audioData.samples.size(); i++)
+        audioData.samples[i] += (float)((std::rand() % 2001) - 1000) / 1000.f * simulateNoiseInSimulator;
+
     audioData.isValid = true;
 }
 

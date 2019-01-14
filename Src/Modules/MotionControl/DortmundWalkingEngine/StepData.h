@@ -39,23 +39,26 @@ public:
 class Footposition : public StepData
 {
 public:
-  bool instantKickRunning;
+  bool customStepRunning;
   unsigned int timestamp;
   WalkRequest::StepRequest customStep;
 
   WalkingPhase phase;
-  unsigned int singleSupportLen, doubleSupportLen;
+  unsigned int singleSupportDurationInFrames;
+  unsigned int doubleSupportDurationInFrames;
   unsigned int frameInPhase;
-  float stepDuration; // Additional info since dynamic step duration is possible
+  float stepDurationInSec; // Additional info since dynamic step duration is possible
 
   Point speed;
+  float lpxss = 0;
+  Vector2f zmp, lastZMPRCS;
 
   void operator = (const StepData &p)
   {
     this->StepData::operator =(p);
   }
 
-  Footposition() : instantKickRunning(false) {};
+  Footposition() : customStepRunning(false) {};
 };
 
 

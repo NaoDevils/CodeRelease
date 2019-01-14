@@ -183,6 +183,12 @@ float NaoBody::getCPUTemperature()
   return cpu;
 }
 
+float NaoBody::getTransitionToBhuman()
+{
+  ASSERT(naoBodyAccess.lbhData != (LBHData*)MAP_FAILED);
+  return naoBodyAccess.lbhData->transitionToBhuman;
+}
+
 bool NaoBody::getWlanStatus()
 {
   return access("/sys/class/net/wlan0", F_OK) == 0;

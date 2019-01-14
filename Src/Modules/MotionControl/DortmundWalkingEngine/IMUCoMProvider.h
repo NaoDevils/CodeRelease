@@ -42,12 +42,5 @@ public:
 
   void update(ActualCoM &theActualCoM);
 
-private:
-  typedef std::list<Footposition> FootList;
-
-  /** List of target foot positions in world coordinate system filled with the
-  foot positions found in theFootpositions. No more needed positions
-  are deleted in every step cycle. */	
-  FootList footPositions;
 };
 

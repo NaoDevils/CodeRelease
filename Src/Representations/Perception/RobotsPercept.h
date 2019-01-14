@@ -27,6 +27,29 @@ STREAMABLE(ObstacleBasePoints,
   (std::vector<ObstacleBasePoint>) basePoints,
 });
 
+STREAMABLE(RobotsHypotheses,
+{
+  RobotsHypotheses() = default;
+  STREAMABLE(RobotHypothesis,
+  {
+    ENUM(Direction,
+    { ,
+      front,
+      left,
+      right,
+      back,
+      lying,
+      unknown,
+    }),
+    (Direction)(Direction::unknown) direction,           /** direction of robot */
+    (Vector2i)(Vector2i::Zero()) upperLeftCorner,        /** upper left corner of robot rect */
+    (Vector2i)(Vector2i::Zero()) lowerRightCorner,       /** lower right corner of robot rect */
+  });
+  void draw() const,
+  (std::vector<RobotHypothesis>) robotsHypotheses,      /** contains all robot hypotheses for the lower image */
+  (std::vector<RobotHypothesis>) robotsHypothesesUpper, /** contains all robot hypotheses for the upper image */
+});
+
 STREAMABLE(RobotEstimate,
 {
   ENUM(RobotType,
@@ -37,20 +60,20 @@ STREAMABLE(RobotEstimate,
     noRobot,
     invalid,
   }),
-
-  (Pose2f) locationOnField, /**< Position of the robot in local robot coordinates (rotation not filled yet (2017)). */
+  (Pose2f) locationOnField,                   /**< Position of the robot in local robot coordinates (rotation not filled yet (2017)). */
   (float)(10000.f) distance,
   (float)(0.f) validity,
   (Vector2i) imageUpperLeft,
   (Vector2i) imageLowerRight,
   (bool)(false) fromUpperImage,
   (RobotType) robotType,
+  (unsigned int) timestampFromImage,
 });
 
 STREAMABLE(RobotsPercept,
 {
   RobotsPercept() = default;
-  
+
   void draw() const,
   (std::vector<RobotEstimate>) robots,
 });
@@ -103,5 +126,4 @@ STREAMABLE(RobotsPerceptCompressed,
   }),
   
   (std::vector<RobotEstimateCompressed>) robots,
-  
 });

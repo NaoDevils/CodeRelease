@@ -4,7 +4,28 @@
 #include "Tools/RingBufferWithSum.h"
 #include "Tools/ImageProcessing/stb_image_write.h"
 #include "Platform/File.h"
+
+typedef int (*t_cnn_fp) (float x0[16][16][1], int *res, float *scores);
+std::array<t_cnn_fp , 10> cnns;
+namespace cnn1
+{
 #include "cnn.c"
+}
+
+namespace cnn_keras
+{
+#include "cnn_keras.c"
+}
+
+/*namespace cnn_rc18
+{
+#include "cnn_rc18.c"
+}
+
+namespace cnn_big_rc18
+{
+#include "cnn_big_rc18.c"
+}*/
 
 #define CNN_SIZE  16
 
@@ -14,12 +35,16 @@ CLIPBallPerceptor::CLIPBallPerceptor()
   lastImageUpperTimeStamp = 0;
   minDistOfCenterFromImageBorder = 5;
   ballPerceptState.reset();
-  ballPerceptState.ballFeatures.reserve(20);
   if (useCNN)
     ballHypothesis.resize(CNN_SIZE*CNN_SIZE);
   else
     ballHypothesis.resize(400);
   ballHypothesisLog.resize(30 * 30);
+  
+  cnns[0] = cnn1::cnn;
+  cnns[1] = cnn_keras::cnn;
+  //cnns[2] = cnn_rc18::cnn;
+  //cnns[3] = cnn_big_rc18::cnn;
 
 #ifdef TARGET_ROBOT
   if (logTestCircles)
@@ -43,19 +68,12 @@ void CLIPBallPerceptor::update(BallPercept &theBallPercept)
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:ballScannedCenter", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:ballValidity", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:yJumpScanLines", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:ballFeatures", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:fittingPoints", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:testCircles:lower", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:testCircles:upper", "drawingOnImage");
 
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageInput:lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageInput:upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageOutput:lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageOutput:upper", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:wideStanceSearchArea", "drawingOnImage");
-  //DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:featureHistogram", "drawingOnImage");
-  //DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:distanceHistogram", "drawingOnImage");
-
+  
   if (lastImageTimeStamp != theImage.timeStamp || lastImageUpperTimeStamp != theImageUpper.timeStamp)
   {
     lastImageTimeStamp = theImage.timeStamp;
@@ -83,7 +101,6 @@ void CLIPBallPerceptor::update(MultipleBallPercept &theMultipleBallPercept)
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:ballScannedCenter", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:ballValidity", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:yJumpScanLines", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:ballFeatures", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:fittingPoints", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:testCircles:lower", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:testCircles:upper", "drawingOnImage");
@@ -228,69 +245,10 @@ void CLIPBallPerceptor::execute(const bool &upper, bool multi)
 
 bool CLIPBallPerceptor::verifyBallPercept(BallSpot &spot, const bool &upper)
 {
-  //const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix; unused
-  //const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo; unused
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-
   float radiusInImage = spot.radiusInImage;
   Vector2i posInImage(spot.position);
-  if (!useCNNOnly)
-  {
-    if (radiusInImage < minRadiusInImage)
-      return false;
-    // is on robot percept?
-    for (auto &robot : theRobotsPercept.robots)
-    {
-      if (upper == robot.fromUpperImage)
-      {
-        if ((posInImage.x() > robot.imageUpperLeft.x() && posInImage.x() < robot.imageLowerRight.x())
-          && (posInImage.y() > robot.imageUpperLeft.y() && posInImage.y() < robot.imageUpperLeft.y() + (robot.imageLowerRight.y() - robot.imageUpperLeft.y()) / 2))
-          return false;
-      }
-    }
-    // there should not be much green on the ball (but could be a little in bad image due to reflections)
-    if (countGreenOnBallSpot(localBallSpots.ballSpots.back(), upper) > std::max((int)radiusInImage / 2, 3))
-      return false;
-    /*Vector2<> angles(0,0);
-    Geometry_D::calculateAnglesForPoint(posInImage,CameraMatrix,cameraInfo,angles);
-    float alpha = angles.x;*/
-  }
-  else
-    if (!ballPerceptState.cnnCheck)
-      return false;
-  
-
-  if (theFieldDimensions.ballType == SimpleFieldDimensions::BallType::whiteBlack && !useCNNOnly)
-  {
-    if (radiusInImage < minRadiusInImageForFeatures)
-    {
-      if (image.isOutOfImage(spot.position.x(), spot.position.y(), static_cast<int>(radiusInImage) * 3))
-        return false;
-      ballPerceptState.featureCheckNeeded = false;
-    }
-
-    if (ballPerceptState.ballObstacleOverlap)
-    {
-      ballPerceptState.featureCheckNeeded = true;
-    }
-    if (ballPerceptState.hullState == HullCheckState::edgy || ballPerceptState.hullState == HullCheckState::none)
-    {
-      ballPerceptState.detailedCheckNeeded = true;
-      ballPerceptState.featureCheckNeeded = true;
-    }
-    // TODO: replace detailedCheckNeeded with featureCheckNeeded?? might be dangerous
-    bool overlapOK = !scanForOverlap(spot, upper);
-    bool featuresOK = !ballPerceptState.featureCheckNeeded || checkFeatures(spot, upper);
-    /*if (featureCheckNeeded && ((!possibleBallInFrontOfRobot && !(detailedCheckNeeded && ballOnFieldLine) && scanForOverlap(spot, upper)) || !checkFeatures(spot, upper)))
-      return false;*/
-      // TODO: watch out for ballOnFieldLine = true on robots!!
-    if (!overlapOK || !featuresOK)
-      return false;
-    // to filter out penalty cross stuff
-    if (ballPerceptState.ballOnField.norm() < 1500 && !ballPerceptState.featureCheckNeeded && !checkFeaturesWithIntegralImage(spot, upper))
-      return false;
-  }
-
+  if (!ballPerceptState.cnnCheck)
+    return false;
   
   localBallPercept.status = BallPercept::seen;
   localBallPercept.positionInImage = posInImage.cast<float>();
@@ -298,745 +256,6 @@ bool CLIPBallPerceptor::verifyBallPercept(BallSpot &spot, const bool &upper)
   localBallPercept.relativePositionOnField = ballPerceptState.ballOnField;
   localBallPercept.validity = ballPerceptState.validity;
   localBallPercept.fromUpper = upper;
-  return true;
-}
-
-bool CLIPBallPerceptor::checkYJumps(BallSpot &spot, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  //const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix; unused
-  //const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo; unused
-  const FieldColors &fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
-
-  const int radius = static_cast<int>(spot.radiusInImage - std::max(2.f, spot.radiusInImage / 8));
-  const int yBlackToWhiteSplit = fieldColor.fieldColorArray[0].fieldColorOptY;
-  const int thresholdJump = std::max(20, 30 - std::abs(90 - yBlackToWhiteSplit) / 10);
-  const int thresholdJumpSure = 3 * thresholdJump / 2;
-  /*if (upper && !ballPerceptState.ballObstacleOverlap && ballPerceptState.hullState == HullCheckState::good)
-    return true;*/
-  if (image.isOutOfImage(spot.position.x(), spot.position.y(), 3))
-    return false;
-  int yJumpSum = 0;
-  int yJumpLine = -1;
-  int lastY = -500;
-  int newY = 0;
-  Vector2i scanPoint(spot.position);
-  bool goingUp = true;
-  bool first = true;
-  int xInc = 1;
-  int yInc = -1;
-  int xDir = 0;
-  int yDir = 4;
-  Vector2i onFeature(0, 0);
-  int yAvg = 0;
-  int yCount = 0;
-  int maxY = 0;
-  //const int minY = std::min(128, fieldColor.fieldColorOptY); unused
-  //const float expectedFeatureSize = expectedBallFeatureSize*spot.radiusInImage; unused
-  int ySum = 0;
-  int ySumCount = 0;
-  for (int i = 0; i < 16; i++)
-  {
-    scanPoint = spot.position;
-    yJumpLine = 0;
-    onFeature = spot.position;
-    yAvg = 0;
-    yCount = 0;
-    first = true;
-    goingUp = image[scanPoint.y()][scanPoint.x()].y > 128;
-
-    int divisor = std::max(std::abs(xDir), std::abs(yDir));
-    for (int j = 0; (scanPoint - spot.position).cast<float>().norm() < radius && !image.isOutOfImage(scanPoint.x(), scanPoint.y(), 2); j++)
-    {
-      newY = image[scanPoint.y()][scanPoint.x()].y;
-      maxY = std::max(newY, maxY);
-      if (first)
-      {
-        first = false;
-        lastY = newY;
-      }
-      int yDiff = std::abs(newY - lastY);
-      if (!goingUp && yCount > 0 && ((newY - lastY) > thresholdJump || (maxY - newY > thresholdJumpSure)) && yDiff < 255)
-      {
-        maxY = 0;
-        yJumpLine++;
-        goingUp = true;
-        /*BallFeature bf;
-        bf.yAvg = yAvg/yCount;
-        if (bf.yAvg < fieldColor.fieldColorOptY && scanFeature(bf,
-          Vector2<>(static_cast<float>(scanPoint.x + onFeature.x) / 2,
-          static_cast<float>(scanPoint.y + onFeature.y) / 2),
-          expectedFeatureSize, upper))
-        {
-          bool onOtherFeature = bf.scannedSize > expectedFeatureSize + expectedFeatureSize*params.maxBallFeatureSizeDeviation;
-          for (auto bfToCheck : ballFeatures)
-          {
-            if ((bfToCheck.center - bf.center).abs() < expectedFeatureSize)
-            {
-              bfToCheck.center = (bfToCheck.center + bf.center) / 2;
-              bfToCheck.yAvg = (bfToCheck.yAvg + bf.yAvg) / 2;
-              bfToCheck.scannedSize = std::max(bfToCheck.scannedSize, bf.scannedSize);
-              onOtherFeature = true;
-            }
-          }
-          if (!onOtherFeature)
-            ballFeatures.emplace_back(bf);
-        }*/
-      }
-      if (goingUp && ((newY - lastY) < -thresholdJump || (newY - maxY) < -thresholdJumpSure) && yDiff < 255)
-      {
-        onFeature = scanPoint;
-        yAvg = 0;
-        yCount = 0;
-        yJumpLine++;
-        goingUp = false;
-      }
-      yAvg += newY;
-      yCount++;
-      scanPoint.x() = spot.position.x() + (j*xDir) / divisor;
-      scanPoint.y() = spot.position.y() + (j*yDir) / divisor;
-      lastY = newY;
-      ySum += newY;
-      ySumCount++;
-    }
-    /*if (yCount > 0)
-    {
-      BallFeature bf;
-      bf.yAvg = yAvg / yCount;
-      if (bf.yAvg < minY && scanFeature(bf,
-        Vector2<>(static_cast<float>(scanPoint.x + onFeature.x) / 2,
-        static_cast<float>(scanPoint.y + onFeature.y) / 2),
-        expectedFeatureSize, upper))
-      {
-        bool onOtherFeature = bf.scannedSize > expectedFeatureSize + expectedFeatureSize*params.maxBallFeatureSizeDeviation;
-        for (auto bfToCheck : ballFeatures)
-        {
-          if ((bfToCheck.center - bf.center).abs() < expectedFeatureSize)
-          {
-            bfToCheck.center = (bfToCheck.center + bf.center) / 2;
-            bfToCheck.yAvg = (bfToCheck.yAvg + bf.yAvg) / 2;
-            bfToCheck.scannedSize = std::max(bfToCheck.scannedSize, bf.scannedSize);
-            onOtherFeature = true;
-          }
-        }
-        if (!onOtherFeature)
-          ballFeatures.emplace_back(bf);
-      }
-    }*/
-    if (xDir == 4)
-      xInc = -1;
-    if (xDir == -4)
-      xInc = 1;
-    if (yDir == -4)
-      yInc = 1;
-    xDir += xInc;
-    yDir += yInc;
-    yJumpSum += yJumpLine;
-    LINE("module:CLIPBallPerceptor:yJumpScanLines",
-      spot.position.x(), spot.position.y(),
-      scanPoint.x(), scanPoint.y(),
-      std::max(1, static_cast<int>(spot.radiusInImage / 15)), Drawings::solidPen, ColorRGBA::green);
-  }
-  if (ySumCount > 0)
-    spot.y = ySum / ySumCount;
-  else
-    spot.y = fieldColor.fieldColorArray[0].fieldColorOptY + 30;
-  /*if (ballObstacleOverlap)
-  {
-    // check features for white/black ball
-    if (ballFeatures.empty())
-      return false;
-    Geometry::Circle ballModelBall;
-    if (ballFeatures.size() < 2 && !Geometry::calculateBallInImage(theBallModel.estimate.position, cameraMatrix, cameraInfo, theFieldDimensions.ballRadius, ballModelBall))
-      return false;
-    if (Vector2<>(ballModelBall.center.x - spot.position.x, ballModelBall.center.y - spot.position.y).abs() > spot.radiusInImage * 2)
-    {
-      if (ballFeatures.size() < 2)
-        return false;
-      // distance check, size check is done before adding features
-      float expectedFeatureDistance = params.expectedBallFeatureDistance*spot.radiusInImage;
-      int goodDistanceCount = 0;
-      for (unsigned i = 0; i < ballFeatures.size(); i++)
-      {
-        for (unsigned j = i + 1; j < ballFeatures.size(); j++)
-        {
-          float centerDistance = (ballFeatures[i].center - ballFeatures[j].center).abs();
-          goodDistanceCount += (std::abs(1 - centerDistance / expectedFeatureDistance) < params.maxBallFeatureDistanceDeviation);
-        }
-      }
-      if (goodDistanceCount < ballFeatures.size() - 1)
-        return false;
-    }
-  }*/
-  if (yJumpSum > std::max(upper ? minNumberOfYJumps : 16, static_cast<int>(spot.radiusInImage / 3)))
-    return true;
-  else
-    return false;
-}
-
-bool CLIPBallPerceptor::checkFeatures(const BallSpot &spot, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  //const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : (CameraMatrix&)theCameraMatrix; unused
-  //const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo; unused
-  const FieldColors &fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
-  const BodyContour &bodyContour = upper ? (BodyContour&)theBodyContourUpper : theBodyContour;
-
-  const int radius = static_cast<int>(spot.radiusInImage - std::max(2.f, spot.radiusInImage / 8));
-  if (image.isOutOfImage(spot.position.x(), spot.position.y(), 3) || radius > 50)
-    return false;
-
-  //const int minY = std::min(128, fieldColor.fieldColorOptY); unused
-  const float expectedFeatureSize = expectedBallFeatureSize*spot.radiusInImage;
-  const float maxXDistanceOnFeature = expectedFeatureSize / 4;
-  const float minFeatureSize = expectedFeatureSize / 4;
-  static const float pi_16 = pi / 16.f;
-  // scan ball horizontaly
-  Vector2f startingPoint;
-  startingPoint.x() = 0;
-  startingPoint.y() = static_cast<float>(radius);
-  int xOffsetToCenterPoint = 0;
-  //int maxFeatureVal = 0; unused
-  //int maxDistanceVal = 0; unused
-  ballPerceptState.ballFeatures.clear();
-  int wrongColorCount = 0;
-  int pixelCount = 0;
-  int lastYPos = 0;
-  int maxAllowedYValForFeature = std::min(128, 6 * fieldColor.fieldColorArray[0].fieldColorOptY / 5);
-  int highLowScore = 0;
-  int maxWhiteScore = 0;
-  int whiteScore = 0; // TODO: only for a small window of pixels!
-  int maxBlackScore = 0;
-  int blackScore = 0; // TODO: only for a small window of pixels!
-  bool onImageEdge = false;
-  for (int row = 0; row < 15; row++)
-  {
-    startingPoint.rotate(pi_16);
-    xOffsetToCenterPoint = static_cast<int>(startingPoint.x());
-    int yPos = static_cast<int>(startingPoint.y()) + spot.position.y();
-    if (yPos == lastYPos)
-      continue;
-    int yClipped = yPos;
-    bodyContour.clipBottom(spot.position.x(), yClipped);
-    if (yClipped < yPos)
-    {
-      onImageEdge = true;
-      continue;
-    }
-    int firstY = -1;
-    bool onHigh = false;
-    int maxYVal = 0;
-    int minYVal = 255;
-    int minX = spot.position.x() + xOffsetToCenterPoint;
-    int maxX = spot.position.x() - xOffsetToCenterPoint;
-    int startFeature = minX;
-    for (int xPos = minX; xPos < maxX; xPos++)
-    {
-      if (image.isOutOfImage(xPos, yPos, 3))
-        continue;
-      Image::Pixel p = image[yPos][xPos];
-      if (fieldColor.isPixelFieldColor(p.y, p.cb, p.cr))
-        wrongColorCount += 5;
-      else if (!isPixelBallColor(p.y, p.cb, p.cr, fieldColor))
-        wrongColorCount++;
-      pixelCount++;
-      int yVal = p.y;
-
-      if (firstY < 0)
-      {
-        firstY = yVal;
-        onHigh = yVal > maxAllowedYValForFeature;
-      }
-      if (onHigh)
-      {
-        blackScore = 0;
-        maxYVal = std::max(maxYVal, yVal);
-        highLowScore++;
-        whiteScore++;
-        maxWhiteScore = std::max(maxWhiteScore, whiteScore);
-      }
-      else
-      {
-        whiteScore = 0;
-        minYVal = std::min(minYVal, yVal);
-        highLowScore--;
-        blackScore++;
-        maxBlackScore = std::min(maxBlackScore, blackScore);
-      }
-      if (onHigh && yVal < maxAllowedYValForFeature && yVal < maxYVal - 50)
-      {
-        startFeature = xPos;
-        onHigh = false;
-        maxYVal = 0;
-        minYVal = std::min(minYVal, yVal);
-      }
-      if (!onHigh && (yVal > minYVal + 50 || (xPos == maxX - 1)))
-      {
-        maxYVal = std::max(maxYVal, yVal);
-        int featureSize = xPos - startFeature;
-        int newCenterX = (xPos + startFeature) / 2;
-        if (featureSize > minFeatureSize)
-        {
-          bool foundAlready = false;
-          for (auto &bf : ballPerceptState.ballFeatures)
-          {
-            if (bf.center.y() - bf.scannedSizeY - lastYPos < 2 && std::abs(bf.center.x() - newCenterX) < maxXDistanceOnFeature)
-            {
-              bf.scannedSizeY += lastYPos - yPos;
-              bf.scannedSizeX = std::max(bf.scannedSizeX, static_cast<float>(featureSize));
-              foundAlready = true;
-            }
-          }
-          if (!foundAlready)
-          {
-            BallFeature bf;
-            bf.center.x() = static_cast<float>(newCenterX); // TODO
-            bf.center.y() = static_cast<float>(yPos);
-            bf.scannedSizeY = 0;
-            bf.scannedSizeX = static_cast<float>(featureSize);
-            ballPerceptState.ballFeatures.emplace_back(bf);
-          }
-        }
-        onHigh = true;
-        minYVal = 255;
-      }
-      //LINE("module:CLIPBallPerceptor:ballFeatures", minX, yPos, maxX, yPos, 2, Drawings::solidPen, ColorRGBA(0, 255, 0));
-    }
-    lastYPos = yPos;
-  }
-  if (pixelCount == 0)
-    return false;
-  float maxSize = (ballPerceptState.detailedCheckNeeded ? expectedFeatureSize * 1.2f : (expectedFeatureSize + expectedFeatureSize * maxBallFeatureSizeDeviation));
-  size_t minFeatureCount = (ballPerceptState.detailedCheckNeeded ? 3 : 2);
-  bool detailedCheckPassed = ballPerceptState.ballFeatures.size() > 2;
-  int score = (highLowScore * 100) / pixelCount;
-  whiteScore = (maxWhiteScore * 100) / pixelCount;
-  //DRAWTEXT("module:CLIPBallPerceptor:ballFeatures", spot.position.x(), spot.position.y(), spot.radiusInImage / 2, ColorRGBA::magenta, "S:" << score << "," << whiteScore);
-
-  unsigned int firstBF = 0;
-  unsigned int secondBF = 1;
-  while (firstBF < ballPerceptState.ballFeatures.size())
-  {
-    bool merge = false;
-    float centerDiff = 0.f;
-    float firstRadius = std::max(ballPerceptState.ballFeatures[firstBF].scannedSizeX, ballPerceptState.ballFeatures[firstBF].scannedSizeY) / 2;
-    secondBF = firstBF + 1;
-    while (secondBF < ballPerceptState.ballFeatures.size())
-    {
-      float secondRadius = std::max(ballPerceptState.ballFeatures[secondBF].scannedSizeX, ballPerceptState.ballFeatures[secondBF].scannedSizeY) / 2;
-      centerDiff = (ballPerceptState.ballFeatures[firstBF].center - ballPerceptState.ballFeatures[secondBF].center).norm();
-      if (centerDiff < firstRadius + secondRadius)
-      {
-        merge = true;
-        break;
-      }
-      secondBF++;
-    }
-    if (merge)
-    {
-      ballPerceptState.ballFeatures[firstBF].center = (ballPerceptState.ballFeatures[firstBF].center + ballPerceptState.ballFeatures[secondBF].center) / 2;
-      ballPerceptState.ballFeatures[firstBF].scannedSizeX = ballPerceptState.ballFeatures[firstBF].scannedSizeY = firstRadius * 2 + centerDiff / 2;
-      ballPerceptState.ballFeatures.erase(ballPerceptState.ballFeatures.begin() + secondBF);
-    }
-    else
-      firstBF++;
-  }
-  int featureID = 0;
-  for (auto &bf : ballPerceptState.ballFeatures)
-  {
-    CIRCLE("module:CLIPBallPerceptor:ballFeatures",
-      bf.center.x(), bf.center.y(), std::max(bf.scannedSizeX, bf.scannedSizeY) / 2,
-      2, Drawings::solidPen, ColorRGBA(255, 0, 0), Drawings::noBrush, ColorRGBA(255, 0, 0));
-    if (std::max(bf.scannedSizeX, bf.scannedSizeY) > maxSize)
-    {
-      // feature might be detected on shadow part of the ball, ignore it then
-      if (featureID > 0 || (ballPerceptState.hullState != HullCheckState::good && ballPerceptState.hullState != HullCheckState::normal))
-        return false;
-    }
-    featureID++;
-  }
-
-  onImageEdge = onImageEdge || image.isOutOfImage(spot.position.x(), spot.position.y(), static_cast<int>(spot.radiusInImage) + 10);
-  bool simpleFeatureCheckOk = !onImageEdge && !upper && !ballPerceptState.ballObstacleOverlap && !ballPerceptState.ballOnFieldLine;
-  return pixelCount > 0
-    && wrongColorCount < pixelCount / maxWrongColorDiv
-    && ballPerceptState.ballFeatures.size() >= minFeatureCount
-    && score <= (maxBallFeatureScore + (detailedCheckPassed ? (simpleFeatureCheckOk ? 15 : 5) : 0))
-    && score >= (minBallFeatureScore - (detailedCheckPassed ? (5) : 0))
-    && whiteScore < (maxBallWhiteScore + (detailedCheckPassed ? (5) : 0))
-    && checkFeatureDistribution(spot, upper);
-}
-
-bool CLIPBallPerceptor::checkFeaturesWithIntegralImage(const BallSpot &spot, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  const int factorImageToII = image.width / 160;
-  DEBUG_RESPONSE("debug drawing:module:CLIPBallPerceptor:integralImageInput:upper")
-    if (upper)
-      RECTANGLE("module:CLIPBallPerceptor:integralImageInput:upper",
-        spot.position.x() - spot.radiusInImage, spot.position.y() - spot.radiusInImage,
-        spot.position.x() + spot.radiusInImage, spot.position.y() + spot.radiusInImage,
-        2, Drawings::solidPen, ColorRGBA::red);
-  DEBUG_RESPONSE("debug drawing:module:CLIPBallPerceptor:integralImageInput:lower")
-    if (!upper)
-      RECTANGLE("module:CLIPBallPerceptor:integralImageInput:lower",
-        spot.position.x() - spot.radiusInImage, spot.position.y() - spot.radiusInImage,
-        spot.position.x() + spot.radiusInImage, spot.position.y() + spot.radiusInImage,
-        2, Drawings::solidPen, ColorRGBA::red);
-  const std::vector<unsigned> &integralImage = upper ? theIntegralImage.upperImage : theIntegralImage.lowerImage;
-  int windowSize = static_cast<int>(spot.radiusInImage / (factorImageToII / 2.f));
-  int x = spot.position.x() / factorImageToII;
-  int y = spot.position.y() / factorImageToII;
-  int noWBResponses = 0;
-  int noCornerResponses = 0;
-  int windowHalf = windowSize / 2;
-  x = std::max(0, x - windowHalf);
-  y = std::max(0, y - windowHalf);
-  int rowBaseBottom = (y + windowSize) * 160;
-  int rowBaseTop = y * 160;
-  if (x < 0 || y < 0 || x + windowSize > 159 || y + windowSize > 119) // TODO: try to get half balls
-    return false;
-  /*int windowInner = windowSize / 2;
-  int windowInnerHalf = windowSize / 4;
-  int xInner = x + windowHalf - windowInnerHalf;
-  int sumInner = integralImage[y * 160 + xInner]
-  + integralImage[(y + windowInner) * 160 + xInner + windowInner]
-  - integralImage[y * 160 + xInner + windowInner]
-  - integralImage[(y + windowInner) * 160 + xInner];*/
-  int sumWindow = integralImage[rowBaseTop + x]
-    + integralImage[rowBaseBottom + x + windowSize]
-    - integralImage[rowBaseTop + x + windowSize]
-    - integralImage[rowBaseBottom + x];
-  //int sumDiff = sumWindow - sumInner;
-  int sumAvg = std::abs(sumWindow / (windowSize*windowSize));
-  //int sumInnerAvg = std::abs(sumInner / (windowInner*windowInner));
-
-  // scaling
-  int scaleFactor = std::max(1, windowSize / 5);
-  int stepSize = std::max(1, windowSize / 25);
-  int scaleFactorSquared = (scaleFactor + 1)*(scaleFactor + 1);
-  int innerWindowSquared = (1 + 2 * scaleFactor)*(1 + 2 * scaleFactor);
-  // check for number of corners (darker corner than avg)
-  int rowBaseNearlyBottom = rowBaseBottom - 160 * scaleFactor;
-  int rowBaseNearlyTop = rowBaseTop + 160 * scaleFactor;
-
-  int sumBottomLeft = integralImage[rowBaseNearlyBottom + x]
-    + integralImage[rowBaseBottom + x + scaleFactor]
-    - integralImage[rowBaseNearlyBottom + x + scaleFactor]
-    - integralImage[rowBaseBottom + x];
-  int sumTopLeft = integralImage[rowBaseTop + x]
-    + integralImage[rowBaseNearlyTop + x + scaleFactor]
-    - integralImage[rowBaseTop + x + scaleFactor]
-    - integralImage[rowBaseNearlyTop + x];
-  int sumTopRight = integralImage[rowBaseTop + x + windowSize - scaleFactor]
-    + integralImage[rowBaseNearlyTop + x + windowSize]
-    - integralImage[rowBaseTop + x + windowSize]
-    - integralImage[rowBaseNearlyTop + x + windowSize - scaleFactor];
-  int sumBottomRight = integralImage[rowBaseNearlyBottom + x + windowSize - scaleFactor]
-    + integralImage[rowBaseBottom + x + windowSize]
-    - integralImage[rowBaseNearlyBottom + x + windowSize]
-    - integralImage[rowBaseBottom + x + windowSize - scaleFactor];
-  noCornerResponses = (sumBottomLeft / scaleFactorSquared < sumAvg)
-    + (sumTopLeft / scaleFactorSquared < sumAvg)
-    + (sumTopRight / scaleFactorSquared < sumAvg)
-    + (sumBottomRight / scaleFactorSquared < sumAvg);
-  if (noCornerResponses > minCornerResponses)
-  {
-
-    {
-      // check for gradient response in possible ball
-      // first response to outer light ring with one darker point (center, top right, top left, bottom right, bottom left)
-      int sumMiniWindow = 0;
-      int sumEdge = 0;
-      int yInnerStart = y + 2;
-      for (int yInner = yInnerStart; yInner < y + windowSize - 2 * scaleFactor; yInner++)
-      {
-        int rowBase = yInner * 160;
-        int rowBase2 = rowBase + 160 * scaleFactor;
-        int rowBaseNearly2 = rowBase2 - 160;
-        int rowBase3 = rowBase + 320 * scaleFactor;
-        int centerY = y + windowHalf - scaleFactor;
-        int xInnerSize = std::max(scaleFactor, windowHalf - std::abs(yInner - centerY));
-        int xInnerStart = x + windowHalf - xInnerSize;
-        int xInnerEnd = std::min(xInnerStart + 2 * xInnerSize, x + windowSize - 2 * scaleFactor);
-        /*if (x == 80 && y == 60)
-        LINE("module:CLIPBallPerceptor:integralImageMaxDiff:upper", xInnerStart, yInner, xInnerEnd, yInner, 1, Drawings::solidPen, ColorRGBA::green);*/
-        for (int xInner = xInnerStart; xInner < xInnerEnd; xInner += stepSize)
-        {
-          sumMiniWindow = integralImage[rowBase + xInner]
-            + integralImage[rowBase3 + xInner + 2 * scaleFactor]
-            - integralImage[rowBase + xInner + 2 * scaleFactor]
-            - integralImage[rowBase3 + xInner];
-          sumMiniWindow /= innerWindowSquared;
-          float minSumRatio = 1.5f + (sumMiniWindow / 255);
-          // center
-          sumEdge = integralImage[rowBaseNearly2 + xInner + scaleFactor - 1]
-            + integralImage[rowBase2 + xInner + scaleFactor]
-            - integralImage[rowBaseNearly2 + xInner + scaleFactor]
-            - integralImage[rowBase2 + xInner + scaleFactor - 1];
-          float sumRatio = static_cast<float>(sumMiniWindow) / (sumEdge + 1);
-          noWBResponses += (sumRatio < minSumRatio) ? 0 : static_cast<int>(sumRatio * 5); // TODO: this should be the indicator, scale influence?
-                                                                        // TODO: check for relative gradient somehow.. eg dark avg < 30 -> light avg doesnt need to be 80, just a factor > 2
-                                                                        // TODO: and if darg avg > 100, light avg needs to be > 200, ... factor 2 always?
-          // top right
-          /*sumEdge = integralImage[rowBase + xInner + scaleFactor]
-          + integralImage[rowBase2 + xInner + 2 * scaleFactor]
-          - integralImage[rowBase + xInner + 2 * scaleFactor]
-          - integralImage[rowBase2 + xInner + scaleFactor];
-          sumEdge /= scaleFactorSquared;
-          sumRatio = sumMiniWindow / (sumEdge + 1);
-          noWBResponses += (sumRatio < 2) ? 0 : sumRatio;
-          // top left
-          sumEdge = integralImage[rowBase + xInner]
-          + integralImage[rowBase2 + xInner + scaleFactor]
-          - integralImage[rowBase + xInner + scaleFactor]
-          - integralImage[rowBase2 + xInner];
-          sumEdge /= scaleFactorSquared;
-          sumRatio = sumMiniWindow / (sumEdge + 1);
-          noWBResponses += (sumRatio < 2) ? 0 : sumRatio;
-          // bottom right
-          sumEdge = integralImage[rowBase2 + xInner + scaleFactor]
-          + integralImage[rowBase3 + xInner + 2 * scaleFactor]
-          - integralImage[rowBase2 + xInner + 2 * scaleFactor]
-          - integralImage[rowBase3 + xInner + scaleFactor];
-          sumEdge /= scaleFactorSquared;
-          sumRatio = sumMiniWindow / (sumEdge + 1);
-          noWBResponses += (sumRatio < 2) ? 0 : sumRatio;
-          // bottom left
-          sumEdge = integralImage[rowBase + xInner + scaleFactor]
-          + integralImage[rowBase2 + xInner + 2 * scaleFactor]
-          - integralImage[rowBase + xInner + 2 * scaleFactor]
-          - integralImage[rowBase2 + xInner + scaleFactor];
-          sumEdge /= scaleFactorSquared;
-          sumRatio = sumMiniWindow / (sumEdge + 1);
-          noWBResponses += (sumRatio < 2) ? 0 : sumRatio;*/
-        }
-      }
-    }
-  }
-  DEBUG_RESPONSE("debug drawing:module:CLIPBallPerceptor:integralImageOutput:upper")
-    if (upper)
-      DRAWTEXT("module:CLIPBallPerceptor:integralImageOutput:upper",
-        spot.position.x(), spot.position.y(), spot.radiusInImage / 3,
-        ColorRGBA::red, "" << noWBResponses);
-  DEBUG_RESPONSE("debug drawing:module:CLIPBallPerceptor:integralImageOutput:lower")
-    if (!upper)
-      DRAWTEXT("module:CLIPBallPerceptor:integralImageOutput:lower",
-        spot.position.x(), spot.position.y(), spot.radiusInImage / 3,
-        ColorRGBA::red, "" << noWBResponses);
-  ballPerceptState.integralImageResponse = noWBResponses;
-  return noWBResponses > minWBResponses;
-}
-
-bool CLIPBallPerceptor::checkFeatureDistribution(const BallSpot &spot, const bool &upper)
-{
-  return true;
-}
-
-bool CLIPBallPerceptor::scanForOverlap(const BallSpot &spot, const bool &upper)
-{
-  int overlapCount = 0;
-  if (ballPerceptState.overlapAreas.size() > (ballPerceptState.ballOnFieldLine ? 2 : (ballPerceptState.ballObstacleOverlap ? 2 : 0)))
-    return true;
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  const FieldColors &fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
-  //const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo; unused
-  int overlapAreas = 0;
-  bool lastOverlap = false;
-  bool onShadow = false;
-  const int expectedShadowBrightness = fieldColor.fieldColorArray[0].fieldColorOptY;
-  if (image.isOutOfImage(spot.position.x(), spot.position.y(), 3))
-    return true;
-  int xInc = 0;
-  int yInc = -1;
-  Image::Pixel lastP = image[spot.position.y()][spot.position.x()];
-  Vector2i scanPoint = spot.position;
-  const int maxRadius = static_cast<int>(spot.radiusInImage + std::min(10.f, std::max(5.f, spot.radiusInImage / 2)));
-  int countSinceWrongColor = 0;
-  int wrongColorCount = 0;
-  const float distPer45Step = std::sqrt(2.f) - 1.f;
-  float distPerStep = 1.f;
-  float dist = 0.f;
-
-  // TODO!
-  for (int i = 0; i < 8; i++)
-  {
-    countSinceWrongColor = 0;
-    wrongColorCount = 0;
-    distPerStep = 1 + (i % 2)*distPer45Step;
-    for (dist = 0.f; dist < maxRadius; dist += distPerStep)
-    {
-      countSinceWrongColor++;
-      scanPoint.x() += xInc;
-      scanPoint.y() += yInc;
-      if (image.isOutOfImage(scanPoint.x(), scanPoint.y(), 3))
-        break;
-      Image::Pixel p = image[scanPoint.y()][scanPoint.x()];
-      onShadow = p.y < expectedShadowBrightness;
-      bool onGreen = fieldColor.isPixelFieldColor(p.y, p.cb, p.cr);
-      if (!onGreen && isPixelBallColor(p.y, p.cb, p.cr, fieldColor))
-        continue;
-      if (std::abs(p.cb - lastP.cb) > maxColorJumpDiff ||
-        std::abs(p.cb - spot.cb) > maxColorDiff ||
-        std::abs(p.cr - spot.cr) > maxColorDiff ||
-        std::abs(p.cr - lastP.cr) > maxColorJumpDiff ||
-        onGreen)
-      {
-        wrongColorCount++;
-        countSinceWrongColor = -1;
-        if (wrongColorCount > 2)
-          break;
-      }
-    }
-    // TODO: use distPerStep here
-    int y = scanPoint.y();
-    if (!upper)
-      theBodyContour.clipBottom(scanPoint.x(), y);
-    bool ownBodyOverlap = yInc > 0 && y < scanPoint.y();
-    if (!ownBodyOverlap && !(onShadow && (wrongColorCount < 2 || countSinceWrongColor < 5)) &&
-      (dist >= maxRadius || wrongColorCount < 2 || countSinceWrongColor > spot.radiusInImage / 2))
-    {
-      overlapAreas += !lastOverlap;
-      overlapCount++;
-    }
-    scanPoint = spot.position;
-    if (xInc == 0 && yInc == -1)
-      xInc = -1;
-    else if (xInc == -1 && yInc == -1)
-      yInc = 0;
-    else if (yInc == 0 && xInc == -1)
-      yInc = 1;
-    else if (yInc == 1 && xInc == -1)
-      xInc = 0;
-    else if (xInc == 0)
-      xInc = 1;
-    else if (yInc == 1)
-      yInc = 0;
-    else if (yInc == 0)
-      yInc = -1;
-
-  }
-  const int maxOverlapAreas = ballPerceptState.ballOnFieldLine ? 2 : (ballPerceptState.ballObstacleOverlap ? 2 : 0);
-  const int maxOverlaps = ballPerceptState.ballOnFieldLine ? 2 : 4;
-  return overlapAreas > maxOverlapAreas || overlapCount > maxOverlaps || overlapAreas > (int)ballPerceptState.overlapAreas.size();
-}
-
-bool CLIPBallPerceptor::checkOverlap(const BallSpot &spot, const bool &upper)
-{
-  if (ballPerceptState.overlapAreas.size() > (ballPerceptState.ballOnFieldLine ? 2 : (ballPerceptState.ballObstacleOverlap ? 2 : 0)))
-    return true;
-  int overlapSizeSum = 0;
-  int lastEndID = 0;
-  if (!ballPerceptState.overlapAreas.empty())
-    lastEndID = ballPerceptState.overlapAreas[0].startID + 8;
-  for (const auto& ova : ballPerceptState.overlapAreas)
-  {
-    int idDist = (ova.endID >= ova.startID) ? ova.endID - ova.startID : ova.endID + 16 - ova.startID;
-    overlapSizeSum += idDist + 1;
-    int distToLast = (ova.startID >= lastEndID) ? ova.startID - lastEndID : ova.startID + 16 - ova.endID;
-    if (idDist > 3 || distToLast < 3)
-    {
-      if (ballPerceptState.integralImageResponse < 0 && checkFeaturesWithIntegralImage(spot, upper))
-        return false;
-      else
-        return true;
-    }
-    lastEndID = ova.endID;
-  }
-  if (ballPerceptState.overlapAreas.size() == 2 && overlapSizeSum > 5)
-    return true;
-  if (overlapSizeSum > 0)
-  {
-    if (ballPerceptState.integralImageResponse < 0)
-      if (!checkFeaturesWithIntegralImage(spot, upper))
-        return true;
-    /* TODO: another safety check needed here */
-  }
-  return false;
-}
-
-bool CLIPBallPerceptor::scanFeature(BallFeature &feature, const Vector2f &center, const float &expectedSize, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  Vector2f dir(1.f, 0);
-  Vector2f scanPoint = center;
-  int newY, lastY;
-  float scannedSizeX = 0.f;
-  float scannedSizeY = 0.f;
-  bool foundEdge;
-  float maxSize = expectedSize*1.5f;
-  // 1st find center of feature
-  for (int i = 0; i < 4; i++)
-  {
-    newY = lastY = image[static_cast<int>(center.y())][static_cast<int>(center.x())].y;
-    scanPoint = center;
-    foundEdge = false;
-    for (int i = 0; i < maxSize && !image.isOutOfImage(scanPoint.x(), scanPoint.y(), 2); i++)
-    {
-      scanPoint += dir;
-      newY = image[static_cast<int>(scanPoint.y())][static_cast<int>(scanPoint.x())].y;
-      if (newY - lastY > 30)
-      {
-        foundEdge = true;
-        if (dir.x() > 0)
-          feature.center.x() = scanPoint.x();
-        if (dir.x() < 0)
-          feature.center.x() = (feature.center.x() + scanPoint.x())*0.5f;
-        if (dir.y() < 0)
-          feature.center.y() = scanPoint.y();
-        if (dir.y() > 0)
-          feature.center.y() = (feature.center.y() + scanPoint.y())*0.5f;
-        break;
-      }
-      lastY = newY;
-    }
-    if (!foundEdge)
-      return false;
-    dir.rotateRight();
-  }
-  // now check shape of feature (blob)
-  dir = Vector2f(1.f, 0);
-  maxSize = expectedSize*0.75f;
-  for (int i = 0; i < 4; i++)
-  {
-    newY = lastY = image[static_cast<int>(feature.center.y())][static_cast<int>(feature.center.x())].y;
-    scanPoint = feature.center;
-    foundEdge = false;
-    for (int i = 0; i < maxSize && !image.isOutOfImage(scanPoint.x(), scanPoint.y(), 2); i++)
-    {
-      scanPoint += dir;
-      newY = image[static_cast<int>(scanPoint.y())][static_cast<int>(scanPoint.x())].y;
-      if (newY - lastY > 30)
-      {
-        foundEdge = true;
-        if (dir.x() > 0)
-          scannedSizeX = scanPoint.x();
-        if (dir.x() < 0)
-        {
-          scannedSizeX -= scanPoint.x();
-          feature.center.x() = scanPoint.x() + scannedSizeX / 2;
-        }
-        if (dir.y() < 0)
-          scannedSizeY = scanPoint.y();
-        if (dir.y() > 0)
-        {
-          scannedSizeY = scanPoint.y() - scannedSizeY;
-          feature.center.y() = scanPoint.y() - scannedSizeY / 2;
-        }
-        break;
-      }
-      lastY = newY;
-    }
-    if (!foundEdge)
-      return false;
-    dir.rotateRight();
-  }
-  float size = (scannedSizeX + scannedSizeY) / 2;
-  feature.scannedSizeX = scannedSizeX;
-  feature.scannedSizeY = scannedSizeY;
-  CIRCLE("module:CLIPBallPerceptor:ballFeatures",
-    feature.center.x(), feature.center.y(), size / 2, 1,
-    Drawings::solidPen, ColorRGBA(255, 0, 0), Drawings::noBrush, ColorRGBA(255, 0, 0));
   return true;
 }
 
@@ -1259,35 +478,6 @@ void CLIPBallPerceptor::runBallSpotScanLine(int x, int y, int stepX, int stepY, 
   }
 }
 
-int CLIPBallPerceptor::countGreenOnBallSpot(BallSpot &spot, const bool &upper)
-{
-  const Image &image = upper ? (Image&)theImageUpper : (Image&)theImage;
-  const FieldColors &fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
-
-  if (spot.radiusInImage < 3)
-    return 0; // TODO:check
-
-  int greenCount = 0;
-  Vector2i scanDir(1, 0);
-  Vector2i center(spot.position);
-  for (int i = 0; i < 4; i++)
-  {
-    for (int pointNo = 1; pointNo < spot.radiusInImage - spot.radiusInImage / 5; pointNo++)
-    {
-      Vector2i checkPoint = center + scanDir*pointNo;
-      if (image.isOutOfImage(checkPoint.x(), checkPoint.y(), 3))
-        continue;
-      Image::Pixel p = image[checkPoint.y()][checkPoint.x()];
-      if (std::abs(p.cb - spot.cb) > 20 || std::abs(p.cb - spot.cr) > 20)
-      {
-        greenCount += fieldColor.isPixelFieldColor(p.y, p.cb, p.cr);
-      }
-    }
-    scanDir.rotateLeft();
-  }
-  return greenCount;
-}
-
 bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
 {
   // TODO: shorten/split
@@ -1447,8 +637,6 @@ bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
           if (goingUp && (newY - lastY) < -30 && yDiff < 255)
           {
             maxY = 0;
-            /*DOT("module:CLIPBallPerceptor:ballFeatures",
-              scanPoint.x, scanPoint.y, ColorRGBA(255, 0, 0, spot.found*255), ColorRGBA(255, 0, 0, spot.found*255));*/
             yJumpLine++;
             goingUp = false;
           }
@@ -1678,7 +866,7 @@ bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
   int minPercent = 50;
   if (theFieldDimensions.ballType == SimpleFieldDimensions::BallType::whiteBlack)
   {
-    if (spot.found && yJumpSum < minNumberOfYJumps && scannedRadius / 2 > minRadiusInImageForFeatures)
+    if (spot.found && yJumpSum < minNumberOfYJumps && scannedRadius / 2 > minRadiusInImage)
       return false;
     minPercent = 40;
   }
@@ -1743,7 +931,6 @@ bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
               newBallSpot.position.x(), newBallSpot.position.y(),
               points[i].pointInImage.x(), points[i].pointInImage.y(), 1, Drawings::solidPen, ColorRGBA::yellow);
         }
-        ballPerceptState.featureCheckNeeded = true;
         return true;
       }
     }
@@ -1801,6 +988,8 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
     ballPoints.push_back(ballHullPoints[i].pointInImage);
   if (Geometry::computeCircleOnFieldLevenbergMarquardt(goodBallPoints, testCircle) && testCircle.radius < maxRadius)
   {
+    if (testCircle.radius < 20)
+      testCircle.radius *= (1.f + (20-testCircle.radius)/20.f);
     if ((!image.isOutOfImage(testCircle.center.x(), testCircle.center.y(), (int)testCircle.radius)) &&
       (scannedCenter - testCircle.center).norm() > std::max<float>(testCircle.radius, (float)(imageHeight / 80)))
       return false;
@@ -1844,11 +1033,17 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
 
         STOPWATCH("CNN")
         {
-          cnn(imgbuf, &cnnResult, scores);
+          cnns[cnnIndex](imgbuf, &cnnResult, scores);
         }
+        DRAWTEXT("module:CLIPBallPerceptor:testCircles:lower", testCircle.center.x(), testCircle.center.y(), 15, ColorRGBA::yellow, "Score:" << static_cast<int>(scores[1] * 1000));
+        DRAWTEXT("module:CLIPBallPerceptor:testCircles:upper", testCircle.center.x(), testCircle.center.y(), 15, ColorRGBA::yellow, "Score:" << static_cast<int>(scores[1] * 1000));
         ballPerceptState.validity = std::min(scores[1], 1.f); // we no have a new validity, always the score for "is a ball", also if net says "is no ball"
-        
-        if ((cnnResult == 0 || cnnResult == 1) && scores[cnnResult] < minScore)
+        float scoreUpperThreshold = minScoreUpper;
+        if (testCircle.radius < 15)
+          scoreUpperThreshold -= ((15 - testCircle.radius) / 75.f);
+        scoreUpperThreshold = std::max(0.1f, scoreUpperThreshold);
+        float minScoreForImage = upper ? scoreUpperThreshold : minScore;
+        if ((cnnResult == 0 || cnnResult == 1) && scores[cnnResult] < minScoreForImage)
           cnnResult = 0;
         if ((logTestCircles && cnnResult != -1) || (cnnResult == 1 && logPositives))
         {
@@ -1904,13 +1099,9 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
     }
 
     int minFittingPointNo = minFittingPoints;
-    if (testCircle.radius > 15 || ballPerceptState.ballObstacleOverlap)
-      ballPerceptState.featureCheckNeeded = true;
     // watch out for goal posts on both upper and lower image top border (due to white ball vs goal post or robot feet)
     if ((int)testCircle.center.y() < (int)(lowerImageUpperBorderDistanceFactor*testCircle.radius))
     {
-      ballPerceptState.detailedCheckNeeded = true;
-      ballPerceptState.featureCheckNeeded = true;
       minFittingPointNo = minFittingPointsForSafeBall;
     }
 
@@ -1953,33 +1144,13 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
               newBallSpot.position.x(), newBallSpot.position.y(),
               (int)points[i].x(), (int)points[i].y(), 1, Drawings::solidPen, ColorRGBA::yellow);
         }
-        if (fittingPoints >= minFittingPointsForSafeBall && !(testCircle.radius < radiusForNoFeatureCheck &&
-          ballPerceptState.ballObstacleOverlap))
-        {
-          ballPerceptState.featureCheckNeeded = ballPerceptState.ballObstacleOverlap;
-          ballPerceptState.detailedCheckNeeded = false;
-        }
-        else if (testCircle.radius < radiusForNoFeatureCheck && !ballPerceptState.ballObstacleOverlap)
-        {
-          ballPerceptState.featureCheckNeeded = false;
-        }
         return true;
       }
       else if (theFieldDimensions.ballType == SimpleFieldDimensions::BallType::whiteBlack && !upper && fittingPoints >= minFittingPointsForSafeBall)
       {
-        ballPerceptState.featureCheckNeeded = true;
-        ballPerceptState.detailedCheckNeeded = true;
         ballPerceptState.ballObstacleOverlap = true;
       }
-    }/*
-    else if (ballPerceptState.ballOnFieldLine && !ballPerceptState.ballScannedOnce)
-    {
-      ballPerceptState.featureCheckNeeded = true;
-      ballPerceptState.detailedCheckNeeded = true;
-      spot.position = testCircle.center.cast<int>();
-      ballPerceptState.ballScannedOnce = true;
-      return calcBallSpot2016(spot, upper);
-    }*/
+    }
     else
     {
       BallSpot newBallSpot;
@@ -1989,8 +1160,6 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
       if (ballPerceptState.ballObstacleOverlap)
         return false;
 
-      ballPerceptState.featureCheckNeeded = true;
-      ballPerceptState.detailedCheckNeeded = true;
       if (fittingPoints > 2)
         ballPerceptState.hullState = HullCheckState::none;
       else

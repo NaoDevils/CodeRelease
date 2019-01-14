@@ -17,7 +17,7 @@ WhistleDetector::WhistleDetector()
     samplesLeft = WINDOW_SIZE / 2;
     buffer = std::vector<float>(WINDOW_SIZE); //TODO: new in set, free in play
 
-    releaseCount = 0;
+    releaseCount = static_cast<unsigned int>(RELEASE);
     attackCount = 0;
 
     in = std::vector<kiss_fft_cpx>(WINDOW_SIZE);
@@ -28,7 +28,7 @@ WhistleDetector::WhistleDetector()
 }
 
 void WhistleDetector::update(WhistleDortmund &whistle)
-{	
+{ 
   MODIFY("module:WhistleDetector:MIN_FREQ", MIN_FREQ);
   MODIFY("module:WhistleDetector:MAX_FREQ", MAX_FREQ);
   MODIFY("module:WhistleDetector:MIN_AMP", MIN_AMP);
@@ -41,6 +41,7 @@ void WhistleDetector::update(WhistleDortmund &whistle)
   MODIFY("module:WhistleDetector:RELEASE", RELEASE);
   MODIFY("module:WhistleDetector:ATTACK", ATTACK);
   MODIFY("module:WhistleDetector:USE_HANN_WINDOWING", USE_HANN_WINDOWING);
+  MODIFY("module:WhistleDetector:USE_NUTTALL_WINDOWING", USE_NUTTALL_WINDOWING);
 
     INIT_DEBUG_IMAGE_BLACK(FFT, DEBUG_WIDTH, DEBUG_HEIGHT);
     DECLARE_PLOT("representation:Whistle:detected");
@@ -85,6 +86,11 @@ void WhistleDetector::update(WhistleDortmund &whistle)
                     //apply Hann window
                     if (USE_HANN_WINDOWING)
                        in[i].r *= pow(sin(pi * i / WINDOW_SIZE), 2);
+                    else if (USE_NUTTALL_WINDOWING)
+                       in[i].r *= 0.355768
+                           - 0.487396 * sin(1 * pi * i / WINDOW_SIZE)
+                           + 0.144232 * sin(2 * pi * i / WINDOW_SIZE)
+                           - 0.012604 * sin(3 * pi * i / WINDOW_SIZE);
                 }
 
                 //do FFT analysis
@@ -130,14 +136,23 @@ void WhistleDetector::update(WhistleDortmund &whistle)
                         }
 
                         if (amplitudes[peak2Pos] >= OVERTONE_MIN_AMP_2)
-                        {
-                            //add attack to prevent short noises to be detected as whistles
-                            attackCount++;
-                            if (attackCount >= static_cast<unsigned int>(ATTACK))
+                        {                           
+                            
+                            if (theFrameInfo.getTimeSince(lastAttackTime) < ATTACK_TIMEOUT_MS)
                             {
-                                whistle.detectionState = WhistleDortmund::DetectionState::isDetected;
-                                whistle.detected = true;
+                                //add attack to prevent short noises to be detected as whistles
+                                attackCount++;
+                                if (attackCount >= static_cast<unsigned int>(ATTACK))
+                                {
+                                    whistle.detectionState = WhistleDortmund::DetectionState::isDetected;
+                                    whistle.detected = true;
+                                }
                             }
+                            else
+                            {
+                                attackCount = 0;
+                            }
+                            lastAttackTime = theFrameInfo.time;
                         }
                     }
                 }

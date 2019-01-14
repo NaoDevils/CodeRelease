@@ -22,7 +22,6 @@
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Modeling/RobotMap.h"
-#include "Representations/Modeling/SideConfidence.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/CenterCirclePercept.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
@@ -30,6 +29,7 @@
 #include "Representations/Perception/PenaltyCrossPercept.h"
 #include <math.h>
 #include <algorithm>
+#include <memory>
 #include "Tools/Debugging/Modify.h"
 
 #include "Modules/Modeling/WorldModelGenerator/SelfLocator2017Parameters.h"
@@ -72,18 +72,18 @@ class PoseHypothesis2017
 {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  
-  enum FixedParameters
+
+    enum FixedParameters
   {
     totalDimension = 3, // 3=ownPose
   };
 
-  PoseHypothesis2017(const Pose2f & newPose, float _positionConfidence, double _symmetryConfidence, const unsigned &timeStamp, const SelfLocator2017Parameters& parameters);
+  PoseHypothesis2017(const Pose2f & newPose, float _positionConfidence, float _symmetryConfidence, const unsigned &timeStamp, const SelfLocator2017Parameters& parameters);
   PoseHypothesis2017(const PoseHypothesis2017& other, const unsigned &timeStamp);
   PoseHypothesis2017& operator=(const PoseHypothesis2017& other);
 
 private:
-  // ok, since we only have limited sized matrizes for the update, we restrict the measurement dimension...
+  // ok, since we only have limited sized matrices for the update, we restrict the measurement dimension...
   static const unsigned int maxMeasurementDimensionSpherical = 20;
   static const unsigned int maxMeasurementDimensionInfiniteLines = 4;
 
@@ -100,21 +100,20 @@ private:
 
   float                                     positionConfidence;
   double                                    normalizedPositionConfidence;
-  double                                    symmetryConfidence;
-  SideConfidence::ConfidenceState           symmetryConfidenceState;
+  float                                     symmetryConfidence;
   unsigned                                  lastSymmetryUpdate;
 
   double                                    temporaryLocalSymmetryLikelihood;
-
 
   Matrix2d singleMeasurementCovariance_2x2;
   Matrix3d poseCovarianceForLineMatching;
 
   unsigned int                           timeOfLastPrediction;
 
-  bool debugLineMatching;
   bool initialized;
-  
+
+  bool sensorUpdated;
+
   unsigned creationTime;
 
   MySphericalObservationVector observationAnglesWithLocalFeaturePerceptionsSpherical;
@@ -129,37 +128,25 @@ private:
     return ++lastUniqueId;
   }
 
-  void updateSymmetryConfidenceState(const SelfLocator2017Parameters::LocalizationStateUpdate &localizationStateUpdate)
-  {
-    const float increment = (localizationStateUpdate.symmetryFoundAgainWhenBestConfidenceAboveThisThreshold
-        - localizationStateUpdate.symmetryLostWhenBestConfidenceBelowThisThreshold) / 2;
-
-    if (symmetryConfidence <= localizationStateUpdate.symmetryLostWhenBestConfidenceBelowThisThreshold)
-    {
-      symmetryConfidenceState = SideConfidence::CONFUSED;
-    } else if (symmetryConfidence < (localizationStateUpdate.symmetryLostWhenBestConfidenceBelowThisThreshold + increment))
-    {
-      symmetryConfidenceState = SideConfidence::UNSURE;
-    } else if (symmetryConfidence < (localizationStateUpdate.symmetryFoundAgainWhenBestConfidenceAboveThisThreshold))
-    {
-      symmetryConfidenceState = SideConfidence::ALMOST_CONFIDENT;
-    }
-    else
-    {
-      symmetryConfidenceState = SideConfidence::CONFIDENT;
-    }
-  }
-
 public:
   static void cleanup();
 
   uint64_t getUniqueId() const { return _uniqueId; }
-  
+
+  bool performedSensorUpdate() const { return sensorUpdated; }
+
   const unsigned &getCreationTime() const { return creationTime; }
 
-  bool isInsideCarpet(const FieldDimensions &fd) const { return fd.isInsideCarpet(Vector2f((float)state[0], (float)state[1])); }
+  bool isInsideCarpet(const FieldDimensions &fd) const { return fd.isInsideCarpet(Vector2f(static_cast<float>(state[0]), static_cast<float>(state[1]))); }
 
-  static bool containsInvalidValues(Eigen::Matrix<double, totalDimension, 1> vector) {
+  bool isInsideFieldPlusX(const FieldDimensions &fd, float allowedOffset) const
+  {
+    Vector2f v(static_cast<float>(state[0]), static_cast<float>(state[1]));
+    return fd.clipToCarpet(v) < allowedOffset;
+  }
+
+  static bool containsInvalidValues(Eigen::Matrix<double, totalDimension, 1> vector)
+  {
     for (int i = 0; i < totalDimension; i++)
       if (vector[i] != vector[i])
         return true;
@@ -239,7 +226,7 @@ public:
   // Do not call this, it writes over array boundaries!
   //bool test();
 
-  void extractGaussianDistribution3DFromStateEstimation(GaussianDistribution3D & gd)
+  void extractGaussianDistribution3DFromStateEstimation(GaussianDistribution3D & gd) const
   {
     gd.mean.x() = state[0];
     gd.mean.y() = state[1];
@@ -249,16 +236,16 @@ public:
 
   void getRobotPose(Pose2f & robotPose) const
   {
-    robotPose.translation.x() = (float)state[0];
-    robotPose.translation.y() = (float)state[1];
-    robotPose.rotation = (float)state[2];
+    robotPose.translation.x() = static_cast<float>(state[0]);
+    robotPose.translation.y() = static_cast<float>(state[1]);
+    robotPose.rotation = static_cast<float>(state[2]);
   }
 
   void getRobotPose(Pose2f & robotPose, Matrix3d & poseCovar) const
   {
-    robotPose.translation.x() = (float)state[0];
-    robotPose.translation.y() = (float)state[1];
-    robotPose.rotation = (float)state[2];
+    robotPose.translation.x() = static_cast<float>(state[0]);
+    robotPose.translation.y() = static_cast<float>(state[1]);
+    robotPose.rotation = static_cast<float>(state[2]);
     poseCovar = covariance.block(0, 0, 3, 3);
   }
 
@@ -267,25 +254,19 @@ public:
     state[2] = Angle::normalize(state[2] + angle);
   }
 
-  double getSymmetryConfidence() const
+  float getSymmetryConfidence() const
   {
     return symmetryConfidence;
   }
 
-  SideConfidence::ConfidenceState getSymmetryConfidenceState() const
+  void setSymmetryConfidence(float confidence)
   {
-    return symmetryConfidenceState;
+    symmetryConfidence = confidence;
   }
 
   float getPositionConfidence() const
   {
     return positionConfidence;
-  }
-
-  void setSymmetryConfidence(double newSymmetryConfidence, const SelfLocator2017Parameters::LocalizationStateUpdate &localizationStateUpdate)
-  {
-    symmetryConfidence = newSymmetryConfidence;
-    updateSymmetryConfidenceState(localizationStateUpdate);
   }
 
   void scalePositionConfidence(float factor) // for merging/deleting of hypotheses or handling fall downs
@@ -296,7 +277,7 @@ public:
 
   void normalizePositionConfidence(double factor)
   {
-    normalizedPositionConfidence = positionConfidence*factor;
+    normalizedPositionConfidence = positionConfidence * factor;
   }
 
   void draw(ColorRGBA myselfColor = ColorRGBA(255, 255, 255, 255)) const;
@@ -342,21 +323,21 @@ private:
 
 
   void calculateSphericalObservation(SphericalObservation<totalDimension> &observation,
-   const Vector2d &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters);
+    const Vector2d &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters);
 
   void calculateSphericalObservation(SphericalObservation<totalDimension> &observation,
-   const Vector2i &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters)
+    const Vector2i &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters)
   {
     calculateSphericalObservation(observation, Vector2d(relativePosition.cast<double>()), globalCoordinates, cameraHeight, parameters);
   }
   void calculateSphericalObservation(SphericalObservation<totalDimension> &observation,
-   const Vector2f &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters)
+    const Vector2f &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters)
   {
     calculateSphericalObservation(observation, Vector2d(relativePosition.cast<double>()), globalCoordinates, cameraHeight, parameters);
   }
 
-  void calculateInfiniteLineObservation(InfiniteLineObservation<totalDimension> &observation,
-    const Vector2d &startPointCorrespondenceInGlobalCoords, const Vector2d &endPointCorrespondenceInGlobalCoords, const float &cameraHeight, const SelfLocator2017Parameters &parameters);
+  void calculateInfiniteLineObservation(InfiniteLineObservation<totalDimension> &observation, const LineMatchingResult::FieldLine &observedLine,
+    const LineMatchingResult::FieldLine &correspondingFieldLineSegment, const SelfLocator2017Parameters &parameters);
 
 
   /**
@@ -368,19 +349,17 @@ private:
    */
   void updatePositionConfidence(bool foundCorrespondenceMatch, const float &measurement, const float weight)
   {
-    const float update = weight*measurement;
+    const float update = weight * measurement;
     //double distanceBasedUpdateChange = foundCorrespondenceMatch ? parameters.sensorUpdate.influenceOfNewMeasurementDistanceOnPositionConfidence*distanceFactor : 0;
     positionConfidence *= (1.f - (foundCorrespondenceMatch ? update : measurement));
     positionConfidence += foundCorrespondenceMatch ? update : 0;
     //positionConfidence += foundCorrespondenceMatch ? distanceBasedUpdateChange : 0;
   }
-  void updateSymmetryConfidence(bool thisPositionMoreLikeliThanMirroredOne, const float& influence, const SelfLocator2017Parameters::LocalizationStateUpdate &localizationStateUpdate)
+  void updateSymmetryConfidence(bool thisPositionMoreLikeliThanMirroredOne, const float& influence)
   {
-    double newSymmetryConfidence = symmetryConfidence * (1.0 - influence);
-    newSymmetryConfidence += thisPositionMoreLikeliThanMirroredOne ? influence : 0;
-    newSymmetryConfidence = std::max(newSymmetryConfidence, 0.01);
-
-    setSymmetryConfidence(newSymmetryConfidence, localizationStateUpdate);
+    symmetryConfidence *= (1.f - influence);
+    symmetryConfidence += thisPositionMoreLikeliThanMirroredOne ? influence : 0;
+    symmetryConfidence = std::max(symmetryConfidence, 0.01f);
   }
 
   double calculateMeasurementLikelihoodSpherical(const Vector2d & angles1, const Vector2d & angles2, const SelfLocator2017Parameters& parameters) const

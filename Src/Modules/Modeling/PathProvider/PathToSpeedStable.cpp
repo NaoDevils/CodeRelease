@@ -37,6 +37,8 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
     float distanceToTarget = destRel.translation.norm();
     float angleNextWayPointRelative =
       Angle::normalize((thePath.wayPoints[1].translation - thePath.wayPoints[0].translation).angle() - theRobotPoseAfterPreview.rotation);
+
+    atBall = (theBehaviorData.soccerState == BehaviorData::controlBall && (theBallSymbols.ballPositionRelativeWOPreview.norm() < (atBall ? 400 : 300)));
     
     if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING 
       && !(theGameSymbols.timeSinceLastPenalty < 15000)
@@ -52,18 +54,19 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
         // if target position gets far away, switch to that
         // TODO: if target is behind me with similar rotation, stay
         if (distanceToTarget > (targetStateSwitchDistance + targetStateSwitchDistanceHysteresis) &&
+          (!atBall) &&
           (theBehaviorData.soccerState == BehaviorData::controlBall || destRel.translation.x() > 0 || std::abs(destRel.rotation) > walkBackWardsRotation + 0.3f || distanceToTarget > walkBackWardsDistance + 300))
           state = far;
         break;
       case omni:
-        if (distanceToTarget < targetStateSwitchDistance)
+        if (distanceToTarget < targetStateSwitchDistance || atBall)
           state = target;
         else if (thePath.nearestObstacle > omniStateSwitchDistance + omniStateSwitchDistanceHysteresis ||
           std::abs(angleNextWayPointRelative) < omniStateSwitchAngle / 2)
           state = far;
         break;
       case far:
-        if (distanceToTarget < targetStateSwitchDistance ||
+        if (distanceToTarget < targetStateSwitchDistance || atBall ||
           (theBehaviorData.soccerState != BehaviorData::controlBall && destRel.translation.x() < 0 && distanceToTarget < walkBackWardsDistance && std::abs(destRel.rotation) < walkBackWardsRotation))
           //&& distanceToTarget < 800))
           state = target;
@@ -81,44 +84,27 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
     // TODO: use speed sum stuff from request translator?
     Vector2f translationOnPath = thePath.wayPoints[1].translation - thePath.wayPoints[0].translation;
     translationOnPath.rotate((float)-theRobotPoseAfterPreview.rotation);
-    float maxAddedSpeedInTheory =
-      std::sqrt(theWalkingEngineParams.speedLimits.y*theWalkingEngineParams.speedLimits.y +
-        theWalkingEngineParams.speedLimits.xForward*theWalkingEngineParams.speedLimits.xForward);
 
-    translationOnPath.normalize(std::min<float>(maxAddedSpeedInTheory, translationOnPath.norm()));
-
-    float yFactor = std::max<float>(1, std::abs(translationOnPath.y()) / theWalkingEngineParams.speedLimits.y);
-    translationOnPath /= yFactor;
-    // HACK for faster approach
-    if (std::abs(translationOnPath.y()) < 30 && translationOnPath.x() > 0 && translationOnPath.x() < 100)
+    float maxSpeedX = theWalkingEngineParams.speedLimits.xForward;
+    if (state != far)
     {
-      translationOnPath.x() = std::min(translationOnPath.x()*2.f, 100.f); // TODO: different for different kick types
-      translationOnPath.y() *= 2.5f;
+      maxSpeedX = theWalkingEngineParams.speedLimits.xForwardOmni;
     }
 
-    // hard coded speeds for dribbling
-    // TODO: params & sanity check (sometimes overshooting)
-    /*if (thePositioningSymbols.useDribbling &&
-      // dribbling over opp ground line is bad
-      theBallModel.estimate.position.x() < theFieldDimensions.xPosOpponentGroundline - 200 && 
-      // ball must be near
-      theBallModel.estimate.position.norm() < 300 + (inDribbling ? 100 : 0) && 
-      // if ball is too far to the side, stop dribbling
-      (std::abs(theBallModel.estimate.position.angle()) < pi_4 + (inDribbling ? 0.15f : 0) || std::abs(theBallModel.estimate.position.y()) < 50 + (inDribbling ? 20 : 0)) && 
-      // if target ist not the ball, do not dribble (could be walking away to make room for another player)
-      (destRel.translation - theBallModel.estimate.position).norm() < 300)
+    // if distance exceeds maxSpeeds, clip
+    if (translationOnPath.x() > maxSpeedX || std::abs(translationOnPath.y()) > theWalkingEngineParams.speedLimits.y)
     {
-      inDribbling = true;
-      float alpha = 1.f;
-      if (std::abs(theBallModel.estimate.position.angle()) > pi_2)
-        alpha = std::max<float>(0.f, 1.f - (std::abs(theBallModel.estimate.position.angle()) - pi_2) / pi_2);
-      speedRequest.translation.x() = 200.f * alpha;
-      speedRequest.translation.y() = (thePath.wayPoints[1].translation - thePath.wayPoints[0].translation).y(); // TODO : clip
-      speedRequest.rotation = Angle::normalize(thePath.wayPoints.back().rotation - theRobotPoseAfterPreview.rotation);
-      return;
+      float xFactor = std::abs(translationOnPath.x()) / maxSpeedX;
+      float yFactor = std::abs(translationOnPath.y()) / theWalkingEngineParams.speedLimits.y;
+      translationOnPath /= std::max(0.001f, std::max(xFactor, yFactor));
     }
-    else*/
-      inDribbling = false;
+    
+    inDribbling = false;
+    float maxSpeedR = theWalkingEngineParams.speedLimits.r;
+    if (state != far)
+    {
+      maxSpeedR = theWalkingEngineParams.speedLimits.r*0.8f;
+    }
 
     switch (state)
     {
@@ -177,8 +163,34 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
     }
     default:
       break;
+    } // end of switch of states
+    if (useDistanceBasedSpeedPercentageInReady && theGameInfo.state == STATE_READY)
+    {
+      // if distance on path greater than 4.5 m for 45000 ms (at start of ready), go full speed
+      // else decrease, but min speed is half max speed
+      float speedPercentage = std::min(std::max(minSpeedPercentageInReady, std::max(thePath.length*10,7500.f) / std::max(45000 - theGameSymbols.timeSinceGameState, 1000)), 1.f);
+      speedRequest.translation *= speedPercentage;
+      speedRequest.rotation *= speedPercentage;
     }
-  }
+    // ball chaser and goalie always at full speed, others only if near to ball
+    else if (theBehaviorData.soccerState != BehaviorData::controlBall &&
+      theBallSymbols.ballPositionRelative.norm() > 2000 &&
+      theBehaviorData.role != BehaviorData::keeper)
+    {
+      speedRequest.translation *= speedPercentageWhenNotChasingBall;
+      speedRequest.rotation *= speedPercentageWhenNotChasingBall;
+    }
+
+    // factors 4,2,2 are the speeds we typically do in one step for x/y/r
+    // TODO: put all of this in PG
+    
+    speedRequest.translation.x() *= 4;
+    
+    speedRequest.translation.y() *= 2;
+
+    speedRequest.rotation *= 2.f;
+
+  } // end of if motionrequest is walk
 }
 
 MAKE_MODULE(PathToSpeedStable, pathPlanning)

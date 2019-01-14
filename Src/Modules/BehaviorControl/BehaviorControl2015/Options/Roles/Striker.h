@@ -43,7 +43,7 @@ option(Striker)
     }
     action
     {
-      Walk(WalkRequest::speed, 0, 0, 0, WalkRequest::StepRequest::frontKickLeft);
+      Walk(WalkRequest::speed, 0, 0, 0, WalkRequest::StepRequest::frontKickShort);
     }
   }
 

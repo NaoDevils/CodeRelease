@@ -26,6 +26,7 @@ struct SpeedInfo : public Streamable
   /** Currently executed custom step file. If this is not "none" the speed above
    is invalid. */
   WalkRequest::StepRequest currentCustomStep;
+  bool customStepKickInPreview;
   
   int delay; /**< The current speed was requested delay frames before. */
 	

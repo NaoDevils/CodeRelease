@@ -7,12 +7,20 @@
 #include "Modules/MotionControl/DortmundWalkingEngine/StepData.h"
 
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Debugging/Watch.h"
 #else
 #include "bhumanstub.h"
 #include "Watch.h"
 #endif
+
+STREAMABLE(RefZMP2018,
+{
+  RefZMP2018() { zmpWCS.reserve(100); zmpRCS.reserve(100); },
+  (bool)(false) running,
+  (std::vector<Vector2f>) zmpWCS,
+  (std::vector<Vector2f>) zmpRCS,
+});
 
 /** Maximum number of possible foot positions in buffer */
 #define MAX_ZMP	300

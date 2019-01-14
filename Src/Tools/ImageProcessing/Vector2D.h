@@ -4,6 +4,8 @@
 *
 * @author <A href=mailto:fabian.rensen@tu-dortmund.de>Fabian Rensen</A>
 */
+#pragma once
+
 #include <vector>
 
 template<typename T> class stdVector2D : public std::vector<T> {

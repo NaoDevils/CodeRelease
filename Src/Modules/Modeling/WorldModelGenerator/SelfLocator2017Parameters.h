@@ -13,7 +13,13 @@
 STREAMABLE(SelfLocator2017Parameters,
 {
   STREAMABLE(ProcessUpdate,
-  { ,
+  {
+    ENUM(MeasurementModelCalculation,
+    {,
+	  vector,
+	  singles,
+    }),
+
     // Determines whether to update the coVar matrix based on odometry data
     (bool)(false) odometryBasedVarianceUpdate,
     (float)(5.f) minPositionChageForCovarianceUpdate,
@@ -24,6 +30,8 @@ STREAMABLE(SelfLocator2017Parameters,
     (float)(0.0f) adjustRotationToBestFittingAngle,
 
     (float)(0.15f) positionConfidenceHysteresisForKeepingBestHypothesis,
+
+	(MeasurementModelCalculation)(vector) jacobianMeasurementCalculation,
   });
 
   STREAMABLE(SensorUpdate,
@@ -104,6 +112,15 @@ STREAMABLE(SelfLocator2017Parameters,
     (float)(0.8f) centerCircleBaseConfidence,
     (float)(0.8f) penaltyCrossBaseConfidence,
     (float)(0.25f) lineBasedPositionConfidenceWhenPositionTracking,
+
+    // Time to not spawn if pose is on other side of the field but we are still entering the field (initial or penalized)
+    (unsigned int)(15000) limitSpawningToOwnSideTimeout,
+
+    // Prevent spawning when fallen down again within a certain range
+    (float)(500.f) minDistanceBetweenFallDowns,
+
+    // Acc Z difference/peak to consider oneself as picked up and spawn on manual positions in SET state
+    (float)(4.f) accZforPickedUpDifference,
   });
 
   STREAMABLE(Pruning,
@@ -148,10 +165,12 @@ STREAMABLE(SelfLocator2017Parameters,
 
 STREAMABLE(PositionsByRules,
 { ,
-  (std::vector<Vector2f>) penaltyPositions,
   (std::vector<Vector2f>) fieldPlayerPositionsOwnKickoff,
   (std::vector<Vector2f>) fieldPlayerPositionsOppKickoff,
+  (std::vector<float>) xOffsetPenaltyPositions,
   (Vector2f) goaliePosition,
-  (Vector2f) penaltyShootOutPosition,
+  (Vector2f) penaltyShootoutGoaliePosition,
+  (float) penaltyShootStartingRadius,
+  (std::vector<int>) penaltyShootAngles,
 });
 

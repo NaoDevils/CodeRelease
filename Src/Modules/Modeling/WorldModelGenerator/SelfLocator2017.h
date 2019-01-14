@@ -17,6 +17,7 @@
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Tools/Module/Module.h"
 #include "Tools/ColorClasses.h"
+#include "Tools/RingBuffer.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPoseHypotheses.h"
 #include "Representations/Modeling/BallModel.h"
@@ -38,6 +39,7 @@
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/Sensing/FallDownState.h"
+#include "Representations/Sensing/InertialData.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 
 #include "Tools/Math/Probabilistics.h"
@@ -71,11 +73,13 @@ MODULE(SelfLocator2017,
   USES(LocalRobotMap),
   USES(RemoteRobotMap),
   REQUIRES(FallDownState),
+  REQUIRES(InertialData),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(JointSensorData),
   USES(BehaviorData), // For manual positions, role is required (right now only goalie vs field player)
   PROVIDES(RobotPose),
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypotheses), //all
+  PROVIDES_WITHOUT_MODIFY(RobotPoseHypothesesCompressed), //all compressed (for logging)
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypothesis), //the best
   PROVIDES(SideConfidence),
   LOADS_PARAMETERS(
@@ -86,17 +90,15 @@ MODULE(SelfLocator2017,
 });
 
 
-
-
 class SelfLocator2017 : public SelfLocator2017Base
 {
-  struct HypothesesBase
+  struct HypothesisBase
   {
     Pose2f pose;
     float positionConfidence;
-    double symmetryConfidence;
+    float symmetryConfidence;
 
-    HypothesesBase(const Pose2f &_pose, float _positionConfidence, double _symmetryConfidence)
+    HypothesisBase(const Pose2f &_pose, float _positionConfidence, float _symmetryConfidence)
       : pose(_pose), positionConfidence(_positionConfidence), symmetryConfidence(_symmetryConfidence) { }
   };
 
@@ -128,6 +130,7 @@ public:
   void update(RobotPose& robotPose);
   void update(RobotPoseHypothesis& robotPoseHypothesis);
   void update(RobotPoseHypotheses& robotPoseHypotheses);
+  void update(RobotPoseHypothesesCompressed& robotPoseHypotheses);
   void update(SideConfidence& sideConfidence);
 private:
   /* ----------------------------------- private variables here ----------------------------------*/
@@ -136,7 +139,7 @@ private:
   unsigned lastExecuteTimeStamp;
   
   PoseHypotheses2017 poseHypotheses;
-  
+
   Pose2f                    lastOdometryData;
   bool                      foundGoodPosition;
   bool                      symmetryLost;
@@ -152,6 +155,22 @@ private:
   unsigned                  lastNonPlayingTimeStamp; // needed to prevent too early "positionLost"
   unsigned                  lastPositionLostTimeStamp; // needed to prevent too early spawning of symmetric positions
   unsigned                  timeStampFirstReadyState; // needed for preventing spawning on opponent half in first ready state
+  float                     distanceTraveledFromLastFallDown; // needed for preventing spawning when fallen down within a certain range
+
+  std::uint8_t              symmetryPosUpdate, symmertryNegUpdate;
+  const std::uint8_t        symmetryUpdatesBeforeAdjustingState = 5;
+  float                     lastBestSymmetryConfidence;
+
+  unsigned                  timeStampWhenEnteredSetState;
+  RingBuffer<Vector3f, 30>  accDataBuffer;
+  bool gotPickedUpInSet;
+
+
+  /* ----------------------------------- private local storage ------------------------------------*/
+  RobotPose m_robotPose;
+  SideConfidence m_sideConfidence;
+  RobotPoseHypothesis m_robotPoseHypothesis;
+  RobotPoseHypotheses m_robotPoseHypotheses;
 
   /* ----------------------------------- private methods here ------------------------------------*/
 
@@ -165,8 +184,9 @@ private:
 
   void normalizeWeights();
   void pruneHypotheses();
-  void pruneHypothesesGoalie();
   void pruneHypothesesInOwnHalf();
+  void pruneHypothesesInOpponentHalf();
+  void pruneHypothesesOutsideField();
   void pruneHypothesesOutsideCarpet();
   void pruneHypothesesWithInvalidValues();
   void predictHypotheses();
@@ -186,6 +206,7 @@ private:
   
   void addHypothesesOnManualPositioningPositions();
   void addHypothesesOnInitialKickoffPositions();
+  void addPenaltyStrikerStartingHypothesis();
   void addHypothesesOnPenaltyPositions(float newPositionConfidence);
 
   void evaluateLocalizationState();
@@ -205,7 +226,7 @@ private:
 
   float getRobotPoseValidity(const PoseHypothesis2017 & poseHypothesis);
 
-  void addPoseToHypothesisVector(const Pose2f &pose, std::vector<HypothesesBase> &additionalHypotheses,
+  void addPoseToHypothesisVector(const Pose2f &pose, std::vector<HypothesisBase> &additionalHypotheses,
     const float &poseConfidence);
 
 
@@ -215,4 +236,5 @@ private:
   */
   void initDebugging();
   void doGlobalDebugging();
+  void generateOutputData();
 };

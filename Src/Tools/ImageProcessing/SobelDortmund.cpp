@@ -10,30 +10,33 @@
 #include "SobelDortmund.h"
 
 #include "Representations/Infrastructure/Image.h"
+#include "Tools/Debugging/Stopwatch.h"
 
 
-stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image& YUVImage, Vector2i start, Vector2i end, int width, int height,
+stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image &YUVImage, Vector2i start, Vector2i end, int width, int height,
                                                                   Direction dir, bool returnFullArray)
 {
-  unsigned char* image_ptr = (unsigned char*)YUVImage.image;
+  unsigned char *image_ptr = (unsigned char *)YUVImage.image;
 
   switchStartEnd(start, end);
   int rectWidth = end(0) - start(0) + 1;
   int rectHeight = end(1) - start(1) + 1;
 
-  stdVector2D<unsigned char> targetData(rectWidth, rectHeight);
-  unsigned char* target = targetData.data();
+  stdVector2D<unsigned char> targetData(returnFullArray ? width : rectWidth, returnFullArray ? height : rectHeight);
+
+  unsigned char *target = targetData.data();
 
   // Calculate the pointers to the first element of the first 3 rows using pointer arithmetic
-  unsigned char* row_0_ptr = image_ptr + start(1) * width * 2;
-  unsigned char* row_1_ptr = row_0_ptr + 2 * width;
-  unsigned char* row_2_ptr = row_0_ptr + 4 * width;
+  unsigned char *row_0_ptr = image_ptr + start(1) * width * 2;
+  unsigned char *row_1_ptr = row_0_ptr + 2 * width;
+  unsigned char *row_2_ptr = row_0_ptr + 4 * width;
 
 
   // Main Loop, we will start at (1,1) because Sobel needs a 3x3 surrounding, which is
   // not available for edge pixels
   // Every row will be looped through, but only every 14th column, because with 8 bit SSE
   // it is possible to store 16 8-bit values in one SSE register, which will give 14 results (minus edge pixels included!)
+
   for (int y = start(1) + 1; y < end(1); y++)
   {
     for (int x = start(0) + 1; x < end(0); x += 14)
@@ -58,8 +61,8 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image& Y
       // -1: because we started this loop with x = 1
       // 2 * : because only every second value is a Y value
 
-      __m128i loadA = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_0_ptr + 2 * (x - 1)));
-      __m128i loadB = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_0_ptr + 16 + 2 * (x - 1)));
+      __m128i loadA = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_0_ptr + 2 * (x - 1)));
+      __m128i loadB = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_0_ptr + 16 + 2 * (x - 1)));
 
       __m128i a = _mm_unpacklo_epi8(loadA, loadB);
       __m128i b = _mm_unpackhi_epi8(loadA, loadB);
@@ -87,8 +90,8 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image& Y
       // row_0 = _mm_srli_epi8(row_0, 2);
 
       // Same as above for second row
-      loadA = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_1_ptr + 2 * (x - 1)));
-      loadB = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_1_ptr + 16 + 2 * (x - 1)));
+      loadA = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_1_ptr + 2 * (x - 1)));
+      loadB = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_1_ptr + 16 + 2 * (x - 1)));
       a = _mm_unpacklo_epi8(loadA, loadB);
       b = _mm_unpackhi_epi8(loadA, loadB);
       c = _mm_unpacklo_epi8(a, b);
@@ -100,8 +103,8 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image& Y
       // row_1 = _mm_srli_epi8(row_1, 2);
 
       // Same as above for third row
-      loadA = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_2_ptr + 2 * (x - 1)));
-      loadB = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_2_ptr + 16 + 2 * (x - 1)));
+      loadA = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_2_ptr + 2 * (x - 1)));
+      loadB = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_2_ptr + 16 + 2 * (x - 1)));
       a = _mm_unpacklo_epi8(loadA, loadB);
       b = _mm_unpackhi_epi8(loadA, loadB);
       c = _mm_unpacklo_epi8(a, b);
@@ -193,30 +196,56 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image& Y
       // Store the result
       if (returnFullArray)
       {
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(target + x + y * width), result);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(target + x + y * width), result);
       }
       else
       {
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(target + x - start(0) + (y - start(1)) * rectWidth), result);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(target + x - start(0) + (y - start(1)) * rectWidth), result);
       }
+
+      // Increase the row pointers
+      row_0_ptr += 2 * width;
+      row_1_ptr += 2 * width;
+      row_2_ptr += 2 * width;
     }
-    // Increase the row pointers
-    row_0_ptr += 2 * width;
-    row_1_ptr += 2 * width;
-    row_2_ptr += 2 * width;
   }
 
 
   if (returnFullArray)
   {
-    for (int i = 0; i < height; ++i)
+    // top edge above rectangle
+    for (int i = 0; i <= start(1); ++i)
     {
       for (int j = 0; j < width; ++j)
       {
-        if (j <= start(0) || j >= end(0) - 1 || i <= start(1) || i >= end(1) - 1)
-        {
-          target[i * width + j] = 2;
-        }
+        target[i * width + j] = 0;
+      }
+    }
+
+    // bottom edge below rectangle
+    for (int i = end(1) - 1; i < height; ++i)
+    {
+      for (int j = 0; j < width; ++j)
+      {
+        target[i * width + j] = 0;
+      }
+    }
+
+    // Left edge, but without top and lower edge
+    for (int j = 0; j <= start(0); ++j)
+    {
+      for (int i = start(1) + 1; i <= end(1); ++i)
+      {
+        target[i * width + j] = 0;
+      }
+    }
+
+    // right edge, but without top and lower edge
+    for (int j = end(0); j < width; ++j)
+    {
+      for (int i = start(1) + 1; i <= end(1); ++i)
+      {
+        target[i * width + j] = 0;
       }
     }
   }
@@ -234,26 +263,28 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageFull(const Image& Y
     }
   }
 
+
   return targetData;
 }
 
-stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image& YUVImage, Vector2i start, Vector2i end, int width, int height,
+stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image &YUVImage, Vector2i start, Vector2i end, int width, int height,
                                                                      Direction dir, bool returnFullArray)
 {
-  unsigned char* image_ptr = (unsigned char*)YUVImage.image;
+  unsigned char *image_ptr = (unsigned char *)YUVImage.image;
 
 
   switchStartEnd(start, end);
   int rectWidth = end(0) - start(0) + 1;
   int rectHeight = end(1) - start(1) + 1;
 
-  stdVector2D<unsigned char> targetData(rectWidth, rectHeight);
-  unsigned char* target = targetData.data();
+  stdVector2D<unsigned char> targetData(returnFullArray ? width : rectWidth, returnFullArray ? height : rectHeight);
+
+  unsigned char *target = targetData.data();
 
   // Calculate the pointers to the first element of the first 3 rows using pointer arithmetic
-  unsigned char* row_0_ptr = image_ptr + start(1) * width * 8;
-  unsigned char* row_1_ptr = row_0_ptr + 8 * width;
-  unsigned char* row_2_ptr = row_0_ptr + 16 * width;
+  unsigned char *row_0_ptr = image_ptr + start(1) * width * 8;
+  unsigned char *row_1_ptr = row_0_ptr + 8 * width;
+  unsigned char *row_2_ptr = row_0_ptr + 16 * width;
 
   int i = 1;
   int j = 1;
@@ -301,10 +332,10 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image
       // -1: because we started this loop with x = 1
       // 2 * : because only every second value is a Y value
 
-      __m128i loadA = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_0_ptr + 2 * (x - 1)));
-      __m128i loadB = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_0_ptr + 16 + 2 * (x - 1)));
-      __m128i loadC = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_0_ptr + 32 + 2 * (x - 1)));
-      __m128i loadD = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_0_ptr + 48 + 2 * (x - 1)));
+      __m128i loadA = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_0_ptr + 2 * (x - 1)));
+      __m128i loadB = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_0_ptr + 16 + 2 * (x - 1)));
+      __m128i loadC = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_0_ptr + 32 + 2 * (x - 1)));
+      __m128i loadD = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_0_ptr + 48 + 2 * (x - 1)));
 
       __m128i a = _mm_unpacklo_epi8(loadA, loadB);
       __m128i b = _mm_unpackhi_epi8(loadA, loadB);
@@ -346,10 +377,10 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image
       __m128i row_0 = _mm_unpacklo_epi8(a, b);
 
       // Same as above for second row
-      loadA = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_1_ptr + 2 * (x - 1)));
-      loadB = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_1_ptr + 16 + 2 * (x - 1)));
-      loadC = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_1_ptr + 32 + 2 * (x - 1)));
-      loadD = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_1_ptr + 48 + 2 * (x - 1)));
+      loadA = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_1_ptr + 2 * (x - 1)));
+      loadB = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_1_ptr + 16 + 2 * (x - 1)));
+      loadC = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_1_ptr + 32 + 2 * (x - 1)));
+      loadD = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_1_ptr + 48 + 2 * (x - 1)));
       a = _mm_unpacklo_epi8(loadA, loadB);
       b = _mm_unpackhi_epi8(loadA, loadB);
       c = _mm_unpacklo_epi8(a, b);
@@ -379,10 +410,10 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image
 
 
       // Same as above for third row
-      loadA = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_2_ptr + 2 * (x - 1)));
-      loadB = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_2_ptr + 16 + 2 * (x - 1)));
-      loadC = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_2_ptr + 32 + 2 * (x - 1)));
-      loadD = _mm_loadu_si128(reinterpret_cast<__m128i*>(row_2_ptr + 48 + 2 * (x - 1)));
+      loadA = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_2_ptr + 2 * (x - 1)));
+      loadB = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_2_ptr + 16 + 2 * (x - 1)));
+      loadC = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_2_ptr + 32 + 2 * (x - 1)));
+      loadD = _mm_loadu_si128(reinterpret_cast<__m128i *>(row_2_ptr + 48 + 2 * (x - 1)));
       a = _mm_unpacklo_epi8(loadA, loadB);
       b = _mm_unpackhi_epi8(loadA, loadB);
       c = _mm_unpacklo_epi8(a, b);
@@ -492,11 +523,11 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image
       // Store the result
       if (returnFullArray)
       {
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(target + j + i * width), result);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(target + j + i * width), result);
       }
       else
       {
-        _mm_storeu_si128(reinterpret_cast<__m128i*>(target + j + i * rectWidth), result);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(target + j + i * rectWidth), result);
       }
 
       j += 14;
@@ -511,14 +542,39 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image
 
   if (returnFullArray)
   {
-    for (int y = 0; y < height; ++y)
+    // top edge above rectangle
+    for (int i = 0; i <= start(1); ++i)
     {
-      for (int x = 0; x < width; ++x)
+      for (int j = 0; j < rectWidth; ++j)
       {
-        if (x <= start(0) || x >= end(0) - 1 || y <= start(1) || y >= end(1) - 1)
-        {
-          target[y * width + x] = 0;  // Set edges to 0
-        }
+        target[i * width + j] = 0;
+      }
+    }
+
+    // bottom edge below rectangle
+    for (int i = end(1); i < height; ++i)
+    {
+      for (int j = 0; j < width; ++j)
+      {
+        target[i * width + j] = 0;
+      }
+    }
+
+    // Left edge, but without top and lower edge
+    for (int j = 0; j <= start(0); ++j)
+    {
+      for (int i = start(1) + 1; i <= end(1); ++i)
+      {
+        target[i * width + j] = 0;
+      }
+    }
+
+    // right edge, but without top and lower edge
+    for (int j = end(0); j < width; ++j)
+    {
+      for (int i = start(1) + 1; i <= end(1); ++i)
+      {
+        target[i * width + j] = 0;
       }
     }
   }
@@ -540,7 +596,7 @@ stdVector2D<unsigned char> SobelDortmund::sobelSSEAnyYUVImageQuarter(const Image
 }
 
 
-void SobelDortmund::switchStartEnd(Vector2i& start, Vector2i& end)
+void SobelDortmund::switchStartEnd(Vector2i &start, Vector2i &end)
 {
   Vector2i bufferStart = start;
   // Switch start and end to that it is always a top left and a bottom right corner

@@ -34,6 +34,13 @@
 
 #endif
 
+#ifdef __CLION_IDE__
+
+#include "Linux/BHAssert.h"
+#define BHASSERT_INCLUDED
+
+#endif
+
 #ifndef BHASSERT_INCLUDED
 #error "Unknown platform or target"
 #endif

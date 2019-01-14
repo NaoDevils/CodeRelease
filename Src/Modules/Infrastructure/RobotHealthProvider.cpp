@@ -75,9 +75,9 @@ void RobotHealthProvider::update(RobotHealth& robotHealth)
 
     // transfer maximal temperature, battery level and total current from SensorData:
     robotHealth.batteryLevel = (unsigned char)((theSystemSensorData.batteryLevel == SensorData::off ? 1.f : theSystemSensorData.batteryLevel) * 100.f);
-    const auto maxTemperature = std::max_element(theJointSensorData.temperatures.begin(), theJointSensorData.temperatures.end());
+    const auto maxTemperature = std::max_element(theJointSensorData.temperatures.begin() + 14, theJointSensorData.temperatures.end());
     robotHealth.maxJointTemperature = *maxTemperature;
-    robotHealth.jointWithMaxTemperature = static_cast<Joints::Joint>(std::distance(theJointSensorData.temperatures.begin(), maxTemperature));
+    robotHealth.jointWithMaxTemperature = static_cast<Joints::Joint>(std::distance(theJointSensorData.temperatures.begin() + 14, maxTemperature));
     robotHealth.totalCurrent = std::accumulate(theJointSensorData.currents.begin(), theJointSensorData.currents.end(), 0.0f);
 
     // Add cpu load, memory load and robot name:

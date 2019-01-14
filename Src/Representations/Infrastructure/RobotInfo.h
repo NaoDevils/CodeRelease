@@ -45,6 +45,7 @@ public:
   NaoVersion naoVersion = V5;
   NaoType naoBodyType = H21;
   NaoType naoHeadType = H21;
+  float transitionToBhuman = 1.f; /** If libbhuman has given full control to bhuman. (0 = libbhuman, 1 = bhuman) Range: [0.0, 1.0] */
 
   RobotInfo();
 

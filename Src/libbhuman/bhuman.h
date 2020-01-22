@@ -326,6 +326,7 @@ enum LBHTeamInfoIds
 const int lbhNumOfStiffnessActuatorIds = lbhNumOfPositionActuatorIds;
 const int lbhNumOfLedActuatorIds = rFootLedBlueActuator + 1 - faceLedRedLeft0DegActuator;
 
+#ifndef SENSOR_READER
 enum BHState
 {
   okState = 0,
@@ -341,6 +342,7 @@ enum BHState
   sigALRMState = 14,
   sigTERMState = 15,
 };
+#endif
 
 struct LBHData
 {
@@ -355,7 +357,11 @@ struct LBHData
   float actuators[3][lbhNumOfActuatorIds];
   RoboCup::RoboCupGameControlData gameControlData[3];
 
+  #ifndef SENSOR_READER
   BHState state;
+  #else
+  NDState state;
+  #endif
   int teamInfo[lbhNumOfTeamInfoIds];
   uint64_t bhumanStartTime;
 

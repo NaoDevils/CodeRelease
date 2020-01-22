@@ -12,7 +12,7 @@
 #include "Tools/Streams/InStreams.h"
 
 DebugHandler::DebugHandler(MessageQueue& in, MessageQueue& out, int maxPackageSendSize, int maxPackageReceiveSize) :
-  TcpConnection(0, 0xA1BD, TcpConnection::receiver, maxPackageSendSize, maxPackageReceiveSize),
+  TcpConnection(0, 51111, TcpConnection::receiver, maxPackageSendSize, maxPackageReceiveSize),
   in(in),
   out(out),
   sendData(0),

@@ -37,6 +37,7 @@ MODULE(ArmAnimator,
     (int) timeToPullPitch,
     (int) timeToPullArmIn,
     (int) timeUntilArmContactActive,
+    (bool)(false) useBodyTiltForArmMovement,
   }),
 });
 

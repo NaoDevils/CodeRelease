@@ -20,12 +20,8 @@
 class RemoteKalmanPositionHypothesis : public KalmanPositionHypothesis
 {
 public:
-  
-  /**
-   * Default constructor without initialization. This should not be used!
-   */
-  RemoteKalmanPositionHypothesis() : KalmanPositionHypothesis() {}
-  
+  RemoteKalmanPositionHypothesis() : KalmanPositionHypothesis() {};
+
   /**
    * \brief Constructor with initialization.
    *
@@ -37,21 +33,23 @@ public:
    * \param [in] timestamp The timestamp of the initial position measurement (in ms).
    * \param [in] perceptValidity The validity of the initial position measurement in range [0,1].
    * \param [in] position The initial position (in mm).
+   * \param [in] perceptDuration The duration for the PerceptPerSecond buffer.
    * \param [in] velocity Optional: The initial velocity (in mm/s)
    *                      or (0, 0) if velocity is unknown.
    */
   RemoteKalmanPositionHypothesis(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-                           float initialValidity,
-                           unsigned timestamp,
-                           float perceptValidity,
-                           const Vector2f& position,
-                           const Vector2f& velocity = Vector2f::Zero())
-  : KalmanPositionHypothesis(kalmanNoiseMatrices, initialValidity, timestamp, perceptValidity, position, velocity) {}
+    float initialValidity,
+    unsigned timestamp,
+    float perceptValidity,
+    const Vector2f& position,
+    unsigned perceptDuration,
+    const Vector2f& velocity = Vector2f::Zero())
+    : KalmanPositionHypothesis(kalmanNoiseMatrices, initialValidity, timestamp, perceptValidity, position, perceptDuration, velocity) {};
   
   /**
    * Destructor.
    */
-  ~RemoteKalmanPositionHypothesis() {}
+  ~RemoteKalmanPositionHypothesis() override {};
   
   
   //MARK: Labeling methods
@@ -80,6 +78,8 @@ public:
      */
     TeammateInfo(float validity, unsigned timeWhenLastUpdated)
       : validity(validity), timeWhenLastUpdated(timeWhenLastUpdated) {}
+
+    virtual ~TeammateInfo() {}
     /// The validity of the teammates local model (range: [0,1]).
     float validity;
     /// Timestamp (in ms) when the teammate updated the hypothesis for the last time.

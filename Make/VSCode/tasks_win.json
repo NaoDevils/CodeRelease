@@ -1,0 +1,127 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  // Declare input parameters for tasks
+  "inputs": [
+    {
+      // Specifies which target to use in tasks with parameters
+      "id": "targetName",
+      "type": "pickString",
+      "options": [
+        "",
+        "SimRobot",
+        "SimulatedNao",
+        "Nao",
+        "Utils\\bush",
+        "Libs\\SimRobotCore2",
+        "Libs\\SimRobotEditor",
+        "Libs\\SimRobotHelp",
+        "Libs\\qtpropertybrowser",
+        "Libs\\libqxt",
+        "Libs\\Controller",
+        "ndevilsbase",
+        "sensorReader",
+        "Libs\\libbhuman",
+        "Libs\\libgamectrl",
+        "Utils\\copyfiles",
+        "Utils\\Tests"
+      ],
+      "default": "SimRobot",
+      "description": "The name of the build target. Leave empty to build entire solution."
+    },
+    // Specifies which configuration to use in tasks with parameters
+    {
+      "id": "buildConfiguration",
+      "type": "pickString",
+      "options": [
+        "Develop",
+        "Debug",
+        "Release"
+      ],
+      "default": "Develop",
+      "description": "The configuration for the build (either Develop, Debug or Release)."
+    },
+  ],
+  "tasks": [
+    {
+      "label": "Build Target",
+      "type": "shell",
+      "command": "${workspaceFolder}\\Make\\VSCode\\build.bat",
+      "args": [
+        "${workspaceFolder}\\Make\\VS2019\\B-Human.sln",
+        "${input:buildConfiguration}",
+        "${input:targetName}"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Run Target",
+      "type": "shell",
+      "command": "${workspaceFolder}/Build/Windows/${input:targetName}/${input:buildConfiguration}/${input:targetName}.exe",
+      "dependsOn": "Build Target",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build SimRobot|Develop",
+      "type": "shell",
+      "command": "${workspaceFolder}\\Make\\VSCode\\build.bat",
+      "args": [
+        "${workspaceFolder}\\Make\\VS2019\\B-Human.sln",
+        "Develop",
+        "SimRobot"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build SimRobot|Debug",
+      "type": "shell",
+      "command": "${workspaceFolder}\\Make\\VSCode\\build.bat",
+      "args": [
+        "${workspaceFolder}\\Make\\VS2019\\B-Human.sln",
+        "Debug",
+        "SimRobot"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build SimRobot|Release",
+      "type": "shell",
+      "command": "${workspaceFolder}\\Make\\VSCode\\build.bat",
+      "args": [
+        "${workspaceFolder}\\Make\\VS2019\\B-Human.sln",
+        "Release",
+        "SimRobot"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Build bush|Release",
+      "type": "shell",
+      "command": "${workspaceFolder}\\Make\\VSCode\\build.bat",
+      "args": [
+        "${workspaceFolder}\\Make\\VS2019\\B-Human.sln",
+        "Release",
+        "Utils\\bush"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Run bush|Release",
+      "type": "process",
+      "command": "${workspaceFolder}/Build/Windows/bush/Release/bush.exe",
+      "dependsOn": [
+        "Build bush|Release"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

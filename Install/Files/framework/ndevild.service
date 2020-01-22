@@ -1,0 +1,10 @@
+[Unit]
+Description=ndevilsbase part of Nao Devils framework
+After=chronyd.service
+
+[Service]
+Type=simple
+ExecStart=/home/nao/bin/ndevil_init.sh
+
+[Install]
+WantedBy=default.target

@@ -281,7 +281,7 @@ public:
    * @param cameraInfo The camera info
    * @return True, if point would be visible
    */
-  static bool wouldPointBeVisible(const Vector2f &relPosOnField, const float maxHeadPan, const CameraInfo& cameraInfo);
+  static bool wouldPointBeVisible(const Vector2f &relPosOnField, const Angle maxHeadPan, const CameraInfo& cameraInfo);
   
   /**
    * Checks whether the ball should be visible with the given cameraMatrix.

@@ -61,6 +61,7 @@ private:
   static const float safeDistance; /**< safe distance from penalty areas for manual placement. */
   static const float dropHeight; /**< height at which robots are manually placed so the fall a little bit and recognize it. */
   static Pose2f lastBallContactPose; /**< Position were the last ball contact of a robot took place, orientation is toward opponent goal (0/180 degress). */
+  static int timeOfLastBallContact; /**Time when the last ball contact occured*/
   static FieldDimensions fieldDimensions;
   GameInfo gameInfo;
   TeamInfo teamInfos[2];
@@ -68,10 +69,23 @@ private:
   unsigned timeOfLastDropIn;
   unsigned timeWhenLastRobotMoved;
   unsigned timeWhenStateBegan;
+  int timeWhenSetPlayStarted = -1; /**Time when the current set play started (-1 during SET_PLAY_NONE)*/
   Robot robots[numOfRobots];
 
    /** enum which declares the different types of balls leaving the field */
-  enum BallOut { NONE, GOAL_BY_RED, GOAL_BY_BLUE, OUT_BY_RED, OUT_BY_BLUE };
+  enum BallOut { 
+    NONE, 
+    GOAL_BY_RED, 
+    GOAL_BY_BLUE, 
+    OUT_BY_RED, 
+    OUT_BY_BLUE,
+    KICK_IN_FOR_RED,
+    KICK_IN_FOR_BLUE,
+    GOAL_FREE_KICK_FOR_RED,
+    GOAL_FREE_KICK_FOR_BLUE,
+    CORNER_KICK_FOR_RED,
+    CORNER_KICK_FOR_BLUE
+  };
 
   /**
    * Handles the command "gc".
@@ -139,8 +153,14 @@ private:
   /** Execute the manual placements decided before. */
   void executePlacement();
 
-  /** Update the ball position based on the rules. */
+  /** Check if the ball left the field and which action should follow. */
   static BallOut updateBall();
+
+  /** Place the ball in the correct position based on how it left the field. */
+  static void placeBallAfterLeavingField(BallOut typeOfBallOut);
+
+  /** Checks if current set play ended because time ran out or offensive team touched the ball. */
+  void checkForSetPlayCompletion();
 
 public:
   bool automatic; /**< Are the automatic features active? */

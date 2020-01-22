@@ -1016,18 +1016,18 @@ Geometry::Line Geometry::calculateLineByLinearRegression(
   return result;
 }
 
-bool Geometry::wouldPointBeVisible(const Vector2f &relPosOnField, const float maxHeadPan, const CameraInfo& cameraInfo)
+bool Geometry::wouldPointBeVisible(const Vector2f &relPosOnField, const Angle maxHeadPan, const CameraInfo& cameraInfo)
 {
   // TODO: use body contour?
-  float rotateAngle = toDegrees(relPosOnField.angle());
-  const float rotateAngleAbs = std::abs(rotateAngle);
-  const float safeOpeningAngle = toDegrees(cameraInfo.openingAngleWidth / 2.f) - 5;
+  Angle rotateAngle = relPosOnField.angle();
+  const Angle rotateAngleAbs = std::abs(rotateAngle);
+  const Angle safeOpeningAngle = cameraInfo.openingAngleWidth / 2 - 5_deg;
   if (
     // Point invisible with any possible head pan.
     rotateAngleAbs > (maxHeadPan + safeOpeningAngle)
     // Point hidden by own shoulder.
-    || (rotateAngleAbs > 70 && rotateAngleAbs < 110 && relPosOnField.norm() < 3000)
-    || (rotateAngleAbs > 75 && rotateAngleAbs < 115 && relPosOnField.norm() < 3500))
+    || (rotateAngleAbs > 70_deg && rotateAngleAbs < 110_deg && relPosOnField.norm() < 3000)
+    || (rotateAngleAbs > 75_deg && rotateAngleAbs < 115_deg && relPosOnField.norm() < 3500))
     return false;
   return true;
 }

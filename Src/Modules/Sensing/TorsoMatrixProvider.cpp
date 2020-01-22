@@ -13,7 +13,20 @@ MAKE_MODULE(TorsoMatrixProvider, sensing)
 
 void TorsoMatrixProvider::update(TorsoMatrix& torsoMatrix)
 {
-  const Vector3f axis(theInertialData.angle.x(), theInertialData.angle.y(), 0.0f);
+  Vector3f axis;
+  switch (anglesource)
+  {
+  case TorsoMatrixEnums::AngleSource::inertialData:
+    axis = Vector3f(theInertialData.angle.x(), theInertialData.angle.y(), 0.0f);
+    break;
+  case TorsoMatrixEnums::AngleSource::inertialSensorData:
+    axis = Vector3f(theInertialSensorData.angle.x(), theInertialSensorData.angle.y(), 0.0f);
+    break;
+  case TorsoMatrixEnums::AngleSource::imuModel:
+    axis = Vector3f(theIMUModel.orientation.x(), theIMUModel.orientation.y(), 0.0f);
+    break;
+  }
+
   const RotationMatrix torsoRotation = Rotation::AngleAxis::unpack(axis);
 
   // calculate "center of hip" position from left foot

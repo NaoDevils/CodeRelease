@@ -50,7 +50,7 @@ void NaoProvider::waitForFrameData()
       OUTPUT_TEXT("Hi, I am " << Global::getSettings().robotName << ".");
     else
       OUTPUT_TEXT("Hi, I am " << Global::getSettings().robotName << " (using " << Global::getSettings().bodyName << "s Body).");
-    OUTPUT(idRobotname, bin, Global::getSettings().robotName << Global::getSettings().bodyName << Global::getSettings().location);
+    OUTPUT(idRobotname, bin, Global::getSettings().robotName << Global::getSettings().bodyName << Global::getSettings().location << Global::getSettings().naoVersion);
   }
 
   if(theInstance)
@@ -235,17 +235,6 @@ void NaoProvider::update(RawGameInfo& rawGameInfo)
 {
   memcpy(&(RoboCup::RoboCupGameControlData&) rawGameInfo, &gameControlData, (char*) gameControlData.teams - (char*) &gameControlData);
   rawGameInfo.timeLastPackageReceived = gameControlTimeStamp;
-}
-
-void NaoProvider::update(RobotInfo& robotInfo)
-{
-  RoboCup::TeamInfo& team = gameControlData.teams[gameControlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1];
-  (RoboCup::RobotInfo&) robotInfo = team.players[Global::getSettings().playerNumber - 1];
-  robotInfo.number = Global::getSettings().playerNumber;
-  robotInfo.naoVersion = naoVersion;
-  robotInfo.naoBodyType = naoBodyType;
-  robotInfo.naoHeadType = naoHeadType;
-  robotInfo.transitionToBhuman = naoBody.getTransitionToBhuman();
 }
 
 void NaoProvider::update(SystemSensorData& systemSensorData)

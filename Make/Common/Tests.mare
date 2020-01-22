@@ -27,6 +27,8 @@ Tests = cppApplication + {
       -"$(srcDirRoot)/Platform/Linux/NaoBody.h",
       -"$(srcDirRoot)/Platform/Linux/NaoCamera.cpp",
       -"$(srcDirRoot)/Platform/Linux/NaoCamera.h",
+      -"$(srcDirRoot)/Platform/Linux/NaoCameraV6.cpp",
+      -"$(srcDirRoot)/Platform/Linux/NaoCameraV6.h", 
     }
     -"$(srcDirRoot)/Platform/SimRobotQt/Robot.cpp",
     -"$(srcDirRoot)/Platform/SimRobotQt/Robot.h",
@@ -57,7 +59,7 @@ Tests = cppApplication + {
     if (tool == "vcxproj") {
         "_CRT_SECURE_NO_WARNINGS"
     }
-    if (configuration == "Develop") {
+    if (configuration == "Develop" || configuration == "DevEnC") {
       -"NDEBUG"
     }
   }

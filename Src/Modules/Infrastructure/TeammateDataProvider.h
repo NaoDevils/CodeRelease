@@ -14,10 +14,10 @@
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Tools/ProcessFramework/TeamHandler.h"
 #include "Tools/Module/Module.h"
-#include "Tools/Network/NTP.h"
 
 
 MODULE(TeammateDataProvider,
@@ -36,9 +36,9 @@ MODULE(TeammateDataProvider,
   PROVIDES(TeammateData),
   DEFINES_PARAMETERS(
   {,
-    (int)(334) sendInterval, /** <  Time in ms between two messages that are sent to the teammates */
+    (int)(1000) sendInterval, /** <  Time in ms between two messages that are sent to the teammates */
     (int)(4000) networkTimeout, /**< Time in ms after which teammates are considered as unconnected */
-    (int)(2000) badWifiTimeout, /**< Time in ms after which a package is considered too old and discarded. */
+    (int)(2500) badWifiTimeout, /**< Time in ms after which a package is considered too old and discarded. */
     (bool)(false) useMixedTeamBallModel,
     (float)(-0.5f) minSanityForTeammates,
   }),
@@ -52,7 +52,6 @@ class TeammateDataProvider : public TeammateDataProviderBase, public MessageHand
 {
 private:
   static PROCESS_LOCAL TeammateDataProvider* theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
-  NTP ntp;                        /**< The Network Time Protocol. */
   unsigned lastSentTimestamp;     /**< The time when the last package to teammates was sent. */
   unsigned lastReceivedTimestamp; /**< The time when the incoming messages currently processed were received. */
   unsigned currentTeammateSentTimestamp; /**< The time when the current handled message packet was sent. */
@@ -93,7 +92,17 @@ public:
   static void handleMessages(TeamDataIn& teamReceiver);
 
   /**
-  * Get data from SPLStandardMessage header (used only for mixedTeam competition).
+  * Get data from SPLStandardMessage header.
   */
-  void handleMixedTeamPackage(const RoboCup::SPLStandardMessage &msg);
+  void handleStandardMessage(const RoboCup::SPLStandardMessage &msg);
+
+  /**
+  * Get data from mixed team portion of message, only used in mixed team mode!
+  */
+  void handleMixedTeamPackage(const RoboCup::SPLStandardMessage& msg);
+
+  /**
+  * Update ntp sync with data from message. Use DevilSmash message if mixed team and HULK_MEMBER.
+  */
+  void handleNTPMessage(const RoboCup::SPLStandardMessage& msg);
 };

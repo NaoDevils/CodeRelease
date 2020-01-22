@@ -7,8 +7,14 @@
  * @author Thomas Röfer
  */
 
+#include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
+#include <algorithm>
+#include <time.h>
 #include <snappy-c.h>
-#include "Representations/Infrastructure/TeamInfo.h"
+#include "Representations/Infrastructure/GameInfo.h"
 #include "Tools/Settings.h"
 #include "Tools/Debugging/AnnotationManager.h"
 #include "Tools/MessageQueue/LogFileFormat.h"
@@ -16,16 +22,17 @@
 #include "Tools/MessageQueue/MessageQueue.h"
 #include "Tools/Streams/StreamHandler.h"
 #include "Logger.h"
-#include <iostream>
-#include <time.h>
 
 #ifdef WINDOWS
 #define snprintf sprintf_s
 #endif
 
-Logger::Logger()
+Logger::Logger(const std::string& processName, char processIdentifier, int framesPerSecond) :
+  processName(processName),
+  processIdentifier(processIdentifier),
+  framesPerSecond(framesPerSecond)
 {
-  InMapFile stream("logger.cfg");
+  InMapFile stream(std::string("logger") + processName + ".cfg");
   if(stream.exists())
     stream >> parameters;
 
@@ -77,11 +84,11 @@ void Logger::execute()
               break;
             }
           if(i == numOfDataMessageIDs)
-            OUTPUT_WARNING("Logger: " << representation << " has no message id.");
+            OUTPUT_WARNING(processName << "Logger: " << representation << " has no message id.");
         }
         else
         { // This pair of braces avoids strange bug in VS2013
-          OUTPUT_WARNING("Logger: " << representation << " is not available in blackboard.");
+          OUTPUT_WARNING(processName << "Logger: " << representation << " is not available in blackboard.");
         }
 
       blackboardVersion = Blackboard::getInstance().getVersion();
@@ -95,39 +102,43 @@ void Logger::execute()
 
 std::string Logger::generateFilename() const
 {
+  std::ostringstream oss;
+  oss << parameters.logFilePath;
+
   if(receivedGameControllerPacket)
   {
-    const OpponentTeamInfo& opponentTeamInfo = static_cast<const OpponentTeamInfo&>(Blackboard::getInstance()["OpponentTeamInfo"]);
-    for(const auto& team : teamList.teams)
-      if(team.number == opponentTeamInfo.teamNumber)
-      {
-        std::string filename = team.name + "_";
-        const GameInfo& gameInfo = static_cast<const GameInfo&>(Blackboard::getInstance()["GameInfo"]);
-        filename += gameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT ? "ShootOut_" :
-                    gameInfo.firstHalf ? "1stHalf_" : "2ndHalf_";
-        filename += static_cast<char>(Global::getSettings().playerNumber + '0');
-        std::cout << "Log to: " << parameters.logFilePath << filename << std::endl;
-        return parameters.logFilePath + filename;
-      }
+    const GameInfo& gameInfo = static_cast<const GameInfo&>(Blackboard::getInstance()["GameInfo"]);
+    const auto oppTeam = std::find_if(teamList.teams.begin(), teamList.teams.end(),
+      [&gameInfo](const TeamList::Team& t){ return gameInfo.oppTeamNumber == t.number; });
+
+    if (oppTeam != teamList.teams.end())
+      oss << oppTeam->name << "_";
+    else
+      oss << "Team-" << static_cast<int>(gameInfo.oppTeamNumber) << "_";
+    
+    oss << (gameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT ? "ShootOut_" : gameInfo.firstHalf ? "1stHalf_" : "2ndHalf_");
   }
-
-  // Arne - 27.04.17 - Added Timestamp
-  time_t now;
-  char the_date[12];
-
-  the_date[0] = '\0';
-
-  now = time(NULL);
-
-  if (now != -1)
+  else
   {
-	  strftime(the_date, 25, "%d_%m_%Y__%H_%M_%S", gmtime(&now));
+    oss << "Testing_";
   }
-  // Arne - 27.04.17 - Added Timestamp
-  std::string testingName = "Testing_" + std::string(the_date);
-  std::cout << "Log to: " << parameters.logFilePath << testingName << std::endl;
-  return parameters.logFilePath + testingName;
 
+  std::time_t t = std::time(nullptr);
+  std::tm tm;
+  // thread safety needed
+#ifdef WINDOWS
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm); // POSIX
+#endif
+
+  oss << std::put_time(&tm, "%Y%m%d_%H%M%S_")
+    << Global::getSettings().playerNumber << "_"
+    << processName;
+
+  std::string logfile = oss.str();
+  std::cout << "Log to: " << logfile << std::endl;
+  return logfile;
 }
 
 void Logger::createStreamSpecification()
@@ -143,13 +154,13 @@ void Logger::logFrame()
 {
   if(writeIndex == (readIndex + parameters.maxBufferSize - 1) % parameters.maxBufferSize)
   { // Buffer is full, can't do anything this frame
-    OUTPUT_WARNING("Logger: Writer thread too slow, discarding frame.");
+    OUTPUT_WARNING(processName << "Logger: Writer thread too slow, discarding frame.");
     return;
   }
 
   OutMessage& out = buffer[writeIndex]->out;
 
-  out.bin << 'c';
+  out.bin << processIdentifier;
   out.finishMessage(idProcessBegin);
 
   // Stream all representations to the queue
@@ -171,20 +182,20 @@ void Logger::logFrame()
   if(timingData.getNumberOfMessages() > 0)
     timingData.copyAllMessages(*buffer[writeIndex]);
   else
-    OUTPUT_WARNING("Logger: No timing data available.");
+    OUTPUT_WARNING(processName << "Logger: No timing data available.");
 
-  out.bin << 'c';
+  out.bin << processIdentifier;
   out.finishMessage(idProcessFinished);
 
-  // Cognition runs at 30 fps. Therefore use a new block every 30 frames.
+  // Cognition runs at 30 fps, Motion runs at 100/83 fps. Therefore use a new block every x frames.
   // Thus one block is used per second.
-  if(++frameCounter == 30)
+  if(++frameCounter == framesPerSecond)
   {
     // The next call to logFrame will use a new block.
     writeIndex = (writeIndex + 1) % parameters.maxBufferSize;
     framesToWrite.post(); // Signal to the writer thread that another block is ready
     if(parameters.debugStatistics)
-      OUTPUT_WARNING("Logger buffer is "
+      OUTPUT_WARNING(processName << "Logger buffer is "
                      << ((parameters.maxBufferSize + readIndex - writeIndex) % parameters.maxBufferSize) /
                         static_cast<float>(parameters.maxBufferSize) * 100.f
                      << "% free.");
@@ -194,6 +205,9 @@ void Logger::logFrame()
 
 void Logger::writeThread()
 {
+  Thread<Logger>::setName(processName + "Logger");
+  BH_TRACE_INIT((processName + "Logger").c_str());
+
   const size_t compressedSize = snappy_max_compressed_length(parameters.blockSize + 2 * sizeof(unsigned));
   std::vector<char> compressedBuffer(compressedSize + sizeof(unsigned)); // Also reserve 4 bytes for header
 

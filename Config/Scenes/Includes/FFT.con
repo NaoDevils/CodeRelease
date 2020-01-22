@@ -4,34 +4,13 @@ echo vi CHROMA audio_chroma
 vp detect 800 -2 2
 vpd detect representation:Whistle:detected red
 
-#set setState (2) directly
-set representation:GameInfo competitionPhase = 0; competitionType = 0; state = 2; firstHalf = 1; kickingTeam = 1; gamePhase = 0; setPlay = 0; dropInTeam = 0; dropInTime = 65535; secsRemaining = 599; timeLastPackageReceived = 11343;
-get representation:GameInfo
+echo -- use GameInfo on remote robot --
+echo change state in GameInfo to '2' (SET)
+vd representation:GameInfo
 
-echo ===
-get module:WhistleDetector:MIN_FREQ
-get module:WhistleDetector:MAX_FREQ
-get module:WhistleDetector:MIN_AMP
-echo ===
-get module:WhistleDetector:OVERTONE_MULT_MIN_1
-get module:WhistleDetector:OVERTONE_MULT_MAX_1
-get module:WhistleDetector:OVERTONE_MIN_AMP_1
-echo ===
-get module:WhistleDetector:OVERTONE_MULT_MIN_2
-get module:WhistleDetector:OVERTONE_MULT_MAX_2
-get module:WhistleDetector:OVERTONE_MIN_AMP_2
-echo ===
-get module:WhistleDetector:RELEASE
-get module:WhistleDetector:ATTACK
-get module:WhistleDetector:ATTACK_TIMEOUT_MS
-get module:WhistleDetector:PEAK_DIFF
-echo ===
-get module:WhistleDetector:USE_HANN_WINDOWING
-get module:WhistleDetector:USE_NUTTALL_WINDOWING
-echo ===
+echo -- use 'gc set' in simulator --
+echo gc set
 
-# enable pseudo audio file
-set module:AudioProviderDortmund:simulateWhistleInSimulator true
-get module:AudioProviderDortmund:simulateWhistleInSimulator
-get module:AudioProviderDortmund:simulateSinusInSimulator
-get module:AudioProviderDortmund:simulateNoiseInSimulator
+vd parameters:WhistleDetector2019
+vd parameters:WhistleDetectorMono2019
+echo set parameters:AudioProviderDortmund params = { retries = 10; retryDelay = 500; channels = 4; sampleRate = 22050; maxFrames = 10000; simulateWhistleInSimulator = true; simulateSinusInSimulator = -1; simulateNoiseInSimulator = -1; audioFileName = "go19_whistle-while-testings_4ch_22050Hz_S16_LE.raw"; };

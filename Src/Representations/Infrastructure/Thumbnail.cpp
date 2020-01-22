@@ -6,7 +6,8 @@
 
 void Thumbnail::toImage(Image& dest) const
 {
-  Image::Pixel pixel;
+  Image::Pixel pixel; 
+  dest.timeStamp += 1;
   if(grayscale)
   {
     pixel.cb = pixel.cr = 127;

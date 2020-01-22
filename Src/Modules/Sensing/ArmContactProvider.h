@@ -4,6 +4,8 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Sensing/ArmContact.h"
 #include "Representations/Sensing/FallDownState.h"
+#include "Representations/BehaviorControl/BallSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -22,6 +24,7 @@ MODULE(ArmContactProvider,
   USES(ArmMovement),
   USES(JointRequest),
   REQUIRES(BallModelAfterPreview),
+  REQUIRES(BallSymbols),
   REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
@@ -31,6 +34,7 @@ MODULE(ArmContactProvider,
   REQUIRES(MotionSelection),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
+  REQUIRES(RoleSymbols),
   PROVIDES(ArmContact),
   LOADS_PARAMETERS(
   {,
@@ -57,10 +61,11 @@ private:
   void resetBuffers();
 
   ArmContact localArmContact;
-  RingBufferWithSum<Angle,200> bufferLeft;
-  RingBufferWithSum<Angle,200> bufferRight;
+  RingBuffer<JointRequest,4> requestSensorDelayBuffer;
+  RingBufferWithSum<Angle,186> bufferLeft;   // 2 seconds in Motion frames
+  RingBufferWithSum<Angle,186> bufferRight;  // 2 seconds in Motion frames
   Angle lastPitchLeft, lastPitchRight;
-  bool falling; //FIXME: Value is used uninitialized
+  bool falling;
 
   JointRequest lastRequest;
   unsigned timeWhenWalkStarted;

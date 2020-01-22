@@ -133,11 +133,11 @@ private:
   
   // helpful variables
   double mainDirection;
-  int correspondences[numberOfFieldLinesTotal];
-  bool correspondenceInMainDirectionClass[numberOfFieldLinesTotal]; // true for mainDirection
-  int correspondenceIndexOfOrigin[numberOfFieldLinesTotal];
-  bool alreadyAssignedFieldLinesX[numberOfFieldLinesX];
-  bool alreadyAssignedFieldLinesY[numberOfFieldLinesY];
+  int correspondences[numberOfFieldLinesTotal]{ 0 };
+  bool correspondenceInMainDirectionClass[numberOfFieldLinesTotal]{ 0 }; // true for mainDirection
+  int correspondenceIndexOfOrigin[numberOfFieldLinesTotal]{ 0 };
+  bool alreadyAssignedFieldLinesX[numberOfFieldLinesX]{ 0 };
+  bool alreadyAssignedFieldLinesY[numberOfFieldLinesY]{ 0 };
   std::vector<AbstractLine> linesInMainDirection;
   std::vector<AbstractLine> lines90DegreeToMainDirection;
   std::vector<AbstractLine> tempLines;
@@ -145,10 +145,10 @@ private:
   std::vector<AbstractLine> fieldLinesY;
 
   // stuff for mapping the original observations to the associated field line correspondences
-  int observationMapToInternalIndex[numberOfFieldLinesTotal];
-  bool observationMapToInternalMainDirectionClass[numberOfFieldLinesTotal]; // true for mainDirection
-  int mainDirectionClassIndex2correspondenceIndex[numberOfFieldLinesTotal];
-  int notMainDirectionClassIndex2correspondenceIndex[numberOfFieldLinesTotal];
+  int observationMapToInternalIndex[numberOfFieldLinesTotal]{ 0 };
+  bool observationMapToInternalMainDirectionClass[numberOfFieldLinesTotal]{ 0 }; // true for mainDirection
+  int mainDirectionClassIndex2correspondenceIndex[numberOfFieldLinesTotal]{ 0 };
+  int notMainDirectionClassIndex2correspondenceIndex[numberOfFieldLinesTotal]{ 0 };
 
   // variables for debugging
   int counterForDrawing;

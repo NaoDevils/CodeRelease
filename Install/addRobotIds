@@ -83,7 +83,8 @@ addIds() {
   elif [[ $(grep "bodyId = \"${bodyId}\"" "${robotsFile}") ]]; then
     fatal "The bodyId ${bodyId} is already in use!"
   else
-    line="\ \ { name = \"${name}\"; headId = \"${headId}\"; bodyId = \"${bodyId}\"; }"
+    id=$(grep -oPm1 '(?<=\.)[0-9]+(?=";$)' "../Config/Robots/${name}/network.cfg")
+    line="\ \ { name = ${name}; headId = ${headId}; bodyId = ${bodyId}; id = ${id}; naoVersion = V5; }"
     if [[ $(grep -Pz '\[\n\]' "${robotsFile}") ]]; then
 	  sed -i "/\[/ a ${line}" "${robotsFile}"
 	elif [[ $(grep -Pz '}\n\];' "${robotsFile}") ]]; then

@@ -5,21 +5,142 @@
 */
 
 #include <csignal>
-#include <cstdio>
+#include <cstdint>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <cstring>
+#include <string>
 #include <sys/file.h> // flock
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <array>
+#include <chrono>
+#include <mutex>
 
+#include "SystemCall.h"
 #include "Robot.h"
 #include "NaoBody.h"
+#include "NaoBodyV6.h"
 #include "Tools/Settings.h"
-#include "libbhuman/bhuman.h"
+//#include "libbhuman/bhuman.h"
+#include "ndevilsbase/ndevils.h"
 
 static pid_t bhumanPid = 0;
 static Robot* robot = nullptr;
 static bool run = true;
+
+namespace
+{
+  std::mutex gdbMutex;
+  const char* gdbHelper = "/home/nao/Config/gdbCommands";
+  const char* crashInfo = "/home/nao/logs/crashInfo";
+  const char* extension = ".log";
+  const char* execPath = nullptr;
+  const std::uint16_t crashInfoHistory = 8;
+
+  void handleFileRotation(const std::string& file, std::uint16_t max)
+  {
+    for (int i = max - 1; i >= 1; i--)
+    {
+      // Get current file name
+      std::string current = file + std::to_string(i) + extension;
+
+      // Check if file exists
+      if (SystemCall::fileExists(current))
+        // Increase number at the end
+        rename(current.c_str(), (file + std::to_string(i + 1) + extension).c_str());
+    }
+
+    if (SystemCall::fileExists(file + extension))
+      rename((file + extension).c_str(), (file + std::to_string(1) + extension).c_str());
+  }
+
+  const char* signalToString(int signal)
+  {
+    static const char* segv = "SIGSEGV";
+    static const char* ill = "SIGILL";
+    static const char* fpe = "SIGFPE";
+    static const char* abrt = "SIGABRT";
+    static const char* unknown = "UNKNOWN";
+
+    // Get the signal
+    switch (signal)
+    {
+      case SIGSEGV:
+        return segv;
+
+      case SIGILL:
+        return ill;
+
+      case SIGFPE:
+        return fpe;
+
+      case SIGABRT:
+        return abrt;
+
+      default:
+        return unknown;
+    }
+  }
+
+  void handleTrapSignal(int signal)
+  {
+    // Get helpers
+    int pid = SystemCall::getCurrentProcessId();
+
+    // Generate GDB command
+    std::ostringstream command;
+    command << "gdb -x " << gdbHelper << ' ' << execPath << ' ' << pid;
+
+    {
+      // SYNC GDB
+      std::lock_guard<std::mutex> guard(gdbMutex);
+
+      // Execute command and save output
+      std::string result = SystemCall::execute(command.str());
+
+      // Handle crash info rotation
+      handleFileRotation(crashInfo, crashInfoHistory);
+
+      // Get current time
+      auto now_c = std::chrono::system_clock::now();
+      std::time_t time = std::chrono::system_clock::to_time_t(now_c);
+      std::tm now{};
+
+      localtime_r(&time, &now);
+
+      // Get milliseconds for printing
+      auto ms_c = std::chrono::duration_cast<std::chrono::milliseconds>(now_c.time_since_epoch());
+      auto ms = ms_c.count() % std::chrono::milliseconds::period::den;
+
+      // Format time
+      std::array<char, 100> buffer{ };
+
+      std::strftime(buffer.data(), buffer.size(), "%F %T", &now);
+
+      // Create output file
+      std::ofstream file(std::string(crashInfo) + extension);
+
+      // Fill file
+      file << "Created because of signal (" << signal << ") [" << signalToString(signal) << ']' << std::endl
+        << "It is " << buffer.data() << '.';
+
+      // Leading zeros for milliseconds
+      file << std::setfill('0') << std::setw(3) << ms << std::endl;
+
+      // Fill rest
+      file << "Result of command \"" << command.str() << '"' << std::endl << std::endl << result << std::endl;
+
+      // Flush and close
+      file.flush();
+      file.close();
+    }
+
+    std::exit(-signal);
+  }
+}
 
 static void bhumanStart()
 {
@@ -41,7 +162,7 @@ static void bhumanStop()
 
 static void sighandlerShutdown(int sig)
 {
-  if(run)
+  if (run)
     printf("Caught signal %i\nShutting down...\n", sig);
   run = false;
 }
@@ -62,12 +183,12 @@ int main(int argc, char* argv[])
     bool watchdog = false;
     const char* bhDir = "/home/nao";
 
-    for(int i = 1; i < argc; ++i)
-      if(!strcmp(argv[i], "-b"))
+    for (int i = 1; i < argc; ++i)
+      if (!strcmp(argv[i], "-b"))
         background = true;
-      else if(!strcmp(argv[i], "-w"))
+      else if (!strcmp(argv[i], "-w"))
         watchdog = true;
-      else if(!strcmp(argv[i], "-c") && i + 1 < argc)
+      else if (!strcmp(argv[i], "-c") && i + 1 < argc)
         bhDir = argv[++i];
       else
       {
@@ -80,62 +201,62 @@ int main(int argc, char* argv[])
 
     // avoid duplicated instances
     int fd = open("/tmp/bhuman", O_CREAT, 0600);
-    if(fd == -1 || flock(fd, LOCK_EX | LOCK_NB) == -1)
+    if (fd == -1 || flock(fd, LOCK_EX | LOCK_NB) == -1)
     {
       fprintf(stderr, "There is already an instance of this process!\n");
       exit(EXIT_FAILURE);
     }
 
     // start as daemon
-    if(background)
+    if (background)
     {
       fprintf(stderr, "Starting as daemon...\n");
       pid_t childPid = fork();
-      if(childPid == -1)
+      if (childPid == -1)
         exit(EXIT_FAILURE);
-      if(childPid != 0)
+      if (childPid != 0)
         exit(EXIT_SUCCESS);
     }
 
     // change working directory
-    if(*bhDir && chdir(bhDir) != 0)
+    if (*bhDir && chdir(bhDir) != 0)
     {
       fprintf(stderr, "chdir to config directory failed!\n");
       exit(EXIT_FAILURE);
     }
 
     // the watchdog
-    if(watchdog)
+    if (watchdog)
     {
-      for(;;)
+      for (;;)
       {
         // create pipe for logging
         int stdoutPipe[2];
         int stderrPipe[2];
         bool pipeReady = true;
 
-        if(pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1)
+        if (pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1)
         {
           fprintf(stderr, "B-Human: Error while creating pipes for logging. All logs will be printed on console only! \n");
           pipeReady = false;
         }
 
         bhumanPid = fork();
-        if(bhumanPid == -1)
+        if (bhumanPid == -1)
           exit(EXIT_FAILURE);
-        if(bhumanPid != 0)
+        if (bhumanPid != 0)
         {
           int status;
           signal(SIGTERM, sighandlerRedirect);
           signal(SIGINT, sighandlerRedirect);
-          if(waitpid(bhumanPid, &status, 0) != bhumanPid)
+          if (waitpid(bhumanPid, &status, 0) != bhumanPid)
           {
             exit(EXIT_FAILURE);
           }
           signal(SIGTERM, SIG_DFL);
           signal(SIGINT, SIG_DFL);
 
-          if(pipeReady)
+          if (pipeReady)
           {
             // close unused write end
             close(stdoutPipe[1]);
@@ -148,11 +269,20 @@ int main(int argc, char* argv[])
           // detect requested or normal exit
           bool normalExit = !run || (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS);
 
-          // dump trace and assert trace
-          if(!normalExit)
+          NaoBodyV6 naoBody;
+          if (normalExit)
           {
-            NaoBody naoBody;
-            if(naoBody.init())
+            if (naoBody.init())
+            {
+              // normal shutdown
+              naoBody.setCrashed(NDState::sigTERMState);
+              naoBody.cleanup();
+            }
+          }
+          else
+          {
+            // dump trace and assert trace
+            if (naoBody.init())
             {
               naoBody.setCrashed(WIFSIGNALED(status) ? int(WTERMSIG(status)) : int(abnormalTerminationState));
               naoBody.cleanup();
@@ -162,17 +292,17 @@ int main(int argc, char* argv[])
           }
 
           // quit here?
-          if(normalExit)
+          if (normalExit)
             exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
 
           // don't restart if the child process got killed
-          if(WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL)
+          if (WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL)
             exit(EXIT_FAILURE);
 
           // restart in release mode only
-          #ifndef NDEBUG
-            exit(EXIT_FAILURE);
-          #endif
+#ifndef NDEBUG
+          exit(EXIT_FAILURE);
+#endif
 
           // deactivate the pre-initial state
           recover = true;
@@ -181,7 +311,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-          if(pipeReady)
+          if (pipeReady)
           {
             // close unused read end
             close(stdoutPipe[0]);
@@ -195,34 +325,33 @@ int main(int argc, char* argv[])
       }
     }
 
-    // wait for NaoQi/libbhuman
-    NaoBody naoBody;
-    if(!naoBody.init())
-    {
-      fprintf(stderr, "B-Human: Waiting for NaoQi/libbhuman...\n");
-      do
-      {
-        usleep(1000000);
-      }
-      while(!naoBody.init());
-    }
-
+    std::cout << "Loading settings" << std::endl;
     // load first settings instance
     Settings settings;
     settings.recover = recover;
 
-    if(!settings.loadingSucceeded())
+    if (!settings.loadingSucceeded())
       return EXIT_FAILURE;
+
 
     // register signal handler for strg+c and termination signal
     signal(SIGTERM, sighandlerShutdown);
     signal(SIGINT, sighandlerShutdown);
 
+    // Set path to executable
+    execPath = argv[0];
+
+    // register signal handler for trap signals
+    std::signal(SIGSEGV, handleTrapSignal);
+    std::signal(SIGILL, handleTrapSignal);
+    std::signal(SIGFPE, handleTrapSignal);
+    std::signal(SIGABRT, handleTrapSignal);
+
     //
     bhumanStart();
   }
 
-  while(run)
+  while (run)
     pause();
 
   bhumanStop();

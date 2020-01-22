@@ -1,0 +1,12 @@
+[Unit]
+Description=Connect shm of ndevilsbase with bush
+After=bhumand.service
+
+[Service]
+Type=simple
+RestartSec=10
+Restart=always
+ExecStart=/home/nao/bin/sensorReader_init.sh
+
+[Install]
+WantedBy=default.target

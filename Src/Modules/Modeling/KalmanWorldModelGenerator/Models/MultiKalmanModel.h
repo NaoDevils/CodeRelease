@@ -9,6 +9,10 @@
 
 #pragma once
 
+#include <type_traits>
+#include <vector>
+#include <memory>
+
 #include "Tools/Streams/Streamable.h"
 #include "KalmanPositionHypothesis.h"
 
@@ -30,8 +34,10 @@
  *
  * \tparam hypothesis_t The type of each hypothesis of this model.
  *                      It must be derived from \c KalmanPositionHypothesis.
+ * \tparam towardsOneModel Defines whether the MultiKalmanModel converges to
+ *                       a single model (e.g. ball) not (e.g. robot map)
  */
-template <typename hypothesis_t = KalmanPositionHypothesis>
+template <typename hypothesis_t = KalmanPositionHypothesis, bool towardsOneModel = true>
 class MultiKalmanModel : public Streamable
 {
   // Check at compile-time that hypothesis_t is derived from class KalmanPositionHypothesis.
@@ -39,13 +45,37 @@ class MultiKalmanModel : public Streamable
                 "hypothesis_t not derived from class KalmanPositionHypothesis");
   
 public:
+  /**
+   * The type of hypothesis stored in the kalman model
+   */
+  using HypothesisType = hypothesis_t;
+
   /** 
    * Default constructor creates a new and empty \c MultiKalmanModel object.
+   * The default perceptDuration is 1000ms.
    */
-  MultiKalmanModel() : m_bestHypothesisIndex(-1),
-                       minValidityForChangingBestHypothesis(0.f),
-                       minNumberOfSensorUpdatesForBestHypothesis(1),
-                       decreaseValidityOnChangingBestHypothesis(0.f) {}
+  MultiKalmanModel()
+    : m_bestHypothesisIndex(-1)
+    , m_lastBestHypothesisIndex(m_bestHypothesisIndex)
+    , minValidityForChangingBestHypothesis(0.f)
+    , minNumberOfSensorUpdatesForBestHypothesis(1)
+    , decreaseValidityOnChangingBestHypothesis(0.f)
+    , m_perceptDuration(1000) {}
+
+  /** 
+   * Constructor setting the perceptDuration.
+   * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
+   *
+   * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+   */
+  MultiKalmanModel(unsigned perceptDuration)
+    : m_bestHypothesisIndex(-1)
+    , m_lastBestHypothesisIndex(m_bestHypothesisIndex)
+    , minValidityForChangingBestHypothesis(0.f)
+    , minNumberOfSensorUpdatesForBestHypothesis(1)
+    , decreaseValidityOnChangingBestHypothesis(0.f)
+    , m_perceptDuration(perceptDuration) {}
+
   /**
    * Destructor.
    */
@@ -162,7 +192,7 @@ public:
    *                                      hypotheses.
    */
   void updateValidity(
-    std::size_t maxPerceptsPerSecond,
+    float maxPerceptsPerSecond,
     float goodValidityThreshold,
     float weightOfPreviousValidity,
     float weightOfPreviousValidity_goodHypotheses);
@@ -292,6 +322,14 @@ public:
   void addHypothesis(const hypothesis_t& newHypothesis);
   
   /**
+   * Add the given hypothesis to this \c MultiKalmanModel.
+   * \warning This should be treated with caution! Only add a hypothesis if
+   *          you are sure you know what you are doing.
+   * \param [in] newHypothesis The hypothesis to add.
+   */
+  void addHypothesis(hypothesis_t&& newHypothesis);
+  
+  /**
    * Return the number of hypotheses which are currently stored by this
    * \c MultiKalmanModel. This make information about the hypotheses set 
    * available from outside of this class.
@@ -307,6 +345,25 @@ public:
   const hypothesis_t& operator[](size_t i) const { return m_hypotheses[i]; };
   
   /**
+   * Return a pointer to the hypothesis with the given index.
+   * \param [in] i Index of the requested hypothesis.
+   * \return A pointer to the hypothesis with index \c i.
+   */
+  hypothesis_t& operator[](size_t i) { return m_hypotheses[i]; };
+
+  /**
+   * Returns a reference to the last hypothesis (the latest added).
+   * \return A reference to the last hypothesis (the latest added).
+   */
+  const hypothesis_t& back() const { return m_hypotheses.back(); }
+
+  /**
+   * Returns a reference to the last hypothesis (the latest added).
+   * \return A reference to the last hypothesis (the latest added).
+   */
+  hypothesis_t& back() { return m_hypotheses.back(); }
+  
+  /**
    * States whether this model use relative robot coordinates or global field 
    * coordinates. Local models use always relative robot coordinates while remote
    * models always use global field coordinates.
@@ -318,6 +375,12 @@ public:
    *         \c false otherwise (global field coordinates).
    */
   virtual bool usesRelativeCoordinates() const = 0;
+
+  /**
+   * Gets the duration percepts (in ms) get buffered for identifying the validity of a hypothesis.
+   * \return The duration percepts (in ms) get buffered for identifying the validity of a hypothesis.
+   */
+  virtual unsigned getPerceptDuration() const { return m_perceptDuration; }
 
 protected:
   /// Stores a set of kalman hypotheses.
@@ -336,6 +399,8 @@ private:
   std::size_t minNumberOfSensorUpdatesForBestHypothesis;
   /// Parameter for \c updateBestHypothesis().
   float decreaseValidityOnChangingBestHypothesis;
+  /// The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+  unsigned m_perceptDuration;
 
 public:
   /** Streaming */

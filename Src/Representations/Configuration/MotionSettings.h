@@ -25,7 +25,9 @@ STREAMABLE(MotionSettings,
 {,
   (float)(262.0f) comHeight, /**< Height of the com above the ground when walking/standing/kicking. */
   ((SpecialActionRequest) SpecialActionID) standUpMotionFront,
+  ((SpecialActionRequest) SpecialActionID) standUpMotionFrontSafe,
   ((SpecialActionRequest) SpecialActionID) standUpMotionBack,
+  ((SpecialActionRequest) SpecialActionID) standUpMotionBackSafe,
   (bool)(false) leaveWalkForDive, /**< If true, walk is stopped and aborted immediately for diving motion */
   (SpecialActionBalanceList) specialActionBalanceList,
 });

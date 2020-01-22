@@ -32,9 +32,9 @@ bool RobotInfo::hasFeature(const RobotFeature feature) const
     case headLEDs:
       return naoHeadType >= H25;
     case grippyFingers:
-      return naoBodyType >= H25 && naoVersion >= V5;
+      return naoBodyType >= H25 && naoVersion >= RobotConfig::V5;
     case zGyro:
-      return naoVersion >= V5;
+      return naoVersion >= RobotConfig::V5;
     default:
       ASSERT(false);
       return false;
@@ -45,7 +45,7 @@ void RobotInfo::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
   STREAM(number); // robot number: 1..11
-  STREAM(naoVersion);
+  STREAM(naoVersion, RobotConfig);
   STREAM(naoBodyType);
   STREAM(naoHeadType);
   STREAM(transitionToBhuman);

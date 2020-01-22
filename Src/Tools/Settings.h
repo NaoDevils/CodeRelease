@@ -8,6 +8,7 @@
 
 #include "Tools/Enum.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Configuration/RobotConfig.h"
 
 /**
  * @class Settings
@@ -30,11 +31,12 @@ public:
     preliminary,
     playOff,
     penaltyShootout,
+    demoIRF,
   });
-
+  
   std::string robotName; /**< The name of this robot. */
   std::string bodyName; /**< The name of this robot's body. */
-
+  
   static bool recover; /**< Start directly without the pre-initial state. */
 
   static constexpr int highestValidPlayerNumber = 6; /**< No player can have a number greater than this */
@@ -64,6 +66,7 @@ private:
    */
   Settings& operator=(const Settings& other)
   {
+    naoVersion = other.naoVersion;
     teamNumber = other.teamNumber;
     teamColor = other.teamColor;
     playerNumber = other.playerNumber;
@@ -83,6 +86,7 @@ private:
 
 public:  
   ,
+  ((RobotConfig) NaoVersion) naoVersion,
   (int)(0) teamNumber, /**< The number of our team in the game controller. Use theOwnTeamInfo.teamNumber instead. */
   (TeamColor)(blue) teamColor, /**< The color of our team. Use theOwnTeamInfo.teamColor instead. */
   (int)(0) playerNumber, /**< The number of the robot in the team. Use theRobotInfo.playerNumber instead. */

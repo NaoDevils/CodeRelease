@@ -12,26 +12,22 @@
 #endif
 #ifdef TARGET_ROBOT
 #include "Platform/Linux/NaoBody.h"
+#include "Platform/Linux/NaoBodyV6.h"
 #include <cstdio>
+#include <unistd.h>
 #endif
+
 #include "Platform/BHAssert.h"
 #include "Platform/File.h"
 #include "Platform/SystemCall.h"
 #include "Tools/Global.h"
 #include "Tools/Streams/StreamHandler.h"
 #include "Tools/Streams/AutoStreamable.h"
-
+#include "Utils/dorsh/models/Robot.h"
 
 STREAMABLE(Robots,
-{
-  STREAMABLE(RobotId,
-  {,
-    (std::string) name,
-    (std::string) headId,
-    (std::string) bodyId,
-  });
-  ,
-  (std::vector<RobotId>) robotsIds,
+{,
+  (std::vector<RobotConfig>) robotsIds,
 });
 
 bool Settings::recover = false;
@@ -93,11 +89,21 @@ Settings::Settings()
 bool Settings::load()
 {
 
-  if(!Global::theStreamHandler)
+  if (!Global::theStreamHandler)
   {
     static StreamHandler streamHandler;
     Global::theStreamHandler = &streamHandler;
   }
+
+  InMapFile stream("settings.cfg");
+  if(stream.exists())
+    stream >> *this;
+  else
+  {
+    TRACE("Could not load settings for robot \"%s\" from settings.cfg", robotName.c_str());
+    return false;
+  }
+
 #ifdef TARGET_ROBOT
   robotName = SystemCall::getHostName();
   std::string bhdir = File::getBHDir();
@@ -111,12 +117,47 @@ bool Settings::load()
   {
     Robots robots;
     robotsStream >> robots;
-    std::string bodyId = NaoBody().getBodyId();
-    for(const Robots::RobotId& robot : robots.robotsIds)
+
+    std::string bodyId;
+    
+	  // wait for NaoQi/LoLA
+    if (naoVersion == RobotConfig::V6)
+    {
+      NaoBodyV6 naoBody;
+      if(!naoBody.init())
+      {
+        fprintf(stderr, "B-Human: Waiting for LoLA via ndevilsbase...\n");
+        do
+        {
+          usleep(1000000);
+        }
+        while(!naoBody.init());
+      }
+      
+      bodyId = std::string(NaoBodyV6().getBodyId());
+    }
+    else
+    {
+      NaoBody naoBody;
+      if(!naoBody.init())
+      {
+        fprintf(stderr, "B-Human: Waiting for NaoQi via libbhuman...\n");
+        do
+        {
+          usleep(1000000);
+        }
+        while(!naoBody.init());
+      }
+
+      bodyId = std::string(NaoBody().getBodyId());
+    }
+
+    for(const RobotConfig& robot : robots.robotsIds)
     {
       if(robot.bodyId == bodyId)
       {
         bodyName = robot.name;
+        naoVersion = robot.naoVersion;
         break;
       }
     }
@@ -129,16 +170,8 @@ bool Settings::load()
 #else
   robotName = "Nao";
   bodyName = "Nao";
+  naoVersion = RobotConfig::V5;
 #endif
-
-  InMapFile stream("settings.cfg");
-  if(stream.exists())
-    stream >> *this;
-  else
-  {
-    TRACE("Could not load settings for robot \"%s\" from settings.cfg", robotName.c_str());
-    return false;
-  }
 
 #ifdef TARGET_ROBOT
   if(robotName == bodyName)

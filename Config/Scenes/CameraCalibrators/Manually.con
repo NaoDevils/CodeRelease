@@ -1,7 +1,7 @@
 vi image jpeg lower gain 1.0
 vi imageUpper jpeg upper gain 1.0
-set representation:RobotPose rotation = -90deg; translation = { x = 0; y = 3000; }; validity = 1;
-echo set representation:RobotPose rotation = -90deg; translation = { x = 0; y = 3000; }; validity = 1;
+set representation:RobotPose rotation = -90deg; translation = { x = 0; y = 3000; }; validity = 1; symmetry = 1;
+echo set representation:RobotPose rotation = -90deg; translation = { x = 0; y = 3000; }; validity = 1; symmetry = 1;
 set representation:HeadAngleRequest pan = 0; tilt = 20deg; speed = 120deg;
 echo set representation:HeadAngleRequest pan = 0; tilt = 20deg; speed = 120deg;
 echo set representation:HeadAngleRequest pan = 65deg; tilt = 20deg; speed = 120deg;

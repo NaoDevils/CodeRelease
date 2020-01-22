@@ -20,6 +20,7 @@
 #include "Representations/Configuration/FieldDimensions.h" // field dimensions used for removing hypotheses outside the field
 #include "Representations/Infrastructure/CameraInfo.h" // camera info used for checking if ball should be visible (ballLost?)
 #include "Representations/Perception/CameraMatrix.h" // camera matrix used for checking if ball should be visible (ballLost?)
+#include "Representations/Infrastructure/TeamInfo.h" // team info used for getting info about kicking team
 #include "Representations/Infrastructure/RobotInfo.h" // robot info used for getting player number and penalty info.
 #include "Representations/Infrastructure/TeammateData.h" // team mates information
 
@@ -28,7 +29,7 @@
 
 // Uses
 #include "Representations/Modeling/RobotPose.h" // robot pose
-#include "Representations/MotionControl/MotionRequest.h" // motion request (walk, kick, etc.)
+#include "Representations/MotionControl/MotionInfo.h" // motion info (walk, kick, etc.)
 
 // Provides
 #include "Representations/Modeling/BallModel.h"
@@ -51,6 +52,7 @@ MODULE(BallModelProvider,
   REQUIRES(CameraInfo),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
+  REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
 
   REQUIRES(BallPercept), // Use either single or multiple ball percept.
@@ -60,7 +62,7 @@ MODULE(BallModelProvider,
   //REQUIRES(GroundTruthBallModel), // Compare with GroundTruthBallModel for evaluation.
 
   USES(RobotPose), // Warning: it's the pose from last iteration
-  USES(MotionRequest), // Warning: it's the motion request from last iteration
+  USES(MotionInfo), // Warning: it's the motion info from last iteration
 
   PROVIDES(BallModel),
   PROVIDES(RemoteBallModel),
@@ -82,18 +84,25 @@ MODULE(BallModelProvider,
 
 class BallModelProvider : public BallModelProviderBase
 {
+private:
+  static constexpr unsigned LOCAL_PERCEPT_DURATION = 1000;
+  static constexpr unsigned REMOTE_PERCEPT_DURATION = 4000;
+
 public:
 
   /** 
    * Constructor.
    */
-  BallModelProvider() : m_lastTimeStamp(0),
-                        m_lastGameState(STATE_INITIAL),
-                        m_lastPenaltyState(PENALTY_NONE),
-                        m_lastMotionType(MotionRequest::Motion::specialAction),
-                        m_kickDetected(false),
-                        m_ballDisappeared(true),
-                        m_timeWhenBallFirstDisappeared(0)
+  BallModelProvider()
+    : m_localMultipleBallModel(LOCAL_PERCEPT_DURATION)
+    , m_remoteMultipleBallModel(REMOTE_PERCEPT_DURATION)
+    , m_lastTimeStamp(0)
+    , m_lastGameState(STATE_INITIAL)
+    , m_lastPenaltyState(PENALTY_NONE)
+    , m_lastMotionType(MotionRequest::Motion::specialAction)
+    , m_kickDetected(false)
+    , m_ballDisappeared(true)
+    , m_timeWhenBallFirstDisappeared(0)
   {
     initialize();
   }
@@ -292,6 +301,12 @@ private:
    * is used to handle state transitions.
    */
   uint8_t m_lastGameState;
+
+  /**
+   * Save set play state at each invocation of the method \c handleGameState(). This
+   * is used to handle state transitions.
+   */
+  uint8_t m_lastSetPlay;
   
   /**
    * Save state of penalty at each invocation of the method \c handleGameState().

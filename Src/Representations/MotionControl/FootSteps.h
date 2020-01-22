@@ -32,7 +32,7 @@ public :
 	/** Is the controller running? */
 	bool running;
 
-  State walkState;
+  DWE::State walkState;
 
 	/** Immediate stop in case of emergency. */
 	bool emergencyStop;

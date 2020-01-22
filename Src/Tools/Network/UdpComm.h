@@ -86,6 +86,12 @@ public:
   int read(char* data, int len);
 
   /**
+   * The function tries to read a package from a socket and report the address of the sender.
+   * @return Number of bytes received or -1 in case of an error.
+   */
+  int read(char* data, int len, sockaddr_in& from);
+
+  /**
    * The function tries to read a package from a socket.
    * It only accepts a package from this host.
    * @return Number of bytes received or -1 in case of an error.

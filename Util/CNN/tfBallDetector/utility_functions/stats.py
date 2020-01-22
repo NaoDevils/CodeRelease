@@ -26,6 +26,25 @@ def get_stats(pred, y, thresh=0.5):
     FalseNegative = list(pred_ball[gt_ball_idx]).count(False) / list(gt_ball).count(True)
     return accuracy, TruePositive, FalsePositive, TrueNegative, FalseNegative
 
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 40, fill = '█'):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '')
+    # Print New Line on Complete
+    if iteration == total:
+        print()
 
 def keras_eval_thresh(x, y, model_path):
     model = load_model(model_path)

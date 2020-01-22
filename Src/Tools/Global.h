@@ -21,6 +21,7 @@ class DrawingManager;
 class DrawingManager3D;
 class ReleaseOptions;
 class TimingManager;
+class NTP;
 
 /**
  * @class Global
@@ -39,6 +40,7 @@ private:
   static PROCESS_LOCAL DrawingManager* theDrawingManager;
   static PROCESS_LOCAL DrawingManager3D* theDrawingManager3D;
   static PROCESS_LOCAL TimingManager* theTimingManager;
+  static PROCESS_LOCAL NTP* theNTP;
 
 public:
   /**
@@ -105,7 +107,13 @@ public:
    * The method returns a reference to the process wide instance.
    * @return the instance of the timing manager in this process.
    */
-  static TimingManager& getTimingManager() {return *theTimingManager;}
+  static TimingManager& getTimingManager() { return *theTimingManager; }
+
+  /**
+   * The method returns a reference to the process wide instance.
+   * @return the instance of the NTP in this process.
+   */
+  static NTP& getNTP() { return *theNTP; }
 
   friend class Process; // The class Process can set these pointers.
   friend class Cognition; // The class Cognition can set theTeamOut.

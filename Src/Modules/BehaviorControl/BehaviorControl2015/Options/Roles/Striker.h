@@ -20,30 +20,18 @@ option(Striker)
   {
     transition
     {
-      if (action_done && state_time > 2000)
-        goto kick;
-      else if (theFrameInfo.getTimeSince(theBallModel.timeWhenLastSeen) > 5000)
+      if (theFrameInfo.getTimeSince(theBallModel.timeWhenLastSeen) > 5000)
         goto lookForBall;
     }
-    action
+      action
     {
-      Pose2f optKickPosition(Transformation::robotToField(theRobotPoseAfterPreview,theBallModel.estimate.position));
-      optKickPosition.rotation = 0.f;
-      optKickPosition.translate(-190, -50);
+      const Vector2f ballPositionField = Transformation::robotToField(theRobotPoseAfterPreview,theBallModel.estimate.position);
+      Pose2f optKickPosition(
+        (Vector2f(theFieldDimensions.xPosOpponentGroundline,theFieldDimensions.yPosCenterGoal) - ballPositionField).angle(),
+        ballPositionField
+      );
       GoToFieldCoordinates(optKickPosition, 50, 50, 30, 10, false, false);
-    }
-  }
-
-  state(kick)
-  {
-    transition
-    {
-      if (state_time > 500 || (theMotionInfo.motion == MotionRequest::walk && theMotionInfo.walkRequest.stepRequest != WalkRequest::StepRequest::none))
-        goto goToBall;
-    }
-    action
-    {
-      Walk(WalkRequest::speed, 0, 0, 0, WalkRequest::StepRequest::frontKickShort);
+      AnyKick(Vector2f(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosCenterGoal));
     }
   }
 

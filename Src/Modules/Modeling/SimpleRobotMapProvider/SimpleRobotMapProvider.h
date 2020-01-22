@@ -10,17 +10,24 @@
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/SimpleRobotsDistributed.h"
+#include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/RobotsPercept.h"
+#include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 
 MODULE(SimpleRobotMapProvider,
 { ,
+  REQUIRES(CameraInfo),
+  REQUIRES(CameraInfoUpper),
+  REQUIRES(CameraMatrix),
+  REQUIRES(CameraMatrixUpper),
   REQUIRES(FrameInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotPose),
   REQUIRES(RobotsPercept),
+  REQUIRES(RobotsPerceptUpper),
   REQUIRES(TeammateData),
   PROVIDES(RobotMap),
   PROVIDES(LocalRobotMap),
@@ -34,6 +41,8 @@ MODULE(SimpleRobotMapProvider,
     (float) mergeLocationDiff,
     (float) mergeRotDiff,
     (float) mergeSpeedDiff,
+    (Angle) mergeAngleXDiff,
+    (Angle) mergeAngleYDiff,
     (float) minValidity, // 0..1
     (float) maxStartValidity, // max validity, when robot map entry is added
     (float) validityUpdate, // per frame
@@ -71,7 +80,7 @@ private:
   void update(LocalRobotMap &localRobotMap);
   void update(SimpleRobotsDistributed &simpleRobotsDistributed);
   void execute();
-  void updateWithLocalData();
+  void updateWithLocalData(const bool& upper);
   void updateWithTeamMatePoses();
   void updateWithGlobalData();
 

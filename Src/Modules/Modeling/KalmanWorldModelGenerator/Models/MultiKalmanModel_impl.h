@@ -14,8 +14,8 @@
 
 //MARK: Kalman filter related methods
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::removeOdometry(const Pose2f& odometryOffset)
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::removeOdometry(const Pose2f& odometryOffset)
 {
   // Encapsulate matrices describing the odometry offset (translation and rotation)
   // into this struct which is used to predict the kalman filter state.
@@ -44,8 +44,8 @@ void MultiKalmanModel<hypothesis_t>::removeOdometry(const Pose2f& odometryOffset
   }
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::motionUpdate(unsigned currentTimestamp, float friction)
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::motionUpdate(unsigned currentTimestamp, float friction)
 {
   // Run prediction step of each hypothesis.
   for (size_t i = 0; i < m_hypotheses.size(); i++)
@@ -54,8 +54,8 @@ void MultiKalmanModel<hypothesis_t>::motionUpdate(unsigned currentTimestamp, flo
   }
 }
 
-template <typename hypothesis_t>
-hypothesis_t* MultiKalmanModel<hypothesis_t>::sensorUpdate(
+template <typename hypothesis_t, bool towardsOneModel>
+hypothesis_t* MultiKalmanModel<hypothesis_t, towardsOneModel>::sensorUpdate(
   const Vector2f& measuredPosition,
   float measuredDistance,
   unsigned timestamp,
@@ -75,8 +75,8 @@ hypothesis_t* MultiKalmanModel<hypothesis_t>::sensorUpdate(
     kalmanNoiseMatrices);
 }
 
-template <typename hypothesis_t>
-hypothesis_t* MultiKalmanModel<hypothesis_t>::sensorUpdate(
+template <typename hypothesis_t, bool towardsOneModel>
+hypothesis_t* MultiKalmanModel<hypothesis_t, towardsOneModel>::sensorUpdate(
   const Vector2f& measuredPosition,
   float measuredDistance,
   const Vector2f* measuredVelocity,
@@ -113,9 +113,8 @@ hypothesis_t* MultiKalmanModel<hypothesis_t>::sensorUpdate(
   else
   {
     // Add new hypothesis if all existing ones are too far.
-    hypothesis_t newHypothesis(kalmanNoiseMatrices, initialValidityForNewHypothesis, timestamp, perceptValidity, measuredPosition,
-      measuredVelocity != nullptr ? *measuredVelocity : Vector2f::Zero());
-    m_hypotheses.push_back(newHypothesis);
+    m_hypotheses.push_back(hypothesis_t(kalmanNoiseMatrices, initialValidityForNewHypothesis, timestamp, perceptValidity, measuredPosition, getPerceptDuration(),
+      measuredVelocity != nullptr ? *measuredVelocity : Vector2f::Zero()));
     nearestHypothesis = &m_hypotheses.back();
   }
   
@@ -125,9 +124,9 @@ hypothesis_t* MultiKalmanModel<hypothesis_t>::sensorUpdate(
 
 //MARK: Validity methods
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::updateValidity(
-  size_t maxPerceptsPerSecond,
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::updateValidity(
+  float maxPerceptsPerSecond,
   float goodValidityThreshold,
   float weightOfPreviousValidity,
   float weightOfPreviousValidity_goodHypotheses)
@@ -143,7 +142,7 @@ void MultiKalmanModel<hypothesis_t>::updateValidity(
   {
     if (m_hypotheses[i].validity >= goodValidityThreshold)
       m_hypotheses[i].updateValidity(maxPerceptsPerSecond, weightOfPreviousValidity_goodHypotheses);
-    else if (goodHypothesisExists)
+    else if (towardsOneModel && goodHypothesisExists)
       m_hypotheses[i].updateValidity(maxPerceptsPerSecond, weightOfPreviousValidity / 2);
     else
       m_hypotheses[i].updateValidity(maxPerceptsPerSecond, weightOfPreviousValidity);
@@ -153,8 +152,8 @@ void MultiKalmanModel<hypothesis_t>::updateValidity(
 
 //MARK: Helper methods
 
-template <typename hypothesis_t>
-hypothesis_t* MultiKalmanModel<hypothesis_t>::findNearestHypothesis(
+template <typename hypothesis_t, bool towardsOneModel>
+hypothesis_t* MultiKalmanModel<hypothesis_t, towardsOneModel>::findNearestHypothesis(
   const Vector2f& measuredPosition, float& distance)
 {
   hypothesis_t* nearestHypothesis = nullptr;
@@ -178,8 +177,8 @@ hypothesis_t* MultiKalmanModel<hypothesis_t>::findNearestHypothesis(
   return nearestHypothesis;
 }
 
-template <typename hypothesis_t>
-const hypothesis_t* MultiKalmanModel<hypothesis_t>::bestHypothesis()
+template <typename hypothesis_t, bool towardsOneModel>
+const hypothesis_t* MultiKalmanModel<hypothesis_t, towardsOneModel>::bestHypothesis()
 {
   updateBestHypothesisIndexIfNecessary();
   if (m_bestHypothesisIndex == static_cast<size_t>(-1)) // Maximum size_t number
@@ -189,8 +188,8 @@ const hypothesis_t* MultiKalmanModel<hypothesis_t>::bestHypothesis()
   return &m_hypotheses[m_bestHypothesisIndex];
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::setParametersForUpdateBestHypothesis(
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::setParametersForUpdateBestHypothesis(
   float minValidity,
   std::size_t minNumber,
   float decreaseValidity)
@@ -200,16 +199,16 @@ void MultiKalmanModel<hypothesis_t>::setParametersForUpdateBestHypothesis(
   decreaseValidityOnChangingBestHypothesis = decreaseValidity;
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::resetBestHypothesisIndex()
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::resetBestHypothesisIndex()
 {
   // Reset index of best hypothesis. This must be recalculated each frame.
   m_lastBestHypothesisIndex = m_bestHypothesisIndex;
   m_bestHypothesisIndex = static_cast<size_t>(-1); // Maximum size_t number
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::updateBestHypothesis()
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::updateBestHypothesis()
 {
   // If there is no hypothesis, there cannot be a best one.
   if (m_hypotheses.size() <= 0)
@@ -267,8 +266,8 @@ void MultiKalmanModel<hypothesis_t>::updateBestHypothesis()
   }
 }
 
-template <typename hypothesis_t>
-std::size_t MultiKalmanModel<hypothesis_t>::updateBestHypothesisIndexIfNecessary()
+template <typename hypothesis_t, bool towardsOneModel>
+std::size_t MultiKalmanModel<hypothesis_t, towardsOneModel>::updateBestHypothesisIndexIfNecessary()
 {
   if (m_bestHypothesisIndex == static_cast<size_t>(-1) && m_hypotheses.size() > 0)
   {
@@ -278,8 +277,8 @@ std::size_t MultiKalmanModel<hypothesis_t>::updateBestHypothesisIndexIfNecessary
   return m_bestHypothesisIndex;
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::increaseVelocityUncertainty(double factor, bool onlyBestHypothesis)
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::increaseVelocityUncertainty(double factor, bool onlyBestHypothesis)
 {
   updateBestHypothesisIndexIfNecessary();
   if (onlyBestHypothesis)
@@ -299,8 +298,8 @@ void MultiKalmanModel<hypothesis_t>::increaseVelocityUncertainty(double factor, 
   }
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesOutsideField(
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::cleanUpHypothesesOutsideField(
   const FieldDimensions& theFieldDimensions,
   const RobotPose& theRobotPose,
   float fieldBorderThreshold)
@@ -335,8 +334,8 @@ void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesOutsideField(
   }
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesLowValidity(float validityThreshold, bool saveBestHypothesis)
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::cleanUpHypothesesLowValidity(float validityThreshold, bool saveBestHypothesis)
 {
   // Do nothing if there is no hypothesis.
   if (m_hypotheses.size() <= 0) return;
@@ -346,6 +345,9 @@ void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesLowValidity(float validity
   if (saveBestHypothesis)
   {
     updateBestHypothesisIndexIfNecessary();
+    if (m_bestHypothesisIndex == static_cast<size_t>(-1) && m_lastBestHypothesisIndex < m_hypotheses.size()){
+      m_bestHypothesisIndex = m_lastBestHypothesisIndex;
+    }
     if (m_bestHypothesisIndex < m_hypotheses.size())
     {
       bestValidity = m_hypotheses[m_bestHypothesisIndex].validity;
@@ -368,8 +370,8 @@ void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesLowValidity(float validity
   }
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesSimilarToBestOne(
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::cleanUpHypothesesSimilarToBestOne(
   float minDistanceForSeparateHypotheses,
   float minAngleForSeparateHypotheses)
 {
@@ -403,15 +405,21 @@ void MultiKalmanModel<hypothesis_t>::cleanUpHypothesesSimilarToBestOne(
   }
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::clear()
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::clear()
 {
   m_hypotheses.clear();
   m_bestHypothesisIndex = static_cast<size_t>(-1); // Maximum size_t number
 }
 
-template <typename hypothesis_t>
-void MultiKalmanModel<hypothesis_t>::addHypothesis(const hypothesis_t& newHypothesis)
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::addHypothesis(const hypothesis_t& newHypothesis)
 {
   m_hypotheses.push_back(newHypothesis);
+}
+
+template <typename hypothesis_t, bool towardsOneModel>
+void MultiKalmanModel<hypothesis_t, towardsOneModel>::addHypothesis(hypothesis_t&& newHypothesis)
+{
+  m_hypotheses.push_back(std::forward<hypothesis_t>(newHypothesis));
 }

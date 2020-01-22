@@ -1,0 +1,27 @@
+
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 1; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo mv 0 0 320 0 0 180
+echo mvb -180 -50 50
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 1; y = 0; }; }; stepRequest = frontKickLong; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 1; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo dr module:PatternGenerator2017:loadCustomSteps
+
+echo
+echo vd parameters:LimbCombinator
+vd parameters:LimbCombinator
+
+echo
+echo vp lKneePitch 200 0 2
+echo vpd lKneePitch module:MotionCombinator:leftLegAngles[3] black
+
+echo vp rKneePitch 200 0 2
+echo vpd rKneePitch module:MotionCombinator:rightLegAngles[3] black
+
+vp lKneePitch 200 0 2
+vpd lKneePitch module:MotionCombinator:leftLegAngles[3] black
+
+vp rKneePitch 200 0 2
+vpd rKneePitch module:MotionCombinator:rightLegAngles[3] black
+
+echo dr module:PatternGenerator2017:loadCustomSteps

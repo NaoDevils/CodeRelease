@@ -16,38 +16,60 @@ GyroFallDownStateDetector::GyroFallDownStateDetector()
 {
   fallDownTime = 0;
   fallenFinishedTime = 1000;
+  gyroXBuffer.fill(0_deg);
+  gyroYBuffer.fill(0_deg);
 }
 
 void GyroFallDownStateDetector::update(FallDownState& fallDownState)
 {
-  float angleXZ(theInertialSensorData.angle.y());
-  float angleYZ(theInertialSensorData.angle.x());
-  float upRightAngleThreshold = 1.f;
-  MODIFY("Module:GyroFallDownStateDetector:upRightAngleThreshold", upRightAngleThreshold);
+  Angle angleXZ = useIMUModel ? theIMUModel.orientation.y() : theInertialSensorData.angle.y();
+  Angle angleYZ = useIMUModel ? theIMUModel.orientation.x() : theInertialSensorData.angle.x();
+  
   if (theFrameInfo.time - fallDownTime >= fallenFinishedTime)
   {
-    if (angleXZ > upRightAngleThreshold || (angleXZ > 0.5f && angleYZ > 0.5f) || (angleXZ > 0.5f && angleYZ < -0.5f))
+    if (angleXZ > uprightAngleThreshold || (angleXZ > 30_deg && angleYZ > 30_deg) || (angleXZ > 30_deg && angleYZ < -30_deg))
     {
       fallDownState.state = FallDownState::onGround;
       fallDownState.direction = FallDownState::front;
     }
-    else if(angleXZ < -upRightAngleThreshold || (angleXZ < -0.5f && angleYZ > 0.5f) || (angleXZ < -0.5f && angleYZ < -0.5f))
+    else if(angleXZ < -uprightAngleThreshold || (angleXZ < -30_deg && angleYZ > 30_deg) || (angleXZ < -30_deg && angleYZ < -30_deg))
     {
       fallDownState.state = FallDownState::onGround;
       fallDownState.direction = FallDownState::back;
     }
-    else if (angleYZ < -upRightAngleThreshold)
+    else if (angleYZ < -uprightAngleThreshold)
     {
       fallDownState.state = FallDownState::onGround;
       fallDownState.direction = FallDownState::left;
     }
-    else if(angleYZ > upRightAngleThreshold)
+    else if(angleYZ > uprightAngleThreshold)
     {
       fallDownState.state = FallDownState::onGround;
       fallDownState.direction = FallDownState::right;
     }
     else
-      fallDownState.state = FallDownState::upright;
+    {
+      if (uprightAfterSpecialAction)
+      {
+        if (!(theMotionInfo.motion == MotionRequest::specialAction
+          && theMotionInfo.specialActionRequest.specialAction >= SpecialActionRequest::standUpBackNao
+          && theMotionInfo.specialActionRequest.specialAction < SpecialActionRequest::numOfSpecialActionIDs))
+          fallDownState.state = FallDownState::upright;
+        else
+          fallDownState.state = FallDownState::standingUp;
+      }
+      else
+        fallDownState.state = FallDownState::upright;
+    }
+  }
+
+  // if gyro is indicating fall, do not set state to onGround, but to falling
+  if (useGyroSpeed && fallDownState.state != FallDownState::upright)
+  {
+    gyroXBuffer.push_front(theInertialSensorData.gyro.x());
+    gyroYBuffer.push_front(theInertialSensorData.gyro.y());
+    if (std::abs(gyroXBuffer.sum()) < maxGyroForStandup || std::abs(gyroYBuffer.sum()) < maxGyroForStandup)
+      fallDownState.state = FallDownState::falling;
   }
 
   if(fallDownState.state == FallDownState::upright)
@@ -55,7 +77,7 @@ void GyroFallDownStateDetector::update(FallDownState& fallDownState)
     //Set state:
 
     // state falling if average angle of robot is too high and robot is not trying to get up
-    if(std::abs(angleXZ) > 0.6f || std::abs(angleYZ) > 0.6f)
+    if(std::abs(angleXZ) > 35_deg || std::abs(angleYZ) > 35_deg)
     {
       if (!(theMotionInfo.motion == MotionRequest::specialAction
          && theMotionInfo.specialActionRequest.specialAction >= SpecialActionRequest::standUpBackNao
@@ -63,15 +85,16 @@ void GyroFallDownStateDetector::update(FallDownState& fallDownState)
       {
         fallDownState.state = FallDownState::falling;
         // This is for head protection. Only front or back decision matters
-        if (angleXZ > 0.3f)
+        if (angleXZ > 30_deg) // was 0.3f before 2019
           fallDownState.direction = FallDownState::front;
-        else if (angleXZ < -0.3f)
+        else if (angleXZ < -30_deg) // was 0.3f before 2019
           fallDownState.direction = FallDownState::back;
+        else
+          fallDownState.direction = FallDownState::none;
         fallDownTime = theFrameInfo.time;
       }
     }
   }
-
 }
 
 

@@ -22,7 +22,11 @@ SimRobotHelp = cppDynamicLibrary + {
       } else {
         qhelpgenerator = "qhelpgenerator",
       }
-      command = "bash -c \"QT_SELECT=4 $(qhelpgenerator) $(file) -o $(output)\"",
+      if (host == "Win32") {
+        command = "bashexec \"QT_SELECT=4 $(qhelpgenerator) $(file) -o $(output)\"",
+      }else{
+        command = "bash -c \"QT_SELECT=4 $(qhelpgenerator) $(file) -o $(output)\"",
+      }
       message = "$(if $(Win32),$(notdir $(file)),$(file)) (qhelpgenerator)",
     },
     "$(utilDirRoot)/SimRobot/Src/SimRobotHelp/Help/helpcollection.qhcp" = {

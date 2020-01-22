@@ -47,4 +47,3 @@ struct ActualCoM : public Streamable, public Point
 };
 
 struct ActualCoMRCS : public ActualCoM {};
-struct ActualCoMFLIPM : public ActualCoM {};

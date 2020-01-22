@@ -26,7 +26,6 @@ MODULE(CoMProviderModule,
   //USES(JointRequest),
   //REQUIRES(WalkingEngineParams),
   PROVIDES(ActualCoM),
-  PROVIDES(ActualCoMFLIPM),
 });
 
 class CoMProviderModule : public CoMProviderModuleBase
@@ -37,7 +36,6 @@ public:
 	CoMProvider controller;
 
 	void update(ActualCoM &theActualCoM);
-  void update(ActualCoMFLIPM &theActualCoMFLIPM);
 };
 
 

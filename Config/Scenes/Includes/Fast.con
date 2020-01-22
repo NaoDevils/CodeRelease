@@ -38,11 +38,14 @@ mr LowFrameRateImageUpper off
 
 # Deactivate modules depending on images
 mr RobotsPercept default
+mr RobotsPerceptUpper default
 mr CLIPCenterCirclePercept default
 mr CLIPGoalPercept default
 mr CLIPFieldLinesPercept default
 mr PenaltyCrossPercept default
 mr SideConfidence default
+mr BallHypothesesYolo default
+mr BallHypothesesYoloUpper default
 mr BallPercept OracledPerceptsProvider
 mr CLIPPointsPercept off
 mr ObstacleBasePoints off

@@ -58,12 +58,14 @@ ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
   addView(new ConsoleView("Console.Pad", *this, true), consoleView, SimRobot::Flag::verticalTitleBar);
 
   SimRobot::Object* documentationCategory = addCategory("Docs", 0, ":/Icons/page_white_h.png");
-  addView(new CABSLGraphViewObject("Docs.BehaviorControl2015", "BehaviorControl2015", "Options.h"), documentationCategory);
+  addView(new CABSLGraphViewObject("Docs.BehaviorControl", "CABSL", "Options.h"), documentationCategory);
 
   representationToFile["parameters:BodyContourProvider"] = "bodyContourProvider.cfg";
   representationToFile["representation:CameraCalibration"] = "cameraCalibration.cfg";
   representationToFile["representation:UpperCameraSettings"] = "upperCameraSettings.cfg";
   representationToFile["representation:LowerCameraSettings"] = "lowerCameraSettings.cfg";
+  representationToFile["representation:UpperCameraSettingsV6"] = "upperCameraSettingsV6.cfg";
+  representationToFile["representation:LowerCameraSettingsV6"] = "lowerCameraSettingsV6.cfg";
   representationToFile["representation:JointCalibration"] = "jointCalibration.cfg";
   representationToFile["representation:MassCalibration"] = "massCalibration.cfg";
   representationToFile["representation:RobotDimensions"] = "robotDimensions.cfg";
@@ -71,9 +73,21 @@ ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
   representationToFile["parameters:WalkingEngine"] = "walkingEngine.cfg";
   representationToFile["parameters:DmpKickEngine"] = "dmpKickEngine.cfg";
   representationToFile["parameters:PatternGenerator2017"] = "patternGenerator2017.cfg";
-  representationToFile["representation:FLIPMObserverParams"] = "flipmObserverParams.cfg"; 
+  representationToFile["representation:FLIPMObserverGains"] = "flipmObserverGains.cfg";
   representationToFile["representation:LegJointSensorControlParameters"] = "legJointSensorControlParameters.cfg";
   representationToFile["parameters:StandEngine"] = "standEngine.cfg";
+  representationToFile["parameters:FLIPMParamsProvider"] = "flipmParamsProvider.cfg";
+  representationToFile["parameters:IMUModelProvider"] = "imuModelProvider.cfg";
+  representationToFile["representation:FLIPMControllerParameter"] = "flipmControllerParameter.cfg";
+  representationToFile["representation:FLIPMObserverParameter"] = "flipmObserverParameter.cfg";
+  representationToFile["parameters:CSConverter2019"] = "csConverter2019.cfg";
+  representationToFile["parameters:SimplePathProvider"] = "simplePathProvider.cfg";
+  representationToFile["parameters:TorsoMatrixProvider"] = "torsoMatrixProvider.cfg";
+  representationToFile["representation:WalkingEngineParams"] = "walkingParamsFLIPM.cfg";
+  representationToFile["parameters:KickProvider2018"] = "kickProvider2018.cfg";
+  representationToFile["parameters:WhistleDetectorMono2019"] = "whistleDetectorMono2019.cfg";
+  representationToFile["parameters:WhistleDetector2019"] = "whistleDetector2019.cfg";
+  representationToFile["representation:MotionSettings"] = "motionSettings.cfg";
   
   std::ifstream infile(std::string(File::getBHDir()) + "/Config/Locations/Default/modules.cfg");
   std::string line;
@@ -96,7 +110,7 @@ ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
     std::cout << "FLIPM used for save!" << std::endl;
     representationToFile["representation:WalkingEngineParams"] = "walkingParamsFLIPM.cfg";
   }
-  
+
 }
 
 bool ConsoleRoboCupCtrl::compile()
@@ -176,10 +190,13 @@ void ConsoleRoboCupCtrl::update()
     for(std::list<std::string>::const_iterator i = textMessages.begin(); i != textMessages.end(); ++i)
       if(*i == "_cls")
         consoleView->clear();
-      else if(newLine || &*i != &*textMessages.rend())
+      else if(newLine || &*i != &*textMessages.rend()) {
         consoleView->printLn(i->c_str());
-      else
+        std::cout << std::string(i->c_str()) << std::endl;
+      } else {
         consoleView->print(i->c_str());
+        std::cout << std::string(i->c_str()) << std::endl;
+      }
     textMessages.clear();
   }
   RoboCupCtrl::update();
@@ -188,7 +205,7 @@ void ConsoleRoboCupCtrl::update()
     (*i)->update();
 
   Global::theStreamHandler = &streamHandler;
-  ntp.doSynchronization(SystemCall::getRealSystemTime(), theTeamSender.out);
+  //ntp.doSynchronization(SystemCall::getRealSystemTime(), theTeamSender.out);
   theTeamHandler.send();
   (void) theTeamHandler.receive();
   theTeamReceiver.handleAllMessages(*this);
@@ -603,7 +620,7 @@ bool ConsoleRoboCupCtrl::startLogFile(In& stream)
   this->robotName = robotName.c_str();
   robots.push_back(new Robot(name.c_str()));
   this->robotName = 0;
-  logFile = "";
+  //logFile = "";
   selected.clear();
   RobotConsole* rc = robots.back()->getRobotProcess();
   selected.push_back(rc);
@@ -1031,7 +1048,7 @@ bool ConsoleRoboCupCtrl::handleMessage(InMessage& message)
       return true;
 
     default:
-      if(!ntp.handleMessage(message))
+      //if(!ntp.handleMessage(message))
         for(std::list<TeamRobot*>::iterator i = teamRobots.begin(); i != teamRobots.end(); ++i)
           if((*i)->getNumber() == robotNumber)
           {

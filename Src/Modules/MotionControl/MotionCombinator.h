@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -51,6 +52,7 @@ MODULE(MotionCombinator,
   REQUIRES(RobotInfo),
   REQUIRES(StiffnessSettings),
   REQUIRES(MotionSettings),
+  REQUIRES(JointCalibration),
   REQUIRES(LegJointSensorControlParameters),
   REQUIRES(WalkingEngineOutput),
   REQUIRES(WalkingInfo),
@@ -67,6 +69,8 @@ MODULE(MotionCombinator,
     (unsigned) recoveryTime, /**< The number of frames to interpolate after emergency-stop. */
     (bool) useBalancing, // use yOffset and balanceParams for balancing upper body
     (float) yOffset, // upper body y offset (for asymmetry)
+    (bool)(true) useJointAccLimit, // use below acc limit for joints?
+    (Angle)(180_deg) maxJointAcceleration, // Used to counter the softbank issue with the V6. Angle/(s^2)
   }),
 });
 
@@ -95,8 +99,11 @@ private:
   bool wasInBalance = false;
   float lastComX = 0;
 
+  SpecialActionRequest::SpecialActionID lastSpecialAction = SpecialActionRequest::playDead;
+  SpecialActionRequest::SpecialActionID currentSpecialAction = SpecialActionRequest::playDead;
   OdometryData lastOdometryData;
   JointRequest lastJointRequest;
+  JointAngles lastJointDiff = JointAngles();
   float pidGyroX_sum = 0;
   float pidGyroY_sum = 0;
   float pidGyroX_last = 0;
@@ -105,9 +112,6 @@ private:
   float pidAngleY_sum = 0;
   float pidAngleX_last = 0;
   float pidAngleY_last = 0;
-
-  float spid_sumX = 0;
-  float spid_sumY = 0;
 
 public:
   /**
@@ -147,7 +151,4 @@ private:
   void interpolate(const JointRequest& from, const JointRequest& to, float fromRatio, JointRequest& target, bool interpolateStiffness,
     const Joints::Joint startJoint = static_cast<Joints::Joint>(0),
     const Joints::Joint endJoint = static_cast<Joints::Joint>(Joints::numOfJoints - 1)) const;
-
-  void calcUpperBodyCOM(Vector3f& com);
-  Vector3f rotateVectorOverLine(Vector3f vec, Vector3f sv, Vector3f rv, float angle);
 };

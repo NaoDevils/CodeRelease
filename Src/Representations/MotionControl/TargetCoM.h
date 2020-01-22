@@ -39,7 +39,7 @@ public :
 		STREAM_REGISTER_FINISH;
 	};
     
-    float state_x[6], state_y[6];
+    double state_x[6], state_y[6];
     bool isRunning;
 
 	/** Constructor */

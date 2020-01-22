@@ -5,145 +5,310 @@ usage()
 {
   echo "usage: copyfiles [Release|Develop|Debug] [<ipaddress>|(-m n <ipaddress>)*] {options}"
   echo "  options:"
-  echo "    -l <location>          set location"
-  echo "    -t <color>             set team color to blue, red, yellow, or black"
-  echo "    -p <number>            set player number"
-  echo "    -n <number>            set team number"
-  echo "    -o <port>              overwrite team port"
-  echo "    -g <game mode>         set game mode"
-  echo "    -r                     restart bhuman"
-  echo "    -rr                    force restart bhuman and naoqi"
-  echo "    -m n <ip>              copy to <ip>, and set playernumber to n (one -m per robot)"
-  echo "    -wc                    compile also under Windows"
-  echo "    -nc                    never compile"
-  echo "    -nr                    do not check whether target is reachable"
-  echo "    -d                     remove all log files before copying"
-  echo "    -v <percent>           set NAO's volume"
-  echo "    -mv <percent>          set NAO's microphone volume"
-  echo "    -w <profile>           set wireless profile"
-  echo "    -sp <repres> <module>  set provider for <representation> to <module> in modules.cfg"
-  echo "    -own <color>           set color for own team (e.g. \"x = 255; y = 255; z = 255;\")"
-  echo "    -opp <color>           set color for opposing team (e.g. \"x = 255; y = 255; z = 255;\")"
-  echo "    -h | --help | /h | /?  print this text"
+  echo "    -nv <5,6>              				use this nao version, default 5"
+  echo "    -l <location>          				set location"
+  echo "    -t <color>             				set team color to blue, red, yellow, or black"
+  echo "    -p <number>            				set player number"
+  echo "    -n <number>            				set team number"
+  echo "    -o <port>              				overwrite team port"
+  echo "    -g <game mode>         				set game mode"
+  echo "    -r                     				restart bhuman"
+  echo "    -rr                    				force restart bhuman and naoqi"
+  echo "    -m n <ip>              				copy to <ip>, and set playernumber to n (one -m per robot)"
+  echo "    -wc                    				compile also under Windows"
+  echo "    -nc                    				never compile"
+  echo "    -sn                    				skip NTP sync"
+  echo "    -nr                    				do not check whether target is reachable"
+  echo "    -d                     				remove all log files before copying"
+  echo "    -v <percent>           				set NAO's volume"
+  echo "    -mv <percent>          				set NAO's microphone volume"
+  echo "    -w <profile>           				set wireless profile"
+  echo "    -sp <repres> <module>  				set provider for <representation> to <module> in modules.cfg"
+  echo "    -own <color>           				set color for own team (e.g. \"x = 255; y = 255; z = 255;\")"
+  echo "    -opp <color>           				set color for opposing team (e.g. \"x = 255; y = 255; z = 255;\")"
+  echo "    -log <none,LowFramerate,Sequence> 	set the Image Logging Provider"
+  echo "    -h | --help | /h | /?  				print this text"
   echo "  examples:"
   echo "    ./copyfiles Develop 192.168.5.14 -p 1"
-  echo "    ./copyfiles Release -m 1 10.0.5.14 -m 3 10.0.0.2"
-  echo "  NAOqi will be restarted if libbhuman or libgamectrl were changed."
+  echo "    ./copyfiles Release -nv 6 -m 1 10.0.5.14 -m 3 10.0.0.2"
+  echo "  If nv=5: NAOqi will be restarted if libbhuman or libgamectrl were changed."
+  echo "  If nv=6: ndevilsbase will be restarted if changed."
   exit 1
+}
+
+errorMessage()
+{
+  MESSAGE=$1
+  ERRORCODE=$2
+  if [ $ERRORCODE -eq 255 ]; then
+    >&2 echo "[ERROR] ssh connection error"
+    exit 1
+  elif [ $ERRORCODE -gt 0 ]; then
+    >&2 echo -e "[ERROR] $MESSAGE\n              Error code: $ERRORCODE"
+    exit 1
+  fi
 }
 
 copy()
 {
+  echo "using copfiles with nao version $NAOVERSION"
   REMOTE=$1
   PLAYER=$2
+
+  rm -r -f ~/.ssh/bushSockets/nao@$REMOTE:22
 
   if [ ! -z $PLAYER ] && ( (( $PLAYER < 1 )) || (( $PLAYER > 6 )) ); then
     echo "Error: Player number is $PLAYER!"
     exit 1
   fi
 
-  if [ ! -z $CHECK ]; then
-    if [ `ping ${pingoptions} $REMOTE >/dev/null && echo 1 || echo 0` = "0" ]; then
-      echo "$REMOTE not reachable"
-      exit 1
+  (
+    if [ ! -z $CHECK ]; then
+      # echo "ping reachability check"
+      if [ `ping ${pingoptions} $REMOTE >/dev/null && echo 1 || echo 0` = "0" ]; then
+        >&2 echo "$REMOTE not reachable"
+        exit 1
+      fi
+      # echo "robot reachable"
     fi
-  fi
+  ) &
 
   echo "stopping bhuman"
-  ssh $sshoptions nao@$REMOTE "/home/nao/bin/bhumand stop > /dev/null"
-  
-  echo "------- Synchronizing clocks on $REMOTE -------"
-  set +e
-  ssh $sshoptions root@$REMOTE "ntpdate -u 192.168.101.122 192.168.101.1 && hwclock --systohc --utc"
-  #ssh $sshoptions root@$REMOTE "ntpdate -u 192.168.100.4 192.168.101.88 && hwclock --systohc"
-  if [[ $? != 0 ]]; then
-     >&2 echo "[ERROR] while updating NTP time!"  
+  if [ "$NAOVERSION" == "V6" ]; then
+    ssh $sshoptions nao@$REMOTE "systemctl --user stop bhumand" | true
   else
-    echo " > Succesfully updated time < "
+    ssh $sshoptions nao@$REMOTE "/home/nao/bin/bhumand stop > /dev/null" | true
   fi
-  echo "-----------------------------------------------------"
-  set -e
+  errorMessage "bhumand service error" ${PIPESTATUS[0]}
+
+  set +e
+  if [ "$NAOVERSION" == "V6" ]; then
+    echo "check time"
+    ssh $sshoptions nao@$REMOTE "/home/nao/bin/chronyc -n burst 2/10 >/dev/null 2>&1; /home/nao/bin/chronyc -n makestep 0.1 1 >/dev/null 2>&1; /home/nao/bin/chronyc -n waitsync 5 0.01 5 1 2>/dev/null"
+    if [ $? != 0 ]; then
+        >&2 echo "time not synchronized yet!"
+    fi
+  else
+    if [ -z $SKIP_NTP ]; then
+      (
+      echo "start synchronizing clocks on $REMOTE"
+      ssh $sshoptions root@$REMOTE "ntpdate -u 192.168.101.122 192.168.101.1 && hwclock --systohc --utc"
   
+      if [[ $? != 0 ]]; then
+        >&2 echo "[ERROR] while updating NTP time!"
+      else
+        echo "succesfully updated time"
+      fi
+      ) &
+    fi
+  fi
+  set -e
+
   if [ ! -z $REMOVE_LOGS ]; then
     echo "removing log files and PNGs"
-    ssh $sshoptions nao@$REMOTE "rm -rf /home/nao/logs/* > /dev/null && rm -rf /var/volatile/PNGs &> /dev/null"
+    ssh $sshoptions nao@$REMOTE "rm -rf /home/nao/logs/* > /dev/null && rm -rf /var/volatile/PNGs &> /dev/null" | true
   fi
+  errorMessage "removing logs error" ${PIPESTATUS[0]}
 
-  echo "updating wireless profiles"
-  rsync --del --exclude=.* --exclude=default --chmod=u+rw,go+r,Dugo+x -zrce "ssh $sshoptions" ../../Install/Network/Profiles/. nao@$REMOTE:/home/nao/Profiles
-  if [ ! -z $PROFILE ]; then
-    RESULT=`ssh $sshoptions nao@$REMOTE "setprofile $PROFILE"`
-    if [ -n "$RESULT" ]; then
-      if [ "$PROFILE" == "NONE" ] || [ `echo $RESULT | grep -i -c 'no process found'` -eq "1" ]; then
-        RESULT=""
-      fi
-    fi
-    if [ ! -z "$RESULT" ]; then
-      echo "$RESULT" | grep -v usage >&2
-      exit 1
-    fi
+  updateWifiV6="FALSE"
+  if [ "$NAOVERSION" == "V6" ]; then
+    updateWifiV6="TRUE"
   fi
 
   echo "updating bhuman"
-  rsync --del --exclude=.* --exclude=/Images --exclude=/Logs --exclude=/Scenes --exclude=/Keys --exclude=libbhuman.so --exclude=libgamectrl.so --chmod=u+rw,go+r,Dugo+x -rzce "ssh $sshoptions" ../../Build/Linux/$COMPONENT/$CONFIG/bhuman ../../Config/. ../../Build/Linux/libgamectrl/$CONFIG/build.cfg nao@$REMOTE:/home/nao/Config
+  if [ "$NAOVERSION" == "V6" ]; then
+    rsync -q --del --exclude=.* --exclude=/Images --exclude=/Logs --exclude=/Scenes --exclude=/Keys --exclude=libbhuman.so --exclude=libgamectrl.so --chmod=u+rw,go+r,Dugo+x -rzce "ssh $sshoptions" ../../Config/. nao@$REMOTE:/home/nao/Config
+    rsync -q --chmod=u+rwx,go+r,Dugo+x --stats -zce "ssh $sshoptions" ../../Build/Linux/$COMPONENT/$CONFIG/bhuman nao@$REMOTE:/home/nao/bin
+    ssh $sshoptions nao@$REMOTE "sed -i 's/provider = NaoProvider/provider = NaoProviderV6/g' /home/nao/Config/Locations/$LOCATION/modules.cfg" | true
+    errorMessage "edit modules.cfg failed" ${PIPESTATUS[0]}
+    ssh $sshoptions nao@$REMOTE "sed -i 's/provider = CameraProvider/provider = CameraProviderV6/g' /home/nao/Config/Locations/$LOCATION/modules.cfg" | true
+    errorMessage "edit modules.cfg failed" ${PIPESTATUS[0]}
+  else
+    rsync --del --exclude=.* --exclude=/Images --exclude=/Logs --exclude=/Scenes --exclude=/Keys --exclude=libbhuman.so --exclude=libgamectrl.so --chmod=u+rw,go+r,Dugo+x -rzce "ssh $sshoptions" ../../Build/Linux/$COMPONENT/$CONFIG/bhuman ../../Config/. nao@$REMOTE:/home/nao/Config
+  fi
 
-  echo "updating libs"
-  RESULT=`rsync --chmod=u+rw,go+r,Dugo+x --stats -zce "ssh $sshoptions" ../../Build/Linux/libbhuman/$CONFIG/libbhuman.so ../../Build/Linux/libgamectrl/$CONFIG/libgamectrl.so nao@$REMOTE:/home/nao/Config`
+  echo "updating sensorReader"
+  RESULTSENSORREADER=`rsync --chmod=u+rwx,go+r,Dugo+x --stats -zce "ssh $sshoptions" ../../Build/Linux/sensorReader/$CONFIG/sensorReader nao@$REMOTE:/home/nao/bin`
+  if [ `echo "$RESULTSENSORREADER" | grep -c 'transferred: 0'` != 1 ]; then
+    RESTARTSENSORREADER=1
+  fi
+
+  if [ "$NAOVERSION" == "V6" ]; then
+    echo "updating ndevilsbase"
+    RESULT=`rsync --chmod=u+rwx,go+r,Dugo+x --stats -zce "ssh $sshoptions" ../../Build/Linux/ndevilsbase/$CONFIG/ndevilsbase nao@$REMOTE:/home/nao/bin`
+  else
+    echo "updating libs"
+    RESULT=`rsync --chmod=u+rw,go+r,Dugo+x --stats -zce "ssh $sshoptions" ../../Build/Linux/libbhuman/$CONFIG/libbhuman.so ../../Build/Linux/libgamectrl/$CONFIG/libgamectrl.so nao@$REMOTE:/home/nao/Config`
+  fi
   if [ `echo "$RESULT" | grep -c 'transferred: 0'` != 1 ]; then
     RESTARTNAOQI=1
   fi
 
-  if [ ! -z $STOPPEDNAOQI ]; then
-    echo "starting naoqi"
-    ssh $sshoptions nao@$REMOTE "sudo /etc/init.d/naoqi start &> /dev/null"
-  elif [ ! -z $RESTARTNAOQI ]; then
-    echo "restarting naoqi"
-    ssh $sshoptions nao@$REMOTE "sudo /etc/init.d/naoqi restart &> /dev/null"
+  if [ "$NAOVERSION" == "V6" ]; then
+    if [ ! -z $STOPPEDNAOQI ]; then
+      echo "starting ndevilsbase"
+      ssh $sshoptions nao@$REMOTE "systemctl --user start ndevild" | true
+      errorMessage "ndevild service error (start)" ${PIPESTATUS[0]}
+    elif [ ! -z $RESTARTNAOQI ]; then
+      echo "restarting ndevilsbase"
+      ssh $sshoptions nao@$REMOTE "systemctl --user restart ndevild" | true
+      errorMessage "ndevild service error (restart)" ${PIPESTATUS[0]}
+    fi
+  else
+    if [ ! -z $STOPPEDNAOQI ]; then
+      echo "starting naoqi"
+      ssh $sshoptions nao@$REMOTE "sudo /etc/init.d/naoqi start &> /dev/null" | true
+      errorMessage "naoqi service error (start)" ${PIPESTATUS[0]}
+    elif [ ! -z $RESTARTNAOQI ]; then
+      echo "restarting naoqi"
+      ssh $sshoptions nao@$REMOTE "sudo /etc/init.d/naoqi restart &> /dev/null" | true
+      errorMessage "naoqi service error (restart)" ${PIPESTATUS[0]}
+    fi
+  fi
+
+  if [ "$NAOVERSION" == "V6" ]; then
+    if [ ! -z $STOPPEDSENSORREADER ]; then
+      echo "starting sensorreader"
+      ssh $sshoptions nao@$REMOTE "systemctl --user start sensorReaderd" | true
+      errorMessage "sensorReaderd service error (start)" ${PIPESTATUS[0]}
+    elif [ ! -z $RESTARTSENSORREADER ]; then
+      echo "restarting sensorreader"
+      ssh $sshoptions nao@$REMOTE "systemctl --user restart sensorReaderd" | true
+      errorMessage "sensorReaderd service error (restart)" ${PIPESTATUS[0]}
+    fi
+  else
+    if [ ! -z $STOPPEDSENSORREADER ]; then
+      echo "starting sensorreader"
+      ssh $sshoptions nao@$REMOTE "/home/nao/bin/sensorReaderd start > /dev/null" | true
+      errorMessage "sensorReaderd service error (start)" ${PIPESTATUS[0]}
+    elif [ ! -z $RESTARTSENSORREADER ]; then
+      echo "restarting sensorreader"
+      ssh $sshoptions nao@$REMOTE "/home/nao/bin/sensorReaderd restart > /dev/null" | true
+      errorMessage "sensorReaderd service error (restart)" ${PIPESTATUS[0]}
+    fi
   fi
 
   # set volume
   echo "setting volume to $VOLUME%"
 
   #New naoqi versions use "Master", old use "PCM" as amixer SCONTROL
-  ssh $sshoptions nao@$REMOTE "amixer set Master $VOLUME% unmute &> /dev/null"
+  ssh $sshoptions nao@$REMOTE "amixer set Master $VOLUME% unmute &> /dev/null" | true
+  errorMessage "amixer set Master error" ${PIPESTATUS[0]}
 
   # set microphone volume
   echo "setting microphone volume to $MIC_VOLUME%"
-  
-  ssh $sshoptions nao@$REMOTE "amixer set Capture $MIC_VOLUME% unmute &> /dev/null"
+
+  ssh $sshoptions nao@$REMOTE "amixer set Capture $MIC_VOLUME% unmute &> /dev/null" | true
+  errorMessage "amixer set Capture error" ${PIPESTATUS[0]}
 
   # set settings on robot
   if [ ! -z $LOCATION ] || [ ! -z $TEAM ] || [ ! -z $PORT ] || [ ! -z $PLAYER ] || [ ! -z $NUMBER ] || [ ! -z $GAMEMODE ]; then
     echo "updating settings"
     SEDFLAGS=""
+    [ ! -z $NAOVERSION ] && SEDFLAGS="$SEDFLAGS -e 's/naoVersion.*/naoVersion = $NAOVERSION;/'"
     [ ! -z $LOCATION ] && SEDFLAGS="$SEDFLAGS -e 's/location.*/location = $LOCATION;/'"
     [ ! -z $TEAM ] && SEDFLAGS="$SEDFLAGS -e 's/teamColor.*/teamColor = $TEAM;/'"
     [ ! -z $PLAYER ] && SEDFLAGS="$SEDFLAGS -e 's/playerNumber.*/playerNumber = $PLAYER;/'"
     [ ! -z $NUMBER ] && SEDFLAGS="$SEDFLAGS -e 's/teamNumber.*/teamNumber = $NUMBER;/'"
     [ ! -z $PORT ] && SEDFLAGS="$SEDFLAGS -e 's/teamPort.*/teamPort = $PORT;/'"
-	[ ! -z $GAMEMODE ] && SEDFLAGS="$SEDFLAGS -e 's/gameMode.*/gameMode = $GAMEMODE;/'"
-    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/settings.cfg"
+	  [ ! -z $GAMEMODE ] && SEDFLAGS="$SEDFLAGS -e 's/gameMode.*/gameMode = $GAMEMODE;/'"
+    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/settings.cfg" | true
+    errorMessage "edit settings.cfg failed" ${PIPESTATUS[0]}
   fi
 
   # set modules settings on robot
   if [ ! -z "$SET_PROVIDER" ]; then
     echo "updating module settings"
-    ssh $sshoptions nao@$REMOTE "sed -i $SET_PROVIDER /home/nao/Config/Locations/Default/modules.cfg"
+    ssh $sshoptions nao@$REMOTE "sed -i $SET_PROVIDER /home/nao/Config/Locations/$LOCATION/modules.cfg" | true
+    errorMessage "updating modules settings error" ${PIPESTATUS[0]}
   fi
-  
-  
+
   # set robot detector settings on robot
   if [ ! -z "$COLOR_OWN" ] || [ ! -z "$COLOR_OPP" ]; then
     echo "updating robot detector settings"
     SEDFLAGS=""
-    [ ! -z "$COLOR_OWN" ] && SEDFLAGS="$SEDFLAGS -e 's/\(ownColor = { \)[0-9xyz=; ]\+\( };\)/\1$COLOR_OWN\2/'"
-    [ ! -z "$COLOR_OPP" ] && SEDFLAGS="$SEDFLAGS -e 's/\(oppColor = { \)[0-9xyz=; ]\+\( };\)/\1$COLOR_OPP\2/'"
-    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/Locations/Default/robotDetector.cfg"
+    [ ! -z "$COLOR_OWN" ] && SEDFLAGS="$SEDFLAGS -e 's/\(ownColor = { \)[0-9ycbcr=; ]\+\( };\)/\1$COLOR_OWN\2/'"
+    [ ! -z "$COLOR_OPP" ] && SEDFLAGS="$SEDFLAGS -e 's/\(oppColor = { \)[0-9ycbcr=; ]\+\( };\)/\1$COLOR_OPP\2/'"
+    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/Locations/Default/yoloRobotDetector.cfg" | true
+    errorMessage "edit yoloRobotDetecor.cfg failed" ${PIPESTATUS[0]}
   fi
+  
+  if [ "$NAOVERSION" != "V6" ]; then
+    echo "disable YoloBallDetector"
+    SEDFLAGS="$SEDFLAGS  -e 's/\({representation = BallHypothesesYoloUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+	ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/Locations/$LOCATION/modules.cfg" | true
+    errorMessage "disable YoloBallDetector" ${PIPESTATUS[0]}
+  fi
+  
+  # set image logging settings on robot
+  if [ ! -z "$IMAGE_LOG_PROVIDER" ]; then
+    echo "updating image logging settings"
+    SEDFLAGS=""
+    if [ "$IMAGE_LOG_PROVIDER" == "LowFramerate" ]; then
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = LowFrameRateImage; provider = \)\S\+\(;}\)/\1LowFrameRateImageProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = LowFrameRateImageUpper; provider = \)\S\+\(;}\)/\1LowFrameRateImageProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = SequenceImage; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = SequenceImageUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = Thumbnail; provider = \)\S\+\(;}\)/\1ThumbnailProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = ThumbnailUpper; provider = \)\S\+\(;}\)/\1ThumbnailProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = YoloInput; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = YoloInputUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+    elif [ "$IMAGE_LOG_PROVIDER" == "Sequence" ]; then
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = LowFrameRateImage; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = LowFrameRateImageUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = SequenceImage; provider = \)\S\+\(;}\)/\1SequenceImageProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = SequenceImageUpper; provider = \)\S\+\(;}\)/\1SequenceImageProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = Thumbnail; provider = \)\S\+\(;}\)/\1ThumbnailProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = ThumbnailUpper; provider = \)\S\+\(;}\)/\1ThumbnailProvider\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = YoloInput; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = YoloInputUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+    else
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = LowFrameRateImage; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = LowFrameRateImageUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = SequenceImage; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = SequenceImageUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = Thumbnail; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = ThumbnailUpper; provider = \)\S\+\(;}\)/\1default\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = YoloInput; provider = \)\S\+\(;}\)/\1YoloRobotDetector\2/'"
+      SEDFLAGS="$SEDFLAGS  -e 's/\({representation = YoloInputUpper; provider = \)\S\+\(;}\)/\1YoloRobotDetector\2/'"
+    fi
+    ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/Locations/$LOCATION/modules.cfg" | true
+    errorMessage "updating image logging settings" ${PIPESTATUS[0]}
+  fi
+
+  wait
 
   if [ ! -z $RESTART ]; then
     echo "starting bhuman"
-    ssh $sshoptions nao@$REMOTE "/home/nao/bin/bhumand start > /dev/null"
+    if [ "$NAOVERSION" == "V6" ]; then
+      ssh $sshoptions nao@$REMOTE "systemctl --user start bhumand" | true
+    else
+      ssh $sshoptions nao@$REMOTE "/home/nao/bin/bhumand start > /dev/null" | true
+    fi
+    errorMessage "bhumand service error" ${PIPESTATUS[0]}
+  fi
+
+  if [ $updateWifiV6 == "TRUE" ]; then
+    echo "updating wireless profiles"
+    rsync --del -zrce "ssh $sshoptions" ../../Install/Network/Profiles/$PROFILE nao@$REMOTE:/home/nao/wifi.config
+    ssh $sshoptions nao@$REMOTE "sudo systemctl restart networking" | true
+    errorMessage "restart wpa_supplicant failed" ${PIPESTATUS[0]}
+  else
+    echo "updating wireless profiles"
+    rsync --del --exclude=.* --exclude=default --chmod=u+rw,go+r,Dugo+x -zrce "ssh $sshoptions" ../../Install/Network/Profiles/. nao@$REMOTE:/home/nao/Profiles
+    if [ ! -z $PROFILE ]; then
+      RESULT=`ssh $sshoptions nao@$REMOTE "setprofile $PROFILE"`
+      ssh $sshoptions nao@$REMOTE "echo ssid=$PROFILE > /home/nao/wifi.config"
+      if [ -n "$RESULT" ]; then
+        if [ "$PROFILE" == "NONE" ] || [ `echo $RESULT | grep -i -c 'no process found'` -eq "1" ]; then
+          RESULT=""
+        fi
+      fi
+      if [ ! -z "$RESULT" ]; then
+        echo "$RESULT" | grep -v usage >&2
+        exit 1
+      fi
+    fi
   fi
 
   true
@@ -154,22 +319,28 @@ set -e
 scriptPath=$(echo $0 | sed "s|^\.\./|`pwd`/../|" | sed "s|^\./|`pwd`/|")
 basePath=$(dirname "${scriptPath}")
 currPath=$(pwd)
-keyFile=../../Config/Keys/id_rsa_nao
-sshoptions="-i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet"
+keySource=../../Config/Keys/id_rsa_nao
+keyFile=/tmp/id_rsa_nao
 if [[ $(uname) == *CYGWIN* ]]; then
-  pingoptions="-w 1 -n 1"
+  pingoptions="-w 3 -n 3"
+  sshoptions="-i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectTimeout=3"
 elif [ $(uname) == "Darwin" ]; then
-  pingoptions="-t 1 -c 1"
+  pingoptions="-t 3 -c 3"
+  sshoptions="-i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectTimeout=3"
 else
-  pingoptions="-w 1 -c 1"
+  pingoptions="-w 3 -c 3"
+  mkdir -p ~/.ssh/bushSockets
+  sshoptions="-i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectTimeout=3"
 fi
 
 cd "${basePath}"
+cp $keySource $keyFile
 
 # init variables
 [ -z $CONFIG ] && CONFIG="Develop"
 SOLUTION="B-Human.sln"
 COMPONENT="Nao"
+NAOVERSION=V6
 PLAYER=
 TEAM=
 NUMBER=
@@ -177,9 +348,11 @@ LOCATION=
 REMOTE=
 COMPILE=1
 CHECK=1
+SKIP_NTP=
 NUMMULTIPLE=0
 WINDOWSCOMPILE=
 RESTARTNAOQI=
+RESTARTSENSORREADER=
 MULTIPLEDATA=
 REMOVE_LOGS=
 VOLUME=100
@@ -187,6 +360,7 @@ MIC_VOLUME=75
 PROFILE=
 PORT=
 SET_PROVIDER=
+IMAGE_LOG_PROVIDER=
 COLOR_OWN=
 COLOR_OPP=
 
@@ -201,6 +375,10 @@ while true; do
   case $1 in
     "")
       break
+      ;;
+    "-nv" | "/nv")
+      shift
+      NAOVERSION=$1
       ;;
     "-p" | "/p")
       shift
@@ -235,11 +413,15 @@ while true; do
     "-nc" | "/nc")
       COMPILE=
       ;;
+    "-sn" | "/sn")
+      SKIP_NTP=1
+      ;;
     "-r" | "/r")
       RESTART=1
       ;;
     "-rr" | "/rr")
       RESTARTNAOQI=1
+      RESTARTSENSORREADER=1
       RESTART=1
       ;;
     "-nr" | "/nr")
@@ -284,6 +466,10 @@ while true; do
       shift
       COLOR_OPP=$1
       ;;
+    "-log" | "/log")
+      shift
+      IMAGE_LOG_PROVIDER=$1
+      ;;
     "Nao")
       COMPONENT="Nao"
       ;;
@@ -308,7 +494,7 @@ while true; do
 done
 
 #key may only be accessed by the owner. Otherwise ssh will complain
-chmod 400 $keyFile
+chmod 600 $keyFile
 
 if [ ! -z $COMPILE ]; then
   if [ -z "${ComSpec}${COMSPEC}" ]; then

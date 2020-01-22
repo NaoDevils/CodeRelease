@@ -27,29 +27,6 @@ STREAMABLE(ObstacleBasePoints,
   (std::vector<ObstacleBasePoint>) basePoints,
 });
 
-STREAMABLE(RobotsHypotheses,
-{
-  RobotsHypotheses() = default;
-  STREAMABLE(RobotHypothesis,
-  {
-    ENUM(Direction,
-    { ,
-      front,
-      left,
-      right,
-      back,
-      lying,
-      unknown,
-    }),
-    (Direction)(Direction::unknown) direction,           /** direction of robot */
-    (Vector2i)(Vector2i::Zero()) upperLeftCorner,        /** upper left corner of robot rect */
-    (Vector2i)(Vector2i::Zero()) lowerRightCorner,       /** lower right corner of robot rect */
-  });
-  void draw() const,
-  (std::vector<RobotHypothesis>) robotsHypotheses,      /** contains all robot hypotheses for the lower image */
-  (std::vector<RobotHypothesis>) robotsHypothesesUpper, /** contains all robot hypotheses for the upper image */
-});
-
 STREAMABLE(RobotEstimate,
 {
   ENUM(RobotType,
@@ -73,6 +50,14 @@ STREAMABLE(RobotEstimate,
 STREAMABLE(RobotsPercept,
 {
   RobotsPercept() = default;
+
+  void draw() const,
+  (std::vector<RobotEstimate>) robots,
+});
+
+STREAMABLE(RobotsPerceptUpper,
+{
+  RobotsPerceptUpper() = default;
 
   void draw() const,
   (std::vector<RobotEstimate>) robots,
@@ -126,4 +111,55 @@ STREAMABLE(RobotsPerceptCompressed,
   }),
   
   (std::vector<RobotEstimateCompressed>) robots,
+});
+
+
+STREAMABLE(RobotsPerceptUpperCompressed,
+{
+  RobotsPerceptUpperCompressed() = default;
+  RobotsPerceptUpperCompressed(const RobotsPerceptUpper &other)
+  {
+    robots.clear();
+    for (unsigned int i = 0; i < other.robots.size(); i++)
+    {
+      robots.push_back(RobotEstimateUpperCompressed(other.robots[i]));
+    }
+  }
+  
+  operator RobotsPerceptUpper() const
+  {
+    RobotsPerceptUpper robotsPercept;
+    robotsPercept.robots.clear();
+    for (unsigned int i = 0; i < robots.size(); i++)
+    {
+      RobotEstimate re;
+      re.locationOnField.translation.x() = static_cast<float>(robots[i].locationOnField.x());
+      re.locationOnField.translation.y() = static_cast<float>(robots[i].locationOnField.y());
+      re.locationOnField.rotation = 0.f;
+      re.distance = static_cast<float>(robots[i].distance);
+      re.validity = static_cast<float>(robots[i].validity) / 255.f;
+      re.robotType = robots[i].robotType;
+      robotsPercept.robots.push_back(re);
+    }
+    return robotsPercept;
+  }
+  
+  STREAMABLE(RobotEstimateUpperCompressed,
+  {
+    RobotEstimateUpperCompressed() = default;
+    RobotEstimateUpperCompressed(const RobotEstimate &other)
+    {
+      locationOnField.x() = static_cast<short>(other.locationOnField.translation.x());
+      locationOnField.y() = static_cast<short>(other.locationOnField.translation.y());
+      distance = static_cast<short>(other.distance);
+      validity = static_cast<unsigned char>(other.validity * 255.f);
+      robotType = other.robotType;
+    },
+    (Vector2s) locationOnField, /**< Position of the robot in local robot coordinates. */
+    (short)(10000) distance,
+    (unsigned char)(0) validity,
+    ((RobotEstimate) RobotType) robotType,
+  }),
+  
+  (std::vector<RobotEstimateUpperCompressed>) robots,
 });

@@ -31,7 +31,7 @@ if [[ $# -ge 1 ]] ; then
 fi
 
 # change mod of private key
-chmod 400 "${sshKeyPath}"
+chmod 600 "${sshKeyPath}"
 
 # create host for each robot
 hosts=""

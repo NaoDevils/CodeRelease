@@ -78,7 +78,7 @@ SimRobotCore2 = cppDynamicLibrary + {
     if (tool == "vcxproj") {
       "/wd4503"
       if (configuration != "Debug") {
-        "/GL /GS-"
+        "/GS- /Gy"
       }
     }
   }
@@ -87,8 +87,6 @@ SimRobotCore2 = cppDynamicLibrary + {
     if (tool == "vcxproj") {
       if (configuration == "Debug") {
         "/NODEFAULTLIB:msvcrt.lib"
-      } else {
-        "/LTCG"
       }
     }
   }

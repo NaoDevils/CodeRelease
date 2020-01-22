@@ -1,0 +1,27 @@
+# replay a log file.
+# you have to adjust the name of the log file.
+sl LOG ${Logfile:,../Logs/*Cognition.log}
+
+call ReplayRobot
+
+echo ===========================
+echo === fix crash in motion ===
+echo ===========================
+get representation:MotionSelection
+set representation:MotionSelection targetMotion = specialAction; specialActionMode = active; ratios = [ 0, 0, 1, 0, 0 ]; timeStampLastExecuted = [ 0, 0, 0, 0, 0 ]; specialActionRequest = { specialAction = playDead; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; };
+echo
+echo =========================
+echo === set FallDownState ===
+echo =========================
+echo set representation:FallDownState state = upright; direction = none; sidewards = noot; odometryRotationOffset = 0;
+echo 
+echo ==============================
+echo === BallPerceptor settings ===
+echo ==============================
+get parameters:CLIPBallPerceptor
+echo
+echo ========================
+echo === Fix for Old logs ===
+echo ========================
+get representation:RobotInfo
+echo

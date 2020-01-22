@@ -162,7 +162,9 @@ public:
   bool projectIntoImage(int &x, int &y, int sizeX, int sizeY) const;
 
   void copyAndResizeArea(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char> &result) const;
-
+  void copyAndResizeAreaFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float *result) const;
+  void copyAndResizeAreaRGBFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float *result) const;
+  void copyAndResizeAreaRGBFloatZeroPadding(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float *result) const;
 protected:
   void serialize(In* in, Out* out);
 };

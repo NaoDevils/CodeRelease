@@ -75,7 +75,7 @@ public:
 
       /// The maximum measurement noise as a scalar value.
       /// The actual values of the \c measurementNoiseMatrix can vary.
-      V maxMeasurementNoise;
+      V maxMeasurementNoise = static_cast<V>(0);
 
       /** Streaming */
       virtual void serialize(In *in, Out *out)

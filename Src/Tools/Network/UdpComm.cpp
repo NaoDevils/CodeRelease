@@ -21,14 +21,21 @@
 #  include <ifaddrs.h>
 #endif
 
+#ifndef SENSOR_READER
 #include "Platform/BHAssert.h"
+#else
+#include <assert.h>
+#endif
 
 UdpComm::UdpComm()
 {
   sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   target = (sockaddr*)(new sockaddr_in);
-
+#ifndef SENSOR_READER
   ASSERT(-1 != sock);
+#else
+  assert(-1 != sock);
+#endif
 }
 
 UdpComm::~UdpComm()
@@ -263,6 +270,12 @@ int UdpComm::read(char* data, int len, unsigned int& ip)
 int UdpComm::read(char* data, int len)
 {
   return (int) ::recv(sock, data, len, 0);
+}
+
+int UdpComm::read(char* data, int len, sockaddr_in& from)
+{
+  socklen_t fromLen = sizeof(from);
+  return ::recvfrom(sock, data, len, 0, (sockaddr*) &from, &fromLen);
 }
 
 int UdpComm::readLocal(char* data, int len)

@@ -1,0 +1,9 @@
+[Unit]
+Description=Chronyd
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/sudo /home/nao/bin/chronyd -r -s -f /home/nao/chrony.conf
+
+[Install]
+WantedBy=default.target

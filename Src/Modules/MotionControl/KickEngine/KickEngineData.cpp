@@ -29,7 +29,8 @@ bool KickEngineData::getMotionIDByName(const MotionRequest& motionRequest, const
 
 void KickEngineData::calculateOrigins(const KickRequest& kr, const JointAngles& ja, const TorsoMatrix& to)
 {
-  if(!wasActive)
+  // TODO: changed 17.09.2018, hard reset always for now, check this
+  if (true)//if(!wasActive)
   {
     origins[Phase::leftFootTra] = robotModel.soleLeft.translation;
     origins[Phase::rightFootTra] = robotModel.soleRight.translation;
@@ -218,14 +219,13 @@ void KickEngineData::simpleCalcArmJoints(const Joints::Joint& joint, JointReques
   .translate(theRobotDimensions.yOffsetElbowToShoulder, 0.f, 0.f);
 
   jointRequest.angles[joint + 0] = std::atan2(elbow.translation.z(), elbow.translation.x());
-  jointRequest.angles[joint + 1] = std::atan2(elbow.translation.y(), std::sqrt(sqr(elbow.translation.x()) + sqr(elbow.translation.z())));
   jointRequest.angles[joint + 0] = (jointRequest.angles[joint + 0] < pi) ? jointRequest.angles[joint + 0] : 0_deg;  //clip special
-
+  jointRequest.angles[joint + 1] = std::atan2(elbow.translation.y(), std::sqrt(sqr(elbow.translation.x()) + sqr(elbow.translation.z())));
   jointRequest.angles[joint + 0] *= -1.f;
   jointRequest.angles[joint + 1] *= sign;
-  jointRequest.angles[joint + 2] = handRotAng.x();
+  //jointRequest.angles[joint + 2] = handRotAng.x(); // GO2019 - deactivated to copy the hand and elbow rotation from walking
   jointRequest.angles[joint + 3] = handRotAng.y();
-  jointRequest.angles[joint + 4] = handRotAng.z();
+  //jointRequest.angles[joint + 4] = handRotAng.z(); // GO2019 - deactivated to copy the hand and elbow rotation from walking
   jointRequest.angles[joint + 5] = 0.f;
 }
 
@@ -740,7 +740,8 @@ void KickEngineData::initData(const FrameInfo& frame, const MotionRequest& mr, s
     calculateOrigins(mr.kickRequest, ja, torsoMatrix);
     currentParameters.initFirstPhase(origins, Vector2f(ja.angles[Joints::headPitch], ja.angles[Joints::headYaw]));
 
-    if(!wasActive)
+    // TODO: // TODO: changed 17.09.2018, hard reset always for now, check this
+    //if(!wasActive)
     {
       comRobotModel = robotModel;
       lSupp = false;
@@ -801,7 +802,10 @@ bool KickEngineData::activateNewMotion(const KickRequest& br, const bool& isLeav
 
 bool KickEngineData::sitOutTransitionDisturbance(bool& compensate, bool& compensated, const InertialData& id, KickEngineOutput& kickEngineOutput, const JointAngles& ja, const FrameInfo& frame)
 {
-  if(compensate)
+  compensate = false;
+  compensated = true;
+  return true;
+  /*if(compensate)
   {
     if(!startComp)
     {
@@ -838,7 +842,7 @@ bool KickEngineData::sitOutTransitionDisturbance(bool& compensate, bool& compens
     }
 
     int time = frame.getTimeSince(timeStamp);
-    if((std::abs(id.gyro.x()) < sitout_gyro_thres && std::abs(id.gyro.x()) < sitout_gyro_thres && time > sitout_time_min) || time > sitout_time_max)
+    if((std::abs(id.gyro.x()) < sitout_gyro_thres && std::abs(id.gyro.y()) < sitout_gyro_thres && time > sitout_time_min) || time > sitout_time_max)
     {
       compensate = false;
       compensated = true;
@@ -848,7 +852,7 @@ bool KickEngineData::sitOutTransitionDisturbance(bool& compensate, bool& compens
       return false;
   }
 
-  return true;
+  return true;*/
 }
 
 /**

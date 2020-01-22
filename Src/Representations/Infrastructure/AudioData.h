@@ -13,14 +13,15 @@
 
 #include "Tools/Streams/AutoStreamable.h"
 
-STREAMABLE(AudioData,
-{,
-  (unsigned)(2) channels,
-  (unsigned)(48000) sampleRate,
-  (std::vector<short>) samples, /**< Samples are interleaved. */
-});
+// deprecated!
+//STREAMABLE(AudioData,
+//{,
+//  (unsigned)(2) channels,
+//  (unsigned)(48000) sampleRate,
+//  (std::vector<short>) samples, /**< Samples are interleaved. */
+//});
 
-STREAMABLE(AudioDataDortmund,
+STREAMABLE(AudioData,
 { ,
   (unsigned)(0) channels, /**< will be overwritten by AudioProviderDortmund*/
   (unsigned)(0) sampleRate, /**< will be overwritten by AudioProviderDortmund*/

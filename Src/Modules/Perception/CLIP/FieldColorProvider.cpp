@@ -142,19 +142,19 @@ void FieldColorProvider::calcFieldColorFromSamples(const bool &upper, FieldColor
   int rangeUpCr = 0;
   for (int i = (fieldColor.fieldColorOptCr - 1) / 4 + 1; i < 64; i++)
   {
-    if (histCr[i] > maxCr / 8)
+    if (histCr[i] > maxCr / 10)
       rangeUpCr++;
     else
       break;
   }
   for (int i = (fieldColor.fieldColorOptCr - 1) / 4 - 1; i >= 0; i--)
   {
-    if (histCr[i] > maxCr / 8)
+    if (histCr[i] > maxCr / 10)
       rangeDownCr++;
     else
       break;
   }
-  fieldColor.fieldColorMaxDistCr = std::min(19, std::max((rangeUpCr + rangeDownCr + 1) * 2, 12));
+  fieldColor.fieldColorMaxDistCr = std::min(19, std::max(std::max(rangeUpCr, rangeDownCr) * 4 + 4, 12));
   fieldColor.fieldColorOptCr = (fieldColor.fieldColorOptCr + ((rangeUpCr - rangeDownCr) * 2));
 
   // find most common cb/y values

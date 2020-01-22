@@ -37,10 +37,10 @@ void MotionCombinator::update(JointRequest& jointRequest)
   DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:gyroY");
   DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:angleX");
   DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:angleY");
-  DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetX");
-  DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetY");
-
-  specialActionOdometry += theSpecialActionsOutput.odometryOffset;
+  DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Ankle");
+  DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Ankle");
+  DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Hip");
+  DECLARE_PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Hip");
 
   const JointRequest* jointRequests[MotionRequest::numOfMotions];
   jointRequests[MotionRequest::Motion::walk] = &theWalkingEngineOutput;
@@ -110,9 +110,10 @@ void MotionCombinator::update(JointRequest& jointRequest)
       break;
     }
 
-    if (theMotionSelection.targetMotion != MotionRequest::walk && theRobotInfo.hasFeature(RobotInfo::zGyro) && theFallDownState.state == FallDownState::upright)
+    if (theRobotInfo.hasFeature(RobotInfo::zGyro))
     {
-      Vector3f rotatedGyros = theInertialData.orientation * theInertialData.gyro.cast<float>();
+      RotationMatrix rot(theInertialSensorData.angle.x(), theInertialSensorData.angle.y(), 0_deg);
+      Vector3f rotatedGyros = rot * theInertialSensorData.gyro.cast<float>();
       odometryOffset.rotation = rotatedGyros.z() * theFrameInfo.cycleTime;
     }
 
@@ -134,61 +135,6 @@ void MotionCombinator::update(JointRequest& jointRequest)
   }
 
   ASSERT(jointRequest.isValid());
-
-  /*auto combinateArmMotions = [&](Arms::Arm const arm)
-  {
-  const int ratioIndexOffset = arm * theArmMotionSelection.rightArmRatiosOffset;
-  const Joints::Joint startJoint = arm == Arms::left ? Joints::lShoulderPitch : Joints::rShoulderPitch;
-  const Joints::Joint endJoint = arm == Arms::left ? Joints::lHand : Joints::rHand;
-
-  if(theArmMotionSelection.armRatios[ratioIndexOffset + ArmMotionRequest::none] != 1.f)
-  {
-  if(theArmMotionSelection.armRatios[ratioIndexOffset + ArmMotionRequest::none] > 0 &&
-  ArmMotionRequest::none != theArmMotionSelection.targetArmMotion[arm])
-  copy(jointRequest, theNonArmeMotionEngineOutput, startJoint, endJoint);
-
-  if(ArmMotionRequest::none != theArmMotionSelection.targetArmMotion[arm])
-  copy(*armJointRequests[theArmMotionSelection.targetArmMotion[arm]], jointRequest, startJoint, endJoint);
-  }
-
-  if(theArmMotionSelection.armRatios[ratioIndexOffset + theArmMotionSelection.targetArmMotion[arm]] == 1.f)
-  {
-  armMotionInfo.armMotion[arm] = theArmMotionSelection.targetArmMotion[arm];
-
-  switch(theArmMotionSelection.targetArmMotion[arm])
-  {
-  case ArmMotionRequest::keyFrame:
-  armMotionInfo.armKeyFrameRequest = theArmMotionSelection.armKeyFrameRequest;
-  break;
-  case ArmMotionRequest::none:
-  default:
-  break;
-  }
-  }
-  else
-  {
-  const bool interpolateStiffness = !(theMotionSelection.targetMotion != MotionRequest::specialAction &&
-  theMotionSelection.specialActionRequest.specialAction == SpecialActionRequest::playDead &&
-  theMotionSelection.ratios[MotionRequest::specialAction] > 0.f &&
-  theArmMotionSelection.armRatios[ratioIndexOffset + ArmMotionRequest::none] > 0);
-
-  const JointRequest toJointRequest = theArmMotionSelection.targetArmMotion[arm] == ArmMotionRequest::none ?
-  *jointRequests[theMotionSelection.targetMotion] : *armJointRequests[theArmMotionSelection.targetArmMotion[arm]];
-
-  for(int i = 0; i < ArmMotionRequest::numOfArmMotions; ++i)
-  {
-  if(i != theArmMotionSelection.targetArmMotion[arm] && theArmMotionSelection.armRatios[ratioIndexOffset + i] > 0)
-  {
-  interpolate(*armJointRequests[i], toJointRequest, theArmMotionSelection.armRatios[ratioIndexOffset + i], jointRequest, interpolateStiffness, startJoint, endJoint);
-  }
-  }
-  }
-
-  ASSERT(jointRequest.isValid());
-  };
-
-  combinateArmMotions(Arms::left);
-  combinateArmMotions(Arms::right);*/
 
   if (useBalancing)
     balanceUpperBody(jointRequest);
@@ -272,7 +218,6 @@ void MotionCombinator::update(JointRequest& jointRequest)
       count++;
     }
   }
-  lastJointRequest = jointRequest;
   PLOT("module:MotionCombinator:differenceToJointData:all", sum / count);
   /*
   for(int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
@@ -298,7 +243,45 @@ void MotionCombinator::update(JointRequest& jointRequest)
     }
     ASSERT(false);
   }
+
+  Angle maxJointAccelerationPerFrame = theFrameInfo.cycleTime * maxJointAcceleration;
+  if (theMotionSelection.targetMotion == MotionRequest::specialAction && theMotionSelection.specialActionRequest.specialAction != currentSpecialAction)
+  {
+    lastSpecialAction = currentSpecialAction;
+    currentSpecialAction = theMotionSelection.specialActionRequest.specialAction;
+  }
+  if (useJointAccLimit)
+  {
+    for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
+    {
+      if (lastJointRequest.angles[i] == JointAngles::off || lastJointRequest.angles[i] == JointAngles::ignore ||
+        jointRequest.angles[i] == JointAngles::off || jointRequest.angles[i] == JointAngles::ignore)
+        continue;
+      if (jointRequest.angles[i] > theJointCalibration.joints[i].maxAngle && jointRequest.angles[i] > theJointAngles.angles[i])
+      {
+        if (theMotionSelection.ratios[MotionRequest::specialAction] != 1.f || lastSpecialAction != SpecialActionRequest::playDead)
+          OUTPUT_WARNING("Joint limit broken for joint " << Joints::getName((Joints::Joint)i) << ", " << jointRequest.angles[i] << " requested");
+        jointRequest.angles[i] = theJointCalibration.joints[i].maxAngle;
+      }
+      else if (jointRequest.angles[i] < theJointCalibration.joints[i].minAngle && jointRequest.angles[i] < theJointAngles.angles[i])
+      {
+        if (theMotionSelection.ratios[MotionRequest::specialAction] != 1.f || lastSpecialAction != SpecialActionRequest::playDead)
+          OUTPUT_WARNING("Joint limit broken for joint " << Joints::getName((Joints::Joint)i) << ", " << jointRequest.angles[i] << " requested");
+        jointRequest.angles[i] = theJointCalibration.joints[i].minAngle;
+      }
+      Angle jointDiff = jointRequest.angles[i] - lastJointRequest.angles[i];
+      Angle jointAcc = jointDiff - lastJointDiff.angles[i];
+      if (jointAcc > maxJointAccelerationPerFrame)
+        jointRequest.angles[i] = lastJointRequest.angles[i] + jointDiff - (jointAcc - maxJointAccelerationPerFrame);
+      else if (jointAcc < -maxJointAccelerationPerFrame)
+        jointRequest.angles[i] = lastJointRequest.angles[i] + jointDiff - (jointAcc + maxJointAccelerationPerFrame);
+      lastJointDiff.angles[i] = jointRequest.angles[i] - lastJointRequest.angles[i];
+    }
+  }
+
 #endif
+  lastJointRequest = jointRequest;
+  
   PLOT("module:MotionCombinator:leftLegAngles[0]", jointRequest.angles[Joints::lHipYawPitch + 0]);
   PLOT("module:MotionCombinator:leftLegAngles[1]", jointRequest.angles[Joints::lHipYawPitch + 1]);
   PLOT("module:MotionCombinator:leftLegAngles[2]", jointRequest.angles[Joints::lHipYawPitch + 2]);
@@ -326,6 +309,27 @@ void MotionCombinator::update(JointRequest& jointRequest)
   PLOT("module:MotionCombinator:rightLegStiffness[3]", jointRequest.stiffnessData.stiffnesses[Joints::lHipYawPitch + 9]);
   PLOT("module:MotionCombinator:rightLegStiffness[4]", jointRequest.stiffnessData.stiffnesses[Joints::lHipYawPitch + 10]);
   PLOT("module:MotionCombinator:rightLegStiffness[5]", jointRequest.stiffnessData.stiffnesses[Joints::lHipYawPitch + 11]);
+
+  // check last stand up motion
+  if (motionInfo.specialActionRequest.specialAction == theMotionSettings.standUpMotionBack)
+  {
+    if (theMotionSelection.ratios[MotionRequest::specialAction] == 0.f && theFallDownState.state == FallDownState::upright)
+      motionInfo.lastStandUpSafeBack = true;
+    else if (theMotionSelection.ratios[MotionRequest::specialAction] != 0.f)
+      motionInfo.lastStandUpSafeBack = false;
+  }
+  else
+    motionInfo.lastStandUpSafeBack = true;
+
+  if (motionInfo.specialActionRequest.specialAction == theMotionSettings.standUpMotionFront)
+  {
+    if (theMotionSelection.ratios[MotionRequest::specialAction] == 0.f && theFallDownState.state == FallDownState::upright)
+      motionInfo.lastStandUpSafeFront = true;
+    else if (theMotionSelection.ratios[MotionRequest::specialAction] != 0.f)
+      motionInfo.lastStandUpSafeFront = false;
+  }
+  else
+    motionInfo.lastStandUpSafeFront = true;
 }
 
 void MotionCombinator::update(OdometryData& odometryData)
@@ -346,8 +350,10 @@ void MotionCombinator::update(OdometryData& odometryData)
 
 void MotionCombinator::saveFall(JointRequest& jointRequest)
 {
-  for (int i = 0; i < Joints::numOfJoints; i++)
+  for (int i = 0; i < Joints::firstArmJoint; i++)
     jointRequest.stiffnessData.stiffnesses[i] = 30;
+  for (int i = Joints::firstArmJoint; i < Joints::numOfJoints; i++)
+    jointRequest.stiffnessData.stiffnesses[i] = 5;
 }
 
 void MotionCombinator::centerArms(JointRequest& jointRequest)
@@ -499,163 +505,82 @@ void MotionCombinator::balanceUpperBody(JointRequest& jointRequest)
   PLOT("module:MotionCombinator:UpperBodyBalancer:angleX",theInertialSensorData.angle.x());
   PLOT("module:MotionCombinator:UpperBodyBalancer:angleY",theInertialSensorData.angle.y());
 
-  if(currentBalanceParams.activateUpperBodyBalancing)
+  
   {
-    if(!currentBalanceParams.activateUpperBodyPID)
+    Angle angleErrorX = (currentBalanceParams.targetAngleX - theInertialSensorData.angle.x());
+    Angle angleErrorY = (currentBalanceParams.targetAngleY - theInertialSensorData.angle.y());
+
+    float gyroX = theInertialSensorData.gyro.x();
+    float gyroY = theInertialSensorData.gyro.y();
+
+    pidGyroX_sum += gyroX;
+    pidAngleX_sum += angleErrorX;
+    pidGyroY_sum += gyroY;
+    pidAngleY_sum += angleErrorY;
+
+    const float& ankleRatioX = currentBalanceParams.ankleParams.angleGyroRatioX;
+    const float& ankleRatioY = currentBalanceParams.ankleParams.angleGyroRatioY;
+    const float& hipRatioX = currentBalanceParams.hipParams.angleGyroRatioX;
+    const float& hipRatioY = currentBalanceParams.hipParams.angleGyroRatioY;
+
+    float filteredErrorX_Ankle =
+      (gyroX * ankleRatioX + angleErrorX * (1 - ankleRatioX)) * currentBalanceParams.ankleParams.p_x +
+      (pidGyroX_sum * ankleRatioX + pidAngleX_sum * (1 - ankleRatioX)) * currentBalanceParams.ankleParams.i_x +
+      ((pidGyroX_last - gyroX) * ankleRatioX + (pidAngleX_last - angleErrorX) * (1 - ankleRatioX)) * currentBalanceParams.ankleParams.d_x;
+    float filteredErrorY_Ankle =
+      (gyroY * ankleRatioY + angleErrorY * (1 - ankleRatioY)) * currentBalanceParams.ankleParams.p_y +
+      (pidGyroY_sum * ankleRatioY + pidAngleY_sum * (1 - ankleRatioY)) * currentBalanceParams.ankleParams.i_y +
+      ((pidGyroY_last - gyroY) * ankleRatioY + (pidAngleY_last - angleErrorY) * (1 - ankleRatioY)) * currentBalanceParams.ankleParams.d_y;
+
+    float filteredErrorX_Hip =
+      (gyroX * hipRatioX + angleErrorX * (1 - hipRatioX)) * currentBalanceParams.hipParams.p_x +
+      (pidGyroX_sum * hipRatioX + pidAngleX_sum * (1 - hipRatioX)) * currentBalanceParams.hipParams.i_x +
+      ((pidGyroX_last - gyroX) * hipRatioX + (pidAngleX_last - angleErrorX) * (1 - hipRatioX)) * currentBalanceParams.hipParams.d_x;
+    float filteredErrorY_Hip =
+      (gyroY * hipRatioY + angleErrorY * (1 - hipRatioY)) * currentBalanceParams.hipParams.p_y +
+      (pidGyroY_sum * hipRatioY + pidAngleY_sum * (1 - hipRatioY)) * currentBalanceParams.hipParams.i_y +
+      ((pidGyroY_last - gyroY) * hipRatioY + (pidAngleY_last - angleErrorY) * (1 - hipRatioY)) * currentBalanceParams.hipParams.d_y;
+
+    PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Ankle",filteredErrorX_Ankle);
+    PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Ankle",filteredErrorY_Ankle);
+    PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Hip",filteredErrorX_Hip);
+    PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Hip",filteredErrorY_Hip);
+
+    pidAngleX_last = angleErrorX;
+    pidGyroX_last = gyroX;
+    pidAngleY_last = angleErrorY;
+    pidGyroY_last = gyroY;
+
+    JointRequest old;
+    copy(jointRequest, old,Joints::lHipYawPitch);
+
+    jointRequest.angles[Joints::lHipPitch] += filteredErrorY_Hip;
+    jointRequest.angles[Joints::rHipPitch] += filteredErrorY_Hip;
+    
+    jointRequest.angles[Joints::lAnklePitch] += filteredErrorY_Ankle;
+    jointRequest.angles[Joints::rAnklePitch] += filteredErrorY_Ankle;
+
+    jointRequest.angles[Joints::lHipRoll] += filteredErrorX_Hip;
+    jointRequest.angles[Joints::rHipRoll] += filteredErrorX_Hip;
+    jointRequest.angles[Joints::lAnkleRoll] += filteredErrorX_Ankle;
+    jointRequest.angles[Joints::rAnkleRoll] += filteredErrorX_Ankle;
+
+    if (!jointRequest.isValid())
     {
-        //old upper body balancing
-        Angle targetAngle = currentBalanceParams.targetAngleX;
-        Angle angleErrorY = (targetAngle - theInertialSensorData.angle.y());
-
-        float gyroX = theInertialSensorData.gyro.x();
-        float gyroY = theInertialSensorData.gyro.y();
-        float comX = (newComX - lastComX);
-
-        float filteredAngleOffsetX = gyroX * currentBalanceParams.gyroX_p  * (1 - currentBalanceParams.angleGyroRatioX) + theInertialSensorData.angle.x() * currentBalanceParams.angleX_p * currentBalanceParams.angleGyroRatioX;
-        float filteredAngleOffsetY = gyroY * currentBalanceParams.gyroY_p + angleErrorY * currentBalanceParams.angleY_p + comX * currentBalanceParams.comX_p;
-        // sine function like sensor control influence?
-        // filteredAngleOffsetY *= std::sin(std::min(pi2, pi2*theInertialSensorData.angle.y()));
-        filteredAngleOffsetX += theInertialSensorData.angle.x() * currentBalanceParams.angleX_i;
-        filteredAngleOffsetY += angleErrorY * currentBalanceParams.angleY_i;
-        filteredAngleOffsetX += gyroX * currentBalanceParams.gyroX_d;
-        filteredAngleOffsetY += gyroY * currentBalanceParams.gyroY_d;
-
-        PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetX",filteredAngleOffsetX);
-        PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetY",filteredAngleOffsetY);
-
-        JointRequest old;
-        copy(jointRequest, old,Joints::lHipYawPitch);
-
-        jointRequest.angles[Joints::lHipPitch] += filteredAngleOffsetY * currentBalanceParams.hipPitchFactor;
-        jointRequest.angles[Joints::rHipPitch] += filteredAngleOffsetY * currentBalanceParams.hipPitchFactor;
-        jointRequest.angles[Joints::lKneePitch] += std::abs(filteredAngleOffsetY) * currentBalanceParams.kneeFactor;
-        jointRequest.angles[Joints::rKneePitch] += std::abs(filteredAngleOffsetY) * currentBalanceParams.kneeFactor;
-        jointRequest.angles[Joints::lAnklePitch] += filteredAngleOffsetY * currentBalanceParams.footPitchFactor;
-        jointRequest.angles[Joints::rAnklePitch] += filteredAngleOffsetY * currentBalanceParams.footPitchFactor;
-
-        jointRequest.angles[Joints::lHipRoll] += filteredAngleOffsetX * currentBalanceParams.hipRollFactor;
-        jointRequest.angles[Joints::rHipRoll] += filteredAngleOffsetX * currentBalanceParams.hipRollFactor;
-        jointRequest.angles[Joints::lAnkleRoll] += filteredAngleOffsetX * currentBalanceParams.footRollFactor;
-        jointRequest.angles[Joints::rAnkleRoll] += filteredAngleOffsetX * currentBalanceParams.footRollFactor;
-
-        if (!jointRequest.isValid())
-        {
-          copy(old, jointRequest, Joints::lHipYawPitch);
-          {
-            std::string logDir = "";
-      #ifdef TARGET_ROBOT
-            logDir = "../logs/";
-      #endif
-            OutMapFile stream(logDir + "balancing.log");
-            stream << filteredAngleOffsetX << "\n";
-            stream << filteredAngleOffsetY << "\n";
-          }
-        }
-
-        lastComX = newComX;
-    }
-    //upper body balancing with full PID controller
-    else
-    {
-        Angle angleErrorX = (currentBalanceParams.targetAngleX - theInertialSensorData.angle.x());
-        Angle angleErrorY = (currentBalanceParams.targetAngleY - theInertialSensorData.angle.y());
-
-        float gyroX = theInertialSensorData.gyro.x();
-        float gyroY = theInertialSensorData.gyro.y();
-
-        pidGyroX_sum += gyroX;
-        pidAngleX_sum += angleErrorX;
-        pidGyroY_sum += gyroY;
-        pidAngleY_sum += angleErrorY;
-
-        float filteredAngleOffsetX_gyro = gyroX * currentBalanceParams.pidGyroX_p  + pidGyroX_sum * currentBalanceParams.pidGyroX_i + (pidGyroX_last - gyroX) * currentBalanceParams.pidGyroX_d;
-        float filteredAngleOffsetX_angle = angleErrorX * currentBalanceParams.pidAngleX_p  + pidAngleX_sum * currentBalanceParams.pidAngleX_i + (pidAngleX_last - angleErrorX) * currentBalanceParams.pidAngleX_d;
-        float filteredAngleOffsetX = filteredAngleOffsetX_gyro * (1 - currentBalanceParams.pidAngleGyroRatioX) + filteredAngleOffsetX_angle * currentBalanceParams.pidAngleGyroRatioX;
-
-
-        float filteredAngleOffsetY_gyro = gyroY * currentBalanceParams.pidGyroY_p  + pidGyroY_sum * currentBalanceParams.pidGyroY_i + (pidGyroY_last - gyroY) * currentBalanceParams.pidGyroY_d;
-        float filteredAngleOffsetY_angle = angleErrorY * currentBalanceParams.pidAngleY_p  + pidAngleY_sum * currentBalanceParams.pidAngleY_i + (pidAngleY_last - angleErrorY) * currentBalanceParams.pidAngleY_d;
-        float filteredAngleOffsetY = filteredAngleOffsetY_gyro * (1 - currentBalanceParams.pidAngleGyroRatioY) + filteredAngleOffsetY_angle * currentBalanceParams.pidAngleGyroRatioY;
-
-        PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetX",filteredAngleOffsetX);
-        PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetY",filteredAngleOffsetY);
-
-        pidAngleX_last = angleErrorX;
-        pidGyroX_last = gyroX;
-        pidAngleY_last = angleErrorY;
-        pidGyroY_last = gyroY;
-
-        JointRequest old;
-        copy(jointRequest, old,Joints::lHipYawPitch);
-
-        jointRequest.angles[Joints::lHipPitch] += filteredAngleOffsetY * currentBalanceParams.hipPitchFactor;
-        jointRequest.angles[Joints::rHipPitch] += filteredAngleOffsetY * currentBalanceParams.hipPitchFactor;
-        jointRequest.angles[Joints::lKneePitch] += std::abs(filteredAngleOffsetY) * currentBalanceParams.kneeFactor;
-        jointRequest.angles[Joints::rKneePitch] += std::abs(filteredAngleOffsetY) * currentBalanceParams.kneeFactor;
-        jointRequest.angles[Joints::lAnklePitch] += filteredAngleOffsetY * currentBalanceParams.footPitchFactor;
-        jointRequest.angles[Joints::rAnklePitch] += filteredAngleOffsetY * currentBalanceParams.footPitchFactor;
-
-        jointRequest.angles[Joints::lHipRoll] += filteredAngleOffsetX * currentBalanceParams.hipRollFactor;
-        jointRequest.angles[Joints::rHipRoll] += filteredAngleOffsetX * currentBalanceParams.hipRollFactor;
-        jointRequest.angles[Joints::lAnkleRoll] += filteredAngleOffsetX * currentBalanceParams.footRollFactor;
-        jointRequest.angles[Joints::rAnkleRoll] += filteredAngleOffsetX * currentBalanceParams.footRollFactor;
-
-        if (!jointRequest.isValid())
-        {
-          copy(old, jointRequest, Joints::lHipYawPitch);
-          {
-            std::string logDir = "";
-      #ifdef TARGET_ROBOT
-            logDir = "../logs/";
-      #endif
-            OutMapFile stream(logDir + "balancing.log");
-            stream << filteredAngleOffsetX << "\n";
-            stream << filteredAngleOffsetY << "\n";
-          }
-        }
-        lastComX = newComX;
-    }
-  }
-  //all sensors in one PID upper body balancing
-  if(currentBalanceParams.activateSinglePIDAllSensors)
-  {
-      float filteredAngleOffsetX = currentBalanceParams.spidX_p * theInertialSensorData.angle.x() + currentBalanceParams.spidX_i * spid_sumX + currentBalanceParams.spidX_d * theInertialSensorData.gyro.x();
-      float filteredAngleOffsetY = currentBalanceParams.spidY_p * theInertialSensorData.angle.y() + currentBalanceParams.spidY_i * spid_sumY + currentBalanceParams.spidY_d * theInertialSensorData.gyro.y();
-      spid_sumX += theInertialData.angle.x();
-      spid_sumY += theInertialData.angle.y();
-
-
-      PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetX",filteredAngleOffsetX);
-      PLOT("module:MotionCombinator:UpperBodyBalancer:filteredOffsetY",filteredAngleOffsetY);
-
-      JointRequest old;
-      copy(jointRequest, old,Joints::lHipYawPitch);
-
-      jointRequest.angles[Joints::lHipPitch] += filteredAngleOffsetY * currentBalanceParams.hipPitchFactor;
-      jointRequest.angles[Joints::rHipPitch] += filteredAngleOffsetY * currentBalanceParams.hipPitchFactor;
-      jointRequest.angles[Joints::lKneePitch] += std::abs(filteredAngleOffsetY) * currentBalanceParams.kneeFactor;
-      jointRequest.angles[Joints::rKneePitch] += std::abs(filteredAngleOffsetY) * currentBalanceParams.kneeFactor;
-      jointRequest.angles[Joints::lAnklePitch] += filteredAngleOffsetY * currentBalanceParams.footPitchFactor;
-      jointRequest.angles[Joints::rAnklePitch] += filteredAngleOffsetY * currentBalanceParams.footPitchFactor;
-
-      jointRequest.angles[Joints::lHipRoll] += filteredAngleOffsetX * currentBalanceParams.hipRollFactor;
-      jointRequest.angles[Joints::rHipRoll] += filteredAngleOffsetX * currentBalanceParams.hipRollFactor;
-      jointRequest.angles[Joints::lAnkleRoll] += filteredAngleOffsetX * currentBalanceParams.footRollFactor;
-      jointRequest.angles[Joints::rAnkleRoll] += filteredAngleOffsetX * currentBalanceParams.footRollFactor;
-
-      if (!jointRequest.isValid())
+      copy(old, jointRequest, Joints::lHipYawPitch);
       {
-        copy(old, jointRequest, Joints::lHipYawPitch);
-        {
-          std::string logDir = "";
-    #ifdef TARGET_ROBOT
-          logDir = "../logs/";
-    #endif
-          OutMapFile stream(logDir + "balancing.log");
-          stream << filteredAngleOffsetX << "\n";
-          stream << filteredAngleOffsetY << "\n";
-        }
+        std::string logDir = "";
+  #ifdef TARGET_ROBOT
+        logDir = "../logs/";
+  #endif
+        OutMapFile stream(logDir + "balancing.log");
+        stream << filteredErrorX_Hip << "\n";
+        stream << filteredErrorY_Hip << "\n";
+        stream << filteredErrorX_Ankle << "\n";
+        stream << filteredErrorY_Ankle << "\n";
       }
+    }
+    lastComX = newComX;
   }
 }
 

@@ -2,4 +2,15 @@
 
 set -e
 
-rsync --include="*/" --include="cameraCalibration.cfg" --exclude="*" -rzce "ssh -c arcfour -i ../../Config/Keys/id_rsa_nao -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet" nao@$2:/home/nao/Config/Robots/$1 ../../Config/Robots
+scriptPath=$(echo $0 | sed "s|^\.\./|`pwd`/../|" | sed "s|^\./|`pwd`/|")
+basePath=$(dirname "${scriptPath}")
+keySource=../../Config/Keys/id_rsa_nao
+keyFile=/tmp/id_rsa_nao
+
+cd "${basePath}"
+cp $keySource $keyFile
+
+#key may only be accessed by the owner. Otherwise ssh will complain
+chmod 600 $keyFile
+
+rsync --include="*/" --include="cameraCalibration.cfg" --exclude="*" -rzce "ssh -i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet" nao@$2:/home/nao/Config/Robots/$1 ../../Config/Robots

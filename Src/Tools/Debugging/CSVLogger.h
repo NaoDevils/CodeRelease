@@ -35,6 +35,11 @@
 #define FLUSH	CSVLogger::flush();
 #endif
 
+#define DEBUG_LOG(module, info) \
+LOG("DebugLog", "Time", theFrameInfo.time); \
+LOG("DebugLog", "Module", module); \
+LOG("DebugLog", "Info", info)
+
 class CSVLogger
 {
 public:

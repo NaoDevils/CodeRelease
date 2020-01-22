@@ -1,0 +1,27 @@
+#!/bin/bash
+# Copy linux specific files into the .vscode folder in the projects root dir if the 
+# files do not already exist
+
+# create .vscode folder
+if [ -d ../../.vscode ]; then
+    echo ".vscode folder already exists, so creation is unnecessary."
+else
+    echo "Creating .vscode folder in project root directory..."
+    mkdir ../../.vscode
+fi
+
+# copy tasks.json
+if [ -f ../../.vscode/tasks.json ]; then
+    echo "WARNING: tasks.json  already exists, file will not be copied to avoid overwriting."
+else
+    echo "Copying tasks.json into .vscode folder..."
+    cp ./tasks.json ../../.vscode/tasks.json
+fi
+
+# copy launch_linux.json
+if [ -f ../../.vscode/launch.json ]; then
+    echo "WARNING: launch.json  already exists, file will not be copied to avoid overwriting."
+else
+    echo "Copying launch_linux.json into .vscode folder..."
+    cp ./launch_linux.json ../../.vscode/launch.json
+fi

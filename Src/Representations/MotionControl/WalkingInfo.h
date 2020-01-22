@@ -34,11 +34,11 @@ public:
   bool isLeavingPossible; /**< Is is possible to leave the walking engine without falling? */
   StepData lastUsedFootPositions;
   bool isCustomStepRunning;
-  double accX_XOffset;
   Vector2f desiredBodyRot;
   bool isRunning;
   bool bodyTiltApplied;
   bool onFloor[2];
+  Vector2f stabilityError = Vector2f::Zero(); // error in x/y -n..n calculated by sensor fusion of fsr, angle, gyro, acc
 
   Vector2f ballCSinWEWCS;
 
@@ -159,8 +159,8 @@ protected:
     STREAM(expectedAcc);
     STREAM(isLeavingPossible);
     STREAM(isCustomStepRunning);
-    STREAM(accX_XOffset);
-    STREAM(desiredBodyRot)
+    STREAM(desiredBodyRot);
+    STREAM(stabilityError);
     STREAM_REGISTER_FINISH;
   }
 };

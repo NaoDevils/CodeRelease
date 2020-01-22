@@ -138,3 +138,25 @@ V angleAverage(const V& angle1, const V& angle2)
   }
   return result;
 }
+
+template<class V>
+static void softmax(V *input, std::size_t input_len) {
+  assert(input);
+
+  float m = -INFINITY;
+  for (std::size_t i = 0; i < input_len; i++) {
+    if (input[i] > m) {
+      m = input[i];
+    }
+  }
+
+  float sum = 0.f;
+  for (std::size_t i = 0; i < input_len; i++) {
+    sum += std::exp(input[i] - m);
+  }
+
+  float offset = m + std::log(sum);
+  for (std::size_t i = 0; i < input_len; i++) {
+    input[i] = std::exp(input[i] - offset);
+  }
+}

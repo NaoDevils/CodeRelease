@@ -7,6 +7,7 @@
 
 #include "Tools/Module/ModulePackage.h"
 #include "Tools/ProcessFramework/Process.h"
+#include "Tools/Module/Logger.h"
 
 /**
  * @class Motion
@@ -20,6 +21,9 @@ private:
   SENDER(MotionToCognition);
   int numberOfMessages;
   ModuleManager moduleManager; /**< The solution manager handles the execution of modules. */
+  void(*waitForFrameData)() = 0;
+  void(*finishFrame)() = 0;
+  Logger logger;
 
 public:
   Motion();

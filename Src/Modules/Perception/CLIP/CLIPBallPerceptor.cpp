@@ -2,32 +2,28 @@
 #include "Tools/Math/Geometry.h"
 #include "Tools/Math/Random.h"
 #include "Tools/RingBufferWithSum.h"
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "Tools/ImageProcessing/stb_image_write.h"
 #include "Platform/File.h"
 
-typedef int (*t_cnn_fp) (float x0[16][16][1], int *res, float *scores);
+typedef void (*t_cnn_fp) (float *in, float *out);
 std::array<t_cnn_fp , 10> cnns;
-namespace cnn1
-{
-#include "cnn.c"
-}
 
-namespace cnn_keras
-{
-#include "cnn_keras.c"
-}
+void cnn_1(float*, float*);
+void cnn_ball_matlab_keras_conversion(float*, float*);
+void cnn_qball(float*, float*);
+void cnn_qBallCustomLoss(float*, float*);
 
-/*namespace cnn_rc18
-{
-#include "cnn_rc18.c"
-}
+#ifdef TARGET_ROBOT
+std::string logDir = "/home/nao/logs/";
+#else
+std::string logDir = std::string(File::getBHDir()) + std::string("/Config/Logs/");
+#endif
 
-namespace cnn_big_rc18
-{
-#include "cnn_big_rc18.c"
-}*/
-
-#define CNN_SIZE  16
+#define CNN_SIZE 16 // the cnn size in x and y
+//#define CNN_USE_RGB // use rgb input for cnn?
+#define CNN_USE_PROJECTION // if defined, project patch into image, otherwise use zero padding. Zero padding not implemented for gray only
 
 CLIPBallPerceptor::CLIPBallPerceptor()
 {
@@ -41,23 +37,27 @@ CLIPBallPerceptor::CLIPBallPerceptor()
     ballHypothesis.resize(400);
   ballHypothesisLog.resize(30 * 30);
   
-  cnns[0] = cnn1::cnn;
-  cnns[1] = cnn_keras::cnn;
-  //cnns[2] = cnn_rc18::cnn;
-  //cnns[3] = cnn_big_rc18::cnn;
+  noOfTestCircles = 0;
+  noOfTestCirclesUpper = 0;
+  cnns[0] = cnn_1;
+  cnns[1] = cnn_ball_matlab_keras_conversion; // translation of the matlab net to keras and compiled with DCG (yielding the same results)
+  cnns[2] = cnn_qball;
+  cnns[3] = cnn_qBallCustomLoss;
 
+  
 #ifdef TARGET_ROBOT
-  if (logTestCircles)
+  std::string logDir = "/home/nao/logs/";
+  if (logTestCircles || logPositives)
   {
-    std::string dir1 = std::string("mkdir ") + std::string(File::getBHDir()) + std::string("/Config/Logs/");
-    std::string dir2 = std::string("mkdir ") + std::string(File::getBHDir()) + std::string("/Config/Logs/PNGs");
-    std::string dir3 = std::string("mkdir ") + std::string(File::getBHDir()) + std::string("/Config/Logs/PNGs/0");
-    std::string dir4 = std::string("mkdir ") + std::string(File::getBHDir()) + std::string("/Config/Logs/PNGs/1");
-    system(dir1.c_str());
-    system(dir2.c_str());
-    system(dir3.c_str());
-    system(dir4.c_str());
-  }
+	  std::string dir1 = std::string("mkdir ") + logDir + std::string("PNGs");
+	  std::string dir2 = std::string("mkdir ") + logDir + std::string("PNGs/0");
+	  std::string dir3 = std::string("mkdir ") + logDir + std::string("PNGs/1");
+	  system(dir1.c_str());
+	  system(dir2.c_str());
+	  system(dir3.c_str());
+}
+#else
+  std::string logDir = std::string(File::getBHDir()) + std::string("/Config/Logs/");
 #endif
 }
 
@@ -72,8 +72,9 @@ void CLIPBallPerceptor::update(BallPercept &theBallPercept)
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:testCircles:lower", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:testCircles:upper", "drawingOnImage");
 
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:wideStanceSearchArea", "drawingOnImage");
-  
+  DECLARE_PLOT("module:CLIPBallPerceptor:noOfTestCirclesUpper");
+  DECLARE_PLOT("module:CLIPBallPerceptor:noOfTestCircles");
+
   if (lastImageTimeStamp != theImage.timeStamp || lastImageUpperTimeStamp != theImageUpper.timeStamp)
   {
     lastImageTimeStamp = theImage.timeStamp;
@@ -91,6 +92,8 @@ void CLIPBallPerceptor::update(BallPercept &theBallPercept)
     noBallSpots.clear();
     execute(true);
   }
+  PLOT("module:CLIPBallPerceptor:noOfTestCirclesUpper", noOfTestCirclesUpper);
+  PLOT("module:CLIPBallPerceptor:noOfTestCircles", noOfTestCircles);
   theBallPercept = localBallPercept;
 }
 
@@ -109,7 +112,6 @@ void CLIPBallPerceptor::update(MultipleBallPercept &theMultipleBallPercept)
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageInput:upper", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageOutput:lower", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:integralImageOutput:upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPBallPerceptor:wideStanceSearchArea", "drawingOnImage");
 
   if (lastImageTimeStamp != theImage.timeStamp || lastImageUpperTimeStamp != theImageUpper.timeStamp)
   {
@@ -131,7 +133,6 @@ void CLIPBallPerceptor::update(MultipleBallPercept &theMultipleBallPercept)
   }
   theMultipleBallPercept = localMultipleBallPercept;
 }
-
 
 void CLIPBallPerceptor::update(BallHypotheses &theBallHypotheses)
 {
@@ -188,13 +189,8 @@ void CLIPBallPerceptor::update(BallHypotheses &theBallHypotheses)
   SEND_DEBUG_IMAGE(BallHypothesesUpper);
 }
 
-void CLIPBallPerceptor::execute(const bool &upper, bool multi)
+bool CLIPBallPerceptor::checkBallSpots(const std::vector<BallSpot> &ballSpots, const bool &upper, const bool &multi, const bool &detectionType)
 {
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  imageWidth = image.width;
-  imageHeight = image.height;
-
-  const std::vector<BallSpot> &ballSpots = (upper ? theBallSpots.ballSpotsUpper : theBallSpots.ballSpots);
   for (int i = 0; i < (int)ballSpots.size(); i++)
   {
     ballPerceptState.reset();
@@ -202,9 +198,9 @@ void CLIPBallPerceptor::execute(const bool &upper, bool multi)
     BallSpot temp = spot;
     temp.found = false;
     temp.centerFound = false;
-    if ((!isOnBallSpot(spot.position, upper)) && calcBallSpot2016(temp, upper))
+    if (/*(!isOnBallSpot(spot.position, upper)) && */calcBallSpot2016(temp, upper, multi))
     {
-      if (verifyBallPercept(temp, upper))
+      if (verifyBallPercept(temp, upper, detectionType))
       {
         if (multi)
         {
@@ -212,10 +208,67 @@ void CLIPBallPerceptor::execute(const bool &upper, bool multi)
           noBallSpots.push_back(temp);
         }
         else
-          return;
+          return true;
       }
     }
   }
+  return false;
+}
+
+void CLIPBallPerceptor::execute(const bool &upper, bool multi)
+{
+  const Image &image = upper ? (Image&)theImageUpper : theImage;
+  imageWidth = image.width;
+  imageHeight = image.height;
+  
+  if (upper)
+    noOfTestCirclesUpper = 0;
+  else
+    noOfTestCircles = 0;
+
+  ///////////////////////////////////////////////////////
+  // 1. Yolo Only -> if validity of BallHypothesesYolo //
+  // is over yoloOnlyThreshold -> trust Yolo           //   
+  /////////////////////////////////////////////////////// 
+  const std::vector<BallSpot> &ballSpotsYolo = (upper ? theBallHypothesesYoloUpper.ballSpotsUpper : theBallHypothesesYolo.ballSpots);
+  for (int i = 0; i < (int)ballSpotsYolo.size(); i++)
+  {
+    if(ballSpotsYolo.at(i).validity > (upper ? yoloOnlyThresholdUpper : yoloOnlyThreshold))
+    {
+      localBallPercept.status = BallPercept::seen;
+      localBallPercept.positionInImage = ballSpotsYolo.at(i).position.cast<float>();
+      localBallPercept.radiusInImage = (float)ballSpotsYolo.at(i).radiusInImage;
+
+      verifyBallSizeAndPosition(localBallPercept.positionInImage, localBallPercept.radiusInImage, upper, multi);
+      localBallPercept.relativePositionOnField = ballPerceptState.ballOnField;
+      localBallPercept.validity = ballPerceptState.validity;
+
+      localBallPercept.fromUpper = upper;
+      localBallPercept.detectionType = BallPercept::yoloOnly;
+      if (multi)
+      {
+        localMultipleBallPercept.balls.push_back(localBallPercept);
+        noBallSpots.push_back(ballSpotsYolo.at(i));
+      }
+      else
+        return;
+    }
+  }
+
+  ///////////////////////////////////////////////////////
+  // 2. Yolo Hypotheses -> all BallHypothesesYolo will //
+  // be used as BallSpots (with all caluclations inc.) //   
+  ///////////////////////////////////////////////////////
+  if(checkBallSpots(ballSpotsYolo, upper, multi, true))
+    return;
+
+  /////////////////////////////////////////////////////////
+  // 3. Scanlines -> all Ballspots from CLIPPreprocessor //
+  /////////////////////////////////////////////////////////
+  const std::vector<BallSpot> &ballSpots = (upper ? theBallSpots.ballSpotsUpper : theBallSpots.ballSpots);
+  if(checkBallSpots(ballSpots, upper, multi, false))
+    return;
+
   if (addExtraScan && upper && localBallPercept.status != BallPercept::seen)
   {
     localBallSpots.ballSpots.clear();
@@ -226,7 +279,7 @@ void CLIPBallPerceptor::execute(const bool &upper, bool multi)
       ballPerceptState.reset();
       const BallSpot &spot = localBallSpots.ballSpotsUpper.at(i);
       BallSpot temp = spot;
-      if ((!isOnBallSpot(spot.position, upper)) && calcBallSpot2016(temp, upper))
+      if ((!isOnBallSpot(spot.position, upper)) && calcBallSpot2016(temp, upper, false))
       {
         if (verifyBallPercept(temp, upper))
         {
@@ -241,9 +294,39 @@ void CLIPBallPerceptor::execute(const bool &upper, bool multi)
       }
     }
   }
+
+  ///////////////////////////////////////////////////////////
+  // 4. Yolo Fallback -> if validity of BallHypothesesYolo //
+  // is over yoloFallbackThreshold and no other Ball was   //
+  // seen -> trust Yolo                                    //   
+  ///////////////////////////////////////////////////////////
+  for (int i = 0; i < (int)ballSpotsYolo.size(); i++)
+  {
+    if(ballSpotsYolo.at(i).validity > (upper ? yoloFallbackThresholdUpper : yoloFallbackThreshold))
+    {
+      localBallPercept.status = BallPercept::seen;
+      localBallPercept.positionInImage = ballSpotsYolo.at(i).position.cast<float>();
+      localBallPercept.radiusInImage = (float)ballSpotsYolo.at(i).radiusInImage;
+      
+      verifyBallSizeAndPosition(localBallPercept.positionInImage, localBallPercept.radiusInImage, upper, multi);
+      localBallPercept.relativePositionOnField = ballPerceptState.ballOnField;
+      localBallPercept.validity = ballPerceptState.validity;
+
+      localBallPercept.fromUpper = upper;
+      localBallPercept.detectionType = BallPercept::yoloFallback;
+      if (multi)
+      {
+        localMultipleBallPercept.balls.push_back(localBallPercept);
+        noBallSpots.push_back(ballSpotsYolo.at(i));
+      }
+      else
+        return;
+    }
+  }
+
 }
 
-bool CLIPBallPerceptor::verifyBallPercept(BallSpot &spot, const bool &upper)
+bool CLIPBallPerceptor::verifyBallPercept(BallSpot &spot, const bool &upper, const bool &detectionType)
 {
   float radiusInImage = spot.radiusInImage;
   Vector2i posInImage(spot.position);
@@ -256,6 +339,10 @@ bool CLIPBallPerceptor::verifyBallPercept(BallSpot &spot, const bool &upper)
   localBallPercept.relativePositionOnField = ballPerceptState.ballOnField;
   localBallPercept.validity = ballPerceptState.validity;
   localBallPercept.fromUpper = upper;
+  if (detectionType)
+    localBallPercept.detectionType = BallPercept::yoloHypothesis;
+  else
+    localBallPercept.detectionType = BallPercept::scanlines;
   return true;
 }
 
@@ -478,7 +565,7 @@ void CLIPBallPerceptor::runBallSpotScanLine(int x, int y, int stepX, int stepY, 
   }
 }
 
-bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
+bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper, const bool &multi)
 {
   // TODO: shorten/split
   // TODO: far ball with obstacle overlap can be discarded? maybe only if tracking a good ball percept..!
@@ -884,11 +971,11 @@ bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
       return false;
     spot.centerFound = true;
     spot.position = scannedCenter.cast<int>();
-    spot.found = calcBallSpot2016(spot, upper); //2nd scan
+    spot.found = calcBallSpot2016(spot, upper, multi); //2nd scan
     if (!spot.found)
       return false;
     spot.position = scannedCenter.cast<int>();
-    return calcBallSpot2016(spot, upper); //3rd scan
+    return calcBallSpot2016(spot, upper, multi); //3rd scan
   }
   else if (!spot.found) // checks for 2nd call (center verification)
   {
@@ -901,7 +988,7 @@ bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
   {
     // TODO: use yHistogram
     ballPerceptState.circleOK = false;
-    if (verifyBallHull(spot, upper))
+    if (verifyBallHull(spot, upper, multi))
       return true;
     else if (ballPerceptState.circleOK && theFieldDimensions.ballType == SimpleFieldDimensions::BallType::whiteBlack)
     {
@@ -938,7 +1025,7 @@ bool CLIPBallPerceptor::calcBallSpot2016(BallSpot &spot, const bool &upper)
   return false; // default
 }
 
-bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
+bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper, const bool &multi)
 {
   // TODO: 'roundness' could/should be better detected when ball is big in image!
   // TODO: check distribution of ball hull points! they have to be equally distributed (maybe in getFittingPoints)!
@@ -953,6 +1040,7 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
   float distSum = 0;
 
   // In case of default the maximum radius of the ball is set to a quarter of the image height
+  // In case of the goalie specialAction wideStance the maximum radius of the ball is set to half
   int maxRadius = image.height / 4;
 
   // TODO: do this with overlap-areas
@@ -988,8 +1076,8 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
     ballPoints.push_back(ballHullPoints[i].pointInImage);
   if (Geometry::computeCircleOnFieldLevenbergMarquardt(goodBallPoints, testCircle) && testCircle.radius < maxRadius)
   {
-    if (testCircle.radius < 20)
-      testCircle.radius *= (1.f + (20-testCircle.radius)/20.f);
+    //if (testCircle.radius < 20)
+    //  testCircle.radius *= (1.f + (20-testCircle.radius)/20.f);
     if ((!image.isOutOfImage(testCircle.center.x(), testCircle.center.y(), (int)testCircle.radius)) &&
       (scannedCenter - testCircle.center).norm() > std::max<float>(testCircle.radius, (float)(imageHeight / 80)))
       return false;
@@ -1002,38 +1090,62 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
     // check if ball size and position on field makes sense (from old verifyBallPercept)
     if (!logTestCircles)
     {
-      if (!verifyBallSizeAndPosition(testCircle.center, testCircle.radius, upper))
+      if (!verifyBallSizeAndPosition(testCircle.center, testCircle.radius, upper, multi))
         return false;
     }
 
     int cnnResult = -1;
     if (useCNN)
     {
+      if (upper)
+        noOfTestCirclesUpper++;
+      else
+        noOfTestCircles++;
+
       int px = static_cast<int>(testCircle.center.x() - testCircle.radius);
       int py = static_cast<int>(testCircle.center.y() - testCircle.radius);
-      float imgbuf[CNN_SIZE][CNN_SIZE][1];
+      
       float scores[2];
+#ifdef CNN_USE_PROJECTION
       if (image.projectIntoImage(
 		    px, 
 		    py,
 		    static_cast<int>(testCircle.radius * 2),
 		    static_cast<int>(testCircle.radius * 2)))
+#endif
       {
-        image.copyAndResizeArea(static_cast<int>(px),
+#ifdef CNN_USE_RGB
+        float imgbuf[CNN_SIZE*CNN_SIZE * 3];
+#ifdef CNN_USE_PROJECTION
+        image.copyAndResizeAreaRGBFloat(
+          px, py, 
+          testCircle.radius * 2, testCircle.radius * 2, 
+          CNN_SIZE, CNN_SIZE, 
+          imgbuf);
+#else
+        image.copyAndResizeAreaRGBFloatZeroPadding(
+          px, py, 
+          testCircle.radius * 2, testCircle.radius * 2, 
+          CNN_SIZE, CNN_SIZE, 
+          imgbuf);
+#endif
+#else
+        float imgbuf[CNN_SIZE*CNN_SIZE];
+        // TODO: implement zero padding for float
+        image.copyAndResizeAreaFloat(static_cast<int>(px),
           static_cast<int>(py),
           static_cast<int>(testCircle.radius * 2),
           static_cast<int>(testCircle.radius * 2),
           CNN_SIZE,
           CNN_SIZE,
-          ballHypothesis
+          imgbuf
         );
-        for (int i = 0; i < CNN_SIZE; i++)
-          for (int j = 0; j < CNN_SIZE; j++)
-            imgbuf[j][i][0] = ballHypothesis[i * CNN_SIZE + j] / 255.f;
+#endif
 
         STOPWATCH("CNN")
         {
-          cnns[cnnIndex](imgbuf, &cnnResult, scores);
+          cnns[cnnIndex]((float*)imgbuf, scores);
+          cnnResult = scores[1] > scores[0] ? 1 : 0;
         }
         DRAWTEXT("module:CLIPBallPerceptor:testCircles:lower", testCircle.center.x(), testCircle.center.y(), 15, ColorRGBA::yellow, "Score:" << static_cast<int>(scores[1] * 1000));
         DRAWTEXT("module:CLIPBallPerceptor:testCircles:upper", testCircle.center.x(), testCircle.center.y(), 15, ColorRGBA::yellow, "Score:" << static_cast<int>(scores[1] * 1000));
@@ -1056,8 +1168,11 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
               subfolder = "0/";
             if (cnnResult == 1)
               subfolder = "1/";
-            stbi_write_png((std::string(File::getBHDir()) + std::string("/Config/Logs/PNGs/") + subfolder + std::to_string(image_id / divider) + std::string(".png")).c_str(),
-              CNN_SIZE, CNN_SIZE, 1, &ballHypothesis[0], CNN_SIZE);
+			unsigned char charbuf[CNN_SIZE * CNN_SIZE];
+			for (int i = 0; i < CNN_SIZE * CNN_SIZE; i++)
+				charbuf[i] = static_cast<unsigned char>(imgbuf[i] * 255.f);
+            stbi_write_png((logDir + std::string("PNGs/") + subfolder + std::to_string(image_id / divider) + std::string(".png")).c_str(),
+              CNN_SIZE, CNN_SIZE, 1, charbuf, CNN_SIZE);
           }
           image_id++;
         }
@@ -1170,7 +1285,7 @@ bool CLIPBallPerceptor::verifyBallHull(BallSpot &spot, const bool &upper)
   return false;
 }
 
-bool CLIPBallPerceptor::verifyBallSizeAndPosition(const Vector2f &posInImage, const float &radius, const bool &upper)
+bool CLIPBallPerceptor::verifyBallSizeAndPosition(const Vector2f &posInImage, const float &radius, const bool &upper, const bool &multi)
 {
   //const Image &image = upper ? (Image&)theImageUpper : theImage; unused
   const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
@@ -1215,7 +1330,7 @@ bool CLIPBallPerceptor::verifyBallSizeAndPosition(const Vector2f &posInImage, co
   !(!upper && posInImage.y + 3*radiusInImage/4 > image.resolutionHeight))
   return false;*/
   float minValidityForThisBall = std::min(lowestValidity + radius*validityFactor, minValidity);
-  if (/*std::abs(posOnField.angle()) > fromDegrees(130) || */localBallPercept.validity >= validity || minValidityForThisBall > validity)
+  if (/*std::abs(posOnField.angle()) > fromDegrees(130) || */(!multi && localBallPercept.validity >= validity) || minValidityForThisBall > validity)
   {
     CIRCLE("module:CLIPBallPerceptor:ballScanLines",
       posInImage.x(), posInImage.y(),

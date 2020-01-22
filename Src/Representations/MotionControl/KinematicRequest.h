@@ -25,7 +25,6 @@ private:
     STREAM_REGISTER_BEGIN;
     STREAM(kinematicType);
     STREAM(offsets);
-    STREAM(body);
     STREAM(leftFoot);
     STREAM(rightFoot);
     STREAM_REGISTER_FINISH;
@@ -66,7 +65,6 @@ public:
     int i;
     for(i = 0; i < Joints::numOfJoints; ++i) offsets.angles[i] = 0;
     for (i = 0; i < 6; ++i) {
-      body[i] = 0;
       leftFoot[i] = 0;
       rightFoot[i] = 0;
     }
@@ -75,8 +73,6 @@ public:
   /** kinematic type */
   KinematicType kinematicType;
 
-  /** There are the desired foot/body positions x,y,z, rot-x, rot-y, rot-z. */
-  float body[6]; 
   /** There are the desired foot/body positions x,y,z, rot-x, rot-y, rot-z. */
   float leftFoot[6];
   /** There are the desired foot/body positions x,y,z, rot-x, rot-y, rot-z. */

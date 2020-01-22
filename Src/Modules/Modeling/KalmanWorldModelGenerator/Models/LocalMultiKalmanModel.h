@@ -19,22 +19,26 @@
  * Local models stores positions and velocities in relative robot coordinates.
  * \see MultiKalmanModel, KalmanPositionHypothesis
  */
-template <typename hypothesis_t = KalmanPositionHypothesis>
-class LocalMultiKalmanModel : public MultiKalmanModel<hypothesis_t>
+template <typename hypothesis_t = KalmanPositionHypothesis, bool towardsOneModel = true>
+class LocalMultiKalmanModel : public MultiKalmanModel<hypothesis_t, towardsOneModel>
 {
 public:
   /**
    * Default constructor creates a new and empty \c LocalMultiKalmanModel object.
    */
-  LocalMultiKalmanModel() : MultiKalmanModel<hypothesis_t>() {}
+  LocalMultiKalmanModel() : MultiKalmanModel<hypothesis_t, towardsOneModel>() {}
+  /**
+   * Constructor setting the perceptDuration.
+   * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
+   *
+   * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+   */
+  LocalMultiKalmanModel(unsigned perceptDuration) : MultiKalmanModel<hypothesis_t, towardsOneModel>(perceptDuration) {}
   /**
    * Destructor.
    */
   ~LocalMultiKalmanModel() {}
   
-  
-  //MARK: Helper methods
-
   /**
    * States whether this model use relative robot coordinates or global field 
    * coordinates. Local models use always relative robot coordinates while remote
@@ -43,5 +47,5 @@ public:
    *         relative robot coordinates,
    *         \c false otherwise (global field coordinates).
    */
-  virtual bool usesRelativeCoordinates() const { return true; }
+  bool usesRelativeCoordinates() const override { return true; }
 };

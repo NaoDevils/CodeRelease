@@ -25,6 +25,7 @@ STREAMABLE(FallDownState,
     onGround,
     staggering,
     falling,
+    standingUp,
   });
 
   ENUM(Direction,

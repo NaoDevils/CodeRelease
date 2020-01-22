@@ -13,7 +13,7 @@ SobelImageProvider::SobelImageProvider()
 
 void SobelImageProvider::update(SobelImage &sobelImage)
 {
-  bool aligned_16_byte = (reinterpret_cast<unsigned long>(theImage.image) % 16) == 0;
+  bool aligned_16_byte = (reinterpret_cast<uintptr_t>(theImage.image) % 16) == 0;
 
   // we have 3 bool values
   // horizontal -> compute g_x
@@ -226,7 +226,7 @@ void SobelImageProvider::update(SobelImage &sobelImage)
 
 void SobelImageProvider::update(SobelImageUpper &sobelImageUpper)
 {
-  bool aligned_16_byte = (reinterpret_cast<unsigned long>(theImageUpper.image) % 16) == 0;
+  bool aligned_16_byte = (reinterpret_cast<uintptr_t>(theImageUpper.image) % 16) == 0;
 
   // we have 3 bool values
   // horizontal -> compute g_x

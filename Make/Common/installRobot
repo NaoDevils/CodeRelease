@@ -1,0 +1,5 @@
+#!/bin/bash
+# installRobot.py wrapper
+
+chmod +x ../../Install/installRobot.py
+../../Install/installRobot.py "$@"

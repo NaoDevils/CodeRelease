@@ -25,7 +25,7 @@ SimRobot::Application* RoboCupCtrl::application = 0;
 
 RoboCupCtrl::RoboCupCtrl(SimRobot::Application& application) : robotName(0), simTime(false), delayTime(0), lastTime(0)
 {
-  NAME_THREAD("Main");
+  Thread<RoboCupCtrl>::setName("Main");
 
   this->controller = this;
   this->application = &application;

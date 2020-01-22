@@ -1,0 +1,38 @@
+name: Build and test simulator on Linux
+
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'Make/**Makefile'
+      - 'Make/**Marefile'
+      - 'Make/**.mare'
+      - 'Make/Common/test.sh'
+      - 'Config/**'
+      - '!Config/Robots/**'
+      - 'Config/Robots/Nao/**'
+      - 'Config/Robots/Default/**'
+      - '!Config/Locations/**'
+      - 'Config/Locations/Default/**'
+      - 'Src/**'
+      - 'Util/**'
+      - '!Src/Utils/dorsh/**'
+
+jobs:
+  build_simrobot:
+    name: SimRobot and SimulatedNao
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: install dependencies
+      run: sudo apt update && sudo apt install libqt4-dev libqt4-opengl-dev libqt4-dev-bin qt4-dev-tools libglew-dev libxml2 libxml2-dev glew-utils libjpeg-dev
+    - name: make
+      working-directory: ./Make/Linux/
+      run: make SimRobot
+    - name: test
+      run: Make/Common/test.sh
+    # - uses: actions/upload-artifact@v1
+      # with:
+        # name: binary
+        # path: Build/Linux/SimRobot/Develop

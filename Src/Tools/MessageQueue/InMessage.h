@@ -194,7 +194,7 @@ class MessageHandler
 {
 public:
   /**
-   * Virtual destructor (for bush).
+   * Virtual destructor (for dorsh).
    */
   virtual ~MessageHandler() = default;
 

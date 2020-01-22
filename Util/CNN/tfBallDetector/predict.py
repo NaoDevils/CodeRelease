@@ -19,8 +19,8 @@ parser.add_argument('-m', '--model-path', dest='model_path',
 args = parser.parse_args()
 
 imgdb_path = "img.db"
-model_path = "model.h5"
-res = {"x": 16, "y": 16}
+model_path = "hoolywood_head_pipa.h5"
+res = {"x": 64, "y": 64}
 
 if args.model_path is not None:
     model_path = args.model_path

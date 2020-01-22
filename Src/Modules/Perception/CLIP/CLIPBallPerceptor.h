@@ -22,7 +22,6 @@
 #include "Representations/Perception/BallPercept.h"
 #include "Representations/Perception/BallSpots.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
-#include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/MotionControl/MotionInfo.h"                                                     
@@ -44,8 +43,9 @@ MODULE(CLIPBallPerceptor,
   REQUIRES(Image),
   REQUIRES(ImageUpper),
   REQUIRES(BallSpots),
+  REQUIRES(BallHypothesesYolo),
+  REQUIRES(BallHypothesesYoloUpper),
   REQUIRES(CLIPFieldLinesPercept),
-  REQUIRES(RobotsPercept),
   USES(RobotPose),
   USES(MotionInfo),
   USES(BallModel),
@@ -75,6 +75,10 @@ MODULE(CLIPBallPerceptor,
     (bool) allowBallObstacleOverlap, // If true, ball percept overlapping with obstacles (goal,robots) will be accepted. Dangerous!
     (float) minScore, // min confidence of cnn on lower image
     (float) minScoreUpper, // min confidence of cnn on upper image
+    (float)(0.75f) yoloOnlyThreshold, // above this threshold ball perept can be created from yolo alone without checking anything else
+    (float)(0.5f) yoloFallbackThreshold, // above this threshold ball perept can be created from yolo alone, if no ball was found
+    (float)(0.75f) yoloOnlyThresholdUpper, // above this threshold ball perept can be created from yolo alone without checking anything else
+    (float)(0.5f) yoloFallbackThresholdUpper, // above this threshold ball perept can be created from yolo alone, if no ball was found
     (bool) logPositives,
     (bool) useBallValidity, // If false, validity of ball percept is always 1
     (int) cnnIndex, // Use the CNN with this index
@@ -189,6 +193,8 @@ public:
   std::array < int, 100 > featureHistogram;
   std::array < int, 100 > distanceHistogram;
 
+  size_t noOfTestCircles;
+  size_t noOfTestCirclesUpper;
 private:
   void update(BallPercept &theBallPercept);
   void update(MultipleBallPercept &theMultipleBallPercept);
@@ -201,20 +207,22 @@ private:
   */
   void execute(const bool &upper, bool multi = false);
 
+  bool checkBallSpots(const std::vector<BallSpot> &ballSpots, const bool &upper, const bool &multi, const bool &detectionType = false);
+
   // creates ball hull points from ball spot if constraints are fulfilled
   // call three times 
   // 1st only 4 directions to find center (centerFound, found = false)
   // 2nd again only 4 directions to verify center and first check for ball/obstacle overlap (found = false)
   // 3rd detailed scan for ball hull points, verify hull and ball/obstacle overlap
-  bool calcBallSpot2016(BallSpot &spot, const bool &upper);
+  bool calcBallSpot2016(BallSpot &spot, const bool &upper, const bool &multi);
 
   // called in 3rd call of calcBallSpot2016
-  bool verifyBallHull(BallSpot &spot, const bool &upper);
+  bool verifyBallHull(BallSpot &spot, const bool &upper, const bool &multi);
 
   // verify ball spot and fill ball percept
-  bool verifyBallPercept(BallSpot &spot, const bool &upper);
+  bool verifyBallPercept(BallSpot &spot, const bool &upper, const bool &detectionType = false);
 
-  bool verifyBallSizeAndPosition(const Vector2f &posInImage, const float &radius, const bool &upper);
+  bool verifyBallSizeAndPosition(const Vector2f &posInImage, const float &radius, const bool &upper, const bool &multi);
 
   /*
   * Calculates number of fitting points on a circle.

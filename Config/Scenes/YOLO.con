@@ -1,0 +1,56 @@
+vd parameters:YoloRobotDetector
+
+echo call Includes/JPEGImageViews
+echo call Includes/FieldViews1
+echo
+echo =================================================
+echo === set some values to force image processing ===
+echo =================================================
+echo set representation:GroundContactState contact = true; leftFootHasGroundContact = true; rightFootHasGroundContact = true; stepFrequencyLeft = 0; stepFrequencyRight = 0;
+echo set representation:FallDownState state = upright; direction = none; sidewards = noot; odometryRotationOffset = 0;
+echo get representation:CameraMatrix 
+echo get representation:CameraMatrixUpper 
+echo 
+echo =================================
+echo === draw some additional data ===
+echo =================================
+echo vid upper representation:BallHypothesesYolo:Image:Upper 
+echo vid lower representation:BallHypothesesYolo:Image:Lower 
+echo
+echo vid lower module:YoloRobotDetector:shirtScan
+echo vid upper module:YoloRobotDetector:shirtScanUpper
+echo
+echo =======================================
+echo === visualize the yolo input images ===
+echo =======================================
+echo vi YoloDebugImage  
+echo vi YoloDebugImageUpper 
+echo 
+echo ================
+echo === RobotMap ===
+echo ================
+echo vfd worldState representation:RobotsPercept:Field off
+echo vfd worldState representation:RobotsPerceptUpper:Field off
+echo
+echo vfd worldState representation:RobotMap
+echo vfd worldState representation:RemoteRobotMap
+echo vfd worldState representation:LocalRobotMap
+echo
+echo vfd worldState module:DangerMapProvider:dangerMap
+echo
+echo ==============================
+echo === KalmanRobotMapProvider ===
+echo ==============================
+echo get parameters:KalmanRobotMapProvider
+echo vfd worldState module:KalmanRobotMapProvider:hypotheses 
+echo vfd worldState module:KalmanRobotMapProvider:validity 
+echo vfd worldState module:KalmanRobotMapProvider:covariances
+echo
+echo mr RobotMap KalmanRobotMapProvider
+echo mr RemoteRobotMap KalmanRobotMapProvider
+echo 
+echo =====================================
+echo === some motion and head requests ===
+echo =====================================
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = playDead; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:HeadControlRequest controlType = localize; pan = 0deg; tilt = 0deg;

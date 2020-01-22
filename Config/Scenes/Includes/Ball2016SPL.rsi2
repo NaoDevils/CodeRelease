@@ -3,8 +3,8 @@
   <Surface name="ballWhite" diffuseColor="rgb(100%, 100%, 100%)" specularColor="rgb(100%, 100%, 100%)" shininess="30" diffuseTexture="../Textures/ball2016.png"/>
   
   <Material name="softFoam">
-    <Friction material="fieldCarpet" value="0.0"/>
-    <RollingFriction material="fieldCarpet" value="0.2"/>
+    <Friction material="fieldCarpet" value="0.02"/>
+    <RollingFriction material="fieldCarpet" value="0.15"/>
   </Material>
   
   <Body name="ball">

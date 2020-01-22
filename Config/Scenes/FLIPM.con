@@ -1,29 +1,40 @@
 vd representation:WalkingEngineParams
-vd representation:FLIPMObserverParams
-vd representation:FLIPMControllerParams
+vd representation:FLIPMObserverGains
+vd representation:JointCalibration
 vd representation:LegJointSensorControlParameters 
+vd parameters:MotionCombinator
+vd parameters:FLIPMParamsProvider 
+vd parameters:CSConverter2019 
+
+jc press 18 dr module:FLIPMParamsProvider:recalculate # Shift+Crtl+R
 
 #####################
 # FLIPM Config Load #
 #####################
-echo vd representation:JointCalibration
-echo vd parameters:MotionCombinator
+echo mv 1000 0 400 0 0 -180
 echo ======================================
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 10; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 10; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
 echo set representation:MotionRequest unchanged
 echo ======================================
-echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
 echo ======================================
 echo set representation:ArmContact timeStampLeft = 0; timeStampRight = 0; armContactStateLeft = None; armContactStateRight = None;
 echo ======================================
+echo ======================================
+echo - Ctrl+Shift+R: recalculate or manually:
+echo dr module:FLIPMParamsProvider:recalculate
+echo ======================================
+echo ======================================
+echo save parameters:FLIPMParamsProvider
 echo save representation:WalkingEngineParams
 echo save representation:LegJointSensorControlParameters 
+echo save parameters:CSConverter2019
 echo ======================================
-echo save representation:FLIPMObserverParams
-echo
-echo dr module:WalkParamsProvider:walkParamsProvider:load 
+echo save representation:FLIPMObserverGains
+echo save representation:FLIPMControllerParameter
+echo save representation:FLIPMObserverParameter
 echo
 echo dr representation:InertialSensorData 
 echo dr representation:JointSensorData

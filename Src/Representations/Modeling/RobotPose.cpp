@@ -11,6 +11,12 @@
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Module/Blackboard.h"
 
+namespace
+{
+  using compressedFloat_type = unsigned char;
+  static constexpr float uCharMax = static_cast<float>(std::numeric_limits<compressedFloat_type>::max());
+}
+
 void RobotPose::draw() const
 {
   DECLARE_DEBUG_DRAWING("representation:RobotPose", "drawingOnField");
@@ -149,8 +155,8 @@ RobotPoseCompressed::RobotPoseCompressed(const RobotPose& robotPose)
 {
   translation = robotPose.translation.cast<short>();
   rotation = static_cast<short>(robotPose.rotation.toDegrees());
-  validity = static_cast<unsigned char>(robotPose.validity * 255.f);
-  symmetry = static_cast<unsigned char>(robotPose.symmetry * 255.f);
+  validity = static_cast<compressedFloat_type>(robotPose.validity * uCharMax);
+  symmetry = static_cast<compressedFloat_type>(robotPose.symmetry * uCharMax);
 }
 
 RobotPoseCompressed::operator RobotPose() const
@@ -158,7 +164,7 @@ RobotPoseCompressed::operator RobotPose() const
   RobotPose robotPose;
   robotPose.translation = translation.cast<float>();
   robotPose.rotation = Angle::fromDegrees(rotation);
-  robotPose.validity = validity / 255.f;
-  robotPose.symmetry = symmetry / 255.f;
+  robotPose.validity = validity / uCharMax;
+  robotPose.symmetry = symmetry / uCharMax;
   return robotPose;
 }

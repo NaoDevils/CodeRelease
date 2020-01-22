@@ -1,0 +1,45 @@
+keyFrameID = sitDown;
+stabilizationP = 0;
+stabilizationI = 0;
+stabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [0,20deg];
+    armsAngles = [41deg,9deg,5deg,-2.5deg,-90deg,0, 41deg,-9deg,-5deg,2.5deg,90deg,0];
+    legsAngles = [0,0,-49deg,120deg,-67deg,0, 0,0,-49deg,120deg,-67deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 2000;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+  },
+  {
+    headAngles = [0,20deg];
+    armsAngles = [51deg,3.5deg,15deg,-36deg,-90deg,0, 51deg,-3.5deg,-15deg,36deg,90deg,0];
+    legsAngles = [0,0,-49deg,120deg,-67deg,0, 0,0,-49deg,120deg,-67deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 500;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+  },
+  {
+    headAngles = [10000,10000];
+    armsAngles = [10000,10000,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000];
+    legsAngles = [10000,10000,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000];
+    stiffnesses = [0,0,0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0];
+    duration = 100;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+  }
+];

@@ -241,7 +241,7 @@ public:
   * @param p The other point.
   * @return Copy of the instance.
   */
-  Point operator + (const Point &p)
+  Point operator + (const Point &p) const
   {
     Point ret;
     ret.x=x+p.x;

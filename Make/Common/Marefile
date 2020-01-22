@@ -1,4 +1,4 @@
-name = "B-Human"
+name = "NDevils"
 
 srcDirRoot = "../../Src"
 configDirRoot = "../../Config"
@@ -15,9 +15,13 @@ buildPlatformDir = {
 buildDir = "$(buildPlatformDir)/$(target)/$(configuration)"
 
 winMarePath = "$(utilDirRoot)/SimRobot/Util/mare/Windows/bin/mare.exe"
+linuxMarePath = "$(utilDirRoot)/SimRobot/Util/mare/Linux/bin/mare"
 
 configurations = {
   Develop
+  if (host == "Win32") {
+    DevEnC
+  }
   Debug
   Release
 }
@@ -42,6 +46,7 @@ defines = {
   if (configuration != "Release") {
     "EIGEN_INITIALIZE_MATRICES_BY_NAN"
   }
+  "CONFIGURATION=$(configuration)"
 }
 
 if (host == "Linux") {
@@ -62,7 +67,7 @@ cppFlags = {
       "/Ox /Ob2 /Oi /Ot /Oy /GT"
     }
   } else {
-    "-std=c++11"
+    "-std=c++14"
     "-pipe"
     "-mssse3"
     "-Wall"
@@ -89,7 +94,7 @@ linkFlags = {
       "/OPT:REF /OPT:ICF"
     }
   } else {
-    if (configuration != "Debug") {
+    if (configuration == "Release") {
       "-s"
     }
   }
@@ -97,7 +102,7 @@ linkFlags = {
 
 targets = {
   all = {
-    dependencies = { "SimRobot", "Nao", "bush" },
+    dependencies = { "SimRobot", "Nao", "dorsh" },
   }
 
   include "SimRobot.mare"
@@ -111,11 +116,13 @@ targets = {
   include "Controller.mare"
   include "SimulatedNao.mare"
 
+  include "ndevilsbase.mare"
+  include "sensorReader.mare"
   include "libbhuman.mare"
   include "libgamectrl.mare"
   include "Nao.mare"
 
-  include "bush.mare"
+  include "dorsh.mare"
   include "copyfiles.mare"
   include "Tests.mare"
 }

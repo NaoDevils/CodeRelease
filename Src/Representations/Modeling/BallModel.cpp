@@ -67,32 +67,22 @@ void GroundTruthBallModel::draw() const
 }
 
 BallModelCompressed::BallModelCompressed(const BallModel& ballModel) :
-  lastPerception(ballModel.lastPerception.cast<short>()),
-  position(ballModel.estimate.position),
-  velocity(ballModel.estimate.velocity),
+  position(ballModel.estimate.position.cast<short>()),
+  velocity(ballModel.estimate.velocity.cast<short>()),
   timeWhenLastSeen(ballModel.timeWhenLastSeen),
-  //BEGIN Changed by Dortmund: we need the complete length of an unsigned int for
-  //                           representing the timestamp.
-  //timeWhenDisappeared((ballModel.timeWhenDisappeared & 0x00ffffff) | ballModel.seenPercentage << 24),
-  timeWhenDisappeared(ballModel.timeWhenDisappeared),
-  validity(ballModel.validity)
-  //END
+  validity(static_cast<std::uint8_t>(ballModel.validity * 255.f))
 {}
 
 BallModelCompressed::operator BallModel() const
 {
   BallModel ballModel;
-  ballModel.lastPerception = lastPerception.cast<float>();
+  ballModel.lastPerception = position.cast<float>();
   ballModel.estimate.position = position.cast<float>();
   ballModel.estimate.velocity = velocity.cast<float>();
   ballModel.timeWhenLastSeen = timeWhenLastSeen;
-  //BEGIN Changed by Dortmund: we need the complete length of an unsigned int for
-  //                           representing the timestamp.
-  //ballModel.timeWhenDisappeared = timeWhenDisappeared & 0x00ffffff;
-  ballModel.timeWhenDisappeared = timeWhenDisappeared;
-  //ballModel.seenPercentage = static_cast<unsigned char>(timeWhenDisappeared >> 24);
+  ballModel.timeWhenDisappeared = timeWhenLastSeen;
   ballModel.seenPercentage = static_cast<unsigned char>(validity * 100.f); // unused by Dortmund
-  ballModel.validity = validity;
+  ballModel.validity = static_cast<float>(validity)/255.f;
   // END
   return ballModel;
 }

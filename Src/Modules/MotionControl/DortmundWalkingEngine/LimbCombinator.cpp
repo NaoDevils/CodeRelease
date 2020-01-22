@@ -5,7 +5,7 @@
 #include "Tools/Debugging/CSVLogger.h"
 #include "Tools/Debugging/DebugDrawings.h"
 
-
+using namespace DWE;
 
 LimbCombinator::LimbCombinator()
 {
@@ -36,7 +36,7 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
 	{
 		for (int i = 0; i < Joints::numOfJoints; i++)
 		{
-			filter[i].createBuffer(theWalkingEngineParams.outFilterOrder);
+			filter[i].createBuffer(outFilterOrderSize);
 		}
 		init=true;
 	}
@@ -63,6 +63,15 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
     }
   }
 
+  if (theFootpositions.inKick && theFrameInfo.getTimeSince(timeStampKickStarted) > 2000)
+    timeStampKickStarted = theFrameInfo.time;
+  bool doKickHack = useKickHack 
+    && theFrameInfo.getTimeSince(timeStampKickStarted) > theFootpositions.timeUntilKickHack
+    && theFrameInfo.getTimeSince(timeStampKickStarted) < theFootpositions.timeUntilKickHack + theFootpositions.kickHackDuration;
+
+  if (doKickHack)
+    applyKickHack(walkingEngineOutput);
+
 	if (theArmMovement.usearms)
 	{
     for (int i = Joints::firstArmJoint; i < Joints::lHipYawPitch; i++)
@@ -73,8 +82,6 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
     for (int i = Joints::firstArmJoint; i < Joints::lHipYawPitch; i++)
       walkingEngineOutput.angles[i] = JointAngles::ignore;
 	}
-
-
 	
 	walkingEngineOutput.odometryOffset=theWalkingInfo.odometryOffset;
 	walkingEngineOutput.isLeavingPossible=theWalkingInfo.isLeavingPossible;
@@ -150,6 +157,19 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
 	PLOT("module:LimbCombinator:Offset", angleoffset[Joints::rAnklePitch][12]);
 	PLOT("module:LimbCombinator:Target", walkingEngineOutput.angles[Joints::rAnklePitch]);
 	PLOT("module:LimbCombinator:Measured", theJointSensorData.angles[Joints::rAnklePitch]);
+}
+
+
+void LimbCombinator::applyKickHack(WalkingEngineOutput& walkingEngineOutput)
+{
+  if (theFootpositions.onFloor[LEFT_FOOT])
+  {
+    walkingEngineOutput.angles[Joints::rKneePitch] = std::max(theFootpositions.kickHackKneeAngle, 0_deg);
+  }
+  else
+  {
+    walkingEngineOutput.angles[Joints::lKneePitch] = std::max(theFootpositions.kickHackKneeAngle, 0_deg);
+  }
 }
 
 MAKE_MODULE(LimbCombinator, dortmundWalkingEngine)

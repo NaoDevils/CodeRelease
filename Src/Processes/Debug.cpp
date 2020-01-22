@@ -22,8 +22,8 @@ Debug::Debug() :
   theCognitionReceiver.setSize(5200000);
   theCognitionSender.setSize(2800000);
 
-  theMotionReceiver.setSize(140000);
-  theMotionSender.setSize(400000);
+  theMotionReceiver.setSize(50000);
+  theMotionSender.setSize(500000);
   if(SystemCall::getMode() == SystemCall::physicalRobot)
     setPriority(5);
 }
@@ -147,6 +147,8 @@ bool Debug::main()
 
 void Debug::init()
 {
+  BH_TRACE_INIT("Debug");
+
   // read requests.dat
   InBinaryFile stream("requests.dat");
   if(stream.exists() && !stream.eof())

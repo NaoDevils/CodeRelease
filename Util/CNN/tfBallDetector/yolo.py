@@ -7,29 +7,40 @@ import numpy as np
 
 input_shape = (160, 120, 3)
 
+
+def create_random_weights(shape):
+    r = np.random.random_sample()
+    return np.ones(shape, dtype=np.float32) * r
+
+
+def create_batch_normalization_weights(shape):
+    return [create_random_weights(shape), create_random_weights(shape), create_random_weights(shape),
+            create_random_weights(shape)]
+
+
 model = Sequential()
 model.add(Convolution2D(12, (3, 3), input_shape=input_shape, padding='same'))
+model.add(BatchNormalization(weights=create_batch_normalization_weights(model.layers[-1].filters)))
 model.add(LeakyReLU(alpha=0.0))  # alpha unknown, so default
-# model.add(BatchNormalization())
 
 model.add(Convolution2D(16, (3, 3), padding='same'))
+model.add(BatchNormalization(weights=create_batch_normalization_weights(model.layers[-1].filters)))
 model.add(LeakyReLU())
-# model.add(BatchNormalization())
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
 model.add(Convolution2D(24, (3, 3), padding='same'))
+model.add(BatchNormalization(weights=create_batch_normalization_weights(model.layers[-1].filters)))
 model.add(LeakyReLU())
-# model.add(BatchNormalization())
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
 model.add(Convolution2D(32, (3, 3), padding='same'))
+model.add(BatchNormalization(weights=create_batch_normalization_weights(model.layers[-1].filters)))
 model.add(LeakyReLU(alpha=0.0))
-# model.add(BatchNormalization())
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
 model.add(Convolution2D(32, (3, 3), padding='same'))
+model.add(BatchNormalization(weights=create_batch_normalization_weights(model.layers[-1].filters)))
 model.add(LeakyReLU())
-# model.add(BatchNormalization())
 
 model.add(Convolution2D(6, (1, 1), padding='same'))
 

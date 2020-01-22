@@ -35,6 +35,7 @@ STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth,
   ENUM(Configuration,
   {,
     Debug,
+    DevEnC,
     Develop,
     Release,
   });
@@ -42,8 +43,6 @@ STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth,
   RobotHealth()
   {
     load[0] = load[1] = load[2] = 0;
-    strncpy(hash, "unknown", sizeof(hash));
-    strncpy(location, "unknown", sizeof(location));
   }
 
   /**
@@ -92,7 +91,5 @@ STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth,
   (unsigned)(0) goalPercepts, /**< A goal percept counter used to determine goal percepts per hour */
   (bool)(true) wlan, /**< Status of the wlan hardware. true: wlan hardware is ok. false: wlan hardware is (probably physically) broken. */
   (Configuration)(Develop) configuration, /**< The configuration that was deployed. */
-  (char[5]) hash, /**< The first 5 digits of the hash of the git HEAD that was deployed. */
-  (bool)(false) clean, /**< Was the working copy clean when it was deployed? */
-  (char[3]) location, /**< The first 3 letters of the location selected. */
+  (std::string)("unknown") location, /**< The location selected. */
 });

@@ -24,7 +24,6 @@
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/FieldCoverage.h"
 #include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/Path.h"

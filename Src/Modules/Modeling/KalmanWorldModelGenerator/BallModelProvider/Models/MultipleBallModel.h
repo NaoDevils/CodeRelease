@@ -38,6 +38,13 @@ public:
    * Default constructor creates a new and empty \c LocalMultipleBallModel object.
    */
   LocalMultipleBallModel() : LocalMultiKalmanModel<>() {}
+  /**
+   * Constructor setting the perceptDuration.
+   * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
+   *
+   * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+   */
+  LocalMultipleBallModel(unsigned perceptDuration) : LocalMultiKalmanModel<>(perceptDuration) {}
   /** 
    * Destructor.
    */
@@ -58,15 +65,28 @@ public:
 class RemoteMultipleBallModel : public RemoteMultiKalmanModel<>
 {
 public:
-
   /** 
    * Default constructor creates a new and empty \c MultipleBallModel object.
    */
-  RemoteMultipleBallModel() : RemoteMultiKalmanModel<>() {}
+  RemoteMultipleBallModel() : RemoteMultiKalmanModel<>(), perceptDuration(4000) {}
+  /**
+   * Constructor setting the perceptDuration.
+   * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
+   *
+   * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+   */
+  RemoteMultipleBallModel(unsigned perceptDuration)
+    : RemoteMultiKalmanModel<>(perceptDuration)
+    , perceptDuration(perceptDuration) {}
   /** 
    * Destructor.
    */
   ~RemoteMultipleBallModel() {}
+
+  /**
+   * The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+   */
+  unsigned perceptDuration;
 
   /**
    * Draws all ball hypotheses as remote ball model hypotheses.

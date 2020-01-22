@@ -1,0 +1,32 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    /home/nao/bin/sensorReader_init.sh &
+    ;;
+
+  stop)
+    killall sensorReader 2> /dev/null
+    sleep 2
+    if [ ! -z "`pgrep '^sensorReader$'`" ]; then
+      echo `pgrep '^sensorReader$'`
+      echo "killing sensorReader"
+      killall -9 sensorReader 2> /dev/null
+      sleep 1
+    fi
+    ;;
+
+  restart)
+    $0 stop
+    $0 start
+    ;;
+
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+
+esac
+
+exit 0
+

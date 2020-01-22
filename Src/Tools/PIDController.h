@@ -8,25 +8,25 @@
 * A class for controlling the speed of angular motors
 * combining three different controllers.
 */
-class PIDController2
+template<class V = float> class PIDController
 {
 private:
   /** The constant factor for a proportional control part (gain) */
-  double pControlFactor;
+  V pControlFactor = V();
   /** The constant factor for an integral control part (reset) */
-  double iControlFactor;
+  V iControlFactor = V();
   /** The constant factor for a derivative control part (rate) */
-  double dControlFactor;
+  V dControlFactor = V();
   /** The time step length of a simulation control step*/
-  double timeStep;
+  V timeStep = V() + 1;
   /** The sum of errorValues */
-  double errorSum;
+  V errorSum = V();
   /** The error the previous pass */
-  double previousError;
+  V previousError = V();
 
 public:
   /** Constructor */
-  PIDController2();
+  PIDController() {}
 
   /**
    * Returns the controller output.
@@ -34,13 +34,22 @@ public:
    * @param setpoint point The desired value of the joint
    * @return The controller output
    */
-  double getControllerOutput(double measuredValue, double setpoint);
+  V getControllerOutput(V measuredValue, V setpoint)
+  {
+    V error = setpoint - measuredValue;
+    V pControlValue = pControlFactor * error;
+    errorSum += error;
+    V iControlValue = iControlFactor * timeStep * errorSum;
+    V dControlValue = (dControlFactor * (error - previousError)) / timeStep;
+    previousError = error;
+    return pControlValue + iControlValue + dControlValue;
+  }
 
   /** 
    * Sets the time step length of a simulation control step
    * @param value the time step length
    */
-  void setTimeStep(double value){timeStep = value;};
+  void setTimeStep(V value){timeStep = value;};
 
   /**
   * Updates the all control factors
@@ -48,7 +57,7 @@ public:
   * @param i The new p value
   * @param d The new p value
   */
-  void updateControlFactors(double p, double i, double d) {pControlFactor = p; iControlFactor = i; dControlFactor = d;}
+  void updateControlFactors(V p, V i, V d) {pControlFactor = p; iControlFactor = i; dControlFactor = d;}
 };
 
 #endif //PIDCONTROLLER_H_

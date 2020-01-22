@@ -36,6 +36,7 @@ MODULE(OracledPerceptsProvider,
   PROVIDES(CLIPFieldLinesPercept),
   PROVIDES(CLIPCenterCirclePercept),
   PROVIDES(RobotsPercept),
+  PROVIDES(RobotsPerceptUpper),
   PROVIDES(PenaltyCrossPercept),
   LOADS_PARAMETERS(
   {,
@@ -115,6 +116,11 @@ private:
   void update(RobotsPercept& playersPercept);
 
   /** One main function, might be called every cycle
+  * @param playersPercept The data struct to be filled
+  */
+  void update(RobotsPerceptUpper& playersPercept);
+
+  /** One main function, might be called every cycle
   * @param centerCirclePercept The data struct to be filled
   */
   void update(CLIPCenterCirclePercept& centerCirclePercept);
@@ -124,7 +130,7 @@ private:
   * @param isBlue true, if the perceived player belongs to the blue team
   * @param playersPercept The players percept (What else?)
   */
-  void createPlayerBox(const GroundTruthWorldState::GroundTruthPlayer& player, bool isOpponent, RobotsPercept& playersPercept);
+  void createPlayerBox(const GroundTruthWorldState::GroundTruthPlayer& player, bool isOpponent, RobotsPercept& playersPercept, const bool &upper);
 
   /** Checks, if a point on the field (relative to the robot) is inside the current image
   * @param  p    The point

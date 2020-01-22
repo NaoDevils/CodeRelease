@@ -1,0 +1,3 @@
+ALL ALL = NOPASSWD:/bin/systemctl restart networking
+ALL ALL = NOPASSWD:/usr/sbin/wpa_cli status
+

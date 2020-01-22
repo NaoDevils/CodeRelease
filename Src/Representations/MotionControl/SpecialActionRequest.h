@@ -9,10 +9,10 @@
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Enum.h"
 
-/**
- * @struct SpecialActionRequest
- * The struct represents special action requests.
- */
+ /**
+  * @struct SpecialActionRequest
+  * The struct represents special action requests.
+  */
 STREAMABLE(SpecialActionRequest,
 {
   /** ids for all special actions */
@@ -27,17 +27,21 @@ STREAMABLE(SpecialActionRequest,
     // -------- from here on, gyro fall down detection is off for all motions               ---------
     standUpBackNao = numOfBasicMotions,
     standUpFrontNao,
-    standUpSideNao,
+    numOfStandUpMotions,
+    standUpSideNao = numOfStandUpMotions,
+    // block motions
+    // add new block motions here
     // -------- up to numOfSpecialActionIDs, gyro fall down detection is off for all motions ---------
     // -------- so do not add non-block motions here!
+    // penalty shootout block motions
   });
 
-  /**
-   * The function searches the id for a special action name.
-   * @param name The name of the special action.
-   * @return The corresponding id if found, or numOfSpecialActions if not found.
-   */
-  static SpecialActionID getSpecialActionFromName(const char* name),
+/**
+ * The function searches the id for a special action name.
+ * @param name The name of the special action.
+ * @return The corresponding id if found, or numOfSpecialActions if not found.
+ */
+static SpecialActionID getSpecialActionFromName(const char* name),
 
   (SpecialActionID)(playDead) specialAction, /**< The special action selected. */
   (bool)(false) mirror, /**< Mirror left and right. */

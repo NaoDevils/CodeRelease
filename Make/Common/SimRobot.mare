@@ -105,7 +105,13 @@ SimRobot = cppApplication + {
   files += qtFiles
 
   linkFlags += {
-    if (tool == "vcxproj" && configuration == "Debug") { "/NODEFAULTLIB:msvcrt.lib" }
+    if (tool == "vcxproj" && configuration == "Debug") {
+        "/NODEFAULTLIB:msvcrt.lib /STACK:8000000,8000000"
+	}
+	
+	if (tool == "vcxproj" && (configuration == "Develop" || configuration == "DevEnC")) {
+		"/STACK:8000000,8000000"
+	}
   }
 
   visualizers = {

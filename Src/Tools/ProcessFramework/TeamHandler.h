@@ -2,6 +2,8 @@
  * @file Tools/ProcessFramework/TeamHandler.h
  * The file declares a class for the team communication between robots.
  * @author <A href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</A>
+ * @author <A href="mailto:Ingmar.Schwarz@udo.edu">Ingmar Schwarz</A>
+ * @author <A href="mailto:Aaron.Larisch@udo.edu">Aaron Larisch</A>
  */
 
 #pragma once
@@ -9,17 +11,16 @@
 #include "Tools/MessageQueue/MessageQueue.h"
 #include "Tools/Network/UdpComm.h"
 #include <string>
-#include "Representations/Infrastructure/RoboCupGameControlData.h"
+#include "Tools/Network/NTP.h"
 
 #define MAX_NUM_OF_TC_MESSAGES 10 // 5 broadcasting players and substitute + space for delays
+#define NDEVILS_TC_VERSION 1
 
 struct NDevilsHeader
 {
-  uint64_t timeStampSent;
-  unsigned char teamID;
-  bool isPenalized;
-  bool whistleDetected;
-  unsigned char intention;
+  unsigned char teamName[4];
+  unsigned int version = NDEVILS_TC_VERSION;
+  std::array<NTPData, MAX_NUM_PLAYERS> ntpResponses;
 };
 
 const int teamCommHeaderSize = sizeof(RoboCup::SPLStandardMessage) - SPL_STANDARD_MESSAGE_DATA_SIZE;
@@ -29,13 +30,11 @@ const int ndevilsHeaderSize = sizeof(NDevilsHeader);
 class TeamDataIn
 {
 public:
-  TeamDataIn() { clear(); queue.setSize(MAX_NUM_OF_TC_MESSAGES * sizeof(RoboCup::SPLStandardMessage)); messages.reserve(MAX_NUM_OF_TC_MESSAGES); }
+  TeamDataIn() { clear(); messages.reserve(MAX_NUM_OF_TC_MESSAGES); }
   std::vector<RoboCup::SPLStandardMessage> messages;
-  MessageQueue queue;
-  int currentPosition;
-  void clear() { queue.clear(); messages.clear(); }
+  void clear() { messages.clear(); }
   bool isEmpty() { return messages.empty(); }
-  void handleAllMessages(MessageHandler& handler) { queue.handleAllMessages(handler); }
+  void handleAllMessages(MessageHandler& handler) { }
 };
 
 // Wrapper class for SPLStandardMessage and MessageQueue.
@@ -43,12 +42,10 @@ public:
 class TeamDataOut
 {
 public:
-  TeamDataOut() :out(queue.out) { clear(); queue.setSize(sizeof(RoboCup::SPLStandardMessage)); }
+  TeamDataOut() { clear(); }
   RoboCup::SPLStandardMessage message;
-  MessageQueue queue;
-  OutMessage& out;
   bool isEmpty() { return message.numOfDataBytes == 0; }
-  void clear() { queue.clear(); message.numOfDataBytes = 0; }
+  void clear() { message.numOfDataBytes = 0; }
 };
 
 #define TEAM_COMM \
@@ -125,9 +122,4 @@ public:
    * @return True, if message is valid.
   */
   bool checkMessage(RoboCup::SPLStandardMessage& msg, const unsigned remoteIp, const unsigned realNumOfDataBytes);
-
-  /**
-   * Fills the in messagequeue with our custom team mate data.
-  */
-  void addDataToQueue(const RoboCup::SPLStandardMessage& msg, const unsigned remoteIp);
 };

@@ -4,6 +4,8 @@
 * @author Colin Graf
 */
 
+#include <cassert>
+
 #ifndef NDEBUG
 
 #include "BHAssert.h"
@@ -58,7 +60,7 @@ public:
   {
     char file[128];
     int line;
-    char message[128];
+    char message[256];
   };
 
   struct Track
@@ -76,7 +78,7 @@ public:
 
   struct Data
   {
-    Thread thread[2];
+    Thread thread[10];
     int currentThread;
   };
 
@@ -125,6 +127,7 @@ __thread AssertFramework::Thread* AssertFramework::threadData = 0;
 
 bool Assert::logInit(const char* name)
 {
+  //printf("logInit %s", name);
   int thread = -1;
   pthread_mutex_lock(&AssertFramework::mutex);
   assertFramework.init(true);
@@ -140,8 +143,9 @@ bool Assert::logInit(const char* name)
 
 void Assert::logAdd(int trackId, const char* file, int lineNum, const char* message)
 {
-  ASSERT(AssertFramework::threadData);
-  ASSERT(trackId >= 0 && trackId < int(sizeof(AssertFramework::threadData->track) / sizeof(*AssertFramework::threadData->track)));
+  //printf("logAdd TRACKID: %d; FILE: %s; LINENUM: %d MSG: %s\n", trackId, file, lineNum, message);
+  assert(AssertFramework::threadData);
+  assert(trackId >= 0 && trackId < int(sizeof(AssertFramework::threadData->track) / sizeof(*AssertFramework::threadData->track)));
   AssertFramework::Track* track = &AssertFramework::threadData->track[trackId];
   AssertFramework::Line* line = &track->line[track->currentLine = (track->currentLine + 1) % (sizeof(track->line) / sizeof(*track->line))];
   memccpy(line->file, file, 0, sizeof(line->file) - 1);

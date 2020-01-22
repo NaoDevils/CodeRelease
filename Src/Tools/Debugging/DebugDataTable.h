@@ -13,6 +13,7 @@
 
 #include "Tools/Streams/InStreams.h"
 #include <string>
+#include <unordered_map>
 
 class Framework;
 class InMessage;

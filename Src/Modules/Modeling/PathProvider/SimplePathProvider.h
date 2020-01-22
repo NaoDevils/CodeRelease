@@ -3,7 +3,6 @@
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/KickSymbols.h"
 #include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/Configuration/FieldDimensions.h"
@@ -28,7 +27,6 @@ MODULE(SimplePathProvider,
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
-  REQUIRES(KickSymbols),
   REQUIRES(MotionRequest),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
@@ -52,6 +50,8 @@ MODULE(SimplePathProvider,
     (bool)(false) stablizePath,
     (bool)(false) mergeObstacles,
     (bool)(false) avoidRobotCrashes,
+    (Angle)(90_deg) ballApproachCone,
+    (float)(800.f) setPlayInfluenceRadius,
   }),
 });
 
@@ -70,15 +70,7 @@ public:
 private:
   struct Obstacle
   {
-    ENUM(ObstacleType,
-    {,
-      ball,
-      goalPost,
-      robot,
-      centerCircle,
-    });
-
-    Obstacle(float x, float y, float rad, ObstacleType t, bool mate = false)
+    Obstacle(float x, float y, float rad, Path::ObstacleType t, bool mate = false)
     {
       position.x() = x;
       position.y() = y;
@@ -88,7 +80,7 @@ private:
     }
     Vector2f position;
     float radius;
-    ObstacleType type;
+    Path::ObstacleType type;
     bool isTeamMate;
   };
 
@@ -118,6 +110,8 @@ private:
   bool isGoalieInOwnPenaltyArea = false;
   
   float distanceToClosestObstacle;
+  Vector2f nearestObstaclePosition;
+  Path::ObstacleType nearestObstacleType;
   std::vector<Pose2f> wayPoints;
   std::vector<Obstacle> obstacles;
   bool ballIsObstacle = false;

@@ -13,16 +13,33 @@
 #include "Representations/Sensing/InertialData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
+#include "Representations/Modeling/IMUModel.h"
+
+STREAMABLE(TorsoMatrixEnums,
+{
+  ENUM(AngleSource,
+  { ,
+    inertialData,
+    inertialSensorData,
+    imuModel,
+  }),
+});
 
 MODULE(TorsoMatrixProvider,
-{,
+{ ,
   REQUIRES(GroundContactState),
   REQUIRES(InertialData),
+  REQUIRES(InertialSensorData),
   REQUIRES(RobotDimensions),
   REQUIRES(RobotModel),
+  REQUIRES(IMUModel),
   PROVIDES(TorsoMatrix),
   USES(TorsoMatrix),
   PROVIDES(OdometryData),
+  LOADS_PARAMETERS(
+  { ,
+   ((TorsoMatrixEnums) AngleSource)(inertialData) anglesource,
+  }),
 });
 
 /**
@@ -31,6 +48,7 @@ MODULE(TorsoMatrixProvider,
  */
 class TorsoMatrixProvider : public TorsoMatrixProviderBase
 {
+
 private:
   float lastLeftFootZRotation; /**< The last z-rotation of the left foot. */
   float lastRightFootZRotation; /**< The last z-rotation of the right foot. */

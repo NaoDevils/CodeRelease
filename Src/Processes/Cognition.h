@@ -11,6 +11,7 @@
 #include "Tools/ProcessFramework/Process.h"
 #include "Tools/Module/Logger.h"
 #include "Tools/Module/ModulePackage.h"
+#include "Tools/Network/NTP.h"
 
 /**
  * @class Cognition
@@ -23,6 +24,7 @@ private:
   RECEIVER(MotionToCognition);
   SENDER(CognitionToMotion);
   TEAM_COMM;
+  NTP theNTP;
 #ifdef USE_MOCAP
   MOCAP_COMM;
 #endif //USE_MOCAP  

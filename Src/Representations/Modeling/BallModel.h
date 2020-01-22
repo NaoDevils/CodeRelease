@@ -25,7 +25,7 @@ STREAMABLE(BallState,
   /**
   * Converts the \c velocity of the ball which is given relative to the robot
   * pose \c rp into global field coordinates.
-  * \param rp The ball position is assumed to be ralative to this robot pose.
+  * \param rp The ball position is assumed to be relative to this robot pose.
   * \return The velocity of the ball relative to the field coordinate system (in mm/s).
   */
   Vector2f getVelocityInFieldCoordinates(const RobotPose& rp) const
@@ -42,7 +42,7 @@ STREAMABLE(BallState,
   *                        coordinate system (in mm).
   * \param velocityOnField The velocity of the ball relative to the field
   *                        coordinate system (in mm/s).
-  * \param rp The ball position is updated ralative to this robot pose.
+  * \param rp The ball position is updated relative to this robot pose.
   */
   void setPositionAndVelocityInFieldCoordinates(const Vector2f& positionOnField,
     const Vector2f& velocityOnField,
@@ -68,7 +68,7 @@ STREAMABLE(BallState,
  *
  * The \c BallModel is constructed by a multi hypotheses filter. The best hypothesis is output
  * to this representation. Therefore it does not contain all ball percepts (\c theBallPercept)
- * seen by the robot but only those which fitts to the best hypothesis.
+ * seen by the robot but only those which fits to the best hypothesis.
  */
 STREAMABLE(BallModel,
 {
@@ -116,13 +116,13 @@ STREAMABLE(BallModelCompressed,
   BallModelCompressed(const BallModel & ballModel);
   operator BallModel() const,
 
-  (Vector2s) lastPerception, /**< The last seen position of the ball */
-  (Vector2f) position,
-  (Vector2f) velocity,
+  // last percept is equal to position for sending since 1 packet per second is not enough for difference
+  //(Vector2s) lastPerception, /**< The last seen position of the ball */
+  (Vector2s) position,
+  (Vector2s) velocity,
   (unsigned) timeWhenLastSeen, /**< Time stamp, indicating what its name says */
-  (unsigned) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there */
+  //timeWhenDisappeared not sent, see above
+  //(unsigned) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there */
   
-  //BEGIN Added by Dortmund
-  (float) validity, /**< Validity of the current ball estimate in range [0,1]. */
-  //END
+  (std::uint8_t) validity, /**< Validity of the current ball estimate in range [0,255]. */
 });

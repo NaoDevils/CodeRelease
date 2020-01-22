@@ -164,7 +164,7 @@ void TeamBallModelProvider::m_plot(float localValidity, float remoteValidity,
   PLOT("module:BallModelProvider:remoteValidityMin", m_teamParameters.minValidityForRemoteBallModel);
   
   // Percepts per second:
-  size_t localPPS = 0, remotePPS = 0;
+  float localPPS = 0, remotePPS = 0;
   float localMeanPerceptValidity = 0.f, remoteMeanPerceptValidity = 0.f;
   if (bestLocalHypothesis != nullptr)
   {

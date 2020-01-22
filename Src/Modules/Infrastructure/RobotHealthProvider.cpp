@@ -24,11 +24,6 @@ RobotHealthProvider::RobotHealthProvider() :
   , lastWlanCheckedTime(0)
 #endif
 {
-  InMapFile stream("build.cfg");
-  if(stream.exists())
-  {
-    stream >> buildInfo;
-  }
 }
 
 void RobotHealthProvider::update(RobotHealth& robotHealth)
@@ -129,10 +124,8 @@ void RobotHealthProvider::update(RobotHealth& robotHealth)
     else if(highTemperatureSince < theFrameInfo.time)
       highTemperatureSince = theFrameInfo.time;
 
-    robotHealth.configuration = buildInfo.configuration;
-    strncpy(robotHealth.hash, buildInfo.hash.c_str(), sizeof(robotHealth.hash));
-    robotHealth.clean = buildInfo.clean;
-    strncpy(robotHealth.location, Global::getSettings().location.c_str(), sizeof(robotHealth.location));
+    robotHealth.configuration = RobotHealth::Configuration::CONFIGURATION;
+    robotHealth.location.assign(Global::getSettings().location);
   }
 }
 

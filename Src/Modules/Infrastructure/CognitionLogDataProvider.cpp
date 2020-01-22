@@ -6,6 +6,7 @@
 
 #include "CognitionLogDataProvider.h"
 #include "Representations/Infrastructure/Thumbnail.h"
+#include "Representations/Infrastructure/YoloInput.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 
 PROCESS_LOCAL CognitionLogDataProvider* CognitionLogDataProvider::theInstance = nullptr;
@@ -15,7 +16,9 @@ MAKE_MODULE(CognitionLogDataProvider, cognitionInfrastructure)
 CognitionLogDataProvider::CognitionLogDataProvider() :
   frameDataComplete(false),
   lowFrameRateImage(nullptr),
-  lowFrameRateImageUpper(nullptr)
+  lowFrameRateImageUpper(nullptr),
+  sequenceImage(nullptr),
+  sequenceImageUpper(nullptr)
 {
   theInstance = this;
 }
@@ -26,6 +29,10 @@ CognitionLogDataProvider::~CognitionLogDataProvider()
     delete lowFrameRateImage;
   if (lowFrameRateImageUpper)
     delete lowFrameRateImageUpper;
+  if(sequenceImage)
+    delete sequenceImage;
+  if (sequenceImageUpper)
+    delete sequenceImageUpper;
   theInstance = 0;
 }
 
@@ -34,10 +41,22 @@ void CognitionLogDataProvider::update(Image& image)
   if(SystemCall::getMode() == SystemCall::logfileReplay)
   {
     CameraInfo& info = (CameraInfo&) Blackboard::getInstance()["CameraInfo"];
+    FrameInfo& frameInfo = (FrameInfo&)Blackboard::getInstance()["FrameInfo"];
     if(lowFrameRateImage)
     {
       if(lowFrameRateImage->imageUpdated)
         lastImages = lowFrameRateImage->image;
+      else if (image.timeStamp != frameInfo.time)
+        lastImages = image;
+
+      image = lastImages;
+    } else if(sequenceImage)
+    {
+      if(sequenceImage->noInSequence > 0)
+        lastImages = sequenceImage->image;
+      else if (image.timeStamp != frameInfo.time)
+        lastImages = image;
+
       image = lastImages;
     }
     else if(info.width != image.width || info.height != image.height)
@@ -59,10 +78,22 @@ void CognitionLogDataProvider::update(ImageUpper& imageUpper)
   if (SystemCall::getMode() == SystemCall::logfileReplay)
   {
     CameraInfo& info = (CameraInfo&)Blackboard::getInstance()["CameraInfoUpper"];
+    FrameInfo& frameInfo = (FrameInfo&)Blackboard::getInstance()["FrameInfo"];
     if (lowFrameRateImageUpper)
     {
       if (lowFrameRateImageUpper->imageUpdated)
         lastImagesUpper = lowFrameRateImageUpper->image;
+      else if (imageUpper.timeStamp != frameInfo.time)
+        lastImagesUpper = imageUpper;
+
+      imageUpper = lastImagesUpper;
+    } else if (sequenceImageUpper)
+    {
+      if (sequenceImageUpper->noInSequence > 0)
+        lastImagesUpper = sequenceImageUpper->image;
+      else if (imageUpper.timeStamp != frameInfo.time)
+        lastImagesUpper = imageUpper;
+
       imageUpper = lastImagesUpper;
     }
     else if (info.width != imageUpper.width || info.height != imageUpper.height)
@@ -77,6 +108,38 @@ void CognitionLogDataProvider::update(ImageUpper& imageUpper)
     distance * theCameraInfoUpper.height / theCameraInfoUpper.focalLength,
     imageUpper);
   DEBUG_RESPONSE("representation:JPEGImageUpper") OUTPUT(idJPEGImage, bin, JPEGImage(imageUpper));
+}
+
+void CognitionLogDataProvider::update(SequenceImage& image)
+{
+  if (SystemCall::getMode() == SystemCall::logfileReplay)
+  {
+    if (sequenceImage && sequenceImage->noInSequence > 0)
+    {
+      image = *sequenceImage;
+    }
+    else 
+    {
+      image = SequenceImage();
+    }
+      
+  }
+}
+
+void CognitionLogDataProvider::update(SequenceImageUpper& imageUpper)
+{
+  if (SystemCall::getMode() == SystemCall::logfileReplay)
+  {
+    if (sequenceImageUpper && sequenceImageUpper->noInSequence > 0)
+    {
+      imageUpper = *sequenceImageUpper;
+    }
+    else
+    {
+      imageUpper = SequenceImageUpper();
+    }
+
+  }
 }
 
 void CognitionLogDataProvider::update(ImageCoordinateSystem& imageCoordinateSystem)
@@ -166,6 +229,7 @@ void CognitionLogDataProvider::update(ImageCoordinateSystemUpper& imageCoordinat
     }
   }
 }
+
 void CognitionLogDataProvider::update(RobotPoseHypotheses& robotPoseHypotheses)
 {
   if (robotPoseHypothesesCompressed)
@@ -234,6 +298,22 @@ bool CognitionLogDataProvider::handleMessage2(InMessage& message)
         thumbnail.toImage((ImageUpper&)Blackboard::getInstance()["ImageUpper"]);
       }
       return true;
+    case idYoloInput:
+      if (Blackboard::getInstance().exists("Image"))
+      {
+        YoloInput yoloInput;
+        message.bin >> yoloInput;
+        yoloInput.toImage((Image&)Blackboard::getInstance()["Image"]);
+      }
+      return true;
+    case idYoloInputUpper:
+      if (Blackboard::getInstance().exists("ImageUpper"))
+      {
+        YoloInputUpper yoloInputUpper;
+        message.bin >> yoloInputUpper;
+        yoloInputUpper.toImage((ImageUpper&)Blackboard::getInstance()["ImageUpper"]);
+      }
+      return true;
     case idProcessFinished:
       frameDataComplete = true;
       return true;
@@ -288,11 +368,33 @@ bool CognitionLogDataProvider::handleMessage2(InMessage& message)
       }
       return true;
 
+    case idSequenceImage:
+      if(Blackboard::getInstance().exists("Image"))
+      {
+        if(!sequenceImage)
+          sequenceImage = new SequenceImage;
+        message.bin >> *sequenceImage;
+      }
+      return true;
+    case idSequenceImageUpper:
+      if (Blackboard::getInstance().exists("ImageUpper"))
+      {
+        if (!sequenceImageUpper)
+          sequenceImageUpper = new SequenceImageUpper;
+        message.bin >> *sequenceImageUpper;
+      }
+      return true;
+
     case idRobotPoseHypothesesCompressed:
       if (!robotPoseHypothesesCompressed)
         robotPoseHypothesesCompressed.reset(new RobotPoseHypothesesCompressed);
       
       message.bin >> *robotPoseHypothesesCompressed;
+      return true;
+
+    case idGameInfo:
+      if (handle(message) && Blackboard::getInstance().exists("RawGameInfo"))
+        (GameInfo&) Blackboard::getInstance()["RawGameInfo"] = (GameInfo&)Blackboard::getInstance()["GameInfo"];
       return true;
 
     default:

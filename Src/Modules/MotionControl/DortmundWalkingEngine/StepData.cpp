@@ -4,6 +4,7 @@
 */
 
 #include "StepData.h"
+using namespace DWE;
 
 const int ZMP::phaseToZMPFootMap[] = {
   LEFT_FOOT,

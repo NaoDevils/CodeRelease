@@ -33,6 +33,7 @@
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/Perception/CameraMatrix.h"
+#include "Representations/Perception/GoalPercept.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Tools/ProcessFramework/Process.h"
@@ -149,6 +150,7 @@ protected:
   RobotPose robotPose; /**< Robot pose from team communication. */
   BallModel ballModel; /**< Ball model from team communication. */
   TeamBallModel teamBallModel; /**< combined ball information from team communication */
+  GoalPercept goalPercept; /**< Goal percept from team communication. */
   BehaviorData behaviorData; /**< Behavior data from team communication. */
   RobotHealth robotHealth; /**< Robot Health from team communication. */
   MotionRequest motionRequest; /**< Motion Request from team communication. */

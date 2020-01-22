@@ -10,10 +10,17 @@
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
+#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
+#include "Representations/Infrastructure/SensorData/SystemSensorData.h"
 #include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/JointRequest.h"
+#include "Representations/Sensing/FallDownState.h"
+#include "Representations/Sensing/InertialData.h"
+#include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Tools/MessageQueue/InMessage.h"
 #include "Tools/Module/Module.h"
@@ -21,17 +28,23 @@
 
 MODULE(MotionLogDataProvider,
 {,
+  PROVIDES(FallDownState),
   PROVIDES(FrameInfo),
+  PROVIDES(FsrSensorData),
   PROVIDES(GroundTruthOdometryData),
+  PROVIDES(InertialData),
   PROVIDES(InertialSensorData),
   PROVIDES(JointAngles),
+  PROVIDES(JointRequest),
   PROVIDES(JointSensorData),
   PROVIDES(KeyStates),
+  PROVIDES(MotionInfo),
+  PROVIDES(MotionRequest),
   PROVIDES(OdometryData),
   PROVIDES(OpponentTeamInfo),
   PROVIDES(OwnTeamInfo),
-  PROVIDES(RawGameInfo),
   PROVIDES(RobotInfo),
+  PROVIDES(SystemSensorData),
   PROVIDES(UsSensorData),
 });
 
@@ -53,17 +66,23 @@ public:
   MotionLogDataProvider();
   ~MotionLogDataProvider();
 
+  void update(FallDownState&) {}
   void update(FrameInfo&) {}
+  void update(FsrSensorData&) {}
   void update(GroundTruthOdometryData&);
+  void update(InertialData&) {}
   void update(InertialSensorData&) {}
   void update(JointAngles&) {}
+  void update(JointRequest&) {}
   void update(JointSensorData&) {}
   void update(KeyStates&) {}
+  void update(MotionInfo&) {}
+  void update(MotionRequest&) {}
   void update(OdometryData&) {}
   void update(OpponentTeamInfo&) {}
   void update(OwnTeamInfo&) {}
-  void update(RawGameInfo&) {}
   void update(RobotInfo&) {}
+  void update(SystemSensorData&) {}
   void update(UsSensorData&) {}
 
   /**

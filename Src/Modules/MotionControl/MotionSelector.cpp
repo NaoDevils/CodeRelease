@@ -30,11 +30,12 @@ void MotionSelector::move()
 void MotionSelector::update(MotionSelection& motionSelection)
 {
   static int interpolationTimes[MotionRequest::numOfMotions];
-  interpolationTimes[MotionRequest::walk] = 600;
-  interpolationTimes[MotionRequest::kick] = 200;
+  interpolationTimes[MotionRequest::walk] = 300;
+  interpolationTimes[MotionRequest::kick] = 100;
   //interpolationTimes[MotionRequest::dmpKick] = 200;
   interpolationTimes[MotionRequest::specialAction] = 200;
   interpolationTimes[MotionRequest::stand] = 1500;
+  interpolationTimes[MotionRequest::keyFrame] = 200;
   //interpolationTimes[MotionRequest::stand] = 600;
 
   static const int playDeadDelay(2000);
@@ -55,7 +56,10 @@ void MotionSelector::update(MotionSelection& motionSelection)
 
     // check if the target motion can be the requested motion (mainly if leaving is possible)
     if((lastMotion == MotionRequest::walk && 
-          (theWalkingEngineOutput.isLeavingPossible || !theGroundContactState.contact)) ||
+          (theWalkingEngineOutput.isLeavingPossible || !theGroundContactState.contact || 
+            (theMotionSettings.leaveWalkForDive && requestedMotion == theMotionRequest.specialAction &&
+              theMotionRequest.specialActionRequest.specialAction >= SpecialActionRequest::numOfBasicMotions &&
+              theMotionRequest.specialActionRequest.specialAction < SpecialActionRequest::numOfSpecialActionIDs))) ||
        (lastMotion == MotionRequest::specialAction && theSpecialActionsOutput.isLeavingPossible) ||
        (lastMotion == MotionRequest::kick && theKickEngineOutput.isLeavingPossible) || //never immediatly leave kick or get up
       (lastMotion == MotionRequest::stand && theStandEngineOutput.isLeavingPossible))
@@ -102,6 +106,8 @@ void MotionSelector::update(MotionSelection& motionSelection)
   PLOT("module:MotionSelector:ratios:walk", motionSelection.ratios[MotionRequest::walk]);
   PLOT("module:MotionSelector:ratios:specialAction", motionSelection.ratios[MotionRequest::specialAction]);
   PLOT("module:MotionSelector:ratios:stand", motionSelection.ratios[MotionRequest::stand]);
+  PLOT("module:MotionSelector:ratios:kick", motionSelection.ratios[MotionRequest::kick]);
+  PLOT("module:MotionSelector:ratios:keyFrame", motionSelection.ratios[MotionRequest::keyFrame]);
   PLOT("module:MotionSelector:lastMotion", lastMotion);
   PLOT("module:MotionSelector:prevMotion", prevMotion);
   PLOT("module:MotionSelector:targetMotion", motionSelection.targetMotion);

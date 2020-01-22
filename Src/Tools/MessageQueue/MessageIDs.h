@@ -41,7 +41,6 @@ ENUM(MessageID,
   idCLIPGoalPercept,// added by NDevils
   idCLIPPointsPercept,// added by NDevils
   idColorCalibration,
-  idDropInPlayer,
   idFilteredJointData,
   idFsrSensorData,
   idFrameInfo,
@@ -67,18 +66,17 @@ ENUM(MessageID,
   idMotionRequest,
   idMocapRobotPose, //added by NDevils
   idMocapBallModel, //added by NDevils
-  idOdometer,
+  //idOdometer, Replaced by LocalRobotMap
+  idLocalRobotMap, // added by NDevils
   idOdometryData,
   idOpponentTeamInfo,
   idOwnTeamInfo,
   idPenaltyCrossPercept, // added by NDevils
-  idReceivedSPLStandardMessages,
   idRobotHealth,
   idRobotInfo,
   idRobotMap, // added by NDevils
   idRobotPose,
   idRobotsPercept,
-  idScanlineRegions,
   idSideConfidence,
   idKickSymbols, // added by NDevils
   idStopwatch,
@@ -88,7 +86,6 @@ ENUM(MessageID,
   idRoleSymbols, // added by NDevils
   idThumbnail,
   idUsSensorData,
-  idZmp,
   // added by NDevils
   idSpeedRequest,
   idBallModelAfterPreview,
@@ -101,6 +98,15 @@ ENUM(MessageID,
   idRemoteBallModel,
   idBodyContourUpper,
   idRobotPoseHypothesesCompressed,
+  idYoloInput,
+  idYoloInputUpper,
+  idSequenceImage,
+  idSequenceImageUpper,
+  idRobotsPerceptUpper,
+  idJointRequest,
+  idFootPositions,
+  idMotionSelection,
+  idMotionState,
 
   numOfDataMessageIDs, /**< everything below this does not belong into log files */
 
@@ -116,8 +122,9 @@ ENUM(MessageID,
   idTeammateIsPenalized,
   idTeammateIsUpright,
   idTeammateTimeOfLastGroundContact,
-  idWhistle,
+  //idWhistle, // Added to whistleDortmund; Replaced by SpeedInfo
   idWhistleDortmund, // added by NDevils
+  idSpeedInfo,
 
   // infrastructure
   idConsole,
@@ -132,7 +139,6 @@ ENUM(MessageID,
   idDrawingManager,
   idDrawingManager3D,
   idJointCalibration,
-  idJointRequest,
   idLogResponse,
   idModuleRequest,
   idModuleTable,

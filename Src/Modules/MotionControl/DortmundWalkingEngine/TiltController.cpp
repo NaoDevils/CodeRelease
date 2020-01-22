@@ -41,10 +41,10 @@ TiltController::TiltController(
   theTargetCoM(theTargetCoM)*/
 {
 	angleSum=0;
-  tiltPIDController.updateControlFactors(1.0,0.0,0.0);
-  rollPIDController.updateControlFactors(1.0,0.0,0.0);
-  tiltPIDController.setTimeStep(1.0);
-  rollPIDController.setTimeStep(1.0);
+  tiltPIDController.updateControlFactors(1.f,0.0,0.0);
+  rollPIDController.updateControlFactors(1.f,0.0,0.0);
+  tiltPIDController.setTimeStep(1.f);
+  rollPIDController.setTimeStep(1.f);
 }
 
 
@@ -136,8 +136,8 @@ void TiltController::updateBodyTilt(BodyTilt &bodyTilt)
 
 		if (std::abs(theInertialSensorData.angle.x()) < 1.0f && (theInertialSensorData.angle.y() < 1.0f))
 		{
-			bodyTilt.x+= (float)rollPIDController.getControllerOutput(theInertialSensorData.angle.x(),bodyTilt.x);
-			bodyTilt.y+= (float)tiltPIDController.getControllerOutput(theInertialSensorData.angle.y(),bodyTilt.y);
+			bodyTilt.x+= rollPIDController.getControllerOutput(theInertialSensorData.angle.x(),bodyTilt.x);
+			bodyTilt.y+= tiltPIDController.getControllerOutput(theInertialSensorData.angle.y(),bodyTilt.y);
 		}
 		else
 		{

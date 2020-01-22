@@ -15,6 +15,7 @@
 #include <sched.h>
 #endif
 #include <unistd.h>
+#include <string>
 #include "Platform/BHAssert.h"
 #include "Platform/Semaphore.h"
 
@@ -86,8 +87,8 @@ public:
     if(handle)
     {
       running = false;
-      terminated.wait(10000);
-      pthread_cancel(handle);
+      if(!terminated.wait(10000))
+        pthread_cancel(handle);
       pthread_join(handle, 0);
       handle = 0;
     }
@@ -128,6 +129,21 @@ public:
   size_t getId() const {return (size_t) handle;}
 
   /**
+   * Sets thread name
+   */
+  static void setName(const std::string& name)
+  {
+#ifdef LINUX
+    char cname[16];
+    size_t len = name.copy(cname, 15);
+    cname[len] = '\0';
+    VERIFY(!pthread_setname_np(pthread_self(), cname));
+#else
+    VERIFY(!pthread_setname_np(name.c_str()));
+#endif
+  }
+
+  /**
   * The function returns the id of the calling thread.
   * @return The id of the calling thread.
   */
@@ -145,19 +161,6 @@ public:
 #endif
   }
 };
-
-/**
- * Names the current thread.
- * Not implemented on Linux (yet).
- * @param name The new name of the thread.
- */
-#ifdef TARGET_ROBOT
-#define NAME_THREAD(name) ((void) 0)
-#elif defined(LINUX)
-#define NAME_THREAD(name) VERIFY(!pthread_setname_np(pthread_self(), name + (strlen(name) > 15 ? strlen(name) - 15 : 0)))
-#else
-#define NAME_THREAD(name) VERIFY(!pthread_setname_np(name))
-#endif
 
 /**
 * A class encapsulating a mutex lock.

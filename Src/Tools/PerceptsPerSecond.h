@@ -2,25 +2,24 @@
  * \file PerceptsPerSecond.h
  * \author <a href="mailto:heiner.walter@tu-dortmund.de">Heiner Walter</a>
  *
- * This file declares a ring buffer like data structure which can track the 
+ * This file declares a ring buffer like data structure which can track the
  * <tt>percepts per second</tt> value over a specific time.
 */
 
 #pragma once
 
-#include <deque>
+#include <vector>
 
 /**
  * \class PerceptsPerSecond
  *
- * This class declares a ring buffer like data structure which can track the 
- * <tt>percepts per second</tt> value over a specific time (\c duration 
+ * This class declares a ring buffer like data structure which can track the
+ * <tt>percepts per second</tt> value over a specific time (\c duration
  * milliseconds).
  *
  * \tparam duration The time (in ms) over which the percepts per second value
  *                  should be tracked.
  */
-template <unsigned duration = 1000>
 class PerceptsPerSecond
 {
 private:
@@ -35,14 +34,16 @@ private:
     inline unsigned timestamp() const { return first; }
     inline float validity() const { return second; }
   };
-  typedef std::deque<pps_entry> pps_deque;
+  typedef std::vector<pps_entry> pps_deque;
   /**
    * Saves an timestamp of each percept. The newest percept (largest timestamp)
    * is stored at the front of the double ended queue, the oldest ones at the
    * back. The deque is always orderd. Timestamps older than \c duration
    * milliseconds are removed.
    */
-   pps_deque ringBuffer;
+  pps_deque ringBuffer;
+
+  unsigned duration;
 
 public:
   /**
@@ -50,7 +51,7 @@ public:
    *
    * Creates a new and empty \c PerceptsPerSecond instance.
    */
-  PerceptsPerSecond() {}
+  PerceptsPerSecond(unsigned duration) : duration(duration) {}
 
   /**
    * Add a new percept.
@@ -72,15 +73,11 @@ public:
   void addPercepts(const PerceptsPerSecond& source)
   {
     //typename pps_deque::iterator it = ringBuffer.begin();
-    for (typename pps_deque::const_iterator it_s = source.ringBuffer.begin(); it_s != source.ringBuffer.end(); ++it_s) {
-      //while (it != ringBuffer.end() && *it > *it_s) ++it;
-      //ringBuffer.insert(it, *it_s);
-      //++it;
-      
+    for (auto it_s = source.ringBuffer.cbegin(); it_s != source.ringBuffer.cend(); ++it_s) {
       // TODO: Verify: This could be very slow.
       addPercept(*it_s);
     }
-    
+
     //cleanUp(ringBuffer.front());
   }
 
@@ -90,22 +87,22 @@ public:
    * percept.
    * \return Percepts per seconds.
    */
-  size_t pps() const { return ringBuffer.size(); }
+  float pps() const { return static_cast<float>(ringBuffer.size()) * 1000.f / duration; }
 
   /**
    * Return the <tt>percepts per second</tt> value tracked over the last
    * \c duration milliseconds counted from \c currentTimestamp.
-   * \param [in] currentTimestamp The current timestamp (in ms). 
+   * \param [in] currentTimestamp The current timestamp (in ms).
    * \return Percepts per seconds.
    */
-  size_t pps(unsigned currentTimestamp)
+  float pps(unsigned currentTimestamp)
   {
     cleanUp(currentTimestamp);
     return pps();
   }
-  
+
   /**
-   * Return the mean validity tracked over the last \c duration milliseconds 
+   * Return the mean validity tracked over the last \c duration milliseconds
    * counted from the timestamp of the newest percept.
    * This requires to set the validity parameter of \c addPercept method.
    * \return Mean validity (in range [0,1]).
@@ -114,14 +111,14 @@ public:
   {
     // Prevent division by 0.
     if (ringBuffer.size() == 0) return 0.f;
-    
+
     float validitySum = 0.f;
     for (typename pps_deque::const_iterator it = ringBuffer.begin(); it != ringBuffer.end(); ++it) {
       validitySum += it->validity();
     }
     return validitySum / static_cast<float>(ringBuffer.size());
   }
-  
+
   /**
    * Return the mean validity tracked over the last \c duration milliseconds
    * counted from \c currentTimestamp.
@@ -136,7 +133,7 @@ public:
   }
 
   /**
-   * Remove all timestamps (percept) which are older than \c duration 
+   * Remove all timestamps (percept) which are older than \c duration
    * milliseconds counted from \c currentTimestamp.
    * \param [in] currentTimestamp The current timestamp (in ms).
    */
@@ -149,14 +146,16 @@ private:
    */
   void addPercept(const pps_entry& entry)
   {
-    // Search for the first timestamp smaller than the new one.
-    typename pps_deque::iterator it = ringBuffer.begin();
-    while (it != ringBuffer.end() && it->timestamp() > entry.timestamp()) ++it;
+    // Search for the first timestamp smaller than the new one. Start at the end
+    typename pps_deque::const_iterator it = ringBuffer.cbegin();
+    while (it != ringBuffer.cend() && it->timestamp() > entry.timestamp()) ++it;
     ringBuffer.insert(it, entry);
-    
-    cleanUp(ringBuffer.front().timestamp());
+
+    auto first = ringBuffer.cbegin();
+    if (first != ringBuffer.cend())
+      cleanUp(first->timestamp());
   }
-  
+
   /**
    * Remove all timestamps (percept) from the \c ringBuffer which are older
    * than \c duration milliseconds.

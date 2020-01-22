@@ -20,11 +20,15 @@ STREAMABLE(WalkRequest,
 {
   ENUM(RequestType,
   {,
-    speed, /**< Interpret \c speed as absolute walking speed and ignore \c target. */
-    destination, /**< Interpret \c speed as percentage walking speed and ignore \c target. */
-    ball, /**< Use \c target as walking target relative to the current position of the robot and interpret \c speed as percentage walking speed. */
-    dribble,
+    speed, /**< Interpret \c request as absolute walking speed. */
+    destination, /**< Interpret \c request as relative target. */
   });
+
+   ENUM(RotationType,
+   {,
+    irrelevant, /**< robot rotation is allowed to be used at will */
+    towardsBall, /**< robot is supposed to rotate towards ball position */
+   });
 
   ENUM(StepRequest,
   { ,
@@ -32,7 +36,11 @@ STREAMABLE(WalkRequest,
     previewKick,
     any, // lets the walking engine choose the kick using kick target from kick request
     beginScript, /**< Add custom step file after this marker */
-    frontKickShort, /**< Execute the custom step file */
+    // safety step, not a kick!
+    safetyStepFront,
+    safetyStepBack,
+    // kicks are always with left foot (or to the left), have to be mirrored!
+    frontKickShort, /** Quick short kick to front. */
   });
 
   // needed to be able to put std::vector<StepRequest> as parameter into LOADS_PARAMETERS macro
@@ -56,8 +64,6 @@ STREAMABLE(WalkRequest,
   {
     switch (stepRequest)
     {
-    case frontKickShort:
-      return true;
     case none:
     case previewKick:
     case beginScript:
@@ -75,12 +81,14 @@ STREAMABLE(WalkRequest,
       return *this;
     }
     requestType = other.requestType;
+    rotationType = other.rotationType;
     request = other.request;
     stepRequest = other.stepRequest;
     return *this;
   },
 
   (RequestType)(speed) requestType, /**< The walking mode. */
+  (RotationType)(irrelevant) rotationType, /**< E.g. ball faced positioning */
   (Pose2f) request, /**< Target relative to robot or speed in mm/s and radian/s. */
   (StepRequest)(none) stepRequest, /**< The stepRequest (for in-walk predefined motions) */
 });
@@ -95,6 +103,7 @@ STREAMABLE(WalkRequestCompressed,
   WalkRequestCompressed(const WalkRequest & walkRequest)
   {
     requestType = walkRequest.requestType;
+    rotationType = walkRequest.rotationType;
     destination = walkRequest.request;
     stepRequest = walkRequest.stepRequest;
   }
@@ -102,6 +111,7 @@ STREAMABLE(WalkRequestCompressed,
   {
     WalkRequest wr;
     wr.requestType = requestType;
+    wr.rotationType = rotationType;
     wr.request = destination;
     wr.stepRequest = stepRequest;
     // rest is not needed -> has default values
@@ -109,6 +119,7 @@ STREAMABLE(WalkRequestCompressed,
   },
 
   ((WalkRequest) RequestType) requestType, /**< The currently executed walk type */
+  ((WalkRequest) RotationType) rotationType, /**< The currently executed rotation type */
   (Pose2f) destination, /**< The current walk destination (or speed in case of type speed) */
   ((WalkRequest) StepRequest) stepRequest, /**< The stepRequest (for in-walk predefined motions) */
 });

@@ -1,0 +1,31 @@
+name: Build simulator on Windows
+
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'Make/VSCode/build.bat'
+      - 'Make/**Makefile'
+      - 'Make/**Marefile'
+      - 'Make/**.mare'
+      - 'Src/**'
+      - 'Util/**'
+      - '!Src/Utils/dorsh/**'
+
+jobs:
+  build_simrobot:
+    name: SimRobot and SimulatedNao
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v1
+    - name: generate
+      working-directory: ./Make/VS2019/
+      run: ..\..\Util\SimRobot\Util\mare\Windows\bin\mare.exe --vcxproj=2019 ssse3=true avx2=true
+    - name: make
+      shell: cmd
+      run: Make\VSCode\build.bat Make\VS2019\NDevils.sln Develop SimRobot
+    # - uses: actions/upload-artifact@v1
+      # with:
+        # name: binary
+        # path: Build/Windows/SimRobot/Develop

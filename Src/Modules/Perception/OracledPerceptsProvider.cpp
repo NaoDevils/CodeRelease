@@ -130,6 +130,7 @@ void OracledPerceptsProvider::update(BallPercept& ballPercept)
         ballPercept.radiusInImage = circle.radius;
         ballPercept.relativePositionOnField = ballOffset;
         ballPercept.fromUpper = upper;
+        ballPercept.validity = 1.f;
         // Add some noise
         if (applyBallNoise)
         {
@@ -317,9 +318,25 @@ void OracledPerceptsProvider::update(RobotsPercept& playersPercept)
 
   const bool isBlue = Global::getSettings().teamColor == Settings::blue;
   for (unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, playersPercept);
+    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, playersPercept, false);
   for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, playersPercept);
+    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, playersPercept, false);
+}
+
+void OracledPerceptsProvider::update(RobotsPerceptUpper& playersPercept)
+{
+  playersPercept.robots.clear();
+  if (!theCameraMatrixUpper.isValid || !Global::settingsExist())
+    return;
+
+  // Simulation scene should only use blue and red for now
+  ASSERT(Global::getSettings().teamColor == Settings::blue || Global::getSettings().teamColor == Settings::red);
+
+  const bool isBlue = Global::getSettings().teamColor == Settings::blue;
+  for (unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
+    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, (RobotsPercept&)playersPercept, true);
+  for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
+    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, (RobotsPercept&)playersPercept, true);
 }
 
 void OracledPerceptsProvider::update(CLIPCenterCirclePercept& centerCirclePercept)
@@ -370,7 +387,7 @@ void OracledPerceptsProvider::update(CLIPCenterCirclePercept& centerCirclePercep
   }
 }
 
-void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::GroundTruthPlayer& player, bool isOpponent, RobotsPercept& playersPercept)
+void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::GroundTruthPlayer& player, bool isOpponent, RobotsPercept& playersPercept, const bool &upper)
 {
   const Pose2f robotPoseInv = theGroundTruthWorldState.ownPose.inverse();
   Vector2f relativePlayerPos = robotPoseInv * player.pose.translation;
@@ -379,8 +396,8 @@ void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::Groun
   if (randomFloat() > playerRecognitionRate)
     return;
   Vector2f playerInImage;
-  bool upper = false;
-  if (pointIsInImage(relativePlayerPos, playerInImage, upper))
+  bool localUpper = upper;
+  if (pointIsInImage(relativePlayerPos, playerInImage, localUpper) && upper == localUpper)
   {
     const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
     const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
@@ -406,7 +423,6 @@ void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::Groun
       re.imageUpperLeft.x() -= width / 2;
       re.imageUpperLeft.y() = std::max(4, re.imageUpperLeft.y() - static_cast<int>(Geometry::getSizeByDistance(cameraInfo, 500, distance)));
       re.locationOnField = Pose2f(relativePlayerPos);
-
       playersPercept.robots.push_back(re);
     }
   }

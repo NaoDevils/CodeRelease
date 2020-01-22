@@ -13,7 +13,6 @@
 #include "Representations/Configuration/ColorTable.h"
 #include "Representations/Configuration/ColorCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/Configuration/DamageConfiguration.h"
 #include "Representations/Configuration/HeadLimits.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/Infrastructure/TeamInfo.h"
@@ -26,8 +25,6 @@ MODULE(CognitionConfigurationDataProvider,
   PROVIDES(CameraCalibration),
   PROVIDES_WITHOUT_MODIFY(ColorTable),
   PROVIDES(RobotDimensions),
-  PROVIDES(DamageConfigurationBody),
-  PROVIDES(DamageConfigurationHead),
   PROVIDES(HeadLimits),
   PROVIDES_WITHOUT_MODIFY(OdometryCorrectionTables),
 });
@@ -41,8 +38,6 @@ private:
   CameraCalibration* theCameraCalibration = nullptr;
   ColorCalibration* theColorCalibration = nullptr;
   RobotDimensions* theRobotDimensions = nullptr;
-  DamageConfigurationBody* theDamageConfigurationBody = nullptr;
-  DamageConfigurationHead* theDamageConfigurationHead = nullptr;
   HeadLimits* theHeadLimits = nullptr;
   ColorCalibration colorCalibration;
   OdometryCorrectionTables* theOdometryCorrectionTables = nullptr;
@@ -51,8 +46,6 @@ private:
   void update(CameraCalibration& cameraCalibration);
   void update(ColorTable& cameraCalibration);
   void update(RobotDimensions& robotDimensions);
-  void update(DamageConfigurationBody& damageConfigurationBody);
-  void update(DamageConfigurationHead& damageConfigurationHead);
   void update(HeadLimits& headLimits);
   void update(OdometryCorrectionTables& odometryCorrectionTables);
 
@@ -60,8 +53,6 @@ private:
   void readCameraCalibration();
   void readColorCalibration();
   void readRobotDimensions();
-  void readDamageConfigurationBody();
-  void readDamageConfigurationHead();
   void readHeadLimits();
   void readOdometryCorrectionTables();
 

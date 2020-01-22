@@ -52,7 +52,7 @@ PoseHypothesis2017::PoseHypothesis2017(const Pose2f & newPose, float _positionCo
   positionConfidence(_positionConfidence),
   normalizedPositionConfidence(_positionConfidence),
   symmetryConfidence(_symmetryConfidence),
-  timeOfLastPrediction(0),
+  mirrored(nullptr),
   initialized(false),
   sensorUpdated(false)
 {
@@ -63,9 +63,16 @@ PoseHypothesis2017::PoseHypothesis2017(const Pose2f & newPose, float _positionCo
   init(newPose, parameters);
 }
 PoseHypothesis2017::PoseHypothesis2017(const PoseHypothesis2017& other, const unsigned &timeStamp)
+  : _uniqueId(0)
+  , positionConfidence(0.f)
+  , normalizedPositionConfidence(0.)
+  , symmetryConfidence(0.f)
+  , mirrored(nullptr)
+  , initialized(false)
+  , sensorUpdated(false)
+  , creationTime(timeStamp)
 {
   *this = other;
-  creationTime = timeStamp;
 }
 
 PoseHypothesis2017& PoseHypothesis2017::operator=(const PoseHypothesis2017& other)
@@ -84,11 +91,17 @@ PoseHypothesis2017& PoseHypothesis2017::operator=(const PoseHypothesis2017& othe
   singleMeasurementCovariance_2x2 = other.singleMeasurementCovariance_2x2;
   state = other.state;
   symmetryConfidence = other.symmetryConfidence;
-  timeOfLastPrediction = other.timeOfLastPrediction;
-  temporaryLocalSymmetryLikelihood = other.temporaryLocalSymmetryLikelihood;
   creationTime = other.creationTime;
   sensorUpdated = other.sensorUpdated;
+  mirrored = other.mirrored;
   return *this;
+}
+
+PoseHypothesis2017::~PoseHypothesis2017()
+{
+  // Remove reference of mirrored hypothesis to this one
+  if (mirrored && (mirrored->mirroredHypothesis() == this))
+    mirrored->mirroredHypothesis() = nullptr;
 }
 
 void PoseHypothesis2017::cleanup()
@@ -948,7 +961,7 @@ void PoseHypothesis2017::calculateSphericalObservation(SphericalObservation<tota
   const double p2l_y = globalCoordinates.y() - state[1]; // pose to landmark, y
   const double d2 = p2l_x * p2l_x + p2l_y * p2l_y;
   const double d = sqrt(d2);
-  const double cameraHeight2 = cameraHeight * cameraHeight;
+  const double cameraHeight2 = static_cast<double>(cameraHeight) * cameraHeight;
 
   // calculate observed angles
   observation.realAngles.x() = atan2(cameraHeight, relativePosition.norm()); // vertical angle
@@ -1090,16 +1103,17 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(
   float difference = 0;
   float differenceOfMirrored = 0;
 
-  const float minDiffToMatter = 500;
+  const float minDiffToMatter = 500.f;
 
   Vector2f localModelInGlobalCoords, localModelInGlobalCoordsMirrored;
   Pose2f pose;
   getRobotPose(pose);
 
-  // check ball
+  // Check ball
   if (frameInfo.getTimeSince(theBallModel.timeWhenLastSeen) < 1000
     && frameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 1500
-    && theBallModel.validity > 0.7f && theRemoteBallModel.validity > 0.8f)
+    && theBallModel.validity > 0.7f && theRemoteBallModel.validity > 0.8f
+    && theBallModel.estimate.velocity.norm() < 100 && theRemoteBallModel.velocity.norm() < 100)
   {
     localModelInGlobalCoords = pose * theBallModel.estimate.position;
     difference = (theRemoteBallModel.position - localModelInGlobalCoords).norm();
@@ -1109,10 +1123,9 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(
     const bool isThisPositionMoreLikely = difference < differenceOfMirrored;
     const float& closestDifference = isThisPositionMoreLikely ? difference : differenceOfMirrored;
 
-    if (std::abs(difference - differenceOfMirrored) > minDiffToMatter)
+    if (std::abs(difference - differenceOfMirrored) > minDiffToMatter
+      && closestDifference < parameters.symmetryUpdate.maxDistanceToClosestRemoteModel)
     {
-      const bool inRange = closestDifference < parameters.symmetryUpdate.maxDistanceToClosestRemoteModel;
-
       std::vector<int> teammates;
       extractTeammateNumbers(theRemoteBallModel.teammates, teammates);
 
@@ -1121,19 +1134,19 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(
         const Teammate *teammate = getTeammateByNumber(theTeammateData, tmNumber);
         if (teammate)
         {
-          const float &baseConfidence = teammate->isGoalkeeper ? parameters.symmetryUpdate.influenceOfNewMeasurement : parameters.symmetryUpdate.influenceOfNewMeasurementByGoalie;
+          const float &baseConfidence = teammate->isGoalkeeper ? parameters.symmetryUpdate.influenceOfNewBallMeasurementByGoalie : parameters.symmetryUpdate.influenceOfNewBallMeasurement;
           const float stateValue = 1.f - static_cast<float>(teammate->sideConfidence.confidenceState) / SideConfidence::numOfConfidenceStates;
-          updateSymmetryConfidence(inRange && isThisPositionMoreLikely, baseConfidence * stateValue * teammate->sideConfidence.sideConfidence);
+          updateSymmetryConfidence(isThisPositionMoreLikely, baseConfidence * stateValue * teammate->sideConfidence.sideConfidence);
         }
       }
-      lastSymmetryUpdate = frameInfo.time;
     }
   }
 
-  // for testing: use ball only.
-  // works better so far...
+  // Use only ball for symmetry
+  // Works better for now
   return;
 
+  // Update based on robot map
   difference = 0;
   differenceOfMirrored = 0;
 
@@ -1142,58 +1155,77 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(
 
   const float bigDiff = 1000000.f;
 
-  int numberOfRobotsToMatch = 0;
 
   // test if own pose is somewhere in the remote robot map
-  localModelInGlobalCoords = pose.translation;
-  localModelInGlobalCoordsMirrored = localModelInGlobalCoords * -1;
   smallestDiff = bigDiff;
   smallestDiffOfMirrored = bigDiff;
-  for (std::vector<RobotMapEntry>::const_iterator i = theRemoteRobotMap.robots.begin(); i != theRemoteRobotMap.robots.end(); ++i)
+  localModelInGlobalCoords = pose.translation;
+  localModelInGlobalCoordsMirrored = localModelInGlobalCoords * -1;
+  for (const auto &robot : theRemoteRobotMap.robots)
   {
-    float tempDiff = (localModelInGlobalCoords - i->pose.translation).norm();
+    float tempDiff = (localModelInGlobalCoords - robot.pose.translation).norm();
     if (tempDiff < smallestDiff)
     {
-      smallestDiff = tempDiff;
+      smallestDiff = tempDiff * robot.validity;
     }
-    tempDiff = (localModelInGlobalCoordsMirrored - i->pose.translation).norm();
+    tempDiff = (localModelInGlobalCoordsMirrored - robot.pose.translation).norm();
     if (tempDiff < smallestDiffOfMirrored)
     {
-      smallestDiffOfMirrored = tempDiff;
+      smallestDiffOfMirrored = tempDiff * robot.validity;
     }
   }
-  difference += smallestDiff;
-  differenceOfMirrored += smallestDiffOfMirrored;
-  numberOfRobotsToMatch++;
+  if (smallestDiff < minDiffToMatter || smallestDiffOfMirrored < minDiffToMatter)
+  {
+    difference += (smallestDiff * parameters.symmetryUpdate.influenceOfNewTeammateRobotMeasurement);
+    differenceOfMirrored += (smallestDiffOfMirrored * parameters.symmetryUpdate.influenceOfNewTeammateRobotMeasurement);
+  }
+
 
   // test other local observations
-  for (std::vector<RobotMapEntry>::const_iterator j = theLocalRobotMap.robots.begin(); j != theLocalRobotMap.robots.end(); ++j)
+  for (const auto &local : theLocalRobotMap.robots)
   {
     smallestDiff = bigDiff;
     smallestDiffOfMirrored = bigDiff;
-    localModelInGlobalCoords = pose * j->pose.translation;
+    localModelInGlobalCoords = local.pose.translation;
     localModelInGlobalCoordsMirrored = localModelInGlobalCoords * -1;
-    for (std::vector<RobotMapEntry>::const_iterator i = theRemoteRobotMap.robots.begin(); i != theRemoteRobotMap.robots.end(); ++i)
+    
+    const RobotMapEntry *smallestDiffEntry = 0, *smallestDiffMirroredEntry = 0;
+    for (const auto &remote : theRemoteRobotMap.robots)
     {
-      float tempDiff = (localModelInGlobalCoords - i->pose.translation).norm();
+      float tempDiff = (localModelInGlobalCoords - remote.pose.translation).norm();
       if (tempDiff < smallestDiff)
       {
-        smallestDiff = tempDiff;
+        smallestDiff = tempDiff * remote.validity;
+        smallestDiffEntry = &remote;
       }
-      tempDiff = (localModelInGlobalCoordsMirrored - i->pose.translation).norm();
+      tempDiff = (localModelInGlobalCoordsMirrored - remote.pose.translation).norm();
       if (tempDiff < smallestDiffOfMirrored)
       {
-        smallestDiffOfMirrored = tempDiff;
+        smallestDiffOfMirrored = tempDiff * remote.validity;
+        smallestDiffMirroredEntry = &remote;
       }
     }
-    difference += smallestDiff;
-    differenceOfMirrored += smallestDiffOfMirrored;
-    numberOfRobotsToMatch++;
+
+    if (smallestDiffEntry && smallestDiffMirroredEntry)
+    {
+      const bool isTeammate = (local.robotType == RobotEstimate::teammateRobot
+        || smallestDiffEntry->robotType == RobotEstimate::teammateRobot
+        || smallestDiffMirroredEntry->robotType == RobotEstimate::teammateRobot);
+
+      const float influence = isTeammate ?
+        parameters.symmetryUpdate.influenceOfNewTeammateRobotMeasurement :
+        parameters.symmetryUpdate.influenceOfNewOpponentRobotMeasurement;
+
+      difference += (smallestDiff * influence);
+      differenceOfMirrored += (smallestDiffOfMirrored * influence);
+    }
   }
 
-  if (std::abs(difference - differenceOfMirrored) > numberOfRobotsToMatch * minDiffToMatter)
+  float diff = std::abs(difference - differenceOfMirrored);
+  if (diff > (minDiffToMatter * parameters.symmetryUpdate.influenceOfNewTeammateRobotMeasurement))
   {
-    updateSymmetryConfidence(difference < differenceOfMirrored, parameters.symmetryUpdate.influenceOfNewMeasurement);
+    float influence = (diff / (difference + differenceOfMirrored));
+    updateSymmetryConfidence(difference < differenceOfMirrored, influence);
   }
 }
 
@@ -1227,7 +1259,7 @@ void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const Co
       averageX, averageY, 60, 20, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
   }
 
-  if (gd.mean.norm() > 20000 || gd.covariance.col(0).norm() > 10000 * 10000 || gd.covariance.col(1).norm() > 10000 * 10000)
+  if (gd.mean.norm() > 20000 || gd.covariance.col(0).norm() > 10000. * 10000. || gd.covariance.col(1).norm() > 10000. * 10000.)
   {
     return;
   }
@@ -1270,11 +1302,11 @@ void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const Co
       step = 1;
     }
 
-    for (int xc = 0; (xc + step) < a; xc += step)
+    for (int xc = 0; (static_cast<double>(xc) + step) < a; xc += step)
     {
       x1 = xc;
       y1 = (sqrt(1 - sqr(x1 / a))* b);
-      x2 = xc + step;
+      x2 = static_cast<double>(xc) + step;
       y2 = (sqrt(1 - sqr(x2 / a))* b);
 
 

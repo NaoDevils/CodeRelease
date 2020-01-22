@@ -40,16 +40,9 @@ MODULE(NaoProvider,
   PROVIDES(OpponentTeamInfo),
   PROVIDES(OwnTeamInfo),
   PROVIDES(RawGameInfo),
-  PROVIDES(RobotInfo),
   PROVIDES(SystemSensorData),
   PROVIDES(UsSensorData),
   USES(JointRequest), // Will be accessed in send()
-  LOADS_PARAMETERS(
-  {,
-    ((RobotInfo) NaoVersion) naoVersion, ///< V33, V4, V5 ...
-    ((RobotInfo) NaoType) naoBodyType, ///< H21, H25 ...
-    ((RobotInfo) NaoType) naoHeadType,
-  }),
 });
 
 #ifdef TARGET_ROBOT
@@ -86,7 +79,6 @@ private:
   void update(OpponentTeamInfo& opponentTeamInfo);
   void update(OwnTeamInfo& ownTeamInfo);
   void update(RawGameInfo& rawGameInfo);
-  void update(RobotInfo& robotInfo);
   void update(SystemSensorData& systemSensorData);
   void update(UsSensorData& usSensorData);
 
@@ -108,7 +100,6 @@ private:
   void update(OpponentTeamInfo& opponentTeamInfo) {}
   void update(OwnTeamInfo& ownTeamInfo) {}
   void update(RawGameInfo& rawGameInfo) {}
-  void update(RobotInfo& robotInfo) {}
   void update(SystemSensorData& systemSensorData) {}
   void update(UsSensorData& usSensorData) {}
   void send();

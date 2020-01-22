@@ -85,7 +85,7 @@ public:
       float distToPC = Geometry::getDistanceToLine(line, pcOnField);
       if (std::abs(std::abs(distToPC) - distPCToPenaltyArea) < 100)
       {
-        float myDistToLine = Geometry::getDistanceToLine(line, Vector2f());
+        float myDistToLine = Geometry::getDistanceToLine(line, Vector2f::Zero());
         float myDistToPC = pcOnField.norm();
         if (myDistToPC == 0)
           return false;

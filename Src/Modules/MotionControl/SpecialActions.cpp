@@ -10,6 +10,8 @@
 #include "SpecialActions.h"
 #include "Tools/Motion/MofCompiler.h"
 
+#include "Tools/Debugging/DebugDrawings.h"
+
 MAKE_MODULE(SpecialActions, motionControl)
 
 PROCESS_LOCAL SpecialActions* SpecialActions::theInstance = 0;
@@ -21,14 +23,14 @@ static const float sitDownAngles[12] =
   0.f,
   0.f,
   -0.855f,
-  2.16f,
+  2.11f,
   -1.18f,
   0.f,
 
   0.f,
   0.f,
   -0.855f,
-  2.16f,
+  2.11f,
   -1.18f,
   0.f
 };
@@ -97,6 +99,7 @@ SpecialActions::SpecialActions() :
   mirror(false)
 {
   theInstance = this;
+  startedWaiting = theFrameInfo.time;
 
   std::vector<float> motionData;
   char errorBuffer[10000];
@@ -214,10 +217,11 @@ void SpecialActions::calculateJointRequest(JointRequest& jointRequest)
 {
   float ratio, f, t;
 
-  //joint angles
-  if(interpolationMode)
+  //joint angles - dataRepetitionLength != -1: if duration is set to -1 in .mof file
+  if(interpolationMode && dataRepetitionLength != -1)
   {
-    ratio = dataRepetitionCounter / static_cast<float>(dataRepetitionLength);
+    ratio = dataRepetitionCounter / static_cast<float>(dataRepetitionLength);    
+
     for(int i = 0; i < Joints::numOfJoints; ++i)
     {
       f = lastRequest.angles[i];
@@ -297,8 +301,21 @@ void SpecialActions::update(SpecialActionsOutput& specialActionsOutput)
   if(theMotionSelection.specialActionMode != MotionSelection::deactive)
   {
     specialActionsOutput.isLeavingPossible = true;
-    if(dataRepetitionCounter <= 0)
+    //if duration is set to -1 in .mof, wait stabilizationTime is over or gyro is quiet
+
+    DECLARE_PLOT("module:SpecialAction:gyroNorm");
+    PLOT("module:SpecialAction:gyroNorm",theInertialSensorData.gyro.norm());
+
+    if(dataRepetitionCounter == -1)
     {
+      if(theInertialSensorData.gyro.norm() < gyroQuiet || theFrameInfo.getTimeSince(startedWaiting) > maxStabilizationTime)
+      {
+        dataRepetitionCounter = 0;
+      }
+    }
+    else if(dataRepetitionCounter == 0 || dataRepetitionCounter < -1)
+    {
+      startedWaiting = theFrameInfo.time;
       if(!wasActive)
       {
         //entered from external motion
@@ -331,6 +348,7 @@ void SpecialActions::update(SpecialActionsOutput& specialActionsOutput)
     }
     else
     {
+      startedWaiting = theFrameInfo.time;
       dataRepetitionCounter -= int(theFrameInfo.cycleTime * 1000 * speedFactor);
       stiffnessInterpolationCounter -= int(theFrameInfo.cycleTime * 1000 * speedFactor);
     }
@@ -350,7 +368,7 @@ void SpecialActions::update(SpecialActionsOutput& specialActionsOutput)
       currentInfo.type = SpecialActionInfo::none;
 
     //store value if current data line finished
-    if(dataRepetitionCounter <= 0)
+    if(dataRepetitionCounter == 0 || dataRepetitionCounter < -1)
     {
       if(!mirror)
         lastRequest = currentRequest;

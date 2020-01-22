@@ -5,6 +5,7 @@
 #include "Options/Skills/StandUp.h"
 #include "Options/Skills/Walk.h"
 #include "Options/Skills/GoToRelativeCoordinates.h"
+#include "Options/Skills/AnyKick.h"
 
 // Switch Behavior State
 #include "Options/SwitchBehaviorState.h"

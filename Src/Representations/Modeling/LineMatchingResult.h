@@ -31,7 +31,7 @@ public:
     Vector2d start,end;
     double cameraHeight;
 
-    FieldLine(){};
+    FieldLine() : cameraHeight(0.f) {};
     FieldLine(const FieldLine & other):start(other.start), end(other.end), cameraHeight(other.cameraHeight){};
     FieldLine(const Vector2d start_, const Vector2d end_, const double cameraHeight):start(start_),end(end_),cameraHeight(cameraHeight){};
   
@@ -50,7 +50,7 @@ public:
   {
   public:
     Pose2f pose;
-    int lineCorrespondences[maxNumberOfLineObservations];
+    int lineCorrespondences[maxNumberOfLineObservations]{ 0 };
   
     /** Streaming (with specifications) */
     virtual void serialize(In *in, Out *out)
@@ -81,7 +81,7 @@ public:
   {
   public:
     Pose2f start,end;
-    int lineCorrespondences[maxNumberOfLineObservations];
+    int lineCorrespondences[maxNumberOfLineObservations]{ 0 };
   
     /** Streaming (with specifications) */
     virtual void serialize(In *in, Out *out)
@@ -106,7 +106,7 @@ public:
   /**
   * Default constructor.
   */
-  LineMatchingResult() {reset();}
+  LineMatchingResult() : onlyObservedOneFieldLine(false) { reset(); }
 
   /** Reset the path */
   void reset()

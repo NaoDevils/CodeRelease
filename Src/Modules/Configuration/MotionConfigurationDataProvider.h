@@ -7,7 +7,6 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
-#include "Representations/Configuration/DamageConfiguration.h"
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Configuration/MassCalibration.h"
 #include "Representations/Configuration/MotionSettings.h"
@@ -19,8 +18,6 @@
 
 MODULE(MotionConfigurationDataProvider,
 {,
-  PROVIDES(DamageConfigurationBody),
-  PROVIDES(DamageConfigurationHead),
   PROVIDES(StiffnessSettings),
   PROVIDES(JointCalibration),
   PROVIDES(MassCalibration),
@@ -34,8 +31,6 @@ MODULE(MotionConfigurationDataProvider,
 class MotionConfigurationDataProvider : public MotionConfigurationDataProviderBase
 {
 private:
-  DamageConfigurationBody* theDamageConfigurationBody = nullptr;
-  DamageConfigurationHead* theDamageConfigurationHead = nullptr;
   StiffnessSettings* theStiffnessSettings = nullptr;
   JointCalibration* theJointCalibration = nullptr;
   MassCalibration* theMassCalibration = nullptr;
@@ -45,8 +40,6 @@ private:
   FieldDimensions* theFieldDimensions = nullptr;
   OdometryCorrectionTables* theOdometryCorrectionTables = nullptr;
 
-  void update(DamageConfigurationBody& damageConfigurationBody);
-  void update(DamageConfigurationHead& damageConfigurationHead);
   void update(FieldDimensions& fieldDimensions);
   void update(JointCalibration& jointCalibration);
   void update(MassCalibration& massCalibration);
@@ -56,8 +49,6 @@ private:
   void update(StiffnessSettings& stiffnessSettings);
   void update(UsConfiguration& usConfiguration);
 
-  void readDamageConfigurationBody();
-  void readDamageConfigurationHead();
   void readFieldDimensions();
   void readJointCalibration();
   void readMassCalibration();

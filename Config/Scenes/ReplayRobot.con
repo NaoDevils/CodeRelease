@@ -1,7 +1,3 @@
-# replay a log file.
-# you have to adjust the name of the log file.
-sl LOG ${Logfile:,../Logs/*.log}
-
 # simulation time on, otherwise log data may be skipped
 st on
 
@@ -26,8 +22,7 @@ jc press 22 log forward image # Shift+Crtl+V
 jc press 2 log fast_rewind # Shift+Ctrl+B
 jc press 14 log fast_forward # Shift+Ctrl+N
 
-set representation:GroundContactState contact = true;
-echo set representation:FallDownState state = upright; direction = none; sidewards = noot; odometryRotationOffset = 0;
+set representation:GroundContactState contact = true; leftFootHasGroundContact = false; rightFootHasGroundContact = false; stepFrequencyLeft = 0; stepFrequencyRight = 0;
 ac both
 
 # deactivate game info provided in Motion
@@ -35,8 +30,12 @@ mr RobotInfo default
 mr OwnTeamInfo default
 mr OpponentTeamInfo default
 mr GameInfo default
+mr BallPercept default
+mr MultipleBallPercept CLIPBallPerceptor
 
 log mr
+log pause
+log once
 
 #enable behavior graph
 dr representation:ActivationGraph
@@ -53,4 +52,3 @@ echo - Ctrl+Shift+V: Jump to next frame that contains an image
 echo - Ctrl+Shift+B: Jump backward 100 frames
 echo - Ctrl+Shift+N: Jump forward 100 frames
 echo
-

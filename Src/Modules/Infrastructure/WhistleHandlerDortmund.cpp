@@ -5,10 +5,11 @@
 #include "WhistleHandlerDortmund.h"
 #include "Tools/Settings.h"
 
-MAKE_MODULE(WhistleHandlerDortmund, motionInfrastructure)
+MAKE_MODULE(WhistleHandlerDortmund, cognitionInfrastructure)
 
 void WhistleHandlerDortmund::update(GameInfo& gameInfo)
 {
+  //printf("WhistleHandlerDortmund#update\n");
   bool whistleDetected = false;
   if (gameInfo.state == STATE_PLAYING && theRawGameInfo.state == STATE_SET)
     whistleDetected = true;
@@ -55,13 +56,14 @@ void WhistleHandlerDortmund::update(GameInfo& gameInfo)
 
 bool WhistleHandlerDortmund::checkWhistles()
 {
-  int numberWhistleDetected = theWhistleDortmund.detected ? 1 : 0;
+  int numberWhistleDetected = 0;
+  if (theFrameInfo.getTimeSince(theWhistleDortmund.lastDetectionTime) < timeWindow)
+    numberWhistleDetected++;
 
   int numberOfActiveTeammates = 0;
   for (auto &mate : theTeammateData.teammates)
   {
-    if (mate.whistle.detected)
-      whistleTimestamps[mate.number] = theFrameInfo.time;
+    whistleTimestamps[mate.number] = mate.whistle.lastDetectionTime;
     if (mate.whistleCausedPlay)
       return true;
     if (mate.isNDevilsPlayer && mate.status >= Teammate::ACTIVE)

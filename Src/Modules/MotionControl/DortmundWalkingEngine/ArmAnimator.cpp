@@ -45,11 +45,15 @@ void ArmAnimator::update(ArmMovement& armMovement)
   leftArm = leftArm<0 ? 0 : (leftArm>pi ? pi : leftArm);
   rightArm = rightArm<0 ? 0 : (rightArm>pi ? pi : rightArm);
 
-  if (fabs(theBodyTilt.y) < theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1] &&
-	  fabs(theBodyTilt.y) > theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0])
+  armMovement.angles[Joints::lShoulderPitch] = leftArm;
+  armMovement.angles[Joints::rShoulderPitch] = rightArm;
+
+  if (useBodyTiltForArmMovement
+    && fabs(theBodyTilt.y) < theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1]
+	  && fabs(theBodyTilt.y) > theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0])
   {
-	  armMovement.angles[Joints::lShoulderPitch] = leftArm - theBodyTilt.y;
-	  armMovement.angles[Joints::rShoulderPitch] = rightArm - theBodyTilt.y;
+	  armMovement.angles[Joints::lShoulderPitch] -= theBodyTilt.y;
+	  armMovement.angles[Joints::rShoulderPitch] -= theBodyTilt.y;
   }
 
   armMovement.usearms = true;

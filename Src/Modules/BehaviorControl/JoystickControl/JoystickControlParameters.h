@@ -31,26 +31,31 @@ public:
   /// Name of the config file with device-specific parameters.
   /// \see JoystickDeviceParameters
   std::string deviceParametersFileName;
-  /// Device-specific parameters loaded from config file with 
+
+  /// Device-specific parameters loaded from config file with
   /// name \c deviceParametersFileName.
   JoystickDeviceParameters device;
 
   /// Maximum walking velocity in x direction.
   float maxVelocityX;
+
   /// Minimum walking velocity in x direction.
   float minVelocityX;
+
   /// Maximum walking velocity in y direction.
   float maxVelocityY;
+
   /// Maximum rotational walking velocity.
   float maxVelocityRot;
 
   /// Maximum (= -minimum) value of HeadAngleRequest pan.
   float maxHeadPan;
+
   /// Minimum value of HeadAngleRequest tilt.
   float minHeadTilt;
+
   /// Maximum value of HeadAngleRequest tilt.
   float maxHeadTilt;
-
 
   virtual void serialize(In* in, Out* out)
   {

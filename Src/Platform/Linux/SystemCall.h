@@ -12,6 +12,7 @@
 
 #include <cstdlib>
 #include <stdint.h>
+#include <string>
 
 /**
 * All process-local global variable declarations have to be preceeded
@@ -28,7 +29,6 @@ class SystemCall
 {
 private:
   static uint64_t base; /**< An offset used to convert Linux time to the time provided by this class. */
-
 public:
   enum Mode
   {
@@ -38,6 +38,21 @@ public:
     logfileReplay,
     teamRobot,
   };
+
+  /** returns the process id for the current process*/
+  static int getCurrentProcessId();
+
+  /** returns the process id for the parent process*/
+  static int getParentProcessId();
+
+  /** returns the current working directory */
+  static std::string getCurrentWorkingDir();
+
+  /** executes cmd as a separate process and returns its output */
+  static std::string execute(const std::string& cmd);
+
+  /** returns whether a file exists or not */
+  static bool fileExists(const std::string& file);
 
   /** returns the current system time in milliseconds*/
   static unsigned getCurrentSystemTime();
@@ -95,10 +110,8 @@ public:
   static void alignedFree(void* ptr);
 
   /**
-   * Put a filename into play sound queue.
    * If you want to play Config/Sounds/bla.wav use play("bla.wav");
    * @param name The filename of the sound file.
-   * @return The amound of files in play sound queue.
    */
   static int playSound(const char* name);
 };

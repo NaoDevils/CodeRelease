@@ -11,7 +11,9 @@
 
 #pragma once
 
-#include <algorithm>
+//#include <algorithm>
+#include <vector>
+#include <memory>
 
 // ------------- NAO-Framework includes --------------
 #include "Representations/Configuration/FieldDimensions.h"
@@ -49,8 +51,6 @@
 
 // ------------- World Model Generator includes --------------
 #include "models/PoseHypothesis2017.h"
-#include "models/PoseHypotheses2017.h"
-
 #include "SelfLocator2017Parameters.h"
 
 MODULE(SelfLocator2017,
@@ -69,13 +69,13 @@ MODULE(SelfLocator2017,
   REQUIRES(CLIPGoalPercept),
   REQUIRES(PenaltyCrossPercept),
   REQUIRES(BallModel),
-  USES(RemoteBallModel),
-  USES(LocalRobotMap),
-  USES(RemoteRobotMap),
   REQUIRES(FallDownState),
   REQUIRES(InertialData),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(JointSensorData),
+  USES(RemoteBallModel),
+  USES(LocalRobotMap),
+  USES(RemoteRobotMap),
   USES(BehaviorData), // For manual positions, role is required (right now only goalie vs field player)
   PROVIDES(RobotPose),
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypotheses), //all
@@ -92,6 +92,8 @@ MODULE(SelfLocator2017,
 
 class SelfLocator2017 : public SelfLocator2017Base
 {
+  using PoseHypotheses = std::vector< std::unique_ptr<PoseHypothesis2017> >;
+
   struct HypothesisBase
   {
     Pose2f pose;
@@ -138,11 +140,10 @@ private:
   bool initialized;
   unsigned lastExecuteTimeStamp;
   
-  PoseHypotheses2017 poseHypotheses;
+  PoseHypotheses poseHypotheses;
 
   Pose2f                    lastOdometryData;
   bool                      foundGoodPosition;
-  bool                      symmetryLost;
   unsigned                  timeStampLastGoodPosition;
   Pose2f                    lastGoodPosition;
   Pose2f                    distanceTraveledFromLastGoodPosition;
@@ -161,9 +162,9 @@ private:
   const std::uint8_t        symmetryUpdatesBeforeAdjustingState = 5;
   float                     lastBestSymmetryConfidence;
 
-  unsigned                  timeStampWhenEnteredSetState;
+  unsigned                  lastNonSetTimestamp;
   RingBuffer<Vector3f, 30>  accDataBuffer;
-  bool gotPickedUpInSet;
+  bool                      gotPickedUp;
 
 
   /* ----------------------------------- private local storage ------------------------------------*/
@@ -175,6 +176,8 @@ private:
   /* ----------------------------------- private methods here ------------------------------------*/
 
   void executeCommonCode();
+
+  void checkBeingPickedUp();
 
   void handleFallDown();
   void handleGettingUpAfterFallDown();
@@ -195,14 +198,14 @@ private:
   void updateHypothesesSymmetryConfidence();
   
   bool addNewHypotheses();
-  
-  bool addNewHypothesesWhenSymmetryLost();
 
   bool addNewHypothesesFromLineMatches();
   bool addNewHypothesesFromLandmark();
   bool addNewHypothesesFromPenaltyCrossLine();
   bool addNewHypothesesFromCenterCirleAndLine();
   bool addNewHypothesesFromGoal();
+
+  bool addNewHypothesesIfSymmetryLost();
   
   void addHypothesesOnManualPositioningPositions();
   void addHypothesesOnInitialKickoffPositions();
@@ -214,15 +217,12 @@ private:
   bool hasPositionTrackingFailed(); //this is only for the best 
   bool hasPositionBeenFoundAfterLoss();
 
-  bool hasSymmetryBeenLostForBestHypotheses();
   bool hasSymmetryBeenLost(const PoseHypothesis2017& hypotheses);
-
-  bool hasSymmetryBeenFoundAgainAfterLoss();
   bool hasSymmetryBeenFoundAgainAfterLoss(const PoseHypothesis2017& hypotheses);
 
   uint64_t lastBestHypothesisUniqueId;
   
-  const PoseHypothesis2017 &getBestHypothesis();
+  const PoseHypothesis2017 *getBestHypothesis();
 
   float getRobotPoseValidity(const PoseHypothesis2017 & poseHypothesis);
 

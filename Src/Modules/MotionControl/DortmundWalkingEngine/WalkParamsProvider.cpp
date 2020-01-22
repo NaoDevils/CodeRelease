@@ -17,10 +17,10 @@ void WalkParamsProvider::update(LegJointSensorControlParameters& legJointSensorC
   }
 }
 
-void WalkParamsProvider::update(FLIPMObserverParams& flipmObserverParams) {
+void WalkParamsProvider::update(FLIPMObserverGains& flipmObserverGains) {
   if (!initializedFOP)
   {
-    load(flipmObserverParams);
+    load(flipmObserverGains);
   }
 }
 
@@ -66,10 +66,10 @@ void WalkParamsProvider::load(WalkingEngineParams& walkingEngineParams)
   initializedWP = true;
 }
 
-void WalkParamsProvider::load(FLIPMObserverParams& flipmObserverParams) {
-  InMapFile file("flipmObserverParams.cfg");
+void WalkParamsProvider::load(FLIPMObserverGains& flipmObserverGains) {
+  InMapFile file("flipmObserverGains.cfg");
   if (file.exists())
-    file >> flipmObserverParams;
+    file >> flipmObserverGains;
   else
   {
     ASSERT(false);

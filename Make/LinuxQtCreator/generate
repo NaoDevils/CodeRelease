@@ -1,5 +1,8 @@
 #!/bin/bash
 cp CMakeLists.txt ../../CMakeLists.txt
 cp CMakeLists.txt.user ../../CMakeLists.txt.user.tmp
-echo "Start QtCreator and open CMakeLists.txt from NDevils _ROOT_ folder, NOT the one from Make/QtCreator!"
+echo "Notice: You will need following packages to build. When missing use:"
+echo "  sudo apt-get install qt4-dev-tools libglew-dev libxml2-dev graphviz clang-6.0"
+echo ""
+echo "Then start QtCreator and open CMakeLists.txt from NDevils _ROOT_ folder, NOT the one from Make/QtCreator!"
 read -rsp "Press any button to exit..." -n1 key

@@ -23,12 +23,13 @@
 #include "Representations/MotionControl/ReferenceModificator.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/MotionControl/Footpositions.h"
+#include "Representations/MotionControl/SpeedInfo.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Streams/RobotParameters.h"
 #include "Representations/Sensing/ZMPModel.h"
 #include "Representations/MotionControl/ObservedFLIPMError.h"
-#include "Representations/MotionControl/FLIPMControllerParams.h"
+#include "Representations/MotionControl/FLIPMParams.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/FLIPMObserver.h"
 
 //const int static_N = 50; /**< Length of the preview phase */
@@ -36,15 +37,23 @@
 MODULE(FLIPMController,
 { ,
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FLIPMControllerParams),
+  REQUIRES(FLIPMParameter),
+  REQUIRES(FLIPMControllerParameter),
   REQUIRES(ObservedFLIPMError),
   REQUIRES(RefZMP2018),
   REQUIRES(InertialSensorData),
   REQUIRES(ZMPModel),
   REQUIRES(FootSteps),
   REQUIRES(Footpositions),
+  REQUIRES(SpeedInfo),
   USES(WalkingInfo),
   PROVIDES(TargetCoM),
+  LOADS_PARAMETERS(
+  {,
+    (float)(0.26) min_z_h,
+    (float)(0.27) max_z_h,
+    (float)(0.001) epsilon_z_h,
+  }),
 });
 
 
@@ -66,47 +75,28 @@ public:
 	/** Tells the controller to stop moving after the last added step. */
 	void End() { reset(); }
   
-	//kZMP getReferenceZMP();
-  
 	/**
 	 * Calculate one target position of the CoM.
 	 * @param targetCoM The representation to fill with the position.
 	 */
   void update(TargetCoM & targetCoM);
-  //void update(TargetCoMFLIPM & theTargetCoMFLIPM) { update((TargetCoM&)theTargetCoMFLIPM); };
 
 private:
-	//typedef std::list<ZMP> ZMPList;
-	/** Current element in the list. */
-	//ZMPList::iterator kElement;
-	/** List of reference ZMP. */
-  //ZMPList pRef;
+  Eigen::Matrix<Eigen::Matrix<double, 1, PREVIEW_LENGTH>, 2, 1> lastRefZMP; /**< Reference ZMP of last frame */
+  Eigen::Matrix<Eigen::Matrix<double, 1, PREVIEW_LENGTH>, 2, 1> refZMP; /**< Current reference ZMP */
 
-  /** Current element in the list. */
-  //ZMPList::iterator kElement_RCS;
-  /** List of reference ZMP. */
-  //ZMPList pRef_RCS;
-
-  Eigen::Matrix<Vector6f, 2, 1 > x;	/**< Observer state vector*/
-  Vector2f v;                  		/**< Controller internal value. */
+  Eigen::Matrix<Vector6d, 2, 1 > x;	/**< Observer state vector*/
+  Vector2d v;                  		/**< Controller internal value. */
   
-  Eigen::Matrix<Vector6f, 2, 1 > x_RCS;	/**< Observer state vector*/
-  Vector2f v_RCS;                  		/**< Controller internal value. */
+  float dynamic_z_h;
+
+  Eigen::Matrix<Vector6d, 2, 1 > x_RCS;	/**< Observer state vector*/
+  Vector2d v_RCS;                  		/**< Controller internal value. */
 
   bool isRunning;			/**< Is the controller running? */
-  //kElementEmpty,		/**< Is there a valid current ZMPList element? */
-  //kElementRCSEmpty;		/**< Is there a valid current ZMPList element? */
-  
-  //typedef std::list<Footposition *> FootList;
-  //FootList footPositions;								/**< List of foot steps. */
-  //void addFootsteps(const Footposition &fp);			/**< Add a foot position to the footPositions list. */
 
 	void reset();			/**< Resets the controller. */
-	//void Shrink();			/** Deletes no more needed elements in lists. */
-	//void addRefZMP(ZMP zmp);/** Add a ZMP position to the list. */
-  //void addRefZMP_RCS(ZMP zmp);/** Add a ZMP position to the list. */
 	Point controllerStep(); /** Calculate one step of the system. */
-  //double normalizeAngle(double angle);
-  void executeController(Dimension d, const Eigen::Matrix< float, 1, PREVIEW_LENGTH>  &refZMP);
-  void executeRCSController(Dimension d, const Eigen::Matrix< float, 1, PREVIEW_LENGTH>  &refZMP);
+  void executeController(Dimension d, const Eigen::Matrix< double, 1, PREVIEW_LENGTH>  &refZMP);
+  void executeRCSController(Dimension d, const Eigen::Matrix< double, 1, PREVIEW_LENGTH>  &refZMP);
 };

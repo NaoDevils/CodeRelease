@@ -19,6 +19,8 @@
 #include "Tools/Settings.h"
 #endif
 
+#include "Tools/Configuration/RobotConfig.h"
+
 File::File(const std::string& name, const char* mode, bool tryAlternatives) : stream(0)
 {
   fullName = name;
@@ -27,7 +29,11 @@ File::File(const std::string& name, const char* mode, bool tryAlternatives) : st
   {
     for(auto& path : names)
     {
+#if (defined(WINDOWS) || defined(OSX))
       stream = fopen(path.c_str(), mode);
+#else
+      stream = fopen64(path.c_str(), mode);
+#endif
       if(stream)
       {
         fullName = path;
@@ -37,7 +43,12 @@ File::File(const std::string& name, const char* mode, bool tryAlternatives) : st
   }
   else
   {
+#if (defined(WINDOWS) || defined(OSX))
     stream = fopen(names.back().c_str(), mode);
+#else
+    stream = fopen64(names.back().c_str(), mode);
+#endif
+    
     if(stream)
       fullName = names.back();
   }
@@ -61,10 +72,11 @@ std::list<std::string> File::getFullNames(const std::string& rawName)
     if(Global::settingsExist())
     {
       const std::string prefix = std::string(getBHDir()) + "/Config/";
+      names.push_back(prefix + "Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/" + name);
       names.push_back(prefix + "Robots/" + Global::getSettings().robotName + "/Head/" + name);
       names.push_back(prefix + "Robots/" + Global::getSettings().bodyName + "/Body/" + name);
-      names.push_back(prefix + "Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/" + name);
       names.push_back(prefix + "Robots/" + Global::getSettings().robotName + "/" + name);
+      names.push_back(prefix + "Robots/" + std::string(RobotConfig::getName(Global::getSettings().naoVersion)) + "/" + name);
       names.push_back(prefix + "Robots/Default/" + name);
       names.push_back(prefix + "Locations/" + Global::getSettings().location + "/" + name);
       if(Global::getSettings().location != "Default")
@@ -93,14 +105,23 @@ void File::read(void* p, size_t size)
 char* File::readLine(char* p, size_t size)
 {
   VERIFY(!eof());
-  return fgets(p, (int) size, (FILE*)stream);
+  return fgets(p, static_cast<int>(size), (FILE*)stream);
 }
 
 void File::write(const void* p, size_t size)
 {
   //if opening failed, stream will be 0 and fwrite would crash
   ASSERT(stream != 0);
-  VERIFY(fwrite(p, 1, size, (FILE*)stream) == size);
+#ifdef NDEBUG
+  static_cast<void>(fwrite(p, 1, size, (FILE*)stream));
+#else
+  const size_t written = fwrite(p, 1, size, (FILE*)stream);
+  if(written != size)
+  {
+    perror("fwrite did not write as many bytes as requested");
+    //FAIL("File::write failed!");
+  }
+#endif
 }
 
 void File::printf(const char* format, ...)
@@ -135,12 +156,15 @@ size_t File::getSize()
 {
   if(!stream)
     return 0;
-  long currentPos = ftell((FILE*)stream);
-  ASSERT(currentPos >= 0);
-  VERIFY(fseek((FILE*)stream, 0, SEEK_END) == 0);
-  long size = ftell((FILE*)stream);
-  VERIFY(fseek((FILE*)stream, currentPos, SEEK_SET) == 0);
-  return (size_t) size;
+  else
+  {
+    const long currentPos = ftell((FILE*)stream);
+    ASSERT(currentPos >= 0);
+    VERIFY(fseek((FILE*)stream, 0, SEEK_END) == 0);
+    const long size = ftell((FILE*)stream);
+    VERIFY(fseek((FILE*)stream, currentPos, SEEK_SET) == 0);
+    return static_cast<size_t>(size);
+  }
 }
 
 #ifdef WINDOWS

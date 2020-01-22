@@ -66,8 +66,8 @@ private:
   Vector2f gyroD = Vector2f(0.05f, 0.01f);
 
 
-  int sitout_time_min = 200, sitout_time_max = 1000;
-  float sitout_gyro_thres = 0.1f;
+  int sitout_time_min = 5, sitout_time_max = 200;
+  float sitout_gyro_thres = 0.2f;
 
   Vector2f origin = Vector2f::Zero();
 

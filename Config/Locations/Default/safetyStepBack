@@ -1,0 +1,146 @@
+ballOffset = {
+	x = 0.00;
+	y = 0.00;
+};
+kickAngle = 0deg;
+kickDistance = [0, inf];
+translationThresholdXFront = 0.02;
+translationThresholdXBack = 0.015;
+translationThresholdY = 0.015;
+rotationThreshold = 4deg;
+timeUntilKickHack = 0;
+kickHackDuration = 0;
+kickHackKneeAngle = 0deg;
+steps = [
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = -0.05;
+          y = 0.05;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0;
+          y = 0;
+        };
+      }
+    ];
+    duration = 240;
+    onFloor = [
+      false,
+      true
+    ];
+    kick = false;
+    swingFootTraj = [
+    {x = 0; y = 0; z = 0;},
+    {x = 0; y = 0; z = 0.02;},
+    {x = 0; y = 0; z = 0.02;},
+    {x = 0; y = 0; z = 0.02;},
+    {x = 0; y = 0; z = 0;}
+	];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.0;
+          y = 0.0;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0;
+          y = 0;
+        };
+      }
+    ];
+    duration = 30;
+    onFloor = [
+      true,
+      true
+    ];
+    kick = false;
+    swingFootTraj = [];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.0;
+          y = 0.0;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = -0.05;
+          y = 0.00;
+        };
+      }
+    ];
+    duration = 240;
+    onFloor = [
+      true,
+      false
+    ];
+    kick = false;
+    swingFootTraj = [];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.0;
+          y = 0.0;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0;
+          y = 0;
+        };
+      }
+    ];
+    duration = 30;
+    onFloor = [
+      true,
+      true
+    ];
+    kick = false;
+    swingFootTraj = [];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.0;
+          y = 0.0;
+        };
+      },
+      {
+        rotation = 0deg;
+        translation = {
+          x = 0.00;
+          y = 0.00;
+        };
+      }
+    ];
+    duration = 240;
+    onFloor = [
+      false,
+      true
+    ];
+    kick = false;
+    swingFootTraj = [];
+  }
+];

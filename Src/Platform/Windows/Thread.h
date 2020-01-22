@@ -10,6 +10,9 @@
 
 #define NOMINMAX
 #include <windows.h>
+#include <string>
+#include <vector>
+
 
 /**
  * The class encapsulates a Windows thread.
@@ -122,6 +125,21 @@ public:
   unsigned getId() const {return id;}
 
   /**
+   * Sets thread name
+   */
+  static void Thread::setName(const std::string& name)
+  {
+    // https://stackoverflow.com/a/27296
+    int slength = static_cast<int>(name.length()) + 1;
+    int len = MultiByteToWideChar(CP_ACP, 0, name.c_str(), slength, 0, 0);
+    std::vector<wchar_t> buf(len);
+    MultiByteToWideChar(CP_ACP, 0, name.c_str(), slength, buf.data(), len);
+    std::wstring r(buf.data());
+
+    SetThreadDescription(GetCurrentThread(), r.c_str());
+  }
+
+  /**
    * The function returns the id of the calling thread.
    * @return The id of the calling thread.
    */
@@ -132,13 +150,6 @@ public:
    */
   static void yield() {Sleep(0);}
 };
-
-/**
- * Names the current thread.
- * Not implemented on Windows (yet).
- * @param name The new name of the thread.
- */
-#define NAME_THREAD(name) ((void) 0)
 
 /**
  * The class encapsulates a critical section.

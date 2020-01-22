@@ -34,11 +34,11 @@ struct LowFrameRateImageUpper : public Streamable
   virtual void serialize(In* in, Out* out)
   {
     STREAM_REGISTER_BEGIN;
-    STREAM(imageUpdated);
-    if (imageUpdated)
-    {
-      STREAM(image);
-    }
+      STREAM(imageUpdated);
+      if (imageUpdated)
+      {
+        STREAM(image);
+      }
     STREAM_REGISTER_FINISH;
   }
 };

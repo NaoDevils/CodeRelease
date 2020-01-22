@@ -436,7 +436,7 @@ void loadModuleParameters(Streamable& parameters, const char* moduleName, const 
     if(!((BaseType&) module)._the##type) \
       ((BaseType&) module)._the##type = &Blackboard::getInstance().alloc<type>(#type); \
     type& r(*((BaseType&) module)._the##type); \
-    BH_TRACE; \
+    BH_TRACE_MSG("update " #type); \
     STOPWATCH_WITH_PLOT(#type) ((BaseType&) module).update(r); \
     mod \
     if(((BaseType&) module)._id##type != ::undefined) \

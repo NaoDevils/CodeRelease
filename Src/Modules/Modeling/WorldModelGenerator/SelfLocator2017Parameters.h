@@ -1,10 +1,10 @@
 /**
-*
-* This file contains parameters for the SelfLocator2017.
-*
-* @author <a href="mailto:stefan.tasse@tu-dortmund.de">Stefan Tasse</a>
-* @author <a href="mailto:dino.menges@tu-dortmund.de">Dino Menges</a>
-*/
+ *
+ * This file contains parameters for the SelfLocator2017.
+ *
+ * @author <a href="mailto:stefan.tasse@tu-dortmund.de">Stefan Tasse</a>
+ * @author <a href="mailto:dino.menges@tu-dortmund.de">Dino Menges</a>
+ */
 
 #pragma once
 #include "Tools/Streams/AutoStreamable.h"
@@ -15,9 +15,9 @@ STREAMABLE(SelfLocator2017Parameters,
   STREAMABLE(ProcessUpdate,
   {
     ENUM(MeasurementModelCalculation,
-    {,
-	  vector,
-	  singles,
+    { ,
+      vector,
+      singles,
     }),
 
     // Determines whether to update the coVar matrix based on odometry data
@@ -31,7 +31,7 @@ STREAMABLE(SelfLocator2017Parameters,
 
     (float)(0.15f) positionConfidenceHysteresisForKeepingBestHypothesis,
 
-	(MeasurementModelCalculation)(vector) jacobianMeasurementCalculation,
+    (MeasurementModelCalculation)(vector) jacobianMeasurementCalculation,
   });
 
   STREAMABLE(SensorUpdate,
@@ -63,27 +63,45 @@ STREAMABLE(SelfLocator2017Parameters,
   { ,
     (bool)(true) updateWithRemoteModels,
     (float)(500.f) maxDistanceToClosestRemoteModel, // max distance between local and remote model for doing symmetry update (in mm)
-    (float)(0.02f) influenceOfNewMeasurement, // [0..1]
-    (float)(0.02f) influenceOfNewMeasurementByGoalie, // [0..1]
+    (float)(0.02f) influenceOfNewBallMeasurement, // [0..1]
+    (float)(0.02f) influenceOfNewBallMeasurementByGoalie, // [0..1]
+    (float)(0.02f) influenceOfNewTeammateRobotMeasurement, // [0..1]
+    (float)(0.02f) influenceOfNewOpponentRobotMeasurement, // [0..1]
   });
 
   STREAMABLE(LocalizationStateUpdate,
-  { ,
+  {
+    // Define how to handle symmetry
+    ENUM(SymmetryHandling,
+    {,
+      // Strictly use one pose only and switch confidence to 1 - confidence when mirroring pose.
+      // Pose is mirrored when confidence below symmetryLostWhenBestConfidenceBelowThisThreshold.
+      // This ignores symmetryFoundAgainWhenBestConfidenceAboveThisThreshold.
+      noSymmetricPoses,
+      // Allow two symmetrical poses until best one hits symmetryFoundAgainWhenBestConfidenceAboveThisThreshold.
+		  // Afterwards, delete the symmetrical pose.
+		  // A symmetrical pose will spawn once the symmetry confidence is below symmetryLostWhenBestConfidenceBelowThisThreshold.
+		  // The new pose will have the same confidence as the other.
+      useThresholds,
+    }),
+    
     (bool)(false) symmetryLostWhenFallDownInCenterCircle,
     (float)(200.f) unknownSymmetryRadiusAroundCenter,
 
     (float)(0.2f) positionLostWhenBestConfidenceBelowThisThreshold,
     (float)(0.5f) positionFoundAgainWhenBestConfidenceAboveThisThreshold,
 
-    (float)(0.1f) symmetryLostWhenBestConfidenceBelowThisThreshold,
+    (float)(0.2f) symmetryLostWhenBestConfidenceBelowThisThreshold,
     (float)(0.8f) symmetryFoundAgainWhenBestConfidenceAboveThisThreshold,
+
+    (SymmetryHandling)(useThresholds) symmetryHandling,
   });
 
   STREAMABLE(Spawning,
   {
     // This is used as a flag in SelfLocator2017::addNewHypotheses
     ENUM(LandmarkBasedHypothesesSpawn,
-    {,
+    { ,
       off,
       spawnIfPositionLost,
       spawnIfPositionTracking,
@@ -94,13 +112,15 @@ STREAMABLE(SelfLocator2017Parameters,
     (bool)(0.1f) useOdometryForSpawning,
     (LandmarkBasedHypothesesSpawn)(spawnIfPositionLost) landmarkBasedHypothesesSpawn,
 
-    (float) spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold, // [0..1]
+    (float)(0.6f) spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold, // [0..1]
+
     // Nearest pose (symmetric vs. own side) is determined by best hypothesis.
     // This threshold allows other hypothesis with a confidence lower than the best hypothesis
     // also to be taken into account for check of closest pose when within this interval (best confidence - value)
     (float)(0.1f) confidenceIntervalForCheckOfHypothesis, // [0..1]
-
+    
     (unsigned char)(8) noAdditionalHypothesisAfterFallDown,
+    (Angle)(60_deg) angleOfAdditionalHypothesisAfterFallDown,
 
     (float)(0.3f) positionConfidenceWhenPositionedManually,
     (float)(0.4f) positionConfidenceWhenPositionedManuallyForGoalKeeper,
@@ -170,7 +190,6 @@ STREAMABLE(PositionsByRules,
   (std::vector<float>) xOffsetPenaltyPositions,
   (Vector2f) goaliePosition,
   (Vector2f) penaltyShootoutGoaliePosition,
-  (float) penaltyShootStartingRadius,
+  (float)(0.f) penaltyShootStartingRadius,
   (std::vector<int>) penaltyShootAngles,
 });
-

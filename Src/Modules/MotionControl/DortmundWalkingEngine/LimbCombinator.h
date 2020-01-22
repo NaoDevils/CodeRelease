@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
+#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/MotionControl/KinematicOutput.h"
 #include "Representations/MotionControl/ArmMovement.h"
@@ -18,6 +19,7 @@
 
 MODULE(LimbCombinator,
 { ,
+  REQUIRES(FrameInfo),
   REQUIRES(SpeedRequest),
   REQUIRES(Footpositions),
   REQUIRES(FootSteps),
@@ -27,16 +29,22 @@ MODULE(LimbCombinator,
   REQUIRES(ArmMovement),
   REQUIRES(JointSensorData),
   REQUIRES(WalkingInfo),
-  REQUIRES(MotionRequest),
   REQUIRES(WalkingEngineParams),
   PROVIDES(WalkingEngineOutput),
+  LOADS_PARAMETERS(
+  {,
+    (int)(5) outFilterOrderSize,
+    (bool)(false) useKickHack,
+  }),
 });
 
 class LimbCombinator : public LimbCombinatorBase
 {
 public:
 	LimbCombinator(void);
-	~LimbCombinator(void); 
+  ~LimbCombinator(void);
+    
+  void applyKickHack(WalkingEngineOutput& walkingEngineOutput); 
 
 	static int walkingEngineTime;
 private:
@@ -47,4 +55,7 @@ private:
 	void update(WalkingEngineOutput& walkingEngineOutput);
 	bool init;
 	FastFilter<float> filter[Joints::numOfJoints];
+
+  // kick hack -> fixed joints while kicking
+  unsigned int timeStampKickStarted = 0;
 };

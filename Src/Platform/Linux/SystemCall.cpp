@@ -13,6 +13,7 @@
 #include "SystemCall.h"
 #include "Platform/File.h"
 #include "SoundPlayer.h"
+#include "SoundPlayerSimultaneous.h"
 #include <sys/sysinfo.h>
 #include "BHAssert.h"
 #include <netdb.h>
@@ -23,8 +24,72 @@
 #include <chrono>
 #include "Tools/date.h"
 #include <iostream>
+#include <memory>
+#include <array>
+#include <sstream>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cstdio>  /* defines FILENAME_MAX */
 
 uint64_t SystemCall::base = 0;
+
+int SystemCall::getCurrentProcessId()
+{
+  return ::getpid();
+}
+
+int SystemCall::getParentProcessId()
+{
+  return ::getppid();
+}
+
+std::string SystemCall::getCurrentWorkingDir()
+{
+  // Create buffer
+  char buffer[FILENAME_MAX];
+
+  // The result
+  std::string current_working_dir;
+
+  // Get dir
+  if (::getcwd(buffer, FILENAME_MAX))
+    current_working_dir = buffer;
+
+  return current_working_dir;
+}
+
+std::string SystemCall::execute(const std::string& cmd)
+{
+  static const std::string error = "popen() failed!";
+
+  // Declare buffer
+  std::array<char, 512> buffer {0};
+
+  // Create pipe
+  std::unique_ptr<FILE, decltype(&::pclose)> pipe(::popen(cmd.c_str(), "r"), ::pclose);
+
+  // Check that pipe is open
+  if (!pipe)
+    return error;
+
+  // Get output
+  std::ostringstream result;
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+    result << buffer.data();
+
+  return result.str();
+}
+
+bool SystemCall::fileExists(const std::string& file)
+{
+  if (FILE *f = fopen(file.c_str(), "r"))
+  {
+    fclose(f);
+    return true;
+  }
+  else
+    return false;
+}
 
 unsigned SystemCall::getCurrentSystemTime()
 {
@@ -46,7 +111,6 @@ unsigned SystemCall::getRealSystemTime()
     auto dp = date::floor<date::days>(now);
     base = std::chrono::duration_cast<std::chrono::milliseconds>(dp.time_since_epoch()).count();
     std::cout << "Time base: " << base << std::endl;
-
   }
   return static_cast<unsigned>(time - base);
 }
@@ -133,7 +197,7 @@ unsigned long long SystemCall::getFreeDiskSpace(const char* path)
   std::string fullPath = File::isAbsolute(path) ? path : std::string(File::getBHDir()) + "/" + path;
   struct statvfs data;
   if(!statvfs(fullPath.c_str(), &data))
-    return data.f_bfree * data.f_bsize;
+    return static_cast<unsigned long long>(data.f_bavail) * static_cast<unsigned long long>(data.f_bsize);
   else
     return 0;
 }
@@ -158,8 +222,10 @@ void SystemCall::alignedFree(void* ptr)
 
 int SystemCall::playSound(const char* name)
 {
-#ifdef TARGET_ROBOT
-  fprintf(stderr, "Playing %s\n", name);
-#endif
+  /*
+  #ifdef TARGET_ROBOT
+    fprintf(stderr, "Playing %s\n", name);
+  #endif
+  */
   return SoundPlayer::play(name);
 }

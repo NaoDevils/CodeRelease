@@ -159,10 +159,11 @@ void CMCorrector2017::update(RobotPose &robotPose)
 void CMCorrector2017::update(RobotInfo &robotInfo)
 {
   robotInfo.number = Global::getSettings().playerNumber;
-  robotInfo.naoVersion = RobotInfo::NaoVersion::V5;
+  robotInfo.naoVersion = Global::getSettings().naoVersion;
   robotInfo.naoBodyType = RobotInfo::NaoType::H25;
   robotInfo.naoHeadType = RobotInfo::NaoType::H25;
   robotInfo.penalty = PENALTY_NONE;
+  robotInfo.transitionToBhuman = 0.f;
 }
 
 /**

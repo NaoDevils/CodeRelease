@@ -25,7 +25,7 @@ void TeammateData::draw() const
       posCol = ColorRGBA::red;
 
     const Vector2f& rPos = teammate.pose.translation;
-    const float radius = 50.f;// std::max(50.f, teammate.pose.deviation);
+    const float radius = 400.f;// std::max(50.f, teammate.pose.deviation);
     Vector2f dirPos = teammate.pose * Vector2f(radius, 0.f);
 
     // Circle around Player
@@ -67,7 +67,7 @@ void TeammateData::draw() const
 
     const Vector2f bPos = teammate.pose * teammate.ball.estimate.position;
     //Line from Robot to WalkTarget
-    LINE("representation:TeammateData", rPos.x(), rPos.y(), teammate.walkRequest.request.translation.x(), teammate.walkRequest.request.translation.y(), 10, Drawings::dashedPen, ColorRGBA::magenta);
+    //LINE("representation:TeammateData", rPos.x(), rPos.y(), teammate.walkRequest.request.translation.x(), teammate.walkRequest.request.translation.y(), 10, Drawings::dashedPen, ColorRGBA::magenta);
     // Ball position
     CIRCLE("representation:TeammateData", bPos.x(), bPos.y(), 50, 20, Drawings::solidPen, ColorRGBA::yellow, Drawings::solidBrush, ColorRGBA::yellow);
   }

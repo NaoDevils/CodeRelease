@@ -37,7 +37,6 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include <vector>
 #include <list>
 #include "WalkingInformations.h"
-#include "Representations/BehaviorControl/KickSymbols.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/Modeling/Path.h"
@@ -47,32 +46,39 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/MotionControl/Footpositions.h"
-#include "Representations/MotionControl/FLIPMControllerParams.h"
+#include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/ReferenceModificator.h"
 #include "Representations/MotionControl/RefZMP.h"
+#include "Representations/MotionControl/FallDownAngleReduction.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Tools/RingBufferWithSum.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/MotionControl/WalkRequest.h"
 #include "Tools/Settings.h"
+#include "Representations/Modeling/IMUModel.h"
+#include "Modules/MotionControl/DortmundWalkingEngine/CSConverter2019.h"
 
 MODULE(PatternGenerator2017,
-{ ,
+{,
   REQUIRES(WalkingEngineParams),
   REQUIRES(SpeedRequest),
   REQUIRES(Path),
   REQUIRES(RobotModel),
   REQUIRES(RobotDimensions),
   REQUIRES(FallDownState),
-  REQUIRES(FLIPMControllerParams),
+  REQUIRES(FLIPMParameter),
   REQUIRES(MotionSelection),
   REQUIRES(MotionRequest),
   REQUIRES(InertialSensorData),
-  //REQUIRES(KickSymbols), // for dribbling
+  REQUIRES(IMUModel),
+  REQUIRES(RobotInfo),
+  REQUIRES(ZMPModel),
   USES(WalkingInfo),
   USES(ReferenceModificator),
   REQUIRES(FrameInfo),
@@ -83,22 +89,39 @@ MODULE(PatternGenerator2017,
   PROVIDES(Footpositions),
   PROVIDES(RefZMP2018),
   PROVIDES(SpeedInfo),
+  PROVIDES(FallDownAngleReduction),
   REQUIRES(RobotPoseAfterPreview),
+  REQUIRES(RoleSymbols),
 
   LOADS_PARAMETERS(
-  { ,
+  {,
     (Vector2f)(Vector2f(0.07f, 0.10f)) prependStepsTransMax,
     (Angle)(30_deg) prependStepsRotMax,
     (int)(3) maxPrependedSteps,
     (float)(0.f) stepRotationWeight,
     (float)(6.5f) maxCustomKickScore,
+    (int)(3) stepsBetweenCustomSteps,
     ((WalkRequest) StepRequestVector) activeKicks,
-    (bool) useResetPreview,
+    ((WalkRequest) StepRequestVector) activeGoalieKicks,
+    (bool)(true) useResetPreview,
+    (bool)(true) skipStepInReset,
+    (bool)(false) useHalfFramesInRefZMP,
+    (bool)(false) waitForZMP,
     (int) (90) slowDownTemperature,
     (Angle)(2_deg) maxGyroSpeedForTransition,
     (float)(0.239f) initialStandbyHeight,
     (bool)(false) useRealSpeedInCustomSteps,
     (float)(0.5f) penaltyShootoutSlowDownFactor,
+    (bool)(false) useIMUModel,
+    (float)(1.f) fallDownFactor,
+    (float)(2.f) fallDownExponentialBasis,
+    (bool)(false) useSafetySteps,
+    (int)(1000) angleSumForSafetyStepFront,
+    (int)(300) angleSumForSafetyStepBack,
+    (float)(2.f) angleSumDecay,
+    (float)(0.1f) sensorErrorMinForStepCorrection,
+    (float)(0.35f) absoluteMinStepDuration,
+    (float)(1.f) absoluteMaxStepDuration,
   }),
 });
 
@@ -161,35 +184,38 @@ public:
 protected:
   
   /** The current state of the pattern generator. */
-  State currentState = standby;
+  DWE::State currentState = DWE::standby;
 
   /** The request state */
-  State newState = standby;
+  DWE::State newState = DWE::standby;
 
   /** The last time the walk stopped. */
   unsigned timeStampLastZeroRequest = 0;
 
-  unsigned timeStampLastCustomStep = 0;
+  int stepsSinceLastCustomStep = 0;
 
   /** The current executed speed (after applyAcceleration()) */
-  MovementInformation currentMovement;
+  DWE::MovementInformation currentMovement;
 
   /** The requested speed */
-  MovementInformation newMovement;
+  DWE::MovementInformation newMovement;
 
   /** Current walking phase */
-  WalkingPhase currentWalkingPhase = unlimitedDoubleSupport;
-  WalkingPhase walkingPhaseBeforePreview = unlimitedDoubleSupport;
+  DWE::WalkingPhase currentWalkingPhase = DWE::unlimitedDoubleSupport;
+  DWE::WalkingPhase walkingPhaseBeforePreview = DWE::unlimitedDoubleSupport;
   
   FootSteps localSteps; /**< Static foot steps on the ground. Just one step except at the beginning when preview is filled. */
   /** for creating the current foot position going to the CSConverter */
   Footpositions localFootPositions; /**< Both foot positions, including movement */
   FootSteps plannedFootSteps; /**< All static foot steps, kept for calculating localFootPositions. */
+  Footposition resetFootPosition;
+  Footposition nextPlannedFootPosition;
   std::vector<Point> currentFootStepTrajectory; /**< trajectory of the current foot step (w/o preview). recalculated once a new foot step phase completes. */
   /** For ZMP generation */
   RefZMP2018 localRefZMP2018;
   Point plotZMP = Point();
-  float lpxss;										/**< Last position of ZMP along the x axis */
+  float lastspdx = 0; // x speed in previous frame
+  float lpxss = 0;										/**< Last position of ZMP along the x axis */
   ZMP zmp, lastZMPRCS;
 
   
@@ -210,6 +236,8 @@ protected:
     
   /** Current time (frames since running) */
   int currentTimeStamp;
+
+  CSConverter2019::Parameters csConverterParams;
 
   /** 
   * Time counter in current state, from <length of phase> to 1.
@@ -249,8 +277,11 @@ protected:
   int desiredPreviewLength; // desired length of the step buffer
   int currentPreviewLength; // the length of the step buffer
   Point appliedReactiveStep[2];
+  int angleSumBodyTiltFront = 0; // if this exceeds \param angleSumForSafetyStepFront, do safety custom step
+  int angleSumBodyTiltBack = 0; // if this exceeds \param angleSumForSafetyStepBack, do safety custom step
+  unsigned timeWhenLastSafetyStepTriggered = 0;
 
-  /** deltaDirection is added to the direction in every frame, one entry for each support phase (left/right single/dobule). */
+  /** deltaDirection is added to the direction in every frame, one entry for each support phase (left/right single/double). */
   float deltaDirection[5];
 
   /** new footpositions forwarded to following modules. */
@@ -279,13 +310,15 @@ protected:
   std::vector<RefZMPState> refZMPStates;
 
   /** Calculate some values for the next step (currently step duration). */
-  void calcWalkParams();
+  float calcDynamicStepDuration(float speedX, float speedY, float speedR);
 
   /** Set the foot position for the next step, update the robotPose2f and set the direction & deltaDirection. */
   void setStepLength();
 
   /** Applies the speed requested in newMovement. */
   void applyAcceleration();
+
+  void updateFallDownReduction();
 
   /** Calculate optimal preview depending on N and step phase length */
   int getOptimalPreviewLength();
@@ -332,8 +365,15 @@ protected:
     Vector2f ballOffset;
     Angle kickAngle;
     float kickDistance[2];
-    float translationThreshold;
-    Angle rotationThreshold;
+    float translationThresholdXFront = 0.015f;
+    float translationThresholdXBack = 0.015f;
+    float translationThresholdY = 0.015f;
+    Angle rotationThreshold = 4_deg;
+
+    int timeUntilKickHack = 120; // time (ms) until kickhack is triggered
+    int kickHackDuration = 100; // duration (ms) of the kickhack
+    Angle kickHackKneeAngle = -10_deg;
+
     StepsT steps;
     virtual void serialize(In* in, Out* out);
     void mirror();
@@ -350,20 +390,23 @@ protected:
   void loadStepFile(std::string file, int idx);
   void saveStepFile(std::string file, int idx, bool robot = false);
   Vector2f prependCustomStep(std::list<Step>& steps, Vector2f distance, bool onFloorLeft);
-  bool prependCustomSteps(std::list<Step>& steps, Pose2f pose, bool startFootLeft, bool endFootLeft, int maxSteps);
+  bool prependCustomSteps(std::list<Step>& steps, Pose2f pose, bool startFootLeft, bool endFootLeft, int maxSteps, const StepsFile &stepsFile);
   Pose2f calcKickPose(const StepsFile& steps, const Vector2f& kickTarget);
   bool transitionToCustomSteps();
   bool isStablePosition();
   WalkRequest::StepRequest selectCustomStepForKick(const Vector2f& kickTarget);
   float getScore(const std::list<PatternGenerator2017::Step>& steps);
   void transitionFromCustomSteps();
-  void transitionToWalk(MovementInformation &moveInf);
+  void transitionToWalk(DWE::MovementInformation &moveInf);
   void setCustomWalkingPhase();
   WalkRequest::StepRequest currentCustomStep = WalkRequest::StepRequest::none;
-  
+  WalkRequest::StepRequest previousCustomStep = WalkRequest::StepRequest::none;
+
   /** Current step file executed. -1 if no one executed*/
   int currentStepFileIndex = -1;
   
+  Vector2f fallDownAngleReductionFactor;
+
   /** The next and current custom step */
   StepsFile::StepsIterator executedStep;
   StepsFile::StepsIterator currentExecutedStep;
@@ -374,8 +417,6 @@ protected:
   /** Begin and end of original custom steps without prepended or appended steps */
   std::vector<Step>::iterator currentStepsBegin, currentStepsEnd;
 
-  bool mirrorCustomStep = false;
-  Vector2f kickTarget = Vector2f(0, 0);
   bool customStepKickInPreview = false;
   
   unsigned lastTimeExecuted = 0;
@@ -387,4 +428,5 @@ protected:
   void update(Footpositions & footPositions); 
   void update(RefZMP2018 & refZMP2018); 
   void update(SpeedInfo & speedInfo);
+  void update(FallDownAngleReduction& fallDownAngleReduction);
 };

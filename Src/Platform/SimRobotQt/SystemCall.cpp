@@ -8,6 +8,10 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include "SystemCall.h"
 #include "Platform/File.h"
+#include <cstdio>  /* defines FILENAME_MAX */
+#include <array>
+#include <memory>
+#include <sstream>
 #ifndef TARGET_TOOL
 #  include "Controller/ConsoleRoboCupCtrl.h"
 #  ifdef WINDOWS
@@ -32,6 +36,11 @@
 #endif
 
 #ifndef WINDOWS
+#  include <sys/types.h>
+#  include <unistd.h>
+#  define GETCWD ::getcwd
+#  define POPEN ::popen
+#  define PCLOSE ::pclose
 #  ifdef OSX
 #    include <mach/mach_init.h>
 #    include <mach/thread_act.h>
@@ -45,7 +54,76 @@
 #  include <ctime>
 #  include <netdb.h>
 #  include <arpa/inet.h>
+#else
+#  include <Windows.h>
+#  include <direct.h>
+#  define GETCWD ::_getcwd
+#  define POPEN ::_popen
+#  define PCLOSE ::_pclose
 #endif
+
+int SystemCall::getCurrentProcessId()
+{
+#if defined(WINDOWS)
+  return static_cast<int>(::GetCurrentProcessId());
+#else
+  return ::getpid();
+#endif
+}
+
+int SystemCall::getParentProcessId()
+{
+  // Nothing to do for simulator
+  return -1;
+}
+
+std::string SystemCall::getCurrentWorkingDir()
+{
+  // Create buffer
+  char buffer[FILENAME_MAX];
+
+  // The result
+  std::string current_working_dir;
+
+  // Get dir
+  if (GETCWD(buffer, FILENAME_MAX))
+    current_working_dir = buffer;
+
+  return current_working_dir;
+}
+
+std::string SystemCall::execute(const std::string& cmd)
+{
+  static const std::string error = "popen() failed!";
+
+  // Declare buffer
+  std::array<char, 512> buffer {0};
+
+  // Create pipe
+  std::unique_ptr<FILE, decltype(&PCLOSE)> pipe(POPEN(cmd.c_str(), "r"), PCLOSE);
+
+  // Check that pipe is open
+  if (!pipe)
+    return error;
+
+  // Get output
+  std::ostringstream result;
+  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr)
+    result << buffer.data();
+
+  return result.str();
+}
+
+bool SystemCall::fileExists(const std::string& file)
+{
+  if (FILE *f = fopen(file.c_str(), "r"))
+  {
+    fclose(f);
+    return true;
+  }
+  else
+    return false;
+}
 
 unsigned SystemCall::getCurrentSystemTime()
 {

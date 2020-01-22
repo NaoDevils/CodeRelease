@@ -29,9 +29,20 @@ ArmContactProvider::~ArmContactProvider()
 
 void ArmContactProvider::update(ArmContact& armContact)
 {
-  // Check if lastRequest has been set
-  if (lastRequest.timestamp == 0)
-    lastRequest = theJointRequest;
+  // Check if lastRequest can been set and return empty armContact if not
+  requestSensorDelayBuffer.push_front(theJointRequest);
+  if(requestSensorDelayBuffer.full()){
+    lastRequest = requestSensorDelayBuffer.back();
+  }
+  else
+  {
+    localArmContact.armContactStateLeft = ArmContact::None;
+    localArmContact.armContactStateRight = ArmContact::None;
+    localArmContact.timeStampLeft = 0;
+    localArmContact.timeStampRight = 0;
+    armContact = localArmContact;
+    return;
+  }
 
   // just check if it is in walk or not
   if (lastMotionType != MotionRequest::walk && theMotionSelection.ratios[MotionRequest::walk] == 1.f)
@@ -49,6 +60,8 @@ void ArmContactProvider::update(ArmContact& armContact)
     theFallDownState.state == FallDownState::upright &&
       Global::getSettings().gameMode != Settings::penaltyShootout) // no robots to contact in penalty shootout
   {
+    bool wasContactLeft = localArmContact.armContactStateLeft != ArmContact::ArmContactState::None;
+    bool wasContactRight = localArmContact.armContactStateRight != ArmContact::ArmContactState::None;
     localArmContact.armContactStateLeft = ArmContact::ArmContactState::None;
     localArmContact.armContactStateRight = ArmContact::ArmContactState::None;
     if (!theArmMovement.armsInContactAvoidance)
@@ -80,34 +93,38 @@ void ArmContactProvider::update(ArmContact& armContact)
     Vector2f goalPostLeft(theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal);
     Vector2f goalPostRightRelative = Transformation::fieldToRobot(theRobotPose, goalPostRight);
     Vector2f goalPostLeftRelative = Transformation::fieldToRobot(theRobotPose, goalPostLeft);
-    if (goalPostRightRelative.norm() < 300 && goalPostRightRelative.angle() < 0)
+    if (goalPostRightRelative.norm() < 300 || goalPostLeftRelative.norm() < 300)
+    {
       obstacleRight = true;
-    if (goalPostLeftRelative.norm() < 300 && goalPostLeftRelative.angle() > 0)
       obstacleLeft = true;
-
+    }
     goalPostRight = Vector2f(theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosRightGoal);
     goalPostLeft = Vector2f(theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosLeftGoal);
     goalPostRightRelative = Transformation::fieldToRobot(theRobotPose, goalPostRight);
     goalPostLeftRelative = Transformation::fieldToRobot(theRobotPose, goalPostLeft);
-    if (goalPostRightRelative.norm() < 300 && goalPostRightRelative.angle() < 0)
+    if (goalPostRightRelative.norm() < 300 || goalPostLeftRelative.norm() < 300)
+    {
       obstacleRight = true;
-    if (goalPostLeftRelative.norm() < 300 && goalPostLeftRelative.angle() > 0)
       obstacleLeft = true;
+    }
 
     // avoid contact via robot map
-
     if (useRobotMap)
     {
       for (auto &robot : theRobotMap.robots)
       {
         Vector2f robotRelative = Transformation::fieldToRobot(theRobotPose, robot.pose.translation);
+        Angle robotRelativeAngle = robotRelative.angle();
         float robotDist = robotRelative.norm();
         //float ballDist = theBallModelAfterPreview.estimate.position.norm();
-        if (std::abs(toDegrees(robotRelative.angle())) < 90 &&
-          robotDist < maxRobotDist)
+        Angle maxAngle = (wasContactLeft || wasContactRight) ? 150_deg : 120_deg;
+        Angle minAngle = (wasContactLeft || wasContactRight) ? 30_deg : 45_deg;
+        float maxDist = (wasContactLeft || wasContactRight) ? maxRobotDist + 150.f : maxRobotDist;
+        if (std::abs(robotRelativeAngle) < maxAngle && std::abs(robotRelativeAngle) > minAngle
+          && robotDist < maxDist)
         {
-          obstacleLeft = obstacleLeft || robotRelative.angle() > 0;
-          obstacleRight = obstacleRight || robotRelative.angle() < 0;
+          obstacleLeft = obstacleLeft || robotRelativeAngle > 0;
+          obstacleRight = obstacleRight || robotRelativeAngle < 0;
         }
       }
     }

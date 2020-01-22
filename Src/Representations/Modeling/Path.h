@@ -19,11 +19,21 @@
 */
 STREAMABLE(Path,
 {
+  ENUM(ObstacleType,
+  {,
+    ball,
+    goalPost,
+    robot,
+    teamRobot,
+    centerCircle,
+    setPlayCircle,
+  });
   /** Reset the path */
   void reset()
   {
     wayPoints.clear();
-    nearestObstacle = 10000.f;
+    nearestObstacle = std::numeric_limits<float>::max();
+
     length = 0.f;
     useExtraBallPoint = false;
   };
@@ -80,6 +90,8 @@ STREAMABLE(Path,
   (bool)(false) useExtraBallPoint,
   (std::vector<Pose2f>) wayPoints, /**< The wayPoints in absolute field coordinates. */
   (float)(10000.f) nearestObstacle,
+  (Vector2f)(Vector2f::Zero()) nearestObstaclePosition,
+  (ObstacleType)(robot) nearestObstacleType,
   (float)(0.f) length, /**< The distance to the target calculated from the path. */  
 });
 

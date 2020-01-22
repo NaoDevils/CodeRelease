@@ -14,14 +14,6 @@
 
 //#include "Modules/MotionControl/DortmundWalkingEngine/StepData.h"
 
-#ifndef LEFT_FOOT
-#define LEFT_FOOT 0
-#endif
-
-#ifndef RIGHT_FOOT
-#define RIGHT_FOOT 1
-#endif
-
 /**
 * @class WalkingEngineParams
 * Contains the parameters of the walking engine. See the "Nao Devils Team Report 2010" for a detailed description.
@@ -50,7 +42,8 @@ struct SpeedLimits
   float xBackward; // was maxSpeedXBack
   float y; // was maxSpeedY
   float yArmContact; // new 25_04_17 
-  float r; // was maxSpeedR
+  Angle r; // was maxSpeedR
+  Angle rOnly = 90_deg; // new 07_07_19
 };
 
 struct Acceleration
@@ -81,17 +74,20 @@ struct SensorControl
 struct FootMovement
 {
   // pitch control
-  float footPitch;
+  Angle footPitch;
   float footPitchPD[2];
-  float footRoll;
+  Angle footRoll;
   float stepHeight[3]; // first: front, second: back, third: sidwards
   float doubleSupportRatio;
   float maxStepDuration;
   float minStepDuration;
   float footYDistance;
+  float leadingSideStepSpeedUp; // how much faster the leading step for side steps is. <1 means slower
   float polygonLeft[4];
   float polygonRight[4];
   float forwardPolygon[5];
+  float sideStepPolygon[5];
+  float rotPolygon[5];
   float heightPolygon[5];
 };
 
@@ -105,8 +101,8 @@ struct WalkTransition
   float stopPosThresholdY; // in m
   float stopSpeedThresholdX; // in m/s
   float stopSpeedThresholdY; // in m/s
-  float fallDownAngleMinMaxX[2]; // in rad
-  float fallDownAngleMinMaxY[2]; // in rad
+  Angle fallDownAngleMinMaxX[2]; // in rad
+  Angle fallDownAngleMinMaxY[2]; // in rad
   float unstableGyroY; // If gyroY is above this limit the robot is assumed
                        // to be unstable
   int zmpSmoothPhase; // in frames
@@ -171,7 +167,10 @@ struct WalkingEngineParams : public Streamable
       STREAM(footMovement.footPitchPD)
       STREAM(footMovement.footRoll)
       STREAM(footMovement.footYDistance)
+      STREAM(footMovement.leadingSideStepSpeedUp)
       STREAM(footMovement.forwardPolygon)
+      STREAM(footMovement.sideStepPolygon)
+      STREAM(footMovement.rotPolygon)
       STREAM(footMovement.heightPolygon)
       STREAM(footMovement.polygonLeft)
       STREAM(footMovement.polygonRight)
@@ -196,6 +195,7 @@ struct WalkingEngineParams : public Streamable
       STREAM(sensorControl.tiltControllerParams)
       STREAM(sensorControl.tiltFactor)
       STREAM(speedLimits.r)
+      STREAM(speedLimits.rOnly)
       STREAM(speedLimits.xBackward)
       STREAM(speedLimits.xForward)
       STREAM(speedLimits.xForwardArmContact)
@@ -221,55 +221,46 @@ struct WalkingEngineParams : public Streamable
 
 };
 
+STREAMABLE(JointControlParameters,
+{,
+  (float)(1.f) pidMultiplicator,
+  (Angle)(0_deg) deltaAngleX,
+  (Angle)(0_deg) deltaAngleBack,
+  (Angle)(0_deg) deltaAngleFront,
+  (float)(0.f) p_x,
+  (float)(0.f) i_x,
+  (float)(0.f) d_x,
+  (float)(0.f) p_y,
+  (float)(0.f) i_y,
+  (float)(0.f) d_y,
+  (float)(0.f) comX_p,
+  (float)(0.8f) angleGyroRatioX,
+  (float)(0.9f) angleGyroRatioY,
+});
+
 STREAMABLE(BalanceParameters,
 { ,
-  (Angle) targetAngleX,
-  (Angle) targetAngleY,
-  (float) gyroX_p,
-  (float) gyroX_d,
-  (float) gyroY_p,
-  (float) gyroY_d,
-  (float) angleX_p,
-  (float) angleX_i,
-  (float) angleY_p,
-  (float) angleY_i,
-  (float) comX_p,
-  (float) angleGyroRatioX,
-  (float) angleGyroRatioY,
-  (float) hipRollFactor,
-  (float) hipPitchFactor,
-  (float) kneeFactor,
-  (float) footPitchFactor,
-  (float) footRollFactor,
-  (bool) activateUpperBodyPID,
-  (float) pidAngleGyroRatioX,
-  (float) pidAngleGyroRatioY,
-  (float) pidGyroX_p,
-  (float) pidGyroX_i,
-  (float) pidGyroX_d,
-  (float) pidGyroY_p,
-  (float) pidGyroY_i,
-  (float) pidGyroY_d,
-  (float) pidAngleX_p,
-  (float) pidAngleX_i,
-  (float) pidAngleX_d,
-  (float) pidAngleY_p,
-  (float) pidAngleY_i,
-  (float) pidAngleY_d,
-  (bool) activateUpperBodyBalancing,
-  (bool) activateSinglePIDAllSensors,
-  (float) spidX_p,
-  (float) spidX_i,
-  (float) spidX_d,
-  (float) spidY_p,
-  (float) spidY_i,
-  (float) spidY_d,
+  (Angle)(0_deg) targetAngleX,
+  (Angle)(2_deg) targetAngleY,
+  (JointControlParameters) ankleParams,
+  (JointControlParameters) hipParams,
 });
 
 STREAMABLE(LegJointSensorControlParameters,
 {,
   (BalanceParameters) walkBalanceParams,
   (BalanceParameters) specialActionBalanceParams,
+});
+
+STREAMABLE(COMShiftParameters,
+{,
+  (float)(0.f) accXAlpha,
+  (float)(0.f) gyroYAlpha,
+  (float)(0.f) angleYAlpha,
+  (float)(0.f) gyroXAlpha,
+  (float)(0.f) angleXAlpha,
+  (float)(0.f) stepAccAlpha,
+  (int)(200) accInterpolTime,
 });
 
 //struct FreeLegPhaseParams : public WalkingEngineParams { };

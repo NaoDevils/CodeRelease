@@ -1,0 +1,29 @@
+name: Build robot on Linux
+
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'Make/**Makefile'
+      - 'Make/**Marefile'
+      - 'Make/**.mare'
+      - 'Src/**'
+      - 'Util/**'
+      - '!Src/Utils/dorsh/**'
+
+jobs:
+  build_nao:
+    name: Nao
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v1
+    - name: make
+      working-directory: ./Make/Linux/
+      # run: make Nao
+      # ignore dependencies for CodeRelease, because alcommon for Nao V5 is not present
+      run: make "Nao --ignore-dependencies" && make ndevilsbase && make sensorReader
+    # - uses: actions/upload-artifact@v1
+      # with:
+        # name: binary
+        # path: Build/Linux/Nao/Develop

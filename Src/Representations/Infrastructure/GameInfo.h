@@ -22,6 +22,7 @@ private:
 public:
   unsigned timeLastPackageReceived = 0;
   bool whistleCausedPlay = false;
+  uint8_t oppTeamNumber = 0;
 
   GameInfo();
 

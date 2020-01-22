@@ -33,17 +33,26 @@ STREAMABLE(BallPercept,
     checkJersey, /**< unused */
   });
 
+  ENUM(DetectionType,
+  {,
+    scanlines,
+    yoloOnly,
+    yoloHypothesis,
+    yoloFallback,
+  });
+
   /** Draws the ball */
   void draw() const,
 
-  (Status)(notSeen) status,           /**< Indicates, whether the ball was seen in the current image.
-                                           If \c notSeen all other members of this representation are invalid. */
-  (Vector2f) positionInImage,         /**< The position of the ball in the current image */
-  (float)(1) radiusInImage,           /**< The radius of the ball in the current image */
-  (Vector2f) relativePositionOnField, /**< Ball position relative to the robot. */
-  (float)(50) radiusOnField,          /**< The radius of the ball on the field in mm */
-  (float)(0) validity,                /**< The validity of the ball percept in range [0,1]. */
-  (bool) fromUpper,                   /**< True, if ball was seen in upper image. Use with status. */
+  (Status)(notSeen) status,                                 /**< Indicates, whether the ball was seen in the current image.
+                                                            If \c notSeen all other members of this representation are invalid. */
+  (Vector2f)(Vector2f::Zero()) positionInImage,             /**< The position of the ball in the current image */
+  (float)(1) radiusInImage,                                 /**< The radius of the ball in the current image */
+  (Vector2f)(Vector2f(1000.f,0.f)) relativePositionOnField, /**< Ball position relative to the robot. */
+  (float)(50) radiusOnField,                                /**< The radius of the ball on the field in mm */
+  (float)(0) validity,                                      /**< The validity of the ball percept in range [0,1]. */
+  (bool)(false) fromUpper,                                  /**< True, if ball was seen in upper image. Use with status. */
+  (DetectionType)(scanlines) detectionType,                 /**< Who is responsible for the detection. */
 });
 
 /**

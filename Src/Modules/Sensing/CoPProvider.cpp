@@ -11,6 +11,7 @@
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/StepData.h"
 
+using namespace DWE;
 
 void CoPProvider::update(ZMPModel &zmpModel)
 {

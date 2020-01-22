@@ -1,5 +1,6 @@
 #include "SimpleRobotMapProvider.h"
 #include "Tools/Math/Transformation.h"
+#include "Tools/Math/Geometry.h"
 
 SimpleRobotMapProvider::SimpleRobotMapProvider()
 {
@@ -45,7 +46,8 @@ void SimpleRobotMapProvider::execute()
   //predict();
 
   // update with local percepts
-  updateWithLocalData();
+  updateWithLocalData(false);
+  updateWithLocalData(true);
 
   // global update
   if (global && theRobotPose.validity > 0.4)
@@ -93,10 +95,11 @@ void SimpleRobotMapProvider::update(SimpleRobotsDistributed &simpleRobotsDistrib
   }
 }
 
-void SimpleRobotMapProvider::updateWithLocalData()
+void SimpleRobotMapProvider::updateWithLocalData(const bool& upper)
 {
-  std::vector<RobotEstimate>::const_iterator i = theRobotsPercept.robots.begin();
-  std::vector<RobotEstimate>::const_iterator end = theRobotsPercept.robots.end();
+  const CameraMatrix& cameraMatrix = (upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix);
+  std::vector<RobotEstimate>::const_iterator i = upper ? theRobotsPerceptUpper.robots.begin() : theRobotsPercept.robots.begin();
+  std::vector<RobotEstimate>::const_iterator end = upper ? theRobotsPerceptUpper.robots.end() : theRobotsPercept.robots.end();
   for (; i != end; i++)
   {
     Vector2f perceptFieldCoordinates = Transformation::robotToField(theRobotPose,i->locationOnField.translation);
@@ -105,7 +108,16 @@ void SimpleRobotMapProvider::updateWithLocalData()
     {
       SimpleRobot &robot = simpleRobots[sr];
       const Vector2f poseDiff = (perceptFieldCoordinates-robot.pose.translation);
-      if (poseDiff.norm() < mergeLocationDiff)
+      Vector2f robotRelative = Transformation::fieldToRobot(theRobotPose, robot.pose.translation);
+      Vector2f robotAngles;
+      robotAngles.y() = std::atan2(cameraMatrix.translation.z(), robotRelative.norm());
+      robotAngles.x() = robotRelative.angle();
+      Vector2f perceptAngles;
+      perceptAngles.y() = std::atan2(cameraMatrix.translation.z(), i->locationOnField.translation.norm());
+      perceptAngles.x() = i->locationOnField.translation.angle();
+      float yDiff = robotAngles.y() - perceptAngles.y();
+      float xDiff = robotAngles.x() - perceptAngles.x();
+      if (std::abs(yDiff) < mergeAngleYDiff && std::abs(xDiff) < mergeAngleXDiff)
       {
         merged = true;
         Vector2f oldTrans = robot.pose.translation;

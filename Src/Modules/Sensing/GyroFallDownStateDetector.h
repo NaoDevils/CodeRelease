@@ -10,6 +10,7 @@
 
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Modeling/IMUModel.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Tools/Module/Module.h"
@@ -19,9 +20,18 @@
 MODULE(GyroFallDownStateDetector,
 { ,
   REQUIRES(InertialSensorData),
+  REQUIRES(IMUModel),
   USES(MotionInfo),
   REQUIRES(FrameInfo),
   PROVIDES(FallDownState),
+  DEFINES_PARAMETERS(
+  {,
+    (bool)(true) uprightAfterSpecialAction,
+    (bool)(false) useIMUModel,
+    (bool)(false) useGyroSpeed,
+    (Angle)(5_deg) maxGyroForStandup,
+    (Angle)(60_deg) uprightAngleThreshold,
+  }),
 });
 
 
@@ -45,5 +55,8 @@ private:
   unsigned fallDownTime;
 
   unsigned fallenFinishedTime;
+
+  RingBufferWithSum<Angle, 50> gyroXBuffer;
+  RingBufferWithSum<Angle, 50> gyroYBuffer;
 
 };

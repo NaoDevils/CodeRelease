@@ -60,9 +60,12 @@ bool MotionLogDataProvider::handleMessage2(InMessage& message)
       if(handle(message) && Blackboard::getInstance().exists("FrameInfo"))
       {
         FrameInfo& frameInfo = (FrameInfo&) Blackboard::getInstance()["FrameInfo"];
-        const JointAngles& jointAngles = (const JointAngles&) Blackboard::getInstance()["JointAngles"];
-        frameInfo.cycleTime = (float)(jointAngles.timestamp - frameInfo.time) * 0.001f;
-        frameInfo.time = jointAngles.timestamp;
+        const JointAngles& jointAngles = (const JointAngles&)Blackboard::getInstance()["JointAngles"];
+        if (jointAngles.timestamp != frameInfo.time)
+        {
+          frameInfo.cycleTime = (float)(jointAngles.timestamp - frameInfo.time) * 0.001f;
+          frameInfo.time = jointAngles.timestamp;
+        }
       }
       return true;
 
@@ -70,20 +73,18 @@ bool MotionLogDataProvider::handleMessage2(InMessage& message)
       if(handle(message) && Blackboard::getInstance().exists("FrameInfo"))
       {
         FrameInfo& frameInfo = (FrameInfo&) Blackboard::getInstance()["FrameInfo"];
-        const JointSensorData& jointSensorData = (const JointSensorData&) Blackboard::getInstance()["JointSensorData"];
-        frameInfo.cycleTime = (float)(jointSensorData.timestamp - frameInfo.time) * 0.001f;
-        frameInfo.time = jointSensorData.timestamp;
+        const JointSensorData& jointSensorData = (const JointSensorData&)Blackboard::getInstance()["JointSensorData"];
+        if (jointSensorData.timestamp != frameInfo.time)
+        {
+          frameInfo.cycleTime = (float)(jointSensorData.timestamp - frameInfo.time) * 0.001f;
+          frameInfo.time = jointSensorData.timestamp;
+        }
       }
       return true;
 
     case idGroundTruthOdometryData:
       if(handle(message) && Blackboard::getInstance().exists("OdometryData"))
         (OdometryData&) Blackboard::getInstance()["OdometryData"] = (OdometryData&) Blackboard::getInstance()["GroundTruthOdometryData"];
-      return true;
-
-    case idGameInfo:
-      if(handle(message) && Blackboard::getInstance().exists("RawGameInfo"))
-        (GameInfo&) Blackboard::getInstance()["RawGameInfo"] = (GameInfo&) Blackboard::getInstance()["GameInfo"];
       return true;
 
     case idProcessFinished:

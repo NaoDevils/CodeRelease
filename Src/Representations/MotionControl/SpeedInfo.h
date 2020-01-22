@@ -4,6 +4,7 @@
 */
 #pragma once
 
+#include <limits>
 #include "Modules/MotionControl/DortmundWalkingEngine/Point.h"
 #include "Representations/MotionControl/WalkRequest.h"
 #ifndef WALKING_SIMULATOR
@@ -31,7 +32,7 @@ struct SpeedInfo : public Streamable
   int delay; /**< The current speed was requested delay frames before. */
 	
 	/** Constructor */
-	SpeedInfo(){}
+	SpeedInfo() : deceleratedByAcc(false), timestamp(0), currentCustomStep(WalkRequest::none), customStepKickInPreview(false), delay(0) {}
 
 	/** Destructor */
 	~SpeedInfo(){}
@@ -43,3 +44,27 @@ protected:
     STREAM_REGISTER_FINISH;
   }
 };
+
+STREAMABLE(SpeedInfoCompressed,
+{
+  SpeedInfoCompressed() = default;
+  SpeedInfoCompressed(const SpeedInfo& other)
+  {
+    translation = other.speed.translation.cast<short>();
+    rotation = static_cast<unsigned char>((other.speed.rotation + pi) / pi2 * std::numeric_limits<unsigned char>::max());
+    currentCustomStep = other.currentCustomStep;
+  }
+
+  operator SpeedInfo() const
+  {
+    SpeedInfo info;
+    info.speed.translation = translation.cast<float>();
+    info.speed.rotation = static_cast<float>(rotation) / pi2 - pi;
+    info.currentCustomStep = currentCustomStep;
+    return info;
+  },
+
+  (Vector2s) translation,
+  (unsigned char)(0) rotation,
+  ((WalkRequest) StepRequest)(WalkRequest::none) currentCustomStep,
+});

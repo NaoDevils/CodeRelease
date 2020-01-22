@@ -373,7 +373,7 @@ bool MofCompiler::parseMofs()
                   printf("%s(%i) : error: interpolation data format\n", name, line);
                   return false;
                 }
-                if(sscanf(sval[Joints::numOfJoints + 1], "%i", &val) == 1 && val > 0)
+                if(sscanf(sval[Joints::numOfJoints + 1], "%i", &val) == 1 && (val > 0 || val == -1))
                 {
                   strcat(temp, " ");
                   strcat(temp, sval[Joints::numOfJoints + 1]);

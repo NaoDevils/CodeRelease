@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <string>
 
 /**
  * All process-local global variable declarations have to be preceeded
@@ -35,6 +36,21 @@ public:
     logfileReplay,
     teamRobot,
   };
+
+  /** returns the process id for the current process*/
+  static int getCurrentProcessId();
+
+  /** returns the process id for the parent process (returns -1 for the simulator)*/
+  static int getParentProcessId();
+
+  /** returns the current working directory */
+  static std::string getCurrentWorkingDir();
+
+  /** executes cmd as a separate process and returns its output */
+  static std::string execute(const std::string& cmd);
+
+  /** returns whether a file exists or not */
+  static bool fileExists(const std::string& file);
 
   /** returns the current system time in milliseconds*/
   static unsigned getCurrentSystemTime();

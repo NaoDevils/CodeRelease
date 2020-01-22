@@ -58,7 +58,6 @@ private:
     (bool)(false) clean, /**< Was the working copy clean when it was deployed? */
   });
 
-  BuildInfo buildInfo; /**< Information about the revision that was deployed. */
   RingBufferWithSum<unsigned, 30> timeBuffer; /**< Buffered timestamps of previous executions */
   unsigned lastExecutionTime;
   unsigned lastRelaxedHealthComputation;

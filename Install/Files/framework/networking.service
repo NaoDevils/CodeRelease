@@ -1,0 +1,10 @@
+[Unit]
+Description=ifconfig set static ip lan and wlan
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/home/nao/scripts/network.sh
+
+[Install]
+WantedBy=multi-user.target

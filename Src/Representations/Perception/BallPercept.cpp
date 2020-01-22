@@ -20,11 +20,32 @@ void BallPercept::draw() const
   if(status == seen)
   {
     if (fromUpper)
+      if (detectionType == BallPercept::yoloHypothesis)
+      CIRCLE("representation:BallPercept:Image:Upper", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+             Drawings::solidPen,  ColorRGBA::black, Drawings::solidBrush, ColorRGBA(0, 0, 255, 100));
+      else if (detectionType == BallPercept::yoloFallback)
+        CIRCLE("representation:BallPercept:Image:Upper", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+               Drawings::solidPen,  ColorRGBA::black, Drawings::solidBrush, ColorRGBA(255, 0, 0, 100));
+      else if (detectionType == BallPercept::yoloOnly)
+        CIRCLE("representation:BallPercept:Image:Upper", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+               Drawings::solidPen,  ColorRGBA::black, Drawings::solidBrush, ColorRGBA(0, 255, 0, 100));
+      else
       CIRCLE("representation:BallPercept:Image:Upper", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
              Drawings::solidPen,  ColorRGBA::black, Drawings::solidBrush, ColorRGBA(255, 128, 64, 100));
     else
-      CIRCLE("representation:BallPercept:Image:Lower", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
-        Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA(255, 128, 64, 100));
+      if (detectionType == BallPercept::yoloHypothesis)
+        CIRCLE("representation:BallPercept:Image:Lower", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+              Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA(0, 0, 255, 100));
+      else if (detectionType == BallPercept::yoloFallback)
+        CIRCLE("representation:BallPercept:Image:Lower", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+               Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA(255, 0, 0, 100));
+      else if (detectionType == BallPercept::yoloOnly)
+        CIRCLE("representation:BallPercept:Image:Lower", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+               Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA(0, 255, 0, 100));
+      else
+        CIRCLE("representation:BallPercept:Image:Lower", positionInImage.x(), positionInImage.y(), radiusInImage, 1, // pen width
+              Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, ColorRGBA(255, 128, 64, 100));
+
     CIRCLE("representation:BallPercept:Field", relativePositionOnField.x(), relativePositionOnField.y(), radiusOnField/2, 0, // pen width
            Drawings::solidPen, ColorRGBA::white, Drawings::solidBrush, ColorRGBA::white);
     CIRCLE("representation:BallPercept:Field", relativePositionOnField.x(), relativePositionOnField.y(), radiusOnField/4, 0, // pen width

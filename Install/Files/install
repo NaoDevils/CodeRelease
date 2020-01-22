@@ -6,7 +6,7 @@ export baseDir=$(dirname ${scriptPath})
 
 if [ "$(whoami)" != "root" ]; then
   # We are still user nao
-  
+
   # Create B-Human directory
   mkdir -p /home/nao/Config
 
@@ -32,11 +32,11 @@ else
   # if install is executed on a installed robot, / is read-only, therefore remount it,
   # otherwise this line will have no effect
   mount -n -o remount,rw /
-  
+
   # Change name
   cp ${baseDir}/Robot/hostname /etc/hostname
   python bin/setRobotName.py $(cat /etc/hostname) | grep -v '\[I\]'
-  
+
   # Make sudo work
   cp -f ${baseDir}/sudoers /etc
   chmod 440 /etc/sudoers
@@ -75,6 +75,11 @@ else
   cp ${baseDir}/init-bhumand /etc/init.d/bhumand
   rc-update add bhumand
 
+  # Start sensorReader during boot
+  cp ${baseDir}/init-sensorReaderd /etc/init.d/sensorReaderd
+  cp ${baseDir}/framework/sensorReader_init.sh /home/nao/bin/sensorReader_init.sh
+  rc-update add sensorReaderd
+
   # Mount / readonly during boot
   cp ${baseDir}/readonly /etc/init.d
   rc-update add readonly boot
@@ -84,10 +89,12 @@ else
     echo "UseDNS no" >> "/etc/ssh.conf/sshd_config"
   fi
 
-  # Set the timezone and localtime
-  cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime
-  echo "Europe/Berlin" > /etc/timezone
-  
+  # Do not set timezone, localtime is Universal after flashing
+  #cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+  #echo "Europe/Berlin" > /etc/timezone
+  #ln -sf /usr/share/zoneinfo/Universal /etc/localtime
+  #echo "Universal" > /etc/timezone
+
   # Save original naoqi autoload file (but do not overwrite if backup already exists) and install B-Human's
   if [ ! -f /etc/naoqi/autoload.org ] ; then
     cp -n /etc/naoqi/autoload.ini /etc/naoqi/autoload.org
@@ -112,12 +119,17 @@ else
 
   # Load sshd later
   rc-update add sshd
-  
+
   # Install alternative modules
   cp -r ${baseDir}/kernel/2.6.33.9-rt31-aldebaran-rt /lib/modules
-  
+
+
+  # Update Alsa Config to register four channel device called 'multi'
+  mv /usr/share/alsa/alsa.conf /usr/share/alsa/alsa.conf.default
+  cp -b ${baseDir}/alsa.conf /usr/share/alsa/alsa.conf
+
   sync
-  
+
   echo "[INFO] rebooting"
   reboot
 fi

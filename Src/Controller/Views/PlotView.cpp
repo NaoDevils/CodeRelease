@@ -20,7 +20,7 @@
 
 PlotWidget::PlotWidget(PlotView& plotView, PlotWidget*& plotWidget) :
   plotView(plotView), plotWidget(plotWidget), lastTimeStamp(0), blackPen(QColor(0x00, 0x00, 0x00)), grayPen(QColor(0xbb, 0xbb, 0xbb)),
-  drawUnits(true), drawLegend(true), antialiasing(false)
+  drawUnits(true), drawLegend(true), continousMinMax(false), antialiasing(false)
 {
   setFocusPolicy(Qt::StrongFocus);
   setBackgroundRole(QPalette::Base);
@@ -30,6 +30,7 @@ PlotWidget::PlotWidget(PlotView& plotView, PlotWidget*& plotWidget) :
   settings.beginGroup(plotView.fullName);
   drawUnits = settings.value("DrawUnits", true).toBool();
   drawLegend = settings.value("DrawLegend", true).toBool();
+  continousMinMax = settings.value("ContinousMinMax", false).toBool();
   antialiasing = settings.value("Antialiasing", false).toBool();
   settings.endGroup();
 }
@@ -40,6 +41,7 @@ PlotWidget::~PlotWidget()
   settings.beginGroup(plotView.fullName);
   settings.setValue("DrawUnits", drawUnits);
   settings.setValue("DrawLegend", drawLegend);
+  settings.setValue("ContinousMinMax", continousMinMax);
   settings.setValue("Antialiasing", antialiasing);
   settings.endGroup();
 
@@ -110,15 +112,15 @@ void PlotWidget::paint(QPainter& painter)
   float stepY = std::pow(10.f, std::ceil(std::log10(plotView.valueLength * 20.f / plotRect.height())));
   float stepX = std::pow(10.f, std::ceil(std::log10(plotSizeF * 25.f / plotRect.width())));
   if(stepY * plotRect.height() / plotView.valueLength >= 40.f)
-    stepY /= 2.;
+    stepY /= 2.f;
   if(stepY * plotRect.height() / plotView.valueLength >= 40.f)
-    stepY /= 2.;
+    stepY /= 2.f;
   if(stepY > std::max<>(plotView.maxValue, -plotView.minValue))
     stepY = std::max<>(plotView.maxValue, -plotView.minValue);
   if(plotRect.width() * stepX / plotSizeF >= 50.f)
-    stepX /= 2.;
+    stepX /= 2.f;
   if(plotRect.width() * stepX / plotSizeF >= 50.f)
-    stepX /= 2.;
+    stepX /= 2.f;
   if(stepX > plotSizeF)
     stepX = plotSizeF;
 
@@ -131,7 +133,7 @@ void PlotWidget::paint(QPainter& painter)
     int width2 = fontMetrics.size(Qt::TextSingleLine, buf).width();
     if(width2 > width)
       width = width2;
-    width += space * 2;
+    width += static_cast<int>(space * 2);
     if(width < leftMargin)
     {
       plotRect.setLeft((int) (plotRect.left() - (leftMargin - width)));
@@ -239,6 +241,7 @@ void PlotWidget::paint(QPainter& painter)
     if(antialiasing)
       painter.setRenderHints(QPainter::Antialiasing | QPainter::HighQualityAntialiasing);
     int legendWidth = 0;
+    bool started = false;
     const std::list<RobotConsole::Layer>& plotList(plotView.console.plotViews[plotView.name]);
     for(std::list<RobotConsole::Layer>::const_iterator i = plotList.begin(), end = plotList.end();
         i != end; ++i)
@@ -248,8 +251,25 @@ void PlotWidget::paint(QPainter& painter)
       if(numOfPoints > 1)
       {
         std::list<float>::const_iterator k = list.begin();
-        for(int j = plotView.plotSize - numOfPoints; j < int(plotView.plotSize); ++j)
-          plotView.points[j].ry() = *(k++);
+        for (int j = plotView.plotSize - numOfPoints; j < int(plotView.plotSize); ++j)
+        {
+          const float& value(*(k++));
+          plotView.points[j].ry() = value;
+          if (started && continousMinMax)
+          {
+            if (value < plotView.minValue)
+              plotView.minValue = value;
+            else if (value > plotView.maxValue)
+              plotView.maxValue = value;
+          }
+          else if (continousMinMax)
+          {
+            plotView.minValue = value;
+            plotView.maxValue = plotView.minValue + 0.01f;
+            started = true;
+          }
+        }
+
         const ColorRGBA& color(i->color);
         painter.setPen(QColor(color.r, color.g, color.b));
         painter.drawPolyline(plotView.points + (plotView.plotSize - numOfPoints), numOfPoints);
@@ -264,6 +284,16 @@ void PlotWidget::paint(QPainter& painter)
           legendWidth = width;
       }
     }
+
+    if (started && continousMinMax)
+    {
+      int precision = int(std::ceil(std::log10(plotView.maxValue - plotView.minValue)*3)) - 1;
+      float rounder = std::pow(10.f, (float)precision);
+      plotView.minValue = std::floor(plotView.minValue / rounder) * rounder;
+      plotView.maxValue = std::ceil(plotView.maxValue / rounder) * rounder;
+      plotView.valueLength = plotView.maxValue - plotView.minValue;
+    }
+
     if(antialiasing)
       painter.setRenderHints(QPainter::Antialiasing | QPainter::HighQualityAntialiasing, false);
 
@@ -353,6 +383,12 @@ void PlotWidget::toggleDrawLegend()
 void PlotWidget::toggleAntialiasing()
 {
   antialiasing = !antialiasing;
+  QWidget::update();
+}
+
+void PlotWidget::toggleContinousMinMax()
+{
+  continousMinMax = !continousMinMax;
   QWidget::update();
 }
 
@@ -475,6 +511,12 @@ QMenu* PlotWidget::createUserMenu() const
   menu->addSeparator();
   action = menu->addAction(tr("Auto-min-max"));
   connect(action, SIGNAL(triggered()), this, SLOT(determineMinMaxValue()));
+
+  action = menu->addAction(tr("Continous Auto-min-max"));
+  action->setCheckable(true);
+  action->setChecked(continousMinMax);
+  connect(action, SIGNAL(triggered()), this, SLOT(toggleContinousMinMax()));
+
 
   return menu;
 }

@@ -73,7 +73,7 @@ class PoseHypothesis2017
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    enum FixedParameters
+  enum FixedParameters
   {
     totalDimension = 3, // 3=ownPose
   };
@@ -81,6 +81,8 @@ public:
   PoseHypothesis2017(const Pose2f & newPose, float _positionConfidence, float _symmetryConfidence, const unsigned &timeStamp, const SelfLocator2017Parameters& parameters);
   PoseHypothesis2017(const PoseHypothesis2017& other, const unsigned &timeStamp);
   PoseHypothesis2017& operator=(const PoseHypothesis2017& other);
+
+  ~PoseHypothesis2017();
 
 private:
   // ok, since we only have limited sized matrices for the update, we restrict the measurement dimension...
@@ -101,14 +103,11 @@ private:
   float                                     positionConfidence;
   double                                    normalizedPositionConfidence;
   float                                     symmetryConfidence;
-  unsigned                                  lastSymmetryUpdate;
 
-  double                                    temporaryLocalSymmetryLikelihood;
+  PoseHypothesis2017* mirrored;
 
   Matrix2d singleMeasurementCovariance_2x2;
   Matrix3d poseCovarianceForLineMatching;
-
-  unsigned int                           timeOfLastPrediction;
 
   bool initialized;
 
@@ -151,6 +150,13 @@ public:
       if (vector[i] != vector[i])
         return true;
     return false;
+  }
+
+  void mirror()
+  {
+    state[0] = -state[0];
+    state[1] = -state[1];
+    state[2] = Angle::normalize(state[2] + pi);
   }
 
   bool containsInvalidValues() const { return containsInvalidValues(state); }
@@ -254,6 +260,11 @@ public:
     state[2] = Angle::normalize(state[2] + angle);
   }
 
+  PoseHypothesis2017 *&mirroredHypothesis()
+  {
+    return mirrored;
+  }
+
   float getSymmetryConfidence() const
   {
     return symmetryConfidence;
@@ -283,8 +294,6 @@ public:
   void draw(ColorRGBA myselfColor = ColorRGBA(255, 255, 255, 255)) const;
 
 private:
-
-  void calculateProcessModelJacobian(int dt);
 
   // LEVEL 1
   bool updatePositionConfidenceWithSingleLines(
@@ -370,7 +379,7 @@ private:
     {
       double exponent = sqr(diff.x()) / parameters.sensorUpdate.verticalAngleVariance
         + sqr(diff.y()) / parameters.sensorUpdate.horizontalAngleVariance;
-      double probability(1.0 / (pi2 * sqrt(parameters.sensorUpdate.verticalAngleVariance*parameters.sensorUpdate.horizontalAngleVariance)));
+      double probability(1.0 / (static_cast<double>(pi2) * sqrt(parameters.sensorUpdate.verticalAngleVariance*parameters.sensorUpdate.horizontalAngleVariance)));
       probability *= exp(-0.5*exponent);
       return probability;
     }
@@ -405,7 +414,7 @@ private:
 
       if (line.validity > .5)
       {
-        double angle = pi_2 - (line.endOnField - line.startOnField).angle();
+        double angle = static_cast<double>(pi_2) - (line.endOnField - line.startOnField).angle();
         while (std::abs(angle) >= pi_4)
         {
           angle += pi_2;

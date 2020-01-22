@@ -16,3 +16,4 @@ PROCESS_LOCAL StreamHandler* Global::theStreamHandler = 0;
 PROCESS_LOCAL DrawingManager* Global::theDrawingManager = 0;
 PROCESS_LOCAL DrawingManager3D* Global::theDrawingManager3D = 0;
 PROCESS_LOCAL TimingManager* Global::theTimingManager = 0;
+PROCESS_LOCAL NTP* Global::theNTP = 0;

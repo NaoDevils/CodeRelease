@@ -102,7 +102,8 @@ void StandEngine::update(StandEngineOutput& jointRequest)
     {
       angleSum = 0_deg;
       angleOldError = 0_deg;
-      pitchOffset = 0_deg;
+      if (pitchOffset > 0.1_deg) pitchOffset -= 0.04_deg;
+      else if (pitchOffset < -0.1_deg) pitchOffset += 0.04_deg;
       positionOkay = false;
     }
   }
@@ -194,8 +195,9 @@ void StandEngine::update(StandEngineOutput& jointRequest)
   // reduce pitchOffset back to zero and set isLeavingPossible
   if (jointRequest.stiffnessTransition == 0.f && theMotionRequest.motion != MotionRequest::Motion::stand)
   {
-      if (pitchOffset > 0.1_deg) pitchOffset -= 0.04_deg;
-      else if (pitchOffset < -0.1_deg) pitchOffset += 0.04_deg;
+      Angle step = leaveTransitionSpeed * theFrameInfo.cycleTime;
+      if (pitchOffset > step) pitchOffset -= step;
+      else if (pitchOffset < -step) pitchOffset += step;
       else jointRequest.isLeavingPossible = true;
   }
 }

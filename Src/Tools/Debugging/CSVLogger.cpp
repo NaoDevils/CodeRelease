@@ -74,6 +74,9 @@ void CSVLogger::mark(string titel, string name)
 	if (f==NULL)
 		f=addFile(titel);
 
+  if (f==NULL)
+    return;
+
 	if (f->headerWritten)
 		return;
 
@@ -88,6 +91,9 @@ bool CSVLogger::add(string titel, string name, string data)
 	Logfile *f=getFile(titel);
 	if (f==NULL)
 		f=addFile(titel);
+
+  if (f==NULL)
+    return false;
 
 	Column *c=getColumn(f, name);
 
@@ -188,6 +194,8 @@ CSVLogger::Logfile *CSVLogger::addFile(string name)
 	if (neu->s.fail())
 	{
 		disabled=true;
+    delete neu;
+    neu = NULL;
 	}
 	else
 	{

@@ -29,7 +29,7 @@ public :
 	~ObservedFLIPMError()
 	{};
 
-  Eigen::Matrix< Vector6f, 2, 1> ObservedError;
+  Eigen::Matrix< Vector6d, 2, 1> ObservedError;
 	
 	void serialize(In* in,Out* out)
     {

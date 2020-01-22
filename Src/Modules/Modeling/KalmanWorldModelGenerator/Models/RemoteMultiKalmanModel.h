@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "MultiKalmanModel.h"
+#include "GlobalMultiKalmanModel.h"
 #include "RemoteKalmanPositionHypothesis.h"
 
 
@@ -23,8 +23,8 @@
  * absolute field coordinates.
  * \see MultiKalmanModel, RemoteKalmanPositionHypothesis
  */
-template <typename hypothesis_t = RemoteKalmanPositionHypothesis>
-class RemoteMultiKalmanModel : public MultiKalmanModel<hypothesis_t>
+template <typename hypothesis_t = RemoteKalmanPositionHypothesis, bool towardsOneModel = true>
+class RemoteMultiKalmanModel : public GlobalMultiKalmanModel<hypothesis_t, towardsOneModel>
 {
   // Check at compile-time that hypothesis_t is derived from class RemoteKalmanPositionHypothesis.
   static_assert(std::is_base_of<RemoteKalmanPositionHypothesis, hypothesis_t>::value,
@@ -34,7 +34,14 @@ public:
   /**
    * Default constructor creates a new and empty \c RemoteMultiKalmanModel object.
    */
-  RemoteMultiKalmanModel() : MultiKalmanModel<hypothesis_t>() {}
+  RemoteMultiKalmanModel() : GlobalMultiKalmanModel<hypothesis_t, towardsOneModel>() {}
+  /**
+   * Constructor setting the perceptDuration.
+   * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
+   *
+   * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
+   */
+  RemoteMultiKalmanModel(unsigned perceptDuration) : GlobalMultiKalmanModel<hypothesis_t, towardsOneModel>(perceptDuration) {}
   /**
    * Destructor.
    */
@@ -115,18 +122,6 @@ public:
     int playerNumber,
     const typename hypothesis_t::TeammateInfo teammate);
 
-
-  //MARK: Helper methods
-
-  /**
-   * States whether this model use relative robot coordinates or global field 
-   * coordinates. Local models use always relative robot coordinates while remote
-   * models always use global field coordinates.
-   * \return \c true if the hypotheses within this model are represented in 
-   *         relative robot coordinates,
-   *         \c false otherwise (global field coordinates).
-   */
-  virtual bool usesRelativeCoordinates() const { return false; }
 };
 
 #include "RemoteMultiKalmanModel_impl.h"

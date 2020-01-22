@@ -32,6 +32,8 @@ bool TeamRobot::main()
       ballModel.draw();
     if(SystemCall::getTimeSince(teamBallModelReceived) < 1000)
       teamBallModel.draw();
+    if(SystemCall::getTimeSince(goalPerceptReceived) < 1000)
+      goalPercept.draw();
     if(SystemCall::getTimeSince(motionRequestReceived) < 1000)
       motionRequest.draw();
 
@@ -61,6 +63,14 @@ bool TeamRobot::main()
     //DRAWTEXT("robotState", -5100, lineY, 150, ColorRGBA::white, "ballPercept: " << ballModel.lastPerception.position.x << ", " << ballModel.lastPerception.position.y);
     lineY -= 180;
     DRAWTEXT("robotState", -5100, lineY, 150, ColorRGBA::white, "memory usage: " << robotHealth.memoryUsage << " %");
+    if(goalPercept.timeWhenGoalPostLastSeen)
+    {
+      DRAWTEXT("robotState", 3700, lineY, 150, ColorRGBA::white, "goalLastSeen: " << SystemCall::getRealTimeSince(goalPercept.timeWhenGoalPostLastSeen) << " ms");
+    }
+    else
+    {
+      DRAWTEXT("robotState", 3700, lineY, 150, ColorRGBA::white, "goalLastSeen: never");
+    }
 
     lineY -= 180;
 

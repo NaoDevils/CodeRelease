@@ -22,8 +22,9 @@ class RobotPoseHypothesis: public RobotPose
 public:
   RobotPoseHypothesis() : robotPoseReceivedMeasurementUpdate(false) { covariance = Matrix3d::Identity(); };
 
-  RobotPoseHypothesis(const Pose2f & pose, const Matrix3d & covariance):
-    covariance(covariance)
+  RobotPoseHypothesis(const Pose2f & pose, const Matrix3d & covariance)
+    : covariance(covariance)
+    , robotPoseReceivedMeasurementUpdate(false)
   {
     translation = pose.translation;
     rotation = pose.rotation;

@@ -219,7 +219,7 @@ void BallModelProvider::sensorUpdateRemote()
         theTeammateData.teammates[i].pose,
         theTeammateData.teammates[i].ball.estimate.velocity);
       // Distance from robot to ball percept.
-      float distanceToPercept = theTeammateData.teammates[i].ball.lastPerception.norm();
+      float distanceToPercept = theTeammateData.teammates[i].ball.estimate.position.norm();
 
       // Run sensor update with global ball position.
       RemoteKalmanPositionHypothesis::TeammateInfo teammate(
@@ -265,7 +265,50 @@ void BallModelProvider::handleGameState()
       sensorUpdateLocalSingle(fakePercept);
     
     // Remote ball model:
-    RemoteKalmanPositionHypothesis newRemoteHypothesis(kalmanNoiseMatrices, 1.f, theFrameInfo.time, 1.f, kickOffPoint);
+    RemoteKalmanPositionHypothesis newRemoteHypothesis(kalmanNoiseMatrices, 1.f, theFrameInfo.time, 1.f, kickOffPoint, m_remoteMultipleBallModel.perceptDuration);
+    // Increase the numberOfSensorUpdates of the new hypothesis to reache the
+    // threshold which is required for becoming the best hypothesis.
+    newRemoteHypothesis.addNumberOfSensorUpdates(parameters.Hypotheses_minNumberOfSensorUpdatesForBestHypothesis);
+    // Add new hypothesis to remote ball model.
+    m_remoteMultipleBallModel.addHypothesis(newRemoteHypothesis);
+  }
+
+  // Transition from SET_PLAY_NONE to SET_PLAY_CORNER_KICK or SET_PLAY_GOAL_FREE_KICK
+  if (m_lastSetPlay == SET_PLAY_NONE && 
+    (theGameInfo.setPlay == SET_PLAY_CORNER_KICK || theGameInfo.setPlay == SET_PLAY_GOAL_FREE_KICK) &&
+    parameters.State_SetPlay_addSetPlayHypothesis) // This can be deactivated via config file.
+  {
+    // Kick off point is dependent on kick off team
+    bool ownKickOff = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber;
+    // Use newest ball model for decision, where ball went out
+    Vector2f lastBallPosition =
+      (theFrameInfo.getTimeSince(m_remoteBallModel.timeWhenLastSeen) < theFrameInfo.getTimeSince(m_localBallModel.timeWhenLastSeen)) ?
+      m_remoteBallModel.position : Transformation::robotToField(theRobotPose,m_localBallModel.estimate.position);
+    // Ball is put in on the side it went out, so take last known ball position as base for that
+    bool ballWasLeft = lastBallPosition.y() > 0;
+    // Add a ball hypothesis at the kick off point.
+    Vector2f kickOffPoint;
+    if (theGameInfo.setPlay == SET_PLAY_CORNER_KICK)
+    {
+      kickOffPoint.x() = ownKickOff ? theFieldDimensions.xPosOpponentGroundline : theFieldDimensions.xPosOwnGroundline;
+      kickOffPoint.y() = ballWasLeft ? theFieldDimensions.yPosLeftSideline : theFieldDimensions.yPosRightSideline;
+    }
+    else // goal free kick
+    {
+      kickOffPoint.x() = ownKickOff ? theFieldDimensions.xPosOwnPenaltyMark : theFieldDimensions.xPosOpponentPenaltyMark;
+      kickOffPoint.y() = ballWasLeft ? theFieldDimensions.yPosLeftPenaltyArea : theFieldDimensions.yPosRightPenaltyArea;
+    }
+      
+    // Local ball model:
+    // Transform kick off point to relative robot coordinates.
+    BallPercept fakePercept;
+    fakePercept.relativePositionOnField = Transformation::fieldToRobot(theRobotPose, kickOffPoint);
+    fakePercept.validity = theRobotPose.validity;
+    for (int i = 0; i < parameters.Hypotheses_minNumberOfSensorUpdatesForBestHypothesis; i++)
+      sensorUpdateLocalSingle(fakePercept);
+
+    // Remote ball model:
+    RemoteKalmanPositionHypothesis newRemoteHypothesis(kalmanNoiseMatrices, 1.f, theFrameInfo.time, 1.f, kickOffPoint, m_remoteMultipleBallModel.perceptDuration);
     // Increase the numberOfSensorUpdates of the new hypothesis to reache the
     // threshold which is required for becoming the best hypothesis.
     newRemoteHypothesis.addNumberOfSensorUpdates(parameters.Hypotheses_minNumberOfSensorUpdatesForBestHypothesis);
@@ -295,8 +338,9 @@ void BallModelProvider::handleKick()
   
   if (m_localMultipleBallModel.bestHypothesis() != nullptr)
   {
-    bool kickTriggered = theMotionRequest.motion == MotionRequest::Motion::kick ||
-      (theMotionRequest.motion == MotionRequest::Motion::walk && theMotionRequest.walkRequest.isStepRequestKick());
+    // TODO: actually use robot model's foot positions intersecting with model
+    bool kickTriggered = theMotionInfo.motion == MotionRequest::Motion::kick ||
+      (theMotionInfo.motion == MotionRequest::Motion::walk && theMotionInfo.customStepKickInPreview);
     if (kickTriggered)
     {
       // If the ball hypothesis already has a high velocity, the kick must be
@@ -331,7 +375,7 @@ void BallModelProvider::handleKick()
   }
 
   // Save current motion type (kick, etc.) for next iteration.
-  m_lastMotionType = theMotionRequest.motion;
+  m_lastMotionType = theMotionInfo.motion;
 }
 
 

@@ -13,16 +13,11 @@
 #include "RoboCupGameControlData.h"
 #include "Tools/Streams/Streamable.h"
 #include "Tools/Enum.h"
+#include "Tools/Settings.h"
 
 struct RobotInfo : public RoboCup::RobotInfo, public Streamable
 {
 public:
-  ENUM(NaoVersion,
-  {,
-    V33,
-    V4,
-    V5,
-  }); // need to be sorted
 
   ENUM(NaoType,
   {,
@@ -42,7 +37,7 @@ public:
   });
 
   int number; /**< The number of the robot. */
-  NaoVersion naoVersion = V5;
+  RobotConfig::NaoVersion naoVersion = RobotConfig::V5;
   NaoType naoBodyType = H21;
   NaoType naoHeadType = H21;
   float transitionToBhuman = 1.f; /** If libbhuman has given full control to bhuman. (0 = libbhuman, 1 = bhuman) Range: [0.0, 1.0] */

@@ -102,10 +102,9 @@ void GameInfo::serialize(In* in, Out* out)
   STREAM(kickingTeam); // team number of team with kick off/free kick off
   STREAM(gamePhase);  // game phase - (GAME_PHASE_NORMAL, GAME_PHASE_PENALTYSHOOT, etc)
   STREAM(setPlay); // special set phases within game i.e. setting up for free kick (SET_PLAY_NONE, SET_PLAY_GOAL_FREE_KICK, ..)
-  STREAM(dropInTeam); // team number
-  STREAM(dropInTime); // number of seconds passed since the last drop in. -1 before first dropin.
   STREAM(secsRemaining); // estimate of number of seconds remaining in the half.
   STREAM(timeLastPackageReceived) // used to decide whether a gameController is running
   STREAM(whistleCausedPlay);
+  STREAM(oppTeamNumber);
   STREAM_REGISTER_FINISH;
 }

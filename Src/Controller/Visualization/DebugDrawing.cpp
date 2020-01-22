@@ -349,7 +349,6 @@ bool DebugDrawing::addShapeFromQueue(InMessage& message, Drawings::ShapeType sha
     {
       Ellipse newEllipse;
       char penWidth, penStyle, brushStyle;
-      ColorRGBA penColor, brushColor;
       message.bin >> newEllipse.x;
       message.bin >> newEllipse.y;
       message.bin >> newEllipse.radiusX;
@@ -370,7 +369,6 @@ bool DebugDrawing::addShapeFromQueue(InMessage& message, Drawings::ShapeType sha
     {
       Rectangle newRect;
       char penWidth, penStyle, brushStyle;
-      ColorRGBA penColor, brushColor;
       message.bin >> newRect.topLX;
       message.bin >> newRect.topLY;
       message.bin >> newRect.w;

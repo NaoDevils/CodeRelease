@@ -499,7 +499,7 @@ bool ImageWidget::event(QEvent* event)
                     static_cast<int>(pinch->centerPoint().y()));
       window2viewport(before);
       scale /= zoom;
-      zoom *= pinch->scaleFactor() / pinch->lastScaleFactor();
+      zoom *= static_cast<float>(pinch->scaleFactor() / pinch->lastScaleFactor());
       if(zoom > 3.f)
         zoom = 3.f;
       else if(zoom < 0.1f)
@@ -520,7 +520,7 @@ void ImageWidget::wheelEvent(QWheelEvent* event)
 {
   QWidget::wheelEvent(event);
 #ifndef OSX
-  zoom += 0.1 * event->delta() / 120;
+  zoom += 0.1f * event->delta() / 120.f;
   if(zoom > 3.f)
     zoom = 3.f;
   else if(zoom < 0.1f)

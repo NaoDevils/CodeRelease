@@ -29,13 +29,13 @@ RemoteRobot::RemoteRobot(const char* name, const char* ip) :
 
 void RemoteRobot::connect()
 {
-  NAME_THREAD((std::string(name) + ".RemoteRobot.connect").c_str());
-  TcpConnection::connect(*ip ? ip : 0, 0xA1BD, TcpConnection::sender);
+  Thread<RemoteRobot>::setName(std::string(name) + ".RemoteRobot.connect");
+  TcpConnection::connect(*ip ? ip : 0, 51111, TcpConnection::sender);
 }
 
 void RemoteRobot::run()
 {
-  NAME_THREAD((std::string(name) + ".RemoteRobot").c_str());
+  Thread<RemoteRobot>::setName(std::string(name) + ".RemoteRobot");
   setGlobals();
   while(isRunning())
     processMain();

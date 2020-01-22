@@ -29,6 +29,7 @@ STREAMABLE(MotionRequest,
     walk,
     kick,
     specialAction,
+    keyFrame,
     stand,
   });
 

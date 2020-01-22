@@ -23,7 +23,7 @@ public :
 
 	/** Is the controller running? */
 	bool running;
-  State currentState;
+  DWE::State currentState;
 
 	void serialize(In* in,Out* out)
 	{
@@ -36,6 +36,8 @@ public :
     STREAM(leftFootRot)
     STREAM(rightFootPos)
     STREAM(rightFootRot)
+    STREAM(running)
+    STREAM(currentState, DWE)
 		STREAM_REGISTER_FINISH;
 	};
 

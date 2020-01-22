@@ -11,6 +11,7 @@
 #include <cstdint>
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/MotionControl/WalkRequest.h"
+#include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Modeling/RobotMap.h"
@@ -49,10 +50,13 @@ STREAMABLE(Teammate,
   (RobotPose) pose,                                   /**< The pose in global field coordinates, no preview! */
   (BallModel) ball,                                   /**< Model of the ball (in coordinates relative to my teammate's pose), no preview! */
   (RobotsPercept) robotsPercept,                      /**< Unfiltered robots percept of seen teammates and opponents. */
-  (RobotMap) robotMap,                                /**< Map of obstacles in world coordinates */
+  (RobotsPerceptUpper) robotsPerceptUpper,            /**< Unfiltered robots percept of seen teammates and opponents. */
+  (LocalRobotMap) localRobotMap,                      /**< Map of locally observed obstacles in world coordinates */
+  (RobotMap) robotMap,                                /**< Map of observed obstacles in world coordinates */
   (WalkRequest) walkRequest,                          /**< The name says it all. */
+  (SpeedInfo) speedInfo,                              /**< The speed info to know where this robot is moving. Only speed and currentCustomStep is set at the moment!!! (event: GO 2019) */
   (float)(0.f) headPan,                               /**< for field coverage */
-  (SideConfidence) sideConfidence,                    /**< The belief about playing in the right direction */
+  (SideConfidence) sideConfidence,                    /**< The belief about playing in the correct direction */
   (BehaviorData) behaviorData,                        /**< Information about the behavior */
   (WhistleDortmund) whistle,                          /**< Output of the WhistleDetector */
   (bool)(false) whistleCausedPlay,                    /**< Did the robot begin playing due to whistle? */

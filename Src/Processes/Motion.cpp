@@ -6,6 +6,7 @@
 #include "Motion.h"
 #include "Modules/Infrastructure/MotionLogDataProvider.h"
 #include "Modules/Infrastructure/NaoProvider.h"
+#include "Modules/Infrastructure/NaoProviderV6.h"
 #include "Modules/MotionControl/MotionSelector.h"
 #include "Modules/MotionControl/SpecialActions.h"
 //#include "Modules/MotionControl/WalkingEngine/WalkingEngine.h"
@@ -14,15 +15,16 @@ Motion::Motion() :
   INIT_DEBUGGING,
   INIT_RECEIVER(CognitionToMotion),
   INIT_SENDER(MotionToCognition),
-  moduleManager({ModuleBase::motionInfrastructure, ModuleBase::motionControl, ModuleBase::sensing, ModuleBase::dortmundWalkingEngine})
+  moduleManager({ModuleBase::motionInfrastructure, ModuleBase::motionControl, ModuleBase::sensing, ModuleBase::dortmundWalkingEngine}),
+  logger("Motion", 'm', Global::getSettings().naoVersion == RobotConfig::NaoVersion::V5 ? 100 : 83)
 {
-  theDebugReceiver.setSize(400000);
-  theDebugSender.setSize(140000, 80000);
+  theDebugReceiver.setSize(500000);
+  theDebugSender.setSize(50000, 20000);
 
   theMotionToCognitionSender.moduleManager = theCognitionToMotionReceiver.moduleManager = &moduleManager;
 
   if(SystemCall::getMode() == SystemCall::physicalRobot)
-    setPriority(50);
+    setPriority(15);
 }
 
 void Motion::init()
@@ -33,6 +35,17 @@ void Motion::init()
   // Prepare first frame
   numberOfMessages = theDebugSender.getNumberOfMessages();
   OUTPUT(idProcessBegin, bin, 'm');
+
+  if (Global::getSettings().naoVersion == RobotConfig::V6)
+  {
+    waitForFrameData = &NaoProviderV6::waitForFrameData;
+    finishFrame = &NaoProviderV6::finishFrame;
+  }
+  else
+  {
+    waitForFrameData = &NaoProvider::waitForFrameData;
+    finishFrame = &NaoProvider::finishFrame;
+  }
 }
 
 void Motion::terminate()
@@ -56,7 +69,8 @@ bool Motion::main()
     annotationManager.signalProcessStart();
 
     STOPWATCH_WITH_PLOT("Motion") moduleManager.execute();
-    NaoProvider::finishFrame();
+
+    finishFrame();
 
     DEBUG_RESPONSE_ONCE("automated requests:DrawingManager") OUTPUT(idDrawingManager, bin, Global::getDrawingManager());
     DEBUG_RESPONSE_ONCE("automated requests:DrawingManager3D") OUTPUT(idDrawingManager3D, bin, Global::getDrawingManager3D());
@@ -66,6 +80,11 @@ bool Motion::main()
     theMotionToCognitionSender.send();
 
     timingManager.signalProcessStop();
+
+    BH_TRACE_MSG("before logger.execute");
+    logger.execute();
+    BH_TRACE_MSG("after logger.execute");
+
     DEBUG_RESPONSE("timing") timingManager.getData().copyAllMessages(theDebugSender);
 
     DEBUG_RESPONSE("annotation") annotationManager.getOut().copyAllMessages(theDebugSender);
@@ -86,8 +105,8 @@ bool Motion::main()
     OUTPUT(idProcessBegin, bin, 'm');
   }
 
-  if(Blackboard::getInstance().exists("JointSensorData"))
-    NaoProvider::waitForFrameData();
+  if (Blackboard::getInstance().exists("JointSensorData"))
+    waitForFrameData();
   else
     SystemCall::sleep(10);
 

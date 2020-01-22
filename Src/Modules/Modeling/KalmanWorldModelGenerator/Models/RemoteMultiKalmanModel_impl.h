@@ -10,8 +10,8 @@
 
 //MARK: Kalman filter related methods
 
-template <typename hypothesis_t>
-hypothesis_t* RemoteMultiKalmanModel<hypothesis_t>::sensorUpdate(
+template <typename hypothesis_t, bool towardsOneModel>
+hypothesis_t* RemoteMultiKalmanModel<hypothesis_t, towardsOneModel>::sensorUpdate(
   const Vector2f& measuredPosition,
   float measuredDistance,
   unsigned timestamp,
@@ -33,8 +33,8 @@ hypothesis_t* RemoteMultiKalmanModel<hypothesis_t>::sensorUpdate(
     playerNumber, teammate);
 }
 
-template <typename hypothesis_t>
-hypothesis_t* RemoteMultiKalmanModel<hypothesis_t>::sensorUpdate(
+template <typename hypothesis_t, bool towardsOneModel>
+hypothesis_t* RemoteMultiKalmanModel<hypothesis_t, towardsOneModel>::sensorUpdate(
   const Vector2f& measuredPosition,
   float measuredDistance,
   const Vector2f* measuredVelocity,

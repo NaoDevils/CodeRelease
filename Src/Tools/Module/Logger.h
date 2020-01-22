@@ -84,6 +84,10 @@ private:
   volatile unsigned writerIdleStart = 0; /**< The system time at which the writer thread went idle. */
   OutBinaryFile* file = nullptr; /**< The stream that writes the log file. */
   std::vector<char> streamSpecification; /**< Streamed specification created in main thread and used in logger thread. */
+  std::string processName; /**< The name of the process this logger is part of. */
+  char processIdentifier; /**< The identifier of the logged process. */
+  int framesPerSecond; /**< The (average) number of frames per second of the logged process. */
+
 
   /**
    * Generate a filename containing the robot's player number, its name, and the current
@@ -242,7 +246,7 @@ private:
   }
 
 public:
-  Logger();
+  Logger(const std::string& processName, char processIdentifier, int framesPerSecond);
   ~Logger();
 
   /** Has to be called in each cycle. */

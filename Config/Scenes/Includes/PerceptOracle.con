@@ -35,6 +35,7 @@ mr Thumbnail off
 call Includes/FieldViews
 
 mr RobotsPercept OracledPerceptsProvider
+mr RobotsPerceptUpper OracledPerceptsProvider
 mr CLIPGoalPercept OracledPerceptsProvider
 mr CLIPFieldLinesPercept OracledPerceptsProvider
 mr BallPercept OracledPerceptsProvider
@@ -45,8 +46,8 @@ mr ObstacleBasePoints off
 mr BallSpots off
 mr IntegralImage off
 mr BodyContour default
-mr FieldColors off
-mr FieldColorsUpper off
+mr FieldColors default
+mr FieldColorsUpper default
 
 call Includes/DebugResponses
 call Includes/GameStates

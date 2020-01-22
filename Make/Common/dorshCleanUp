@@ -1,0 +1,5 @@
+#!/bin/bash
+
+ kill -s 9 $(pgrep -f downloadCameraCalibrations)
+ kill -s 9 $(pgrep -f downloadLogs)
+ kill -s 9 $(pgrep -f copyfiles)

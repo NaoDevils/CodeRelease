@@ -6,13 +6,10 @@
 
 #include "TeammateDataProvider.h"
 #include "Tools/Math/Transformation.h"
+#include "Representations/Infrastructure/DevilSmashStandardMessage.h"
+#include "Tools/Network/NTP.h"
 
-/**
- * This macro converts a timestamp (from another robot) into local time via NTP.
- */
-#define REMOTE_TO_LOCAL_TIME(timestamp, received) \
-  if(currentTeammate->isNDevilsPlayer && timestamp) \
-    timestamp = ntp.getRemoteTimeInLocalTime(timestamp, received);
+#include <iostream>
 
 /**
  * This macro unpacks compressed representations. It reads
@@ -111,8 +108,8 @@ void TeammateDataProvider::setCurrentTeammate(int robotNumber)
     return;
   }
   // do not use package if it is too old (-> slow wireless), does not work with drop in players
-  currentTeammateSentTimestamp = ntp.getRemoteTimeInLocalTime(currentTeammateSentTimestamp, lastReceivedTimestamp);
-  if (theFrameInfo.getTimeSince(currentTeammateSentTimestamp) > badWifiTimeout)
+  Global::getNTP().convertRemoteTimeInLocalTime(currentTeammateSentTimestamp, robotNumber);
+  if (std::abs(static_cast<int64_t>(theFrameInfo.time) - static_cast<int64_t>(currentTeammateSentTimestamp)) > badWifiTimeout)
   {
     currentTeammate = 0;
     wlanQuality = std::max(0.f, wlanQuality - 0.2f);
@@ -138,16 +135,46 @@ void TeammateDataProvider::setCurrentTeammate(int robotNumber)
 
 void TeammateDataProvider::handleMessages(TeamDataIn& teamReceiver)
 {
-  if(theInstance)
-    teamReceiver.queue.handleAllMessages(*theInstance);
-  if (theInstance && theInstance->currentTeammate && !(theInstance->currentTeammate->isNDevilsPlayer) &&
-    (Global::getSettings().gameMode == Settings::mixedTeam
-    || theInstance->theGameInfo.competitionType == COMPETITION_TYPE_MIXEDTEAM))
+  // set data from standard message
+  if (theInstance)
   {
     for (std::vector<RoboCup::SPLStandardMessage>::const_iterator i = teamReceiver.messages.begin(); i != teamReceiver.messages.end(); ++i)
     {
-      theInstance->handleMixedTeamPackage((*i));
+      theInstance->handleNTPMessage((*i));
+
+      theInstance->handleStandardMessage((*i));
+      if (!theInstance->currentTeammate)
+        continue;
+      // create queue and handle the streamed data part
+      MessageQueue queue;
+      queue.setSize(sizeof(RoboCup::SPLStandardMessage));
+      bool mixedTeam = (Global::getSettings().gameMode == Settings::mixedTeam || theInstance->theGameInfo.competitionType == COMPETITION_TYPE_MIXEDTEAM);
+
+      size_t dataOffset = 0;
+      bool isNDevilsPlayer = true;
+      if (mixedTeam)
+      {
+        DevilSmash::StandardMessage dsm;
+        dsm.read(i->data);
+        if (dsm.member != DEVIL_MEMBER)
+        {
+          isNDevilsPlayer = false;
+          theInstance->handleMixedTeamPackage(*i);
+        }
+        dataOffset = dsm.sizeOfDSMessage();
+      }
+
+      theInstance->currentTeammate->timeWhenLastPacketReceived = theInstance->lastReceivedTimestamp;
+      theInstance->currentTeammate->timeWhenSent = theInstance->currentTeammateSentTimestamp;
+      theInstance->currentTeammate->isNDevilsPlayer = isNDevilsPlayer;
+      if (isNDevilsPlayer)
+      {
+        InBinaryMemory memory((*i).data + dataOffset + ndevilsHeaderSize, static_cast<size_t>((int)((*i).numOfDataBytes) - dataOffset - ndevilsHeaderSize));
+        memory >> queue;
+        queue.handleAllMessages(*theInstance);
+      }
     }
+    
   }
   teamReceiver.clear();
 }
@@ -156,77 +183,26 @@ bool TeammateDataProvider::handleMessage(InMessage& message)
 {
   switch(message.getMessageID())
   {
-    // NDevils Header - TODO: remoteIp not used atm (could be checked?)
-    case idNTPHeader:
-    {
-      int robotNumber;
-      message.bin >> robotNumber;
-      ntp.setCurrentRemoteID(robotNumber);
-      message.bin >> currentTeammateSentTimestamp;
-      message.bin >> lastReceivedTimestamp;
-      setCurrentTeammate(robotNumber);
-      unsigned char teamID = 12;
-      message.bin >> teamID;
-      if (currentTeammate)
-      {
-        currentTeammate->timeWhenLastPacketReceived = lastReceivedTimestamp;
-        message.bin >> currentTeammate->isPenalized;
-        message.bin >> currentTeammate->whistle.detected;
-        currentTeammate->isNDevilsPlayer = (teamID == 12);
-        if (!currentTeammate->isNDevilsPlayer)
-        {
-          currentTeammate->whistle.detected = false; // TODO: check
-          currentTeammate->whistleCausedPlay = false;
-          message.bin >> currentTeammate->behaviorData.role;
-        }
-        currentTeammate->timeWhenSent = currentTeammateSentTimestamp;
-      }
-      else
-      {
-        // dummy
-        message.bin >> teamID;
-        message.bin >> teamID;
-        message.bin >> teamID;
-      }
-      return true;
-    }
     // Robot status:
     case idTeammateIsPenalized:
       if(currentTeammate)
-          message.bin >> currentTeammate->isPenalized;
-      return true;
-    case idTeammateHasGroundContact:
-      if(currentTeammate)
-      {
-        message.bin >> currentTeammate->hasGroundContact;
-        // This is a potentially evil quick workaround that should be replaced by a better handling of ground contacts of team mates
-        // at many different places in our code! For a detailed problem description, ask Tim.
-        if(!currentTeammate->hasGroundContact && currentTeammate->isNDevilsPlayer)
-          currentTeammate->hasGroundContact = theFrameInfo.getTimeSince(currentTeammate->timeOfLastGroundContact) < 2000;
-      }
-      return true;
-    case idTeammateIsUpright:
-      if(currentTeammate)
-        message.bin >> currentTeammate->isUpright;
-      return true;
-    case idTeammateTimeOfLastGroundContact:
-      if(currentTeammate)
-      {
-        message.bin >> currentTeammate->timeOfLastGroundContact;
-        REMOTE_TO_LOCAL_TIME(currentTeammate->timeOfLastGroundContact, lastReceivedTimestamp);
-      }
+        message.bin >> currentTeammate->isPenalized;
       return true;
     // "Normal" representations:
-    case idWhistle:
+    case idRobotPose:
       if (currentTeammate)
       {
-        message.bin >> currentTeammate->whistleCausedPlay;
+        UNPACK(RobotPose, pose);
       }
       return true;
     case idWhistleDortmund:
       if(currentTeammate)
       {
-        message.bin >> currentTeammate->whistle;
+        DistributedWhistleDortmund distributedWhistle;
+        message.bin >> distributedWhistle;
+        currentTeammate->whistle = distributedWhistle.whistle;
+        currentTeammate->whistleCausedPlay = distributedWhistle.whistleCausedPlay;
+        Global::getNTP().convertRemoteTimeInLocalTime(currentTeammate->whistle.lastDetectionTime, currentTeammate->number);
       }
       return true;
     case idBallModel:
@@ -234,8 +210,8 @@ bool TeammateDataProvider::handleMessage(InMessage& message)
       {
         BallModel lastBallModel = currentTeammate->ball;
         UNPACK(BallModel, ball);
-        REMOTE_TO_LOCAL_TIME(currentTeammate->ball.timeWhenLastSeen, lastReceivedTimestamp);
-        REMOTE_TO_LOCAL_TIME(currentTeammate->ball.timeWhenDisappeared, lastReceivedTimestamp);
+        Global::getNTP().convertRemoteTimeInLocalTime(currentTeammate->ball.timeWhenLastSeen, currentTeammate->number);
+        Global::getNTP().convertRemoteTimeInLocalTime(currentTeammate->ball.timeWhenDisappeared, currentTeammate->number);
         if(!currentTeammate->isNDevilsPlayer && (currentTeammate->ball.timeWhenLastSeen - lastBallModel.timeWhenLastSeen) < 16)
           currentTeammate->ball.lastPerception = lastBallModel.lastPerception;
       }
@@ -246,16 +222,22 @@ bool TeammateDataProvider::handleMessage(InMessage& message)
         UNPACK(RobotsPercept, robotsPercept);
       }
       return true;
+    case idRobotsPerceptUpper:
+      if (currentTeammate)
+      {
+        UNPACK(RobotsPerceptUpper, robotsPerceptUpper);
+      }
+      return true;
     case idRobotMap:
       if (currentTeammate)
       { 
         UNPACK(RobotMap, robotMap);
       }
       return true;
-    case idRobotPose:
-      if(currentTeammate)
-      {
-        UNPACK(RobotPose, pose);
+    case idLocalRobotMap:
+      if (currentTeammate)
+      { 
+        UNPACK(LocalRobotMap, localRobotMap);
       }
       return true;
     case idSideConfidence:
@@ -275,6 +257,13 @@ bool TeammateDataProvider::handleMessage(InMessage& message)
       {
         UNPACK(WalkRequest, walkRequest);
       }
+      return true;
+    case idSpeedInfo:
+      if (currentTeammate)
+      {
+        UNPACK(SpeedInfo, speedInfo);
+      }
+      return true;
     default:
       return true;
   }
@@ -282,79 +271,111 @@ bool TeammateDataProvider::handleMessage(InMessage& message)
 
 void TeammateDataProvider::handleMixedTeamPackage(const RoboCup::SPLStandardMessage &msg)
 {
+  // TODO: check all this
+  if (!currentTeammate)
+    return;
+  DevilSmash::StandardMessage dsm;
+  if (!dsm.read(msg.data))
+  {
+    OUTPUT_WARNING("DevilSMASH message invalid!");
+    return;
+  }
+  
+  currentTeammate->pose.translation.x() = msg.pose[0];
+  currentTeammate->pose.translation.y() = msg.pose[1];
+  currentTeammate->pose.rotation = msg.pose[2];
+  currentTeammate->pose.validity = dsm.isRobotPoseValid ? 0.8f : 0.f;
+  currentTeammate->ball.estimate.position.x() = msg.ball[0];
+  currentTeammate->ball.estimate.position.y() = msg.ball[1];
+  currentTeammate->ball.estimate.velocity.x() = dsm.ballVelocity[0];
+  currentTeammate->ball.estimate.velocity.y() = dsm.ballVelocity[1];
+  currentTeammate->ball.timeWhenLastSeen = dsm.timeWhenBallLastSeen;
+  currentTeammate->ball.timeWhenDisappeared = dsm.timeWhenBallLastSeen;
+  Global::getNTP().convertRemoteTimeInLocalTime(currentTeammate->ball.timeWhenLastSeen, currentTeammate->number);
+  Global::getNTP().convertRemoteTimeInLocalTime(currentTeammate->ball.timeWhenDisappeared, currentTeammate->number);
+  currentTeammate->ball.validity = dsm.ballValidity;
+  currentTeammate->ball.lastPerception = currentTeammate->ball.estimate.position;
+  currentTeammate->isPenalized = dsm.isPenalized;
+  currentTeammate->isNDevilsPlayer = false;
+  currentTeammate->hasGroundContact = true;
+  currentTeammate->behaviorData.ballPositionField = Transformation::robotToField(currentTeammate->pose, currentTeammate->ball.estimate.position).cast<short>();
+  currentTeammate->behaviorData.ballPositionFieldPredicted = currentTeammate->behaviorData.ballPositionField.cast<short>();
+  currentTeammate->behaviorData.ballPositionRelative = currentTeammate->ball.estimate.position.cast<short>();
+  currentTeammate->behaviorData.lastRole = currentTeammate->behaviorData.role;
+  currentTeammate->behaviorData.timeSinceBallWasSeen = (msg.ballAge > 0) ? static_cast<int>(msg.ballAge * 1000) : 1000000;
+  currentTeammate->headPan = dsm.headYawAngle;
+  currentTeammate->isGoalkeeper = dsm.currentlyPerformingRole == DevilSmash::Role::KEEPER;
+  currentTeammate->sanity = 1.f;
+  currentTeammate->sideConfidence.confidenceState = SideConfidence::CONFIDENT;
+  currentTeammate->status = dsm.isPenalized ? Teammate::INACTIVE : (msg.fallen ? Teammate::ACTIVE : Teammate::FULLY_ACTIVE);
+  currentTeammate->whistle.lastDetectionTime = dsm.lastTimeWhistleDetected;
+  currentTeammate->whistle.detectionState =
+    (theFrameInfo.getTimeSince(currentTeammate->whistle.lastDetectionTime) < 1000) ?
+    WhistleDortmund::DetectionState::isDetected : WhistleDortmund::DetectionState::notDetected;
+}
+
+// Only sets upright and pose information, since ball information is in ball model.
+// Could be merged in the future.
+void TeammateDataProvider::handleStandardMessage(const RoboCup::SPLStandardMessage& msg)
+{
   currentTeammate = 0;
   if (msg.teamNum == theOwnTeamInfo.teamNumber)
     setCurrentTeammate(msg.playerNum);
   if (!currentTeammate)
     return;
-  currentTeammate->timeWhenLastPacketReceived = theFrameInfo.time;
-  currentTeammate->status = Teammate::INACTIVE; // default -> inactive
+  currentTeammate->isUpright = !msg.fallen;
   currentTeammate->pose.translation.x() = msg.pose[0];
   currentTeammate->pose.translation.y() = msg.pose[1];
   currentTeammate->pose.rotation = Angle::normalize(msg.pose[2]);
-  if (!useMixedTeamBallModel)
+}
+
+void TeammateDataProvider::handleNTPMessage(const RoboCup::SPLStandardMessage& msg)
+{
+  bool mixedTeam = (Global::getSettings().gameMode == Settings::mixedTeam || theInstance->theGameInfo.competitionType == COMPETITION_TYPE_MIXEDTEAM);
+
+  size_t dataOffset = 0;
+
+  if (mixedTeam)
   {
-    currentTeammate->ball.estimate.position.x() = msg.ball[0];
-    currentTeammate->ball.estimate.position.y() = msg.ball[1];
-    currentTeammate->ball.estimate.velocity = Vector2f::Zero(); // TODO
-    currentTeammate->ball.validity = 0.f; // TODO
-    currentTeammate->behaviorData.timeSinceBallWasSeen = 100000;
+    DevilSmash::StandardMessage dsm;
+    dsm.read(msg.data);
+
+    dataOffset = dsm.sizeOfDSMessage();
+    const NDevilsHeader& header = (const NDevilsHeader&)(msg).data[dataOffset];
+
+    theInstance->lastReceivedTimestamp = header.ntpResponses[msg.playerNum - 1].receivedTimeStamp;
+    theInstance->currentTeammateSentTimestamp = dsm.timestamp;
+    if (dsm.member != DEVIL_MEMBER)
+    {
+      // get ntp stuff from HULKS
+      for (auto ntpMessage : dsm.ntpMessages)
+      {
+        if (ntpMessage.receiver == Global::getSettings().playerNumber)
+        {
+          Global::getNTP().receivedResponse(
+            msg.playerNum,
+            { ntpMessage.requestOrigination, ntpMessage.requestReceipt },
+            { dsm.timestamp, theInstance->lastReceivedTimestamp }
+          );
+        }
+      }
+
+      //if (dsm.requestsNTPMessage)
+      Global::getNTP().sendResponse(
+        msg.playerNum,
+        { dsm.timestamp, theInstance->lastReceivedTimestamp }
+      );
+      return;
+    }
   }
   else
   {
-    currentTeammate->ball.estimate.position.x() = msg.ball[0];
-    currentTeammate->ball.estimate.position.y() = msg.ball[1];
-    currentTeammate->ball.estimate.velocity = Vector2f::Zero(); // TODO
-    currentTeammate->ball.validity = 0.5f; // TODO
-    currentTeammate->behaviorData.timeSinceBallWasSeen = static_cast<int>(msg.ballAge * 1000.f);
+    const NDevilsHeader& header = (const NDevilsHeader&)(msg).data[dataOffset];
+    theInstance->lastReceivedTimestamp = header.ntpResponses[msg.playerNum - 1].receivedTimeStamp;
+    theInstance->currentTeammateSentTimestamp = header.ntpResponses[msg.playerNum - 1].sentTimeStamp;
   }
-  if (currentTeammate->behaviorData.timeSinceBallWasSeen >= 0 && currentTeammate->behaviorData.timeSinceBallWasSeen < 1000)
-  {
-    currentTeammate->behaviorData.ballPositionRelative.x() = static_cast<short>(msg.ball[0]);
-    currentTeammate->behaviorData.ballPositionRelative.y() = static_cast<short>(msg.ball[1]);
-    currentTeammate->behaviorData.ballPositionField = Transformation::robotToField(currentTeammate->pose, currentTeammate->ball.estimate.position).cast<short>();
-    currentTeammate->behaviorData.ballPositionFieldPredicted = currentTeammate->behaviorData.ballPositionField;
-    currentTeammate->ball.timeWhenLastSeenByTeamMate = SystemCall::getCurrentSystemTime();
-  }
-  else
-    currentTeammate->behaviorData.timeSinceBallWasSeen = 100000;
-  currentTeammate->ball.timeWhenLastSeen = currentTeammateSentTimestamp - currentTeammate->behaviorData.timeSinceBallWasSeen;
-  currentTeammate->ball.lastPerception = currentTeammate->ball.estimate.position;
-  
-  currentTeammate->isUpright = !msg.fallen;
-  currentTeammate->behaviorData.soccerState = BehaviorData::positioning;
-  // sanity checks for other drop in players
-  if (!theFieldDimensions.isInsideCarpet(currentTeammate->pose.translation) ||
-    theFieldDimensions.isInsideCarpet(currentTeammate->ball.estimate.position) ||
-    currentTeammate->ball.estimate.velocity.norm() > 1000 ||
-    msg.numOfDataBytes > SPL_STANDARD_MESSAGE_DATA_SIZE ||
-    msg.version != SPL_STANDARD_MESSAGE_STRUCT_VERSION)
-  {
-    currentTeammate->sanity = 0.f;
-    return;
-  }
-  // update sanity value
-  // TODO: need local ball model here for comparison!!
-  /*if ((Transformation::robotToField(currentTeammate->pose, currentTeammate->ball.estimate.position) -
-    Transformation::robotToField(theRobotPose, theBallModel.estimate.position)).norm() < 1000.f)
-  {
-    float oldSanity = currentTeammate->sanity;
-    currentTeammate->sanity += 0.1f;
-    if (oldSanity < minSanityForTeammates && currentTeammate->sanity > minSanityForTeammates)
-      currentTeammate->sanity += 0.1f; //hysteresis
-    currentTeammate->sanity = 1.f;
-  }*/
-  if (currentTeammate->sanity > minSanityForTeammates)
-  {
-    currentTeammate->status = msg.fallen ? Teammate::ACTIVE : Teammate::FULLY_ACTIVE;
-    currentTeammate->pose.validity = 1.f; // TODO
-    if (theOwnTeamInfo.players[currentTeammate->number].penalty != PENALTY_NONE)
-      currentTeammate->behaviorData.soccerState = BehaviorData::penalized;
-    else if (currentTeammate->behaviorData.role == BehaviorData::supporterDef) // TODO: hacked, this is actually striker
-      currentTeammate->behaviorData.soccerState = BehaviorData::controlBall;
-    else
-      currentTeammate->behaviorData.soccerState = BehaviorData::positioning;
-  }
+
+
 }
 
 MAKE_MODULE(TeammateDataProvider, cognitionInfrastructure)

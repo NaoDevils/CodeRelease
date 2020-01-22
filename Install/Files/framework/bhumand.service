@@ -1,0 +1,10 @@
+[Unit]
+Description=Nao Devils framework
+After=ndevild.service
+
+[Service]
+Type=simple
+ExecStart=/home/nao/bin/bhuman_init.sh
+
+[Install]
+WantedBy=default.target

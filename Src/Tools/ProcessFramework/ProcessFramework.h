@@ -93,7 +93,9 @@ protected:
   virtual void main()
   {
 #ifdef TARGET_SIM
-    NAME_THREAD((RoboCupCtrl::controller->getRobotName() + "." + name).c_str());
+    Thread<ProcessBase>::setName(RoboCupCtrl::controller->getRobotName() + "." + name);
+#else
+    Thread<ProcessBase>::setName(name);
 #endif
 
     // Call process.nextFrame if no blocking receivers are waiting

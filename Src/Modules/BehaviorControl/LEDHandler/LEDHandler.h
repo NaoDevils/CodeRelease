@@ -51,7 +51,9 @@ private:
   void setEyeColor(LEDRequest& ledRequest,
                    bool left,
                    BehaviorLEDRequest::EyeColor col,
-                   LEDRequest::LEDState s);
+                   LEDRequest::LEDState s,
+                   bool onlyLeft = false,
+                   bool onlyRight = false);
 
   void setRightEar(LEDRequest& ledRequest);
   void setLeftEar(LEDRequest& ledRequest);

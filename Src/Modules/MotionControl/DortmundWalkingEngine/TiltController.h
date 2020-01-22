@@ -73,7 +73,7 @@ private:
 	//const SpeedInfo           &theSpeedInfo;        /**< Set by constructor. */
 	//const TargetCoM				&theTargetCoM;
 	Point angleSum; /**< This is the sum of the angle over max angle and under the min angle respectively */
-  PIDController2 tiltPIDController,rollPIDController;
+  PIDController<float> tiltPIDController,rollPIDController;
   BodyTilt lastBodyTilt;
 };
 

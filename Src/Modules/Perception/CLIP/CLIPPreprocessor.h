@@ -17,6 +17,7 @@
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/FieldColor.h"
+#include "Representations/Perception/GoalPercept.h"
 #include "Representations/Perception/CLIPPointsPercept.h"
 #include "Representations/Perception/BallSpots.h"
 #include "Representations/Perception/BallPercept.h"
@@ -52,12 +53,15 @@ MODULE(CLIPPreprocessor,
     (int) yellowGoalColorMinDiff, // min cr and cb channel diff for goal->nonGoal transition or v.v.
     (int) fieldBorderMaxDistance, // max distance in pixels of field end point to field end line to be inlier (RANSAC used)
     (int) fieldBorderMinPoints, // min number of inliers for a field end line
+    (float)(0.3f) minFieldColorForFieldSegment, // min ratio of field color for segment to be a field segment
     (int) obstacleMaxPointsLow, // max count of scanlines to check
     (unsigned) obstacleMinPointsLow, // min count of scanlines for counting as obstacle segment
     (unsigned) obstacleMinPointsSide, // min number of points for an obstacle line -> base of obstacle percept
     (int) minColorDiff, // min sum of color diffs distance in (crDiff+cbDiff)
     (int) ballBaseCrValue, // min value of cr channel to be expecting ball (to do, only used in old approach (processScanLine(..))
     (bool) useAreaBasedFieldColor, // use are based field color?
+    (bool) useObstacleBasePoints,
+    (bool) sortBallSpots,
   }),
 });
 
@@ -259,6 +263,7 @@ private:
   int scanLineVNo, scanLineHNo; // remember number of current scan lines (needed for line spots)
   std::vector<Image::Pixel> scanLinePixelBuffer;
   RingBufferWithSum<int, 8> fieldColorBuffer;
+  std::vector<float> lineSizes;
 
   // for field end detection
   std::vector<FieldEndPoint> fieldEndPoints;

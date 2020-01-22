@@ -71,7 +71,7 @@ void LEDHandler::setLeftEar(LEDRequest& ledRequest)
   LEDRequest::LEDState state;
   if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
   {
-    if (theWhistleDortmund.detected)
+    if (theWhistleDortmund.detectionState == WhistleDortmund::DetectionState::isDetected)
       state = LEDRequest::LEDState::on;
     else
       state = LEDRequest::LEDState::off;
@@ -83,14 +83,20 @@ void LEDHandler::setLeftEar(LEDRequest& ledRequest)
 void LEDHandler::setEyeColor(LEDRequest& ledRequest,
                              bool left,
                              BehaviorLEDRequest::EyeColor col,
-                             LEDRequest::LEDState s)
+                             LEDRequest::LEDState s,
+                             bool onlyLeft,
+                             bool onlyRight)
 {
   LEDRequest::LED first = left ? LEDRequest::faceLeftRed0Deg : LEDRequest::faceRightRed0Deg;
 
   static const int redOffset = 0,
-                   greenOffset = LEDRequest::faceLeftGreen0Deg - LEDRequest::faceLeftRed0Deg,
-                   blueOffset = LEDRequest::faceLeftBlue0Deg - LEDRequest::faceLeftRed0Deg,
-                   numOfLEDsPerColor = LEDRequest::faceLeftRed315Deg - LEDRequest::faceLeftRed0Deg;
+    greenOffset = LEDRequest::faceLeftGreen0Deg - LEDRequest::faceLeftRed0Deg,
+    blueOffset = LEDRequest::faceLeftBlue0Deg - LEDRequest::faceLeftRed0Deg;
+
+  static const int numOfLEDsPerColor = LEDRequest::faceLeftRed315Deg - LEDRequest::faceLeftRed0Deg + 1;
+  std::vector<bool> useLED = { 1,1,1,1,1,1,1,1 };
+  if (onlyLeft) useLED = { 1,1,1,1,1,0,0,0 };
+  if (onlyRight) useLED = { 1,0,0,0,1,1,1,1 };
 
   LEDRequest::LEDState halfState = s == LEDRequest::off ? LEDRequest::off : LEDRequest::half;
 
@@ -100,42 +106,42 @@ void LEDHandler::setEyeColor(LEDRequest& ledRequest,
       ASSERT(false);
       break;
     case BehaviorLEDRequest::red:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = s;
+      for(int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
       break;
     case BehaviorLEDRequest::green:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = s;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
       break;
     case BehaviorLEDRequest::blue:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = s;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
       break;
     case BehaviorLEDRequest::white:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = s;
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = s;
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = s;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
       break;
     case BehaviorLEDRequest::magenta:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = halfState;
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = s;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
       break;
     case BehaviorLEDRequest::yellow:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = halfState;
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = s;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? halfState : LEDRequest::blinking;
       break;
     case BehaviorLEDRequest::cyan:
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = halfState;
-      for(int i = 0; i <= numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = s;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? halfState : LEDRequest::blinking;
+      for (int i = 0; i < numOfLEDsPerColor; i++)
+        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
       break;
     default:
       ASSERT(false);
@@ -166,10 +172,10 @@ void LEDHandler::setLeftEye(LEDRequest& ledRequest)
       setEyeColor(ledRequest, true, BehaviorLEDRequest::red, state);
     else if(ballSeen)
       //white
-      setEyeColor(ledRequest, true, BehaviorLEDRequest::white, state);
+      setEyeColor(ledRequest, true, BehaviorLEDRequest::green, state);
     else if(goalSeen)
       //green
-      setEyeColor(ledRequest, true, BehaviorLEDRequest::green, state);
+      setEyeColor(ledRequest, true, BehaviorLEDRequest::blue, state);
   }
 }
 
@@ -191,18 +197,6 @@ void LEDHandler::setRightEye(LEDRequest& ledRequest)
     {
       case BehaviorData::keeper:
         setEyeColor(ledRequest, false, BehaviorLEDRequest::blue, state);
-        break;
-      case BehaviorData::defender:
-        setEyeColor(ledRequest, false, BehaviorLEDRequest::white, state);
-        break;
-      case BehaviorData::striker:
-        setEyeColor(ledRequest, false, BehaviorLEDRequest::red, state);
-        break;
-      case BehaviorData::supporterDef:
-        setEyeColor(ledRequest, false, BehaviorLEDRequest::green, state);
-        break;
-      case BehaviorData::supporterOff:
-        setEyeColor(ledRequest, false, BehaviorLEDRequest::magenta, state);
         break;
       case BehaviorData::undefined:
         //off
@@ -233,7 +227,7 @@ void LEDHandler::setHead(LEDRequest& ledRequest)
   if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
   {
     LEDRequest::LEDState state;
-    if (theWhistleDortmund.detected)
+    if (theWhistleDortmund.detectionState == WhistleDortmund::DetectionState::isDetected)
       state = LEDRequest::LEDState::on;
     else
       state = LEDRequest::LEDState::off;
@@ -245,13 +239,39 @@ void LEDHandler::setHead(LEDRequest& ledRequest)
 
 void LEDHandler::setChestButton(LEDRequest& ledRequest)
 {
-  // Since libbhuman only sets an led if its state was changed we "override"
-  // the on status of the red led so it can be deactivated if a whistle
-  // was recognized. This is to override the yellow (red + green) chestbutton
-  // that is set by the libGameCtrl in SET state. In addition we have to check
-  // for the penalty status of the robot to not deactivate the red penalty light.
-  if(theGameInfo.state == STATE_SET || theRobotInfo.penalty != PENALTY_NONE)
+  for (int i = 0; i < 3; i++) ledRequest.ledStates[LEDRequest::chestRed + i] = LEDRequest::off;
+  if (theRobotInfo.penalty != PENALTY_NONE)
+  {
     ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::on;
+    return;
+  }
+
+  switch (theGameInfo.state)
+  {
+  case STATE_INITIAL:
+  case STATE_FINISHED:
+  {
+    break;
+  }
+  case STATE_READY:
+  {
+    ledRequest.ledStates[LEDRequest::chestBlue] = LEDRequest::on;
+    break;
+  }
+  case STATE_SET:
+  {
+    ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::on;
+    ledRequest.ledStates[LEDRequest::chestGreen] = LEDRequest::on;
+    break;
+  }
+  case STATE_PLAYING:
+  {
+    ledRequest.ledStates[LEDRequest::chestGreen] = LEDRequest::on;
+    break;
+  }
+  default: //should not happen
+    break;
+  }
 }
 
 void LEDHandler::setFeet(LEDRequest& ledRequest)

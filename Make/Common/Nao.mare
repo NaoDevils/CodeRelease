@@ -1,5 +1,5 @@
 Nao = cppApplication + {
-  dependencies = { "libbhuman", "libgamectrl" }
+  dependencies = { "ndevilsbase", "libbhuman", "libgamectrl", "sensorReader" }
 
   // overwrite platform and c++-compiler for cross compiling
   platform = "Linux"
@@ -21,6 +21,7 @@ Nao = cppApplication + {
     "$(srcDirRoot)/Platform/Common/**.h",
     "$(srcDirRoot)/Platform/Linux/**.cpp" = cppSource,
     "$(srcDirRoot)/Platform/Linux/**.h",
+    "$(srcDirRoot)/Platform/*.cpp" = cppSource,
     "$(srcDirRoot)/Platform/*.h",
     "$(srcDirRoot)/Processes/**.cpp" = cppSource,
     "$(srcDirRoot)/Processes/**.h",
@@ -32,7 +33,7 @@ Nao = cppApplication + {
 
   defines += {
     "TARGET_ROBOT", "__STRICT_ANSI__"
-    if (configuration == "Develop") { -"NDEBUG" }
+    if (configuration == "Develop" || configuration == "DevEnC") { -"NDEBUG" }
   }
 
   output = "$(buildDir)/bhuman"
@@ -45,7 +46,7 @@ Nao = cppApplication + {
     "$(utilDirRoot)/Buildchain/gcc/include",
     "$(utilDirRoot)/Buildchain/gcc/include/c++/5.2.0",
     "$(utilDirRoot)/Buildchain/gcc/include/c++/5.2.0/i686-pc-linux-gnu",
-    "$(utilDirRoot)/Buildchain/clang/include",
+    "$(clanginclude)",
     "$(utilDirRoot)/fftw-3.3",
     "$(utilDirRoot)/libjpeg/src",
     "$(utilDirRoot)/snappy/include",
@@ -63,18 +64,21 @@ Nao = cppApplication + {
   }
 
   cppFlags += {
-    "-nostdinc -march=atom -target i686-pc-linux-gnu"
+    "-nostdinc -nostdinc++ -march=atom -target i686-pc-linux-gnu"
     if (host == "Win32") { "-x c++" }
     if (tool != "vcxproj") {
       "-Wno-switch" // deactivating this is a problem because of the ENUM macro, since numOf<ENUM>s is never used in switch.
+    }
+    if (configuration == "Develop") {
+      "-g1"
     }
   },
 
   linkFlags += "-nostdlib",
 
   if (tool == "vcxproj") {
-    buildCommand = "bash -c \"$(winMarePath) --ignore-dependencies $(target) config=$(configuration) 2>&1 | sed -u -e \\\"s=:\\([0-9][0-9]*\\)[:,]\\([0-9][0-9]*:\\)*=(\\1):=\\\" -e \\\"s=/=\\\\\\\\\\\\=g\\\" 1>&2\""
-    reBuildCommand = "bash -c \"$(winMarePath) --ignore-dependencies rebuild $(target) config=$(configuration) 2>&1 | sed -u -e \\\"s=:\\([0-9][0-9]*\\)[:,]\\([0-9][0-9]*:\\)*=(\\1):=\\\" -e \\\"s=/=\\\\\\\\\\\\=g\\\" 1>&2\""
+    buildCommand = "bashexec \"echo \\\"`uname -o` --ignore-dependencies $(target) config=$(configuration) clanginclude=\\\\\\\"`for d in %24(clang++ -c -v -E - </dev/null 2>&1 | sed -n -e '/here:/,/^End/{/here:/d; /^End/d; p}'); do [ -f $$d/xmmintrin.h ] && echo $$d; done | head -n1`\\\\\\\"\\\" | sed 's@^Cygwin@$(winMarePath)@; s@^GNU\/Linux@$(linuxMarePath)@' | bash\""
+    reBuildCommand = "bashexec \"echo \\\"`uname -o` --ignore-dependencies rebuild $(target) config=$(configuration) clanginclude=\\\\\\\"`for d in %24(clang++ -c -v -E - </dev/null 2>&1 | sed -n -e '/here:/,/^End/{/here:/d; /^End/d; p}'); do [ -f $$d/xmmintrin.h ] && echo $$d; done | head -n1`\\\\\\\"\\\" | sed 's@^Cygwin@$(winMarePath)@; s@^GNU\/Linux@$(linuxMarePath)@' | bash\""
     cleanCommand = "$(winMarePath) --ignore-dependencies clean $(target) config=$(configuration)"
   }
 }

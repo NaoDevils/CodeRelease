@@ -12,6 +12,7 @@
 #include <fstream>
 #include "Representations/Infrastructure/JPEGImage.h"
 #include "Representations/Infrastructure/Thumbnail.h"
+#include "Representations/Infrastructure/YoloInput.h"
 #include "Tools/Settings.h"
 #include "Tools/Debugging/DebugDataStreamer.h"
 #include "Tools/Debugging/QueueFillRequest.h"
@@ -291,6 +292,26 @@ bool RobotConsole::handleMessage(InMessage& message)
       ThumbnailUpper thumbnail;
       message.bin >> thumbnail;
       thumbnail.toImage(*incompleteImages["raw imageUpper"].image);
+      incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
+      return true;
+    }
+    case idYoloInput:
+    {
+      if(!incompleteImages["raw image"].image)
+        incompleteImages["raw image"].image = new Image(false);
+      YoloInput yoloInput;
+      message.bin >> yoloInput;
+      yoloInput.toImage(*incompleteImages["raw image"].image);
+      incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
+      return true;
+    }
+    case idYoloInputUpper:
+    {
+      if (!incompleteImages["raw imageUpper"].image)
+        incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+      YoloInputUpper yoloInputUpper;
+      message.bin >> yoloInputUpper;
+      yoloInputUpper.toImage(*incompleteImages["raw imageUpper"].image);
       incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
       return true;
     }
@@ -639,7 +660,7 @@ bool RobotConsole::handleMessage(InMessage& message)
       message.bin >> ballModelCompressed;
       ballModel = ballModelCompressed;
       if(ballModel.timeWhenLastSeen)
-        ballModel.timeWhenLastSeen = ctrl->ntp.getRemoteTimeInLocalTime(ballModel.timeWhenLastSeen);
+        // ballModel.timeWhenLastSeen = ctrl->ntp.getRemoteTimeInLocalTime(ballModel.timeWhenLastSeen);
       ballModelReceived = SystemCall::getCurrentSystemTime();
       return true;
     }
@@ -674,7 +695,8 @@ bool RobotConsole::handleMessage(InMessage& message)
     {
       message.bin >> Global::getSettings().robotName
         >> Global::getSettings().bodyName
-        >> Global::getSettings().location;
+        >> Global::getSettings().location
+        >> Global::getSettings().naoVersion;
       --waitingFor[idRobotname];
       return true;
     }
@@ -1429,11 +1451,11 @@ bool RobotConsole::log(In& stream, bool first)
       if(upperFrequencies[i] || lowerFrequencies[i] || motionFrequencies[i])
       {
         std::string representation = std::string(::getName(MessageID(i))).substr(2);
-        if(representation == "JPEGImage" ||  
-          representation == "LowFrameRateImage" || representation == "Thumbnail")
+        if(representation == "JPEGImage" ||   
+          representation == "LowFrameRateImage" || representation == "Thumbnail" || representation == "YoloInput") // || representation == "SequenceImage"
           representation = "Image";
         if (representation == "JPEGImageUpper" ||
-          representation == "LowFrameRateImageUpper" || representation == "ThumbnailUpper")
+          representation == "LowFrameRateImageUpper" || representation == "ThumbnailUpper" || representation == "YoloInputUpper") // || representation == "SequenceImageUpper"
           representation = "ImageUpper";
         bool inCognition = cLog != moduleInfo.modules.end() &&
           std::find(cLog->representations.begin(), cLog->representations.end(), representation) != cLog->representations.end() &&

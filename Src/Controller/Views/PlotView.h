@@ -102,6 +102,7 @@ public slots:
   void toggleDrawUnits();
   void toggleDrawLegend();
   void toggleAntialiasing();
+  void toggleContinousMinMax();
   void exportAsGnuplot();
 
 private:
@@ -114,6 +115,7 @@ private:
 
   bool drawUnits;
   bool drawLegend;
+  bool continousMinMax;
   bool antialiasing;
 
   bool needsRepaint() const;

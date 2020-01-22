@@ -46,8 +46,10 @@ bool JoystickLib::connect()
   // Close connection if it is already established.
   if (isFound())
     closeJoystick();
+
   // Open connection to the first joystick
   openPath("/dev/input/js0");
+
   return isFound();
 }
 

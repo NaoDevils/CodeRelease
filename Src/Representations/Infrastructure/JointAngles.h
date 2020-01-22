@@ -4,6 +4,7 @@
 #include "Tools/SensorData.h"
 #include "Tools/Math/Angle.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include <cmath>
 
 #include <array>
 
@@ -24,6 +25,8 @@ public:
 
   /** Initializes this instance with the mirrored angles of other. */
   void mirror(const JointAngles & other);
+
+  bool isValid() const;
 
 private:
   /**
@@ -97,4 +100,12 @@ inline void JointAngles::mirror(const JointAngles& other)
 inline float JointAngles::mirror(float angle)
 {
   return (angle == off || angle == ignore) ? angle : -angle;
+}
+
+inline bool JointAngles::isValid() const
+{
+  for(const Angle& angle : angles)
+    if(std::isnan(static_cast<float>(angle)))
+      return false;
+  return true;
 }

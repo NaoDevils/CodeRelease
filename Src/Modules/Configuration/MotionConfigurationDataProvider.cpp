@@ -10,8 +10,6 @@ MAKE_MODULE(MotionConfigurationDataProvider, motionInfrastructure)
 
 MotionConfigurationDataProvider::MotionConfigurationDataProvider()
 {
-  readDamageConfigurationBody();
-  readDamageConfigurationHead();
   readFieldDimensions();
   readJointCalibration();
   readMassCalibration();
@@ -24,10 +22,6 @@ MotionConfigurationDataProvider::MotionConfigurationDataProvider()
 
 MotionConfigurationDataProvider::~MotionConfigurationDataProvider()
 {
-  if(theDamageConfigurationBody)
-    delete theDamageConfigurationBody;
-  if(theDamageConfigurationHead)
-    delete theDamageConfigurationHead;
   if(theFieldDimensions)
     delete theFieldDimensions;
   if(theJointCalibration)
@@ -44,26 +38,6 @@ MotionConfigurationDataProvider::~MotionConfigurationDataProvider()
     delete theStiffnessSettings;
   if(theUsConfiguration)
     delete theUsConfiguration;
-}
-
-void MotionConfigurationDataProvider::update(DamageConfigurationBody& damageConfigurationBody)
-{
-  if(theDamageConfigurationBody)
-  {
-    damageConfigurationBody = *theDamageConfigurationBody;
-    delete theDamageConfigurationBody;
-    theDamageConfigurationBody = 0;
-  }
-}
-
-void MotionConfigurationDataProvider::update(DamageConfigurationHead& damageConfigurationHead)
-{
-  if(theDamageConfigurationHead)
-  {
-    damageConfigurationHead = *theDamageConfigurationHead;
-    delete theDamageConfigurationHead;
-    theDamageConfigurationHead = 0;
-  }
 }
 
 void MotionConfigurationDataProvider::update(FieldDimensions& fieldDimensions)
@@ -145,32 +119,6 @@ void MotionConfigurationDataProvider::update(UsConfiguration& usConfiguration)
     usConfiguration = *theUsConfiguration;
     delete theUsConfiguration;
     theUsConfiguration = nullptr;
-  }
-}
-
-void MotionConfigurationDataProvider::readDamageConfigurationBody()
-{
-  ASSERT(!theDamageConfigurationBody);
-
-  InMapFile stream("damageConfigurationBody.cfg");
-
-  if(stream.exists())
-  {
-    theDamageConfigurationBody = new DamageConfigurationBody;
-    stream >> *theDamageConfigurationBody;
-  }
-}
-
-void MotionConfigurationDataProvider::readDamageConfigurationHead()
-{
-  ASSERT(!theDamageConfigurationHead);
-
-  InMapFile stream("damageConfigurationHead.cfg");
-
-  if(stream.exists())
-  {
-    theDamageConfigurationHead = new DamageConfigurationHead;
-    stream >> *theDamageConfigurationHead;
   }
 }
 

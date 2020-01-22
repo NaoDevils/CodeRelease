@@ -3,7 +3,7 @@
 #set -x
 
 scriptPath=$(echo ${0} | sed "s|^\.\./|`pwd`/../|" | sed "s|^\./|`pwd`/|")
-basePath=$(dirname ${scriptPath})
+basePath=$(dirname "${scriptPath}")
 currPath=$(pwd)
 
 usage()
@@ -19,10 +19,12 @@ usage()
 
 #Variables
 logpath="/home/nao/logs/"
-keyFile="${basePath}/../../Config/Keys/id_rsa_nao"
+keySource="${basePath}/../../Config/Keys/id_rsa_nao"
+keyFile=/tmp/id_rsa_nao
+cp "${keySource}" ${keyFile}
 sshoptions="-i ${keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet"
 
-chmod 400 $keyFile
+chmod 600 $keyFile
 
 if [ $# -lt 2 ]
 then
@@ -54,7 +56,7 @@ then
 
   #check if log file dir exists
   if [ ! -d "${basePath}/../../Config/Logs/$name" ]; then
-      mkdir -p ${basePath}/../../Config/Logs/$name
+      mkdir -p "${basePath}/../../Config/Logs/$name"
   fi
 
   #check if log dir exist on the remote robot
@@ -74,11 +76,19 @@ then
   fi
 fi
 
+# detect nao version
+ssh $sshoptions nao@$ip "command -v systemctl >/dev/null 2>&1"
+NAOV6=$?
+
 PROCESSES=`ssh $sshoptions nao@$ip "pgrep bhuman"`
 if [ ! -z "$PROCESSES" ]; then
   RESTART=1
   echo "stopping bhuman"
-  ssh $sshoptions nao@$ip "bhumand stop > /dev/null"
+  if [ "$NAOV6" == 0 ]; then
+    ssh $sshoptions nao@$ip "systemctl --user stop bhumand > /dev/null"
+  else
+    ssh $sshoptions nao@$ip "bhumand stop > /dev/null"
+  fi
 fi
 
 if $download
@@ -86,20 +96,26 @@ then
   #download all log files
   echo "Downloading log files..."
   #-p = preserve original date and time
-  scp $sshoptions -p nao@$ip:$logpath*.log $localLogpath
+  scp $sshoptions -p nao@$ip:$logpath*.log "$localLogpath"
   scpResult=$?
   if [ $scpResult -ne 0 ]
   then
      echo "scp failed!"
      exit 1
   fi
-  echo "Downloading bhumand.log"
-  scp $sshoptions -p nao@$ip:/tmp/bhumand.log $localLogpath
-  scpResult=$?
-  if [ $scpResult -ne 0 ]
-  then
-     echo "scp failed!"
-     exit 1
+  
+  
+  # V6 doesn't write stdout to a logfile
+  # framework should write crash dumps to log folder itself
+  if [ "$NAOV6" == 1 ]; then
+      echo "Downloading bhumand.log"
+      scp $sshoptions -p nao@$ip:/tmp/bhumand.log "$localLogpath"
+      scpResult=$?
+      if [ $scpResult -ne 0 ]
+      then
+         echo "scp failed!"
+         exit 1
+      fi
   fi
 fi
 
@@ -112,5 +128,10 @@ fi
 
 if [ ! -z $RESTART ]; then
   echo "starting bhuman"
-  ssh $sshoptions nao@$ip "bhumand start > /dev/null"
+  
+  if [ "$NAOV6" == 0 ]; then
+    ssh $sshoptions nao@$ip "systemctl --user start bhumand > /dev/null"
+  else
+    ssh $sshoptions nao@$ip "bhumand start > /dev/null"
+  fi
 fi

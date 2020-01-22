@@ -10,6 +10,7 @@
 #include "LogPlayer.h"
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/LowFrameRateImage.h"
+#include "Representations/Infrastructure/SequenceImage.h"
 #include "Platform/SystemCall.h"
 #include "Platform/BHAssert.h"
 #include "Platform/File.h"
@@ -181,8 +182,11 @@ void LogPlayer::stepForward()
       if(queue.getMessageID() == idImage || queue.getMessageID() == idImageUpper || 
         queue.getMessageID() == idJPEGImage || queue.getMessageID() == idJPEGImageUpper || 
         queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper ||
-         (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
-          (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000))
+        queue.getMessageID() == idYoloInput || queue.getMessageID() == idYoloInputUpper ||
+       (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
+       (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000) ||
+       (queue.getMessageID() == idSequenceImage && queue.getMessageSize() > 1000) ||
+       (queue.getMessageID() == idSequenceImageUpper && queue.getMessageSize() > 1000))
         lastImageFrameNumber = currentFrameNumber;
     }
     while(queue.getMessageID() != idProcessFinished);
@@ -296,6 +300,24 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
       else
         continue;
     }
+    else if(queue.getMessageID() == idSequenceImage)
+    {
+      SequenceImage sequenceImage;
+      in.bin >> sequenceImage;
+      if(sequenceImage.noInSequence > 0)
+        image = sequenceImage.image;
+      else
+        continue;
+    }
+    else if (queue.getMessageID() == idSequenceImageUpper)
+    {
+      SequenceImage sequenceImage;
+      in.bin >> sequenceImage;
+      if (sequenceImage.noInSequence > 0)
+        image = sequenceImage.image;
+      else
+        continue;
+    }
     else
       continue;
 
@@ -354,14 +376,18 @@ bool LogPlayer::replay()
         if(queue.getMessageID() == idImage || queue.getMessageID() == idJPEGImage || 
           queue.getMessageID() == idImageUpper || queue.getMessageID() == idJPEGImageUpper || 
           queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper ||
-           (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
-            (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000))
+          queue.getMessageID() == idYoloInput || queue.getMessageID() == idYoloInputUpper ||
+         (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
+         (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000) ||
+         (queue.getMessageID() == idSequenceImage && queue.getMessageSize() > 1000) ||
+         (queue.getMessageID() == idSequenceImageUpper && queue.getMessageSize() > 1000))
           lastImageFrameNumber = currentFrameNumber;
       }
       while(queue.getMessageID() != idProcessFinished && currentMessageNumber < numberOfMessagesWithinCompleteFrames - 1);
       ++currentFrameNumber;
       if(currentFrameNumber == numberOfFrames - 1)
       {
+        SystemCall::playSound("allright.wav");
         if(loop)  //restart in loop mode
         {
           gotoFrame(0);
@@ -374,6 +400,7 @@ bool LogPlayer::replay()
     }
     else
     {
+      SystemCall::playSound("allright.wav");
       if(loop)  //restart in loop mode
       {
         gotoFrame(0);
@@ -693,7 +720,7 @@ bool LogPlayer::saveAudioFile(const char* fileName)
     int subchunk2Size;
   };
 
-  int length = sizeof(WAVHeader) + sizeof(short) * frames * audioData.channels;
+  int length = sizeof(WAVHeader) + sizeof(float) * frames * audioData.channels;
   WAVHeader* header = (WAVHeader*) new char[length];
   *(unsigned*) header->chunkId = *(const unsigned*) "RIFF";
   header->chunkSize = length - 8;
@@ -701,15 +728,15 @@ bool LogPlayer::saveAudioFile(const char* fileName)
 
   *(unsigned*) header->subchunk1Id = *(const unsigned*) "fmt ";
   header->subchunk1Size = 16;
-  header->audioFormat = 1;
+  header->audioFormat = 3;
   header->numChannels = (short) audioData.channels;
   header->sampleRate = audioData.sampleRate;
-  header->byteRate = audioData.sampleRate * audioData.channels * sizeof(short);
-  header->blockAlign = short(audioData.channels * sizeof(short));
-  header->bitsPerSample = 16;
+  header->byteRate = audioData.sampleRate * audioData.channels * sizeof(float);
+  header->blockAlign = short(audioData.channels * sizeof(float));
+  header->bitsPerSample = 32;
 
   *(unsigned*) header->subchunk2Id = *(const unsigned*) "data";
-  header->subchunk2Size = frames * audioData.channels * sizeof(short);
+  header->subchunk2Size = frames * audioData.channels * sizeof(float);
 
   char* p = (char*) (header + 1);
   for(currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
@@ -718,8 +745,8 @@ bool LogPlayer::saveAudioFile(const char* fileName)
     if(queue.getMessageID() == idAudioData)
     {
       in.bin >> audioData;
-      memcpy(p, audioData.samples.data(), audioData.samples.size() * sizeof(short));
-      p += audioData.samples.size() * sizeof(short);
+      memcpy(p, audioData.samples.data(), audioData.samples.size() * sizeof(float));
+      p += audioData.samples.size() * sizeof(float);
     }
   }
 

@@ -16,8 +16,10 @@
 #include "Representations/Modeling/Path.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
+#include "Representations/MotionControl/FallDownAngleReduction.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Tools/Module/Module.h"
+#include "SimplePathProvider.h" // for parameters
 
 MODULE(PathToSpeedStable,
 {,
@@ -39,6 +41,7 @@ MODULE(PathToSpeedStable,
   REQUIRES(WalkingEngineParams),
   REQUIRES(BehaviorConfiguration),
   REQUIRES(GameSymbols),
+  REQUIRES(FallDownAngleReduction),
   REQUIRES(TeammateData),
   LOADS_PARAMETERS(
   {,
@@ -53,6 +56,13 @@ MODULE(PathToSpeedStable,
     (float) walkBackWardsDistance,
     (float) walkBackWardsRotation,
     (bool) keeperInGoalAreaOmniOnly,
+    (float)(0.5f) walkAroundBallTranslationRotationFactor,
+    (float)(300.f) influenceRadiusOfObstacleOnTranslation,
+    (float)(0.5f) influenceOfObstacleOnTranslation, // [this..0]*<above radius>
+    (float)(0.8f) influenceOfObstacleOnTranslationTeammate,
+    (float)(0.7f) influenceOfObstacleOnTranslationCenterCircle,
+    (float)(0.7f) influenceOfObstacleOnTranslationSetPlay,
+    (float)(2.0f) emergencyStopFallDownReductionFactorThreshold,
   }),
 });
 
@@ -71,9 +81,9 @@ public:
 private:
 
   PathFollowState state = far;
-  bool inOwnGoalArea = false;
   bool inDribbling = false;
   bool atBall = false;
+  SimplePathProviderBase::Params pathParameters;
 
   void update(SpeedRequest& speedRequest);
 };

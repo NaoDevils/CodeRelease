@@ -8,7 +8,6 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/BehaviorControl/KickSymbols.h"
 #include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -26,6 +25,7 @@
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/SpeedInfo.h"
 
 MODULE(TeamDataSender,
 { ,
@@ -37,27 +37,28 @@ MODULE(TeamDataSender,
   REQUIRES(GameInfo),
   REQUIRES(RawGameInfo),
   REQUIRES(GroundContactState),
-  REQUIRES(KickSymbols),
   REQUIRES(MotionInfo),
   REQUIRES(MotionRequest),
+  REQUIRES(SpeedInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(PositioningSymbols),
   REQUIRES(RobotHealth),
   REQUIRES(RobotInfo),
   REQUIRES(RobotsPercept),
+  REQUIRES(RobotsPerceptUpper),
+  REQUIRES(LocalRobotMap),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(SideConfidence),
   REQUIRES(SimpleRobotsDistributed),
   REQUIRES(TeammateData),
-  //REQUIRES(TeammateRoles),
   REQUIRES(WhistleDortmund),
   PROVIDES_WITHOUT_MODIFY(TeamDataSenderOutput),
   LOADS_PARAMETERS(
   {,
-    (unsigned) avgWalkingSpeed,
-    (unsigned) maxKickDistance,
-    (unsigned) maxNumberOfObstaclesToSend, /**< Do not send more obstacles than this. */
+    (unsigned)(0) avgWalkingSpeed,
+    (unsigned)(0) maxKickDistance,
+    (unsigned)(0) maxNumberOfObstaclesToSend, /**< Do not send more obstacles than this. */
   }),
 });
 
@@ -70,10 +71,16 @@ class TeamDataSender : public TeamDataSenderBase
 public:
 
   /** Default constructor */
-  TeamDataSender() : TeamDataSenderBase("teamDataSender.cfg"), sendFrames(0) {}
+  TeamDataSender() : TeamDataSenderBase("teamDataSender.cfg"), sendFrames(0) { }
+
+  ~TeamDataSender();
 
 private:
   unsigned int sendFrames; /** Quantity of frames in which team data was sent */
+
+  MessageQueue* outMessage = 0; // MessageQueue for the team output
+
+  size_t dsmSize = 0;
 
   /**
   * The update function called in each cognition process cycle
@@ -85,4 +92,6 @@ private:
   * Fills the SPLStandardMessage Header of the TeamDataOut.message
   */
   void fillStandardMessage();
+
+  void fillMixedTeamMessage(RoboCup::SPLStandardMessage& message);
 };

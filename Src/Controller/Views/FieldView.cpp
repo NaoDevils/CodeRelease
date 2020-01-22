@@ -226,7 +226,7 @@ private:
                       static_cast<int>(pinch->centerPoint().y()));
         window2viewport(before);
         scale /= zoom;
-        zoom *= pinch->scaleFactor() / pinch->lastScaleFactor();
+        zoom *= static_cast<float>(pinch->scaleFactor() / pinch->lastScaleFactor());
         if(zoom >= MAXZOOM)
           zoom = MAXZOOM;
         else if(zoom <= MINZOOM)
@@ -250,7 +250,7 @@ private:
     QWidget::wheelEvent(event);
 
 #ifndef OSX
-    zoom += 0.1 * event->delta() / 120;
+    zoom += 0.1f * event->delta() / 120.f;
     if(zoom >= MAXZOOM)
       zoom = MAXZOOM;
     else if(zoom <= MINZOOM)

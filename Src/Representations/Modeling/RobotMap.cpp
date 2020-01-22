@@ -12,24 +12,27 @@ void RobotMap::draw() const
 {
   DEBUG_DRAWING("representation:RobotMap", "drawingOnField")
   {
-    for (std::vector<RobotMapEntry>::const_iterator i = robots.begin(); i != robots.end(); ++i)
+    for (const auto& robot : robots)
     {
-      ColorRGBA color = (i->robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
-      color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:RobotMap", i->pose.translation.x(), i->pose.translation.y(), 100, 10,
+      ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
+      color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
+      CIRCLE("representation:RobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
         Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+
+      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
+      DRAWTEXT("representation:RobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
     }
   }
 
   // now in 3D
   DEBUG_DRAWING3D("representation:RobotMap", "field")
   {
-    for (std::vector<RobotMapEntry>::const_iterator i = robots.begin(); i != robots.end(); ++i)
+    for (const auto& robot : robots)
     {
-      ColorRGBA color = (i->robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
-      color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      float x = (float)i->pose.translation.x();
-      float y = (float)i->pose.translation.y();
+      ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
+      color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
+      float x = robot.pose.translation.x();
+      float y = robot.pose.translation.y();
       CIRCLE3D("representation:RobotMap", Pose3f(x, y, 1),
         200,
         5,
@@ -42,12 +45,15 @@ void GroundTruthRobotMap::draw() const
 {
   DEBUG_DRAWING("representation:GroundTruthRobotMap", "drawingOnField")
   {
-    for (std::vector<RobotMapEntry>::const_iterator i = robots.begin(); i != robots.end(); ++i)
+    for (const auto& robot : robots)
     {
-      ColorRGBA color = (i->robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
-      color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:GroundTruthRobotMap", i->pose.translation.x(), i->pose.translation.y(), 100, 10,
+      ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
+      color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
+      CIRCLE("representation:GroundTruthRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
         Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+
+      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
+      DRAWTEXT("representation:GroundTruthRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
     }
   }
 
@@ -72,12 +78,15 @@ void LocalRobotMap::draw() const
 {
   DEBUG_DRAWING("representation:LocalRobotMap", "drawingOnField")
   {
-    for (std::vector<RobotMapEntry>::const_iterator i = robots.begin(); i != robots.end(); ++i)
+    for (const auto& robot : robots)
     {
-      ColorRGBA color = (i->robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
-      color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:LocalRobotMap", i->pose.translation.x(), i->pose.translation.y(), 100, 10,
+      ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
+      color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
+      CIRCLE("representation:LocalRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
         Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+
+      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
+      DRAWTEXT("representation:LocalRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
     }
   }
 
@@ -102,12 +111,15 @@ void RemoteRobotMap::draw() const
 {
   DEBUG_DRAWING("representation:RemoteRobotMap", "drawingOnField")
   {
-    for (std::vector<RobotMapEntry>::const_iterator i = robots.begin(); i != robots.end(); ++i)
+    for (const auto& robot : robots)
     {
-      ColorRGBA color = (i->robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
-      color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:RemoteRobotMap", i->pose.translation.x(), i->pose.translation.y(), 100, 10,
+      ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
+      color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
+      CIRCLE("representation:RemoteRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
         Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+
+      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
+      DRAWTEXT("representation:RemoteRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
     }
   }
 

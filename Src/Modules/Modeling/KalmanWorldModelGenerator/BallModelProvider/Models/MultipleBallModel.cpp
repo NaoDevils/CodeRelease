@@ -30,7 +30,7 @@ void LocalMultipleBallModel::draw() const
     ColorRGBA color(255, 128, 0, 255);
     ColorRGBA velocityColor(0, 0, 255, 255);
 
-    for (const KalmanPositionHypothesis& hypothesis : m_hypotheses)
+    for (const auto& hypothesis : m_hypotheses)
     {
       // Calculate opacity depending on validity.
       unsigned char alpha = static_cast<unsigned char>(55.f + 200.f * hypothesis.validity);
@@ -86,7 +86,7 @@ void RemoteMultipleBallModel::draw()
   {
     ColorRGBA color = ColorRGBA::black;
 
-    for (const RemoteKalmanPositionHypothesis& hypothesis : m_hypotheses)
+    for (const auto& hypothesis : m_hypotheses)
     {
       if (hypothesis.validity == (bestHypothesis() == nullptr ? 0.f : bestHypothesis()->validity))
         color = ColorRGBA::black; // best hypothesis

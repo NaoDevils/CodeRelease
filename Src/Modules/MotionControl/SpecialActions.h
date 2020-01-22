@@ -14,6 +14,7 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/JointAngles.h"
 #include "Representations/Infrastructure/JointRequest.h"
+#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Tools/MessageQueue/InMessage.h"
 #include "Tools/Module/Module.h"
 
@@ -23,7 +24,13 @@ MODULE(SpecialActions,
   REQUIRES(JointAngles),
   REQUIRES(MotionSelection),
   REQUIRES(StiffnessSettings),
+  REQUIRES(InertialSensorData),
   PROVIDES(SpecialActionsOutput),
+  DEFINES_PARAMETERS(
+  {,
+    (float)(0.25f) gyroQuiet, /** gyro is asumed to be quiet if current gyro vals are < gyroQuiet [rad/s] */
+    (int)(800) maxStabilizationTime, /** max timespan in [ms] that will be waited for if duration is -1 in .mof */
+  }),
 });
 
 class SpecialActions : public SpecialActionsBase
@@ -167,6 +174,7 @@ private:
                     currentInfo; /**< Information about the special action currently executed. */
   SpecialActionRequest::SpecialActionID lastSpecialAction; /**< type of last executed special action. */
   bool mirror; /**< Mirror current special actions? */
+  unsigned int startedWaiting = 0; /** timestamp of start of waiting span */
 
   /**
   * Called from a MessageQueue to distribute messages.

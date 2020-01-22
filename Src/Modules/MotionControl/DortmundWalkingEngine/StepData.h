@@ -39,18 +39,26 @@ public:
 class Footposition : public StepData
 {
 public:
-  bool customStepRunning;
+  bool customStepRunning = false;
+  bool inKick = false;
   unsigned int timestamp;
   WalkRequest::StepRequest customStep;
 
-  WalkingPhase phase;
+  DWE::WalkingPhase phase = DWE::unlimitedDoubleSupport;
   unsigned int singleSupportDurationInFrames;
   unsigned int doubleSupportDurationInFrames;
   unsigned int frameInPhase;
   float stepDurationInSec; // Additional info since dynamic step duration is possible
+  int stepsSinceCustomStep = 0; // remember for reset of preview
+
+  // kick hack, set specific angles in LimbCombinator
+  int timeUntilKickHack = 0;
+  int kickHackDuration = 0;
+  Angle kickHackKneeAngle = 0_deg;
 
   Point speed;
   float lpxss = 0;
+  float lastspdx = 0;
   Vector2f zmp, lastZMPRCS;
 
   void operator = (const StepData &p)
@@ -58,7 +66,31 @@ public:
     this->StepData::operator =(p);
   }
 
-  Footposition() : customStepRunning(false) {};
+  Footposition& operator = (const Footposition& other)
+  {
+    this->StepData::operator =(other);
+    customStepRunning = other.customStepRunning;
+    inKick = other.inKick;
+    timestamp = other.timestamp;
+    customStep = other.customStep;
+    phase = other.phase;
+    singleSupportDurationInFrames = other.singleSupportDurationInFrames;
+    doubleSupportDurationInFrames = other.doubleSupportDurationInFrames;
+    frameInPhase = other.frameInPhase;
+    stepDurationInSec = other.stepDurationInSec;
+    stepsSinceCustomStep = other.stepsSinceCustomStep;
+    timeUntilKickHack = other.timeUntilKickHack;
+    kickHackDuration = other.kickHackDuration;
+    kickHackKneeAngle = other.kickHackKneeAngle;
+    speed = other.speed;
+    lastspdx = other.lastspdx;
+    lpxss = other.lpxss;
+    zmp = other.zmp;
+    lastZMPRCS = other.lastZMPRCS;
+    return *this;
+  }
+
+  Footposition() {};
 };
 
 

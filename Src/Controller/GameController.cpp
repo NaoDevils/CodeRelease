@@ -14,9 +14,11 @@
 #include "Platform/BHAssert.h"
 #include <limits>
 #include <algorithm>
+#include <iostream>
 
 FieldDimensions GameController::fieldDimensions;
 Pose2f GameController::lastBallContactPose;
+int GameController::timeOfLastBallContact;
 
 // move to header when MSC supports constexpr
 const float GameController::footLength = 120.f;
@@ -28,6 +30,7 @@ timeWhenHalfStarted(0),
 timeOfLastDropIn(0),
 timeWhenLastRobotMoved(0),
 timeWhenStateBegan(0),
+
 automatic(true)
 {
   gameInfo.competitionPhase = COMPETITION_PHASE_ROUNDROBIN;
@@ -37,7 +40,6 @@ automatic(true)
   gameInfo.playersPerTeam = numOfRobots / 2;
   gameInfo.firstHalf = 1;
   gameInfo.kickingTeam = 1;
-  gameInfo.dropInTime = -1;
   gameInfo.secsRemaining = durationOfHalf;
   teamInfos[TEAM_BLUE].teamNumber = 1;
   teamInfos[TEAM_BLUE].teamColour = TEAM_BLUE;
@@ -121,6 +123,7 @@ bool GameController::handleGlobalCommand(const std::string& command)
     if (Global::getSettings().gameMode != Settings::penaltyShootout)
     {
       gameInfo.state = STATE_PLAYING;
+      gameInfo.setPlay = SET_PLAY_NONE;
       if (gameInfo.competitionPhase == COMPETITION_PHASE_PLAYOFF || !timeWhenHalfStarted)
         timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfHalf - gameInfo.secsRemaining) * 1000;
     }
@@ -147,16 +150,72 @@ bool GameController::handleGlobalCommand(const std::string& command)
     gameInfo.kickingTeam = 2;
     return true;
   }
-  else if(command == "outByBlue")
+  else if (command == "kickInForRed")
   {
-    gameInfo.dropInTeam = 1;
-    timeOfLastDropIn = SystemCall::getCurrentSystemTime();
+    placeBallAfterLeavingField(KICK_IN_FOR_RED);
+	  gameInfo.setPlay = SET_PLAY_KICK_IN;
+    gameInfo.kickingTeam = 2;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
     return true;
   }
-  else if(command == "outByRed")
+  else if (command == "kickInForBlue")
   {
-    gameInfo.dropInTeam = 2;
-    timeOfLastDropIn = SystemCall::getCurrentSystemTime();
+    placeBallAfterLeavingField(KICK_IN_FOR_BLUE);
+	  gameInfo.setPlay = SET_PLAY_KICK_IN;
+    gameInfo.kickingTeam = 1;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "cornerKickForRed")
+  {
+    placeBallAfterLeavingField(CORNER_KICK_FOR_RED);
+	  gameInfo.setPlay = SET_PLAY_CORNER_KICK;
+    gameInfo.kickingTeam = 2;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "cornerKickForBlue")
+  {
+    placeBallAfterLeavingField(CORNER_KICK_FOR_BLUE);
+	  gameInfo.setPlay = SET_PLAY_CORNER_KICK;
+    gameInfo.kickingTeam = 1;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "pushingFreeKickForRed")
+  {
+	  gameInfo.setPlay = SET_PLAY_PUSHING_FREE_KICK;
+    gameInfo.kickingTeam = 2;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "pushingFreeKickForBlue")
+  {
+    gameInfo.setPlay = SET_PLAY_PUSHING_FREE_KICK;
+    gameInfo.kickingTeam = 1;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "goalFreeKickForRed")
+  {
+    placeBallAfterLeavingField(GOAL_FREE_KICK_FOR_RED);
+    gameInfo.setPlay = SET_PLAY_GOAL_FREE_KICK;
+    gameInfo.kickingTeam = 2;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "goalFreeKickForBlue")
+  {
+    placeBallAfterLeavingField(GOAL_FREE_KICK_FOR_BLUE);
+	  gameInfo.setPlay = SET_PLAY_GOAL_FREE_KICK;
+    gameInfo.kickingTeam = 1;
+    timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  else if (command == "setPlayCompleted")
+  {
+    gameInfo.setPlay = SET_PLAY_NONE;
+    timeWhenSetPlayStarted = -1;
     return true;
   }
   else if(command == "gamePlayoff")
@@ -480,14 +539,40 @@ void GameController::referee()
         switch(updateBall())
         {
           case GOAL_BY_BLUE:
+            std::cout << "Goal by blue" << std::endl;
             ++teamInfos[TEAM_BLUE].score;
             VERIFY(handleGlobalCommand("kickOffRed"));
             VERIFY(handleGlobalCommand("ready"));
             break;
           case GOAL_BY_RED:
+            std::cout << "Goal by red" << std::endl;
             ++teamInfos[TEAM_RED].score;
             VERIFY(handleGlobalCommand("kickOffBlue"));
             VERIFY(handleGlobalCommand("ready"));
+            break;
+          case KICK_IN_FOR_RED:
+            VERIFY(handleGlobalCommand("outByBlue"));
+            VERIFY(handleGlobalCommand("kickInForRed"));
+            break;
+          case KICK_IN_FOR_BLUE:
+            VERIFY(handleGlobalCommand("outByRed"));
+            VERIFY(handleGlobalCommand("kickInForBlue"));
+            break;
+          case CORNER_KICK_FOR_RED:
+            VERIFY(handleGlobalCommand("outByBlue"));
+            VERIFY(handleGlobalCommand("cornerKickForRed"));
+            break;
+          case CORNER_KICK_FOR_BLUE:
+            VERIFY(handleGlobalCommand("outByRed"));
+            VERIFY(handleGlobalCommand("cornerKickForBlue"));
+            break;
+          case GOAL_FREE_KICK_FOR_RED:
+            VERIFY(handleGlobalCommand("outByBlue"));
+            VERIFY(handleGlobalCommand("goalFreeKickForRed"));
+            break;
+          case GOAL_FREE_KICK_FOR_BLUE:
+            VERIFY(handleGlobalCommand("outByRed"));
+            VERIFY(handleGlobalCommand("goalFreeKickForBlue"));
             break;
           case OUT_BY_BLUE:
             VERIFY(handleGlobalCommand("outByBlue"));
@@ -499,6 +584,7 @@ void GameController::referee()
             break;
         }
     }
+    checkForSetPlayCompletion();
   }
 }
 
@@ -515,44 +601,141 @@ GameController::BallOut GameController::updateBall()
     }
     else
     {
-      float x;
-      if((Pose2f(ballPos) - lastBallContactPose).translation.x() > 0) // 1m behind robot
-        x = (lastBallContactPose + Pose2f(-1000, 0)).translation.x();
-      else // 1m behind where ball went out
-        x = (Pose2f(lastBallContactPose.rotation, ballPos) + Pose2f(-1000, 0)).translation.x();
+      /*
+      To distinguish between the teams they will be called red and blue.
+      The blue teams groundline is defined by fieldDimensions.xPosOpponentGroundline and wears yellow jerseys in the simulator.
+      The red teams groundline is defined by fieldDimensions.xPosOwnGroundline and wears blue(!) jerseys in the simulator.
+      */
+      bool ballOverRedGroundline = ballPos.x() < fieldDimensions.xPosOwnGroundline;
+      bool ballOverBlueGroundline = ballPos.x() > fieldDimensions.xPosOpponentGroundline;
+      bool ballOverLeftSideline = ballPos.y() > fieldDimensions.yPosLeftSideline;
+      bool ballOverRightSideline = ballPos.y() < fieldDimensions.yPosRightSideline;
+      //bool ballOnLeftFieldHalf = ballPos.y() >= 0;
+      bool lastTouchedByRed = lastBallContactPose.rotation == 0; // the rotation encodes the team that last touched the ball (0=red; pi=blue)
+      bool lastTouchedByBlue = lastBallContactPose.rotation == pi;
+      bool cornerKickForRed = ballOverBlueGroundline && lastTouchedByBlue;
+      bool cornerKickForBlue = ballOverRedGroundline && lastTouchedByRed;
+      bool goalFreeKickForRed = ballOverRedGroundline && lastTouchedByBlue;
+      bool goalFreeKickForBlue = ballOverBlueGroundline && lastTouchedByRed;
 
-      if(std::abs(ballPos.x()) > fieldDimensions.xPosOpponentGroundline && (Pose2f(x, 0) - Pose2f(lastBallContactPose.rotation)).translation.x() > 0)
-        x = 0; // center line
-      else if(x < fieldDimensions.xPosOwnDropInLine)
-        x = fieldDimensions.xPosOwnDropInLine; // clip
-      else if(x > fieldDimensions.xPosOpponentDropInLine)
-        x = fieldDimensions.xPosOpponentDropInLine; // clip
-      ballPos.x() = x;
-
-      if(ballPos.y() < 0)
-        ballPos.y() = fieldDimensions.yPosRightDropInLine; // right throw-in line
-      else
-        ballPos.y() = fieldDimensions.yPosLeftDropInLine; // left throw-in line
-
-      SimulatedRobot::moveBall(Vector3f(ballPos.x(), ballPos.y(), 100.f), true);
-      result = lastBallContactPose.rotation == 0 ? OUT_BY_RED : OUT_BY_BLUE;
+      if (ballOverLeftSideline || ballOverRightSideline) // ball went over sidelines -> kick-in
+      {
+        //newXPos = ballPos.x();
+        //newYPos = ballOverLeftSideline ? fieldDimensions.yPosLeftSideline : fieldDimensions.yPosRightSideline;
+        //SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true); // move ball to position where it left the field
+        result = lastTouchedByRed ? KICK_IN_FOR_BLUE : KICK_IN_FOR_RED;
+      }
+      else 
+      {
+        if (cornerKickForRed) 
+        {
+          result = CORNER_KICK_FOR_RED;
+        }
+        else if (cornerKickForBlue)
+        {
+          //newXPos = fieldDimensions.xPosOwnGroundline;
+          //newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftSideline : fieldDimensions.yPosRightSideline;
+          //SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true); // move ball to position where it left the field
+          result = CORNER_KICK_FOR_BLUE;
+        }
+        else if (goalFreeKickForRed)
+        {
+          //newXPos = fieldDimensions.xPosOwnPenaltyMark;
+          //newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftPenaltyArea : fieldDimensions.yPosRightPenaltyArea;
+          //SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true); // move ball to position where it left the field
+          result = GOAL_FREE_KICK_FOR_RED;
+        }
+        else if (goalFreeKickForBlue)
+        {
+          //newXPos = fieldDimensions.xPosOpponentPenaltyMark;
+          //newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftPenaltyArea : fieldDimensions.yPosRightPenaltyArea;
+          //SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true); // move ball to position where it left the field
+          result = GOAL_FREE_KICK_FOR_BLUE;
+        }
+      }
     }
   }
   return result;
 }
 
+void GameController::placeBallAfterLeavingField(BallOut typeOfBallout)
+{
+  /*
+  To distinguish between the teams they will be called red and blue.
+  The blue teams groundline is defined by fieldDimensions.xPosOpponentGroundline and wears yellow jerseys in the simulator.
+  The red teams groundline is defined by fieldDimensions.xPosOwnGroundline and wears blue(!) jerseys in the simulator.
+  */
+  Vector2f ballPos;
+  SimulatedRobot::getAbsoluteBallPosition(ballPos);
+  bool ballOnLeftFieldHalf = ballPos.y() >= 0;
+
+  float newXPos;
+  float newYPos;
+  switch (typeOfBallout) 
+  {
+    case KICK_IN_FOR_BLUE:
+    case KICK_IN_FOR_RED:
+      newXPos = ballPos.x();
+      newYPos = ballPos.y() >= 0 ? fieldDimensions.yPosLeftSideline : fieldDimensions.yPosRightSideline;
+      SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true);
+      break;
+    case CORNER_KICK_FOR_RED:
+      newXPos = fieldDimensions.xPosOpponentGroundline;
+      newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftSideline : fieldDimensions.yPosRightSideline;
+      SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true);
+      break;
+    case CORNER_KICK_FOR_BLUE:
+      newXPos = fieldDimensions.xPosOwnGroundline;
+      newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftSideline : fieldDimensions.yPosRightSideline;
+      SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true);
+      break;
+    case GOAL_FREE_KICK_FOR_RED:
+      newXPos = fieldDimensions.xPosOwnPenaltyMark;
+      newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftPenaltyArea : fieldDimensions.yPosRightPenaltyArea;
+      SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true);
+      break;
+    case GOAL_FREE_KICK_FOR_BLUE:
+      newXPos = fieldDimensions.xPosOpponentPenaltyMark;
+      newYPos = ballOnLeftFieldHalf ? fieldDimensions.yPosLeftPenaltyArea : fieldDimensions.yPosRightPenaltyArea;
+      SimulatedRobot::moveBall(Vector3f(newXPos, newYPos, 100.f), true);
+      break;
+    case GOAL_BY_RED:
+    case GOAL_BY_BLUE:
+      SimulatedRobot::moveBall(Vector3f(-3200.f, 0.f, 50.f), true);
+      break;
+    default:
+      break;
+  }
+}
+
+
+void GameController::checkForSetPlayCompletion()
+{
+  bool setPlayActive = gameInfo.setPlay != SET_PLAY_NONE;
+  if (setPlayActive) {
+    bool ballContactAfterSetPlayStarted = (timeWhenSetPlayStarted < timeOfLastBallContact); // has the ball been touched after the set play was called?
+    uint8_t lastBallContactTeam = lastBallContactPose.rotation == 0 ? 2 : 1;
+
+    bool touchedByActiveTeam = (lastBallContactTeam == gameInfo.kickingTeam);
+    int timeSinceSetPlayStarted = SystemCall::getTimeSince(timeWhenSetPlayStarted);
+    bool timePassedOnSetPlay = (timeSinceSetPlayStarted > 30 * 1000); // set play is completed after ball was not touched for 30 seconds
+    if ((ballContactAfterSetPlayStarted && touchedByActiveTeam)
+      || (timePassedOnSetPlay))
+    {
+      VERIFY(handleGlobalCommand("setPlayCompleted"));
+    }
+  }
+}
+
 void GameController::setLastBallContactRobot(SimRobot::Object* robot)
 {
   lastBallContactPose = Pose2f(SimulatedRobot::isBlue(robot) ? pi : 0, SimulatedRobot::getPosition(robot));
+  timeOfLastBallContact = SystemCall::getCurrentSystemTime();
 }
 
 void GameController::writeGameInfo(Out& stream)
 {
   SYNC;
-  if(timeOfLastDropIn)
-    gameInfo.dropInTime = (unsigned short) (SystemCall::getTimeSince(timeOfLastDropIn) / 1000);
-  else
-    gameInfo.dropInTime = -1;
   if (gameInfo.state == STATE_PLAYING || (gameInfo.competitionPhase != COMPETITION_PHASE_PLAYOFF && timeWhenHalfStarted))
   {
     if (Global::getSettings().gameMode != Settings::penaltyShootout)
@@ -605,8 +788,15 @@ void GameController::addCompletion(std::set<std::string>& completion) const
     "finished",
     "kickOffBlue",
     "kickOffRed",
-    "outByBlue",
-    "outByRed",
+    "kickInForRed",
+    "kickInForBlue",
+    "cornerKickForRed",
+    "cornerKickForBlue",
+    "goalFreeKickForRed",
+    "goalFreeKickForBlue",
+    "pushingFreeKickForRed",
+    "pushingFreeKickForBlue",
+    "setPlayCompleted",
     "gameDropIn"
     "gamePlayoff",
     "gameRoundRobin"

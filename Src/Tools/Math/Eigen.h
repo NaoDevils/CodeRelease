@@ -89,7 +89,20 @@ using AngleAxisf = Eigen::AngleAxisf;
 //// FLIPM ////
 using Matrix1x6f = Eigen::Matrix<float, 1, 6>;
 using Matrix1x6d = Eigen::Matrix<double, 1, 6>;
+using Matrix1x7f = Eigen::Matrix<float, 1, 7>;
+using Matrix1x7d = Eigen::Matrix<double, 1, 7>;
+using Vector7f = Eigen::Matrix<float, 7, 1>;
+using Vector7d = Eigen::Matrix<double, 7, 1>;
+using Matrix7x6f = Eigen::Matrix<float, 7, 6>;
+using Matrix7x6d = Eigen::Matrix<double, 7, 6>;
+using Matrix7f = Eigen::Matrix<float, 7, 7>;
+using Matrix7d = Eigen::Matrix<double, 7, 7>;
 using Vector50d = Eigen::Matrix<double, 50, 1>;
 using Vector50f = Eigen::Matrix<float, 50, 1>;
 using Matrix6x3d = Eigen::Matrix<double, 6, 3>;
 using Matrix6x3f = Eigen::Matrix<float, 6, 3>;
+using Matrix3x6d = Eigen::Matrix<double, 3, 6>;
+using Matrix3x6f = Eigen::Matrix<float, 3, 6>;
+
+using MatrixXxXf = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
+using MatrixXxXd = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;

@@ -19,8 +19,6 @@ CognitionConfigurationDataProvider::CognitionConfigurationDataProvider()
   readCameraCalibration();
   readColorCalibration();
   readRobotDimensions();
-  readDamageConfigurationBody();
-  readDamageConfigurationHead();
   readHeadLimits();
   readOdometryCorrectionTables();
 }
@@ -35,10 +33,6 @@ CognitionConfigurationDataProvider::~CognitionConfigurationDataProvider()
     delete theColorCalibration;
   if(theRobotDimensions)
     delete theRobotDimensions;
-  if(theDamageConfigurationBody)
-    delete theDamageConfigurationBody;
-  if(theDamageConfigurationHead)
-    delete theDamageConfigurationHead;
   if(theHeadLimits)
     delete theHeadLimits;
   if(theOdometryCorrectionTables)
@@ -96,26 +90,6 @@ void CognitionConfigurationDataProvider::update(RobotDimensions& robotDimensions
     robotDimensions = *theRobotDimensions;
     delete theRobotDimensions;
     theRobotDimensions = 0;
-  }
-}
-
-void CognitionConfigurationDataProvider::update(DamageConfigurationBody& damageConfigurationBody)
-{
-  if(theDamageConfigurationBody)
-  {
-    damageConfigurationBody = *theDamageConfigurationBody;
-    delete theDamageConfigurationBody;
-    theDamageConfigurationBody = 0;
-  }
-}
-
-void CognitionConfigurationDataProvider::update(DamageConfigurationHead& damageConfigurationHead)
-{
-  if(theDamageConfigurationHead)
-  {
-    damageConfigurationHead = *theDamageConfigurationHead;
-    delete theDamageConfigurationHead;
-    theDamageConfigurationHead = 0;
   }
 }
 
@@ -180,30 +154,6 @@ void CognitionConfigurationDataProvider::readRobotDimensions()
   {
     theRobotDimensions = new RobotDimensions;
     stream >> *theRobotDimensions;
-  }
-}
-
-void CognitionConfigurationDataProvider::readDamageConfigurationBody()
-{
-  ASSERT(!theDamageConfigurationBody);
-
-  InMapFile stream("damageConfigurationBody.cfg");
-  if(stream.exists())
-  {
-    theDamageConfigurationBody = new DamageConfigurationBody;
-    stream >> *theDamageConfigurationBody;
-  }
-}
-
-void CognitionConfigurationDataProvider::readDamageConfigurationHead()
-{
-  ASSERT(!theDamageConfigurationHead);
-
-  InMapFile stream("damageConfigurationHead.cfg");
-  if(stream.exists())
-  {
-    theDamageConfigurationHead = new DamageConfigurationHead;
-    stream >> *theDamageConfigurationHead;
   }
 }
 

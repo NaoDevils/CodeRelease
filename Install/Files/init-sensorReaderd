@@ -1,0 +1,27 @@
+#!/sbin/runscript
+
+depend() {
+  after naoqi
+  after sshd
+}
+
+start() {
+  ebegin "Starting sensorReaderd"
+  if [ $(whoami) = nao ]; then
+    /home/nao/bin/sensorReaderd start
+  elif [ ! -e /dev/sdb ]; then
+    su -c "/home/nao/bin/sensorReaderd start" - nao >/dev/null
+  fi
+  eend $?
+}
+
+stop() {
+  ebegin "Stopping sensorReaderd"
+  /home/nao/bin/sensorReaderd stop
+  eend $?
+}
+
+restart() {
+  stop
+  start
+}

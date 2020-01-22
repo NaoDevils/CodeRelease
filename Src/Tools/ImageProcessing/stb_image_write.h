@@ -114,6 +114,8 @@ publish, and distribute this file as you see fit.
 
 #ifndef INCLUDE_STB_IMAGE_WRITE_H
 #define INCLUDE_STB_IMAGE_WRITE_H
+#include <string.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -127,7 +129,7 @@ extern int stbi_write_tga_with_rle;
 #endif
 
 #ifndef STBI_WRITE_NO_STDIO
-STBIWDEF int stbi_write_png(char const *filename, int w, int h, int comp, const void  *data, int stride_in_bytes);
+STBIWDEF int stbi_write_png(char const *filename, int w, int h, int comp, const void  *data, int stride_in_bytes, unsigned char protobuf_data[] = (unsigned char*) "/",int serializedImageLabelData_size = 1);
 STBIWDEF int stbi_write_bmp(char const *filename, int w, int h, int comp, const void  *data);
 STBIWDEF int stbi_write_tga(char const *filename, int w, int h, int comp, const void  *data);
 STBIWDEF int stbi_write_hdr(char const *filename, int w, int h, int comp, const float *data);
@@ -135,7 +137,7 @@ STBIWDEF int stbi_write_hdr(char const *filename, int w, int h, int comp, const 
 
 typedef void stbi_write_func(void *context, void *data, int size);
 
-STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data, int stride_in_bytes);
+STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data, int stride_in_bytes, unsigned char protobuf_data[]);
 STBIWDEF int stbi_write_bmp_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data);
 STBIWDEF int stbi_write_tga_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const void  *data);
 STBIWDEF int stbi_write_hdr_to_func(stbi_write_func *func, void *context, int w, int h, int comp, const float *data);
@@ -896,7 +898,7 @@ static unsigned char stbiw__paeth(int a, int b, int c)
    return STBIW_UCHAR(c);
 }
 
-unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len)
+unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, int x, int y, int n, int *out_len, unsigned char *protobuf_data, int protobuf_data_size)
 {
    int ctype[5] = { -1, 0, 4, 2, 6 };
    unsigned char sig[8] = { 137,80,78,71,13,10,26,10 };
@@ -955,9 +957,9 @@ unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, in
    if (!zlib) return 0;
 
    // each tag requires 12 bytes of overhead
-   out = (unsigned char *) STBIW_MALLOC(8 + 12+13 + 12+zlen + 12);
+   out = (unsigned char *) STBIW_MALLOC(8 + 12+13 + 12+zlen + 12 + 12 + sizeof(unsigned char)*protobuf_data_size);
    if (!out) return 0;
-   *out_len = 8 + 12+13 + 12+zlen + 12;
+   *out_len = 8 + 12+13 + 12+zlen + 12 + 12 + sizeof(unsigned char)*protobuf_data_size;
 
    o=out;
    STBIW_MEMMOVE(o,sig,8); o+= 8;
@@ -979,6 +981,13 @@ unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, in
    STBIW_FREE(zlib);
    stbiw__wpcrc(&o, zlen);
 
+   int protobuf_data_len = sizeof(unsigned char)*protobuf_data_size;
+   stbiw__wp32(o,protobuf_data_size);
+   stbiw__wptag(o, "laBl");
+   STBIW_MEMMOVE(o, protobuf_data, protobuf_data_size);
+   o += protobuf_data_len;
+   stbiw__wpcrc(&o,protobuf_data_size);
+
    stbiw__wp32(o,0);
    stbiw__wptag(o, "IEND");
    stbiw__wpcrc(&o,0);
@@ -989,11 +998,11 @@ unsigned char *stbi_write_png_to_mem(unsigned char *pixels, int stride_bytes, in
 }
 
 #ifndef STBI_WRITE_NO_STDIO
-STBIWDEF int stbi_write_png(char const *filename, int x, int y, int comp, const void *data, int stride_bytes)
+STBIWDEF int stbi_write_png(char const *filename, int x, int y, int comp, const void *data, int stride_bytes, unsigned char protobuf_data[], int protobuf_data_size)
 {
    FILE *f;
    int len;
-   unsigned char *png = stbi_write_png_to_mem((unsigned char *) data, stride_bytes, x, y, comp, &len);
+   unsigned char *png = stbi_write_png_to_mem((unsigned char *) data, stride_bytes, x, y, comp, &len, protobuf_data, protobuf_data_size);
    if (png == NULL) return 0;
    f = fopen(filename, "wb");
    if (!f) { STBIW_FREE(png); return 0; }
@@ -1004,10 +1013,10 @@ STBIWDEF int stbi_write_png(char const *filename, int x, int y, int comp, const 
 }
 #endif
 
-STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const void *data, int stride_bytes)
+STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int x, int y, int comp, const void *data, int stride_bytes, unsigned char protobuf_data[], int protobuf_data_size)
 {
    int len;
-   unsigned char *png = stbi_write_png_to_mem((unsigned char *) data, stride_bytes, x, y, comp, &len);
+   unsigned char *png = stbi_write_png_to_mem((unsigned char *) data, stride_bytes, x, y, comp, &len, protobuf_data, protobuf_data_size);
    if (png == NULL) return 0;
    func(context, png, len);
    STBIW_FREE(png);

@@ -39,10 +39,5 @@ void CoMProviderModule::update(ActualCoM &theActualCoM)
   //PLOT("module:CoMProvider:ActualCoM.y", theActualCoM.y);
 };
 
-void CoMProviderModule::update(ActualCoMFLIPM &theActualCoMFLIPM)
-{
-  controller.updateActualCoM(theActualCoMFLIPM);
-};
-
 
 MAKE_MODULE(CoMProviderModule, dortmundWalkingEngine)

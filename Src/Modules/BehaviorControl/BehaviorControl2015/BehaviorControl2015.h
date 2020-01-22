@@ -12,7 +12,6 @@
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/Configuration/CameraCalibration.h"
-#include "Representations/Configuration/DamageConfiguration.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Configuration/HeadLimits.h"
 #include "Representations/Configuration/RobotDimensions.h"
@@ -61,7 +60,6 @@ MODULE(BehaviorControl2015,
   REQUIRES(CameraCalibration),
   REQUIRES(CameraInfo),
   REQUIRES(CameraMatrix),
-  REQUIRES(DamageConfigurationBody),
   REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),

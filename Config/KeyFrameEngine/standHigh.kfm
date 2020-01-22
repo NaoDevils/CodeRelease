@@ -1,0 +1,46 @@
+//copy from stand
+keyFrameID = standHigh;
+stabilizationP = 0;
+stabilizationI = 0;
+stabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [20000,20000];
+    armsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
+    legsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 400;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+  },
+  {
+    headAngles = [20000,20000];
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 1000;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+  },
+  {
+    headAngles = [20000,20000];
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 100;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = true;
+  }
+];

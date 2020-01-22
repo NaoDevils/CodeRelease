@@ -1,0 +1,9 @@
+call Includes/Fast
+call Includes/Behavior
+#msg off
+
+echo call FLIPMPlots
+echo gc playing
+echo get representation:MotionRequest
+echo call Includes/CustomStepsSimulator
+echo get parameters:PatternGenerator2017

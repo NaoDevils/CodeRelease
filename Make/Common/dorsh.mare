@@ -1,0 +1,128 @@
+dorsh = cppApplication + {
+  folder = "Utils"
+  root = { "$(srcDirRoot)/Utils/dorsh", "$(srcDirRoot)" }
+
+  files = {
+    "$(srcDirRoot)/Utils/dorsh/**.cpp" = cppSource,
+    "$(srcDirRoot)/Utils/dorsh/**.h",
+    "$(srcDirRoot)/Tools/Network/TcpComm.cpp"= cppSource,
+    "$(srcDirRoot)/Tools/Network/TcpComm.h",
+	"$(srcDirRoot)/Tools/Network/UdpComm.cpp"= cppSource,
+	"$(srcDirRoot)/Tools/Network/UdpComm.h",
+    if (platform == "Linux") {
+      "$(srcDirRoot)/Platform/Linux/BHAssert.cpp" = cppSource,
+      "$(srcDirRoot)/Platform/Linux/BHAssert.h",
+      "$(srcDirRoot)/Platform/Linux/Semaphore.cpp" = cppSource,
+      "$(srcDirRoot)/Platform/Linux/Semaphore.h",
+      "$(srcDirRoot)/Platform/Linux/Thread.h",
+    }
+    if (host == "Win32") {
+      "$(srcDirRoot)/Platform/Windows/BHAssert.cpp" = cppSource,
+      "$(srcDirRoot)/Platform/Windows/BHAssert.h",
+      "$(srcDirRoot)/Platform/Windows/Semaphore.cpp" = cppSource,
+      "$(srcDirRoot)/Platform/Windows/Semaphore.h",
+      "$(srcDirRoot)/Platform/Windows/Thread.h",
+    }
+    "$(srcDirRoot)/Platform/SimRobotQt/SystemCall.cpp" = cppSource,
+    "$(srcDirRoot)/Platform/SimRobotQt/SystemCall.h",
+    "$(srcDirRoot)/Platform/*.h",
+    "$(srcDirRoot)/Platform/Common/File.cpp" = cppSource,
+    "$(srcDirRoot)/Platform/Common/File.h",
+    "$(srcDirRoot)/Controller/Platform/Directory.h",
+    "$(srcDirRoot)/Tools/AlignedMemory.cpp" = cppSource,
+    "$(srcDirRoot)/Tools/AlignedMemory.h",
+    "$(srcDirRoot)/Tools/Enum.cpp" = cppSource,
+    "$(srcDirRoot)/Tools/Enum.h",
+    "$(srcDirRoot)/Tools/Global.cpp" = cppSource,
+    "$(srcDirRoot)/Tools/Global.h",
+    "$(srcDirRoot)/Tools/Streams/**.cpp" = cppSource,
+    "$(srcDirRoot)/Tools/Streams/**.h",
+
+    if (host == "Win32") {
+      "$(srcDirRoot)/Utils/dorsh/dorsh.rc" = rcSource
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/lib/QtNetwork4.dll" = copyFile
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/lib/QtCore4.dll" = copyFile
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/lib/QtGui4.dll" = copyFile
+    }
+  }
+
+  qtRessourceFiles = "$(srcDirRoot)/Utils/dorsh/icons/*.png"
+  qtRccFiles = "$(srcDirRoot)/Utils/dorsh/*.qrc",
+  qtMocFiles = {
+    "$(srcDirRoot)/Utils/dorsh/Session.h"
+    "$(srcDirRoot)/Utils/dorsh/agents/DataAgent.h"
+    "$(srcDirRoot)/Utils/dorsh/cmdlib/ProcessRunner.h"
+    "$(srcDirRoot)/Utils/dorsh/cmdlib/Context.h"
+    "$(srcDirRoot)/Utils/dorsh/cmdlib/AbstractConsole.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/Console.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/VisualContext.h"
+	"$(srcDirRoot)/Utils/dorsh/ui/SensorWindow.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/MainWindow.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/RobotPool.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/RobotView.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/ShortcutBar.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/TeamSelector.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/TeamView.h"
+    "$(srcDirRoot)/Utils/dorsh/ui/CommandLineCompleter.h"
+  }
+  files += qtFiles
+
+  includePaths = {
+    "$(srcDirRoot)",
+    "$(utilDirRoot)/GameController/include",
+    if (platform == "Linux") {
+      "/usr/include/qt4/QtNetwork",
+      "/usr/include/qt4/QtCore",
+      "/usr/include/qt4/QtGui",
+      "/usr/include/qt4",
+      "/usr/include/QtNetwork",
+      "/usr/include/QtCore",
+      "/usr/include/QtGui",
+      "/usr/include/Qt",
+    }
+    if (host == "Win32") {
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/include",
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/include/QtNetwork",
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/include/QtCore",
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/include/QtGUI",
+      "$(utilDirRoot)/Buildchain/Windows/include",
+    }
+  }
+
+  defines += {
+    "TARGET_TOOL", "QT_NO_DEBUG", "QT_SHARED", "QT_GUI_LIB", "QT_CORE_LIB", "QT_NETWORK_LIB", "QT_NO_STL"
+    if (host == "Win32") {
+      "_CRT_SECURE_NO_DEPRECATE"
+    }
+  }
+
+  libs = {
+    if (platform == "Linux") {
+      "rt", "pthread", "QtGui", "QtCore", "QtNetwork"
+    }
+    if (host == "Win32") {
+      if (configuration == "Debug") {
+        "qtmaind"
+      } else {
+        "qtmain"
+      }
+      "QtGui4", "QtCore4", "QtNetwork4", "ws2_32", "winmm"
+    }
+  }
+
+  libPaths = {
+    if (host == "Win32") {
+      "$(utilDirRoot)/SimRobot/Util/qt/Windows/lib"
+    }
+  }
+
+  linkFlags += {
+    if (tool == "vcxproj" && configuration == "Debug") {
+      "/NODEFAULTLIB:msvcrt.lib"
+    }
+  }
+
+  visualizers = {
+    "$(utilDirRoot)/Buildchain/Windows/Visualizers/qt4.natvis"
+  }
+}

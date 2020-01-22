@@ -21,16 +21,16 @@ CABSLGraphViewObject::Option::Option(const QString& line)
   QString file = path.last();
   optionName = file.split(QChar('.')).first();
   dotColorDesc = "";
-  if(path.contains("Skills"))
-    dotColorDesc = "[style=filled, fillcolor=khaki1, color=yellow4]";
-  else if(path.contains("GameControl"))
+  if(path.contains("BallSearch"))
+    dotColorDesc = "[style=filled, fillcolor=yellow1, color=yellow4]";
+  else if(path.contains("Demos"))
     dotColorDesc = "[style=filled, fillcolor=pink, color=red]";
-  else if(path.contains("HeadControl"))
+  else if(path.contains("Controls"))
     dotColorDesc = "[style=filled, fillcolor=tan, color=saddlebrown]";
-  else if(path.contains("Output"))
+  else if(path.contains("PenaltyShootout"))
     dotColorDesc = "[style=filled, fillcolor=lightskyblue1, color=navyblue]";
-  else if(path.contains("Tools"))
-    dotColorDesc = "[style=filled, fillcolor=lightgray, color=black]";
+  else if(path.contains("Skills"))
+    dotColorDesc = "[style=filled, fillcolor=khaki1, color=yellow4]";
   else if(path.contains("Roles"))
     dotColorDesc = "[style=filled, fillcolor=palegreen, color=mediumseagreen]";
   else

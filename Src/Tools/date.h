@@ -43,7 +43,7 @@ namespace date
 // MSVC's constexpr support is still a WIP, even in VS2015.
 // Fall back to a lesser mode to support it.
 // TODO: Remove this or retest later once MSVC's constexpr improves.
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSC_VER < 1915
 #  define CONSTDATA const
 #  define CONSTCD11
 #  define CONSTCD14

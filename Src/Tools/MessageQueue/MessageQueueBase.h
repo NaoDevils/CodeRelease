@@ -28,15 +28,16 @@ private:
   static constexpr int headerSize = 4; /**< The size of the header of each message in bytes. */
   static constexpr int queueHeaderSize = 2 * sizeof(unsigned); /**< The size of the header in a streamed queue. */
   char* buf = nullptr; /**< The buffer on that the queue works. */
-  unsigned* messageIndex = 0; /**< An index of the beginnings of all messages. */
+  bool ownedBuf = true; /**< If the memory buffer is owned by this instance and the destructor calls free(). */
+  size_t* messageIndex = 0; /**< An index of the beginnings of all messages. */
   unsigned char numOfMappedIDs = 0; /**< The number of ids in the translation table. If 0, there is no table. */
   MessageID* mappedIDs = nullptr; /**< The mapping of internal ids to external ids. */
   std::string* mappedIDNames = nullptr; /**< The names of the internal ids. */
-  unsigned selectedMessageForReadingPosition = 0; /**< The position of the message that is selected for reading. */
-  unsigned reserveForInfrastructure = 0; /**< Non-infrastructure messages will be rejected if less than this number of bytes is free. */
-  unsigned maximumSize = 0; /**< The maximum queue size (in bytes). */
-  unsigned reservedSize = 0; /**< The queue size reserved (in bytes). */
-  unsigned usedSize = 0; /** The queue size used (in bytes). It is also the position where the next message starts. */
+  size_t selectedMessageForReadingPosition = 0; /**< The position of the message that is selected for reading. */
+  size_t reserveForInfrastructure = 0; /**< Non-infrastructure messages will be rejected if less than this number of bytes is free. */
+  size_t maximumSize = 0; /**< The maximum queue size (in bytes). */
+  size_t reservedSize = 0; /**< The queue size reserved (in bytes). */
+  size_t usedSize = 0; /** The queue size used (in bytes). It is also the position where the next message starts. */
   unsigned writePosition = 0; /**< The current size of the next message. */
   bool writingOfLastMessageFailed = false; /**< If true, then the writing of the last message failed because there was not enough space. */
   int readPosition = 0; /**< The position up to where a message is already read. */
@@ -57,12 +58,12 @@ public:
    * @param reserveForInfrastructure Non-infrastructure messages will be rejected if
    *                                 less than this number of bytes is free.
    */
-  void setSize(unsigned size, unsigned reserveForInfrastructure);
+  void setSize(size_t size, size_t reserveForInfrastructure);
 
   /**
    * Returns the (maximum) size of the queue.
    */
-  unsigned getSize() const {return maximumSize;}
+  size_t getSize() const { return maximumSize; }
 
   /**
    * The method removes all messages from the queue.
@@ -93,13 +94,13 @@ public:
   /**
    * The method cancels the current message.
    */
-  void cancelMessage() {writePosition = 0;}
+  void cancelMessage() { writePosition = 0; }
 
   /**
    * The method returns whether the the currently selected message for reading was read completely.
    * @return Has the end of the message been reached?
    */
-  bool eof() const {return readPosition == getMessageSize();}
+  bool eof() const { return readPosition == getMessageSize(); }
 
   /**
    * The method reads a number of bytes from the currently selected message for reading.
@@ -113,7 +114,7 @@ public:
    * The method gives direct read access to the selected message for reading.
    * @return The address of the first byte of the message
    */
-  const char* getData() const {return buf + selectedMessageForReadingPosition + headerSize;}
+  const char* getData() const { return buf + selectedMessageForReadingPosition + headerSize; }
 
   /**
    * The method returns the message id of the currently selected message for reading.
@@ -125,19 +126,19 @@ public:
    * The method returns the message size of the currently selected message for reading.
    * @return The size in bytes.
    */
-  int getMessageSize() const {return (*(int*)(buf + selectedMessageForReadingPosition + 1)) & 0xffffff;}
+  int getMessageSize() const { return static_cast<int>(*reinterpret_cast<unsigned int*>(buf + selectedMessageForReadingPosition) >> 8); }
 
   /**
    * The method returns the number of bytes not read yet in the current message.
    * @return The number of bytes left.
    */
-  int getBytesLeftInMessage() const {return getMessageSize() - readPosition;}
+  int getBytesLeftInMessage() const { return getMessageSize() - readPosition; }
 
   /**
    * The method resets read position of the currently selected message for reading
    * so that the message can be read again.
    */
-  void resetReadPosition() {readPosition = 0;}
+  void resetReadPosition() { readPosition = 0; }
 
   /**
    * The method selects a message for reading.
@@ -149,7 +150,7 @@ public:
    * The method returns the selected message for reading.
    * @return The number of the message that is selected.
    */
-  int getSelectedMessageForReading() const {return lastMessage;}
+  int getSelectedMessageForReading() const { return lastMessage; }
 
   /**
    * The method deletes older messages from the queue if newer messages of same type
@@ -191,4 +192,11 @@ private:
    * Frees the index if it exists.
    */
   void freeIndex();
+
+  /**
+   * Sets the message queue buffer to the given pointer.
+   * This can be used, e.g., to read from a memory-mapped file.
+   * @param buffer The address the data is located at.
+  */
+  void setBuffer(char* buffer);
 };

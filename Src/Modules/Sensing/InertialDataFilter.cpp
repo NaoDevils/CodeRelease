@@ -42,14 +42,14 @@ void InertialDataFilter::update(InertialData& inertialData)
   DECLARE_PLOT("module:InertialDataFilter:accZ");
 
   // check whether the filter shall be reset
-  if(!lastTime || theFrameInfo.time <= lastTime)
+  if (!lastTime || theFrameInfo.time <= lastTime)
   {
-    if(theFrameInfo.time == lastTime)
+    if (theFrameInfo.time == lastTime)
       return; // weird log file replaying?
     reset();
   }
 
-  if(theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::playDead)
+  if (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::playDead)
   {
     reset();
   }
@@ -68,11 +68,9 @@ void InertialDataFilter::update(InertialData& inertialData)
 
   // detect the foot that is on ground
   bool useLeft = true;
-  if(theMotionInfo.motion == MotionRequest::walk && theWalkingEngineOutput.speed.translation.x() != 0)
+  if (theMotionInfo.motion == MotionRequest::walk && theWalkingEngineOutput.speed.translation.x() != 0)
   {
-    useLeft = theWalkingEngineOutput.speed.translation.x() > 0 ?
-              (leftOffset.translation.x() > rightOffset.translation.x()) :
-              (leftOffset.translation.x() < rightOffset.translation.x());
+    useLeft = theWalkingEngineOutput.speed.translation.x() > 0 ? (leftOffset.translation.x() > rightOffset.translation.x()) : (leftOffset.translation.x() < rightOffset.translation.x());
   }
   else
   {
@@ -85,18 +83,17 @@ void InertialDataFilter::update(InertialData& inertialData)
 
   // update the filter
   const float timeScale = theFrameInfo.cycleTime;
-  predict(RotationMatrix::fromEulerAngles(theInertialSensorData.gyro.x() * timeScale,
-                                          theInertialSensorData.gyro.y() * timeScale, 0));
+  predict(RotationMatrix::fromEulerAngles(theInertialSensorData.gyro.x() * timeScale, theInertialSensorData.gyro.y() * timeScale, 0));
 
   // insert calculated rotation
   safeRawAngle = theInertialSensorData.angle.head<2>().cast<float>();
   bool useFeet = true;
   MODIFY("module:InertialDataFilter:useFeet", useFeet);
-  if (useFeet &&
-    (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick || theMotionInfo.motion == MotionRequest::stand ||
-      (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::standHigh) ||
-       (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::stand)) &&
-     std::abs(safeRawAngle.x()) < calculatedAccLimit.x() && std::abs(safeRawAngle.y()) < calculatedAccLimit.y())
+  if (useFeet
+      && (theMotionInfo.motion == MotionRequest::walk || theMotionInfo.motion == MotionRequest::kick || theMotionInfo.motion == MotionRequest::stand
+          || (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::standHigh)
+          || (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::stand))
+      && std::abs(safeRawAngle.x()) < calculatedAccLimit.x() && std::abs(safeRawAngle.y()) < calculatedAccLimit.y())
   {
     const RotationMatrix& usedRotation(useLeft ? leftFootInvert.rotation : rightFootInvert.rotation);
     Vector3f accGravOnly(usedRotation.col(0).z(), usedRotation.col(1).z(), usedRotation.col(2).z());
@@ -150,7 +147,7 @@ void InertialDataFilter::predict(const RotationMatrix& rotationOffset)
   generateSigmaPoints();
 
   // update sigma points
-  for(int i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     sigmaPoints[i].rotation *= rotationOffset;
 
   // get new mean and cov
@@ -171,7 +168,7 @@ void InertialDataFilter::readingUpdate(const Vector3f& reading)
 {
   generateSigmaPoints();
 
-  for(int i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     readingModel(sigmaPoints[i], sigmaReadings[i]);
 
   meanOfSigmaReadings();
@@ -206,13 +203,9 @@ void InertialDataFilter::meanOfSigmaPoints()
 {
   mean = sigmaPoints[0];
   //for(int i = 0; i < 5; ++i) // ~= 0 .. inf
-  for(int i = 0; i < 1; ++i)
+  for (int i = 0; i < 1; ++i)
   {
-    Vector2f chunk((sigmaPoints[0] - mean) +
-                   (sigmaPoints[1] - mean) +
-                   (sigmaPoints[2] - mean) +
-                   (sigmaPoints[3] - mean) +
-                   (sigmaPoints[4] - mean));
+    Vector2f chunk((sigmaPoints[0] - mean) + (sigmaPoints[1] - mean) + (sigmaPoints[2] - mean) + (sigmaPoints[3] - mean) + (sigmaPoints[4] - mean));
     chunk *= 1.f / 5.f;
     mean += chunk;
   }
@@ -220,11 +213,7 @@ void InertialDataFilter::meanOfSigmaPoints()
 
 void InertialDataFilter::covOfSigmaPoints()
 {
-  cov = tensor(sigmaPoints[0] - mean) +
-    tensor(sigmaPoints[1] - mean) +
-    tensor(sigmaPoints[2] - mean) +
-    tensor(sigmaPoints[3] - mean) +
-    tensor(sigmaPoints[4] - mean);
+  cov = tensor(sigmaPoints[0] - mean) + tensor(sigmaPoints[1] - mean) + tensor(sigmaPoints[2] - mean) + tensor(sigmaPoints[3] - mean) + tensor(sigmaPoints[4] - mean);
   cov *= 0.5f;
 }
 
@@ -243,13 +232,13 @@ void InertialDataFilter::cholOfCov()
 
   //ASSERT(a11 >= 0.f);
   l11 = std::sqrt(std::max(a11, 0.f));
-  if(l11 == 0.f)
+  if (l11 == 0.f)
     l11 = 0.0000000001f;
   l21 = a21 / l11;
 
   //ASSERT(a22 - l21 * l21 >= 0.f);
   l22 = std::sqrt(std::max(a22 - l21 * l21, 0.f));
-  if(l22 == 0.f)
+  if (l22 == 0.f)
     l22 = 0.0000000001f;
 }
 
@@ -257,13 +246,9 @@ void InertialDataFilter::meanOfSigmaReadings()
 {
   readingMean = sigmaReadings[0];
   //for(int i = 0; i < 5; ++i) // ~= 0 .. inf
-  for(int i = 0; i < 1; ++i)
+  for (int i = 0; i < 1; ++i)
   {
-    Vector3f chunk((sigmaReadings[0] - readingMean) +
-                   (sigmaReadings[1] - readingMean) +
-                   (sigmaReadings[2] - readingMean) +
-                   (sigmaReadings[3] - readingMean) +
-                   (sigmaReadings[4] - readingMean));
+    Vector3f chunk((sigmaReadings[0] - readingMean) + (sigmaReadings[1] - readingMean) + (sigmaReadings[2] - readingMean) + (sigmaReadings[3] - readingMean) + (sigmaReadings[4] - readingMean));
     chunk *= 1.f / 5.f;
     readingMean += chunk;
   }
@@ -271,23 +256,16 @@ void InertialDataFilter::meanOfSigmaReadings()
 
 Matrix3x2f InertialDataFilter::covOfSigmaReadingsAndSigmaPoints()
 {
-  Matrix3x2f readingsSigmaPointsCov =
-    tensor(sigmaReadings[1] - readingMean, l.col(0)) +
-    tensor(sigmaReadings[2] - readingMean, l.col(1)) +
-    tensor(sigmaReadings[3] - readingMean, -l.col(0)) +
-    tensor(sigmaReadings[4] - readingMean, -l.col(1));
+  Matrix3x2f readingsSigmaPointsCov = tensor(sigmaReadings[1] - readingMean, l.col(0)) + tensor(sigmaReadings[2] - readingMean, l.col(1))
+      + tensor(sigmaReadings[3] - readingMean, -l.col(0)) + tensor(sigmaReadings[4] - readingMean, -l.col(1));
   readingsSigmaPointsCov *= 0.5f;
   return readingsSigmaPointsCov;
 }
 
 Matrix3f InertialDataFilter::covOfSigmaReadings()
 {
-  Matrix3f readingsCov = 
-    tensor(Vector3f(sigmaReadings[0] - readingMean)) +
-    tensor(Vector3f(sigmaReadings[1] - readingMean)) +
-    tensor(Vector3f(sigmaReadings[2] - readingMean)) +
-    tensor(Vector3f(sigmaReadings[3] - readingMean)) +
-    tensor(Vector3f(sigmaReadings[4] - readingMean));
+  Matrix3f readingsCov = tensor(Vector3f(sigmaReadings[0] - readingMean)) + tensor(Vector3f(sigmaReadings[1] - readingMean)) + tensor(Vector3f(sigmaReadings[2] - readingMean))
+      + tensor(Vector3f(sigmaReadings[3] - readingMean)) + tensor(Vector3f(sigmaReadings[4] - readingMean));
   readingsCov *= 0.5f;
   return readingsCov;
 }

@@ -21,12 +21,10 @@
 #include "Representations/Sensing/TorsoMatrix.h"
 
 MODULE(CameraMatrixProvider,
-{,
   REQUIRES(CameraCalibration),
   REQUIRES(CameraInfo), // for debug drawing
   REQUIRES(CameraInfoUpper), // for debug drawing
   REQUIRES(FallDownState),
-  REQUIRES(FieldDimensions), // for debug drawing
   REQUIRES(FrameInfo),
   REQUIRES(JointSensorData),
   REQUIRES(MotionInfo),
@@ -35,31 +33,26 @@ MODULE(CameraMatrixProvider,
   REQUIRES(RobotModel),
   REQUIRES(RobotInfo),
   REQUIRES(TorsoMatrix),
-  USES(RobotPose), // for debug drawing
   PROVIDES(CameraMatrix),
-  PROVIDES(CameraMatrixUpper),
-});
+  PROVIDES(CameraMatrixUpper)
+);
 
-class CameraMatrixProvider: public CameraMatrixProviderBase
+class CameraMatrixProvider : public CameraMatrixProviderBase
 {
 private:
   void update(CameraMatrix& cameraMatrix);
   void update(CameraMatrixUpper& cameraMatrix);
 
   void camera2image(const Vector3f& camera, Vector2f& image, bool upper) const;
-  bool intersectLineWithCullPlane(const Vector3f& lineBase, const Vector3f& lineDir,
-                                  Vector3f& point) const;
-  void drawFieldLines(const CameraMatrix& cameraMatrix, bool upper) const;
 
-  STREAMABLE(ModelPoints,
-  {,
+  STREAMABLE(ModelPoints,,
     (std::vector<float>) thighPoints,
     (std::vector<int>) thighIndex,
     (std::vector<float>) shinePoints,
     (std::vector<int>) shineIndex,
     (std::vector<float>) footPoints,
-    (std::vector<int>) footIndex,
-  });
+    (std::vector<int>) footIndex
+  );
 
   ModelPoints p;
 

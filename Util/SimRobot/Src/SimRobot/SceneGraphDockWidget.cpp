@@ -35,21 +35,27 @@ SceneGraphDockWidget::SceneGraphDockWidget(QMenu* contextMenu, QWidget* parent) 
   // load layout settings
   QSettings& settings = MainWindow::application->getLayoutSettings();
   settings.beginGroup(".SceneGraph");
-  expandedItems = QSet<QString>::fromList(settings.value("ExpandedItems").toStringList());
+  const auto list = settings.value("ExpandedItems").toStringList();
+  expandedItems = QSet<QString>(list.begin(), list.end());
   settings.endGroup();
 }
 
 SceneGraphDockWidget::~SceneGraphDockWidget()
+{
+  //saveLayout();
+
+  //
+  unregisterAllObjects();
+  Q_ASSERT(registeredObjectsByKindAndName.isEmpty());
+}
+
+void SceneGraphDockWidget::saveLayout()
 {
   // save layout settings
   QSettings& settings = MainWindow::application->getLayoutSettings();
   settings.beginGroup(".SceneGraph");
   settings.setValue("ExpandedItems", QStringList(expandedItems.values()));
   settings.endGroup();
-
-  //
-  unregisterAllObjects();
-  Q_ASSERT(registeredObjectsByKindAndName.isEmpty());
 }
 
 void SceneGraphDockWidget::registerObject(const SimRobot::Module* module, SimRobot::Object* object, const SimRobot::Object* parent, int flags)
@@ -59,25 +65,25 @@ void SceneGraphDockWidget::registerObject(const SimRobot::Module* module, SimRob
   int parentFullNameLength = parent ? ((RegisteredObject*)parentItem)->fullName.length() : 0;
   newItem->setText(0, parent ? newItem->fullName.mid(parentFullNameLength + 1) : newItem->fullName);
   const QIcon* icon = object->getIcon();
-  if(icon)
+  if (icon)
     newItem->setIcon(0, *icon);
-  if(flags & SimRobot::Flag::hidden)
+  if (flags & SimRobot::Flag::hidden)
     newItem->setHidden(true);
-  if(flags & SimRobot::Flag::windowless)
+  if (flags & SimRobot::Flag::windowless)
     newItem->setFont(0, italicFont);
   else
     newItem->setDisabled(true);
   parentItem->addChild(newItem);
-  if(!parent)
+  if (!parent)
     parentItem->sortChildren(0, Qt::AscendingOrder);
-  if(expandedItems.contains(newItem->fullName))
+  if (expandedItems.contains(newItem->fullName))
     treeWidget->expandItem(newItem);
 
   registeredObjectsByObject.insert(object, newItem);
 
   int kind = object->getKind();
   QHash<QString, RegisteredObject*>* registeredObjectsByName = registeredObjectsByKindAndName.value(kind);
-  if(!registeredObjectsByName)
+  if (!registeredObjectsByName)
   {
     registeredObjectsByName = new QHash<QString, RegisteredObject*>();
     registeredObjectsByKindAndName.insert(kind, registeredObjectsByName);
@@ -85,8 +91,8 @@ void SceneGraphDockWidget::registerObject(const SimRobot::Module* module, SimRob
 
   registeredObjectsByName->insert(newItem->fullName, newItem);
 
-  if(flags & SimRobot::Flag::showParent)
-    while(parentItem)
+  if (flags & SimRobot::Flag::showParent)
+    while (parentItem)
     {
       parentItem->setHidden(false);
       parentItem = parentItem->parent();
@@ -103,14 +109,14 @@ void SceneGraphDockWidget::unregisterAllObjects()
 
 void SceneGraphDockWidget::unregisterObjectsFromModule(const SimRobot::Module* module)
 {
-  for(int i = treeWidget->topLevelItemCount() - 1; i >= 0; --i)
+  for (int i = treeWidget->topLevelItemCount() - 1; i >= 0; --i)
     deleteRegisteredObjectsFromModule((RegisteredObject*)treeWidget->topLevelItem(i), module);
 }
 
 bool SceneGraphDockWidget::unregisterObject(const SimRobot::Object* object)
 {
   RegisteredObject* regObject = registeredObjectsByObject.value(object);
-  if(!regObject)
+  if (!regObject)
     return false;
   deleteRegisteredObject(regObject);
   return true;
@@ -118,16 +124,18 @@ bool SceneGraphDockWidget::unregisterObject(const SimRobot::Object* object)
 
 SimRobot::Object* SceneGraphDockWidget::resolveObject(const QString& fullName, int kind)
 {
-  for(QHash<int, QHash<QString, RegisteredObject*>*>::iterator i = kind ? registeredObjectsByKindAndName.find(kind) : registeredObjectsByKindAndName.begin(); i != registeredObjectsByKindAndName.end(); ++i)
+  for (QHash<int, QHash<QString, RegisteredObject*>*>::iterator i = kind ? registeredObjectsByKindAndName.find(kind) : registeredObjectsByKindAndName.begin();
+       i != registeredObjectsByKindAndName.end();
+       ++i)
   {
     QHash<QString, RegisteredObject*>* registeredObjectsByName = *i;
-    if(!registeredObjectsByName)
+    if (!registeredObjectsByName)
       continue;
     RegisteredObject* object = registeredObjectsByName->value(fullName);
-    if(object)
+    if (object)
       return object->object;
 
-    if(kind)
+    if (kind)
       break;
   }
   return 0;
@@ -136,51 +144,52 @@ SimRobot::Object* SceneGraphDockWidget::resolveObject(const QString& fullName, i
 SimRobot::Object* SceneGraphDockWidget::resolveObject(const SimRobot::Object* parent, const QVector<QString>& parts, int kind)
 {
   const int partsCount = parts.count();
-  if(partsCount <= 0)
+  if (partsCount <= 0)
     return 0;
-  for(QHash<int, QHash<QString, RegisteredObject*>*>::iterator i = kind ? registeredObjectsByKindAndName.find(kind) : registeredObjectsByKindAndName.begin(); i != registeredObjectsByKindAndName.end(); ++i)
+  for (QHash<int, QHash<QString, RegisteredObject*>*>::iterator i = kind ? registeredObjectsByKindAndName.find(kind) : registeredObjectsByKindAndName.begin();
+       i != registeredObjectsByKindAndName.end();
+       ++i)
   {
     QHash<QString, RegisteredObject*>* registeredObjectsByName = *i;
-    if(!registeredObjectsByName)
+    if (!registeredObjectsByName)
       continue;
     const QString& lastPart = parts.at(partsCount - 1);
-    foreach(RegisteredObject* object, *registeredObjectsByName)
+    foreach (RegisteredObject* object, *registeredObjectsByName)
     {
-      if(object->fullName.endsWith(lastPart))
+      if (object->fullName.endsWith(lastPart))
       {
         RegisteredObject* currentObject = object;
-        for(int i = partsCount - 2; i >= 0; --i)
+        for (int i = partsCount - 2; i >= 0; --i)
         {
           currentObject = (RegisteredObject*)currentObject->parent();
           const QString& currentPart = parts.at(i);
-          for(;;)
+          for (;;)
           {
-            if(!currentObject)
+            if (!currentObject)
               goto continueSearch;
-            if(currentObject->fullName.endsWith(currentPart))
+            if (currentObject->fullName.endsWith(currentPart))
               break;
             currentObject = (RegisteredObject*)currentObject->parent();
           }
         }
-        if(parent)
+        if (parent)
         {
           currentObject = (RegisteredObject*)currentObject->parent();
-          for(;;)
+          for (;;)
           {
-            if(!currentObject)
+            if (!currentObject)
               goto continueSearch;
-            if(currentObject->object == parent)
+            if (currentObject->object == parent)
               break;
             currentObject = (RegisteredObject*)currentObject->parent();
           }
         }
         return object->object;
       }
-  continueSearch:
-      ;
+    continueSearch:;
     }
 
-    if(kind)
+    if (kind)
       break;
   }
   return 0;
@@ -201,7 +210,7 @@ SimRobot::Object* SceneGraphDockWidget::getObjectChild(const SimRobot::Object* o
 bool SceneGraphDockWidget::activateFirstObject()
 {
   RegisteredObject* item = (RegisteredObject*)treeWidget->invisibleRootItem()->child(0);
-  if(!item)
+  if (!item)
     return false;
   emit activatedObject(item->fullName, item->module, item->object, item->flags);
   return true;
@@ -210,7 +219,7 @@ bool SceneGraphDockWidget::activateFirstObject()
 bool SceneGraphDockWidget::activateObject(const SimRobot::Object* object)
 {
   RegisteredObject* item = registeredObjectsByObject.value(object);
-  if(!item)
+  if (!item)
     return false;
   emit activatedObject(item->fullName, item->module, item->object, item->flags);
   return true;
@@ -219,12 +228,12 @@ bool SceneGraphDockWidget::activateObject(const SimRobot::Object* object)
 bool SceneGraphDockWidget::setOpened(const SimRobot::Object* object, bool opened)
 {
   RegisteredObject* item = registeredObjectsByObject.value(object);
-  if(!item)
+  if (!item)
     return false;
   item->opened = opened;
   //item->setFont(0, opened ? boldFont : QFont());
   item->setDisabled(!opened);
-  if(!opened)
+  if (!opened)
     item->setFont(0, QFont());
   return true;
 }
@@ -232,15 +241,15 @@ bool SceneGraphDockWidget::setOpened(const SimRobot::Object* object, bool opened
 bool SceneGraphDockWidget::setActive(const SimRobot::Object* object, bool active)
 {
   RegisteredObject* item = registeredObjectsByObject.value(object);
-  if(!item)
+  if (!item)
     return false;
   item->setFont(0, active ? boldFont : QFont());
-  if(active)
+  if (active)
     treeWidget->setCurrentItem(item);
   return true;
 }
 
-QAction *SceneGraphDockWidget::toggleViewAction() const
+QAction* SceneGraphDockWidget::toggleViewAction() const
 {
   QAction* action = QDockWidget::toggleViewAction();
   action->setIcon(QIcon(":/Icons/application_side_tree.png"));
@@ -250,24 +259,24 @@ QAction *SceneGraphDockWidget::toggleViewAction() const
 
 void SceneGraphDockWidget::deleteRegisteredObjectsFromModule(RegisteredObject* registeredObject, const SimRobot::Module* module)
 {
-  if(registeredObject->module == module)
+  if (registeredObject->module == module)
     deleteRegisteredObject(registeredObject);
   else
-    for(int i = registeredObject->childCount() - 1; i >= 0; --i)
+    for (int i = registeredObject->childCount() - 1; i >= 0; --i)
       deleteRegisteredObjectsFromModule((RegisteredObject*)registeredObject->child(i), module);
 }
 
 void SceneGraphDockWidget::deleteRegisteredObject(RegisteredObject* registeredObject)
 {
-  for(int i = registeredObject->childCount() - 1; i >= 0; --i)
+  for (int i = registeredObject->childCount() - 1; i >= 0; --i)
     deleteRegisteredObject((RegisteredObject*)registeredObject->child(i));
   registeredObjectsByObject.remove(registeredObject->object);
   int kind = registeredObject->object->getKind();
   QHash<QString, RegisteredObject*>* registeredObjectsByName = registeredObjectsByKindAndName.value(kind);
-  if(registeredObjectsByName)
+  if (registeredObjectsByName)
   {
     registeredObjectsByName->remove(registeredObject->fullName);
-    if(registeredObjectsByName->count() == 0)
+    if (registeredObjectsByName->count() == 0)
     {
       registeredObjectsByKindAndName.remove(kind);
       delete registeredObjectsByName;
@@ -279,7 +288,7 @@ void SceneGraphDockWidget::deleteRegisteredObject(RegisteredObject* registeredOb
 void SceneGraphDockWidget::contextMenuEvent(QContextMenuEvent* event)
 {
   QRect content(treeWidget->geometry());
-  if(!content.contains(event->x(), event->y()))
+  if (!content.contains(event->x(), event->y()))
   { // click on window frame
     QDockWidget::contextMenuEvent(event);
     return;
@@ -289,15 +298,15 @@ void SceneGraphDockWidget::contextMenuEvent(QContextMenuEvent* event)
 
   //
   QMenu menu;
-  if(clickedItem)
+  if (clickedItem)
   {
-    if(!(clickedItem->flags & SimRobot::Flag::windowless))
+    if (!(clickedItem->flags & SimRobot::Flag::windowless))
     {
       QAction* action = menu.addAction(tr(clickedItem->opened ? "&Close" : "&Open"));
       connect(action, SIGNAL(triggered()), this, SLOT(openOrCloseObject()));
       menu.addSeparator();
     }
-    if(clickedItem->childCount() > 0)
+    if (clickedItem->childCount() > 0)
     {
       QAction* action = menu.addAction(tr(clickedItem->isExpanded() ? "Collabs&e" : "&Expand"));
       connect(action, SIGNAL(triggered()), this, SLOT(expandOrCollabseObject()));
@@ -313,9 +322,9 @@ void SceneGraphDockWidget::contextMenuEvent(QContextMenuEvent* event)
 void SceneGraphDockWidget::itemActivated(const QModelIndex& index)
 {
   RegisteredObject* item = (RegisteredObject*)index.internalPointer();
-  if(item->flags & SimRobot::Flag::windowless)
+  if (item->flags & SimRobot::Flag::windowless)
   {
-    if(item->isExpanded())
+    if (item->isExpanded())
       treeWidget->collapseItem(item);
     else
       treeWidget->expandItem(item);
@@ -338,7 +347,7 @@ void SceneGraphDockWidget::itemExpanded(const QModelIndex& index)
 
 void SceneGraphDockWidget::openOrCloseObject()
 {
-  if(clickedItem->opened)
+  if (clickedItem->opened)
     emit deactivatedObject(clickedItem->fullName);
   else
     emit activatedObject(clickedItem->fullName, clickedItem->module, clickedItem->object, clickedItem->flags);
@@ -346,7 +355,7 @@ void SceneGraphDockWidget::openOrCloseObject()
 
 void SceneGraphDockWidget::expandOrCollabseObject()
 {
-  if(clickedItem->isExpanded())
+  if (clickedItem->isExpanded())
     treeWidget->collapseItem(clickedItem);
   else
     treeWidget->expandItem(clickedItem);

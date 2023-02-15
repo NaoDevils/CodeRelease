@@ -10,37 +10,22 @@
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/Sensing/GroundContactState.h"
-#include "Representations/Sensing/InertialData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
-#include "Representations/Modeling/IMUModel.h"
-
-STREAMABLE(TorsoMatrixEnums,
-{
-  ENUM(AngleSource,
-  { ,
-    inertialData,
-    inertialSensorData,
-    imuModel,
-  }),
-});
 
 MODULE(TorsoMatrixProvider,
-{ ,
   REQUIRES(GroundContactState),
-  REQUIRES(InertialData),
-  REQUIRES(InertialSensorData),
   REQUIRES(RobotDimensions),
   REQUIRES(RobotModel),
-  REQUIRES(IMUModel),
+  REQUIRES(JoinedIMUData),
   PROVIDES(TorsoMatrix),
   USES(TorsoMatrix),
   PROVIDES(OdometryData),
-  LOADS_PARAMETERS(
-  { ,
-   ((TorsoMatrixEnums) AngleSource)(inertialData) anglesource,
-  }),
-});
+  LOADS_PARAMETERS(,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+  )
+);
 
 /**
  * @class TorsoMatrixProvider

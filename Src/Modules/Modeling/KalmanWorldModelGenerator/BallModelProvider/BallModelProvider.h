@@ -12,6 +12,8 @@
 
 // ------------- NAO-Framework includes --------------
 #include "Tools/Module/Module.h"
+#include "Tools/RingBuffer.h"
+
 
 // Requires
 #include "Representations/Infrastructure/FrameInfo.h" // frame timestamp
@@ -23,6 +25,8 @@
 #include "Representations/Infrastructure/TeamInfo.h" // team info used for getting info about kicking team
 #include "Representations/Infrastructure/RobotInfo.h" // robot info used for getting player number and penalty info.
 #include "Representations/Infrastructure/TeammateData.h" // team mates information
+#include "Representations/Sensing/RobotModel.h" // foot positions for detecting kicks
+#include "Representations/Sensing/JoinedIMUData.h"
 
 // - Percepts
 #include "Representations/Perception/BallPercept.h"
@@ -42,9 +46,12 @@
 #include "BallModelProviderParameters.h"
 #include "TeamBallModelParameters.h"
 
+#include "Modules/Modeling/HoughLineDetector.h"
+#include "Modules/Modeling/RANSACLineFitter.h"
+
+constexpr unsigned IMU_BUFFER_LENGTH = static_cast<unsigned>(0.5 * 83);
 
 MODULE(BallModelProvider,
-{,
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(OdometryData),
@@ -54,6 +61,8 @@ MODULE(BallModelProvider,
   REQUIRES(CameraMatrixUpper),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
+  REQUIRES(RobotModel),
+  REQUIRES(JoinedIMUData),
 
   REQUIRES(BallPercept), // Use either single or multiple ball percept.
   REQUIRES(MultipleBallPercept), // Multiple ball percept is used when MultipleBallPercept::balls is not empty.
@@ -62,14 +71,14 @@ MODULE(BallModelProvider,
   //REQUIRES(GroundTruthBallModel), // Compare with GroundTruthBallModel for evaluation.
 
   USES(RobotPose), // Warning: it's the pose from last iteration
-  USES(MotionInfo), // Warning: it's the motion info from last iteration
-
+  REQUIRES(MotionInfo),
+  
   PROVIDES(BallModel),
+  PROVIDES(MultipleBallModel),
   PROVIDES(RemoteBallModel),
   PROVIDES(TeamBallModel),
 
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     /// Parameters used by \c BallModelProvider for local and remote ball model.
     (BallModelProviderParameters) parameters,
     /// Parameters used by \c TeamBallModelProvider for merging local and remote
@@ -78,31 +87,35 @@ MODULE(BallModelProvider,
     /// Fix kalman filter noise matrices which are used to initialize the kalman
     /// filter of each new ball hypothesis.
     (KalmanPositionTracking2D<double>::KalmanMatrices::Noise) kalmanNoiseMatrices,
-  }), 
-});
+    (float)(7.5f) walkingMaxMeasurementNoiseFactor,
+    /// Ball friction in 1/s
+    (float)(-0.30f) ballFriction,
+    /// Add hypotheses froom percepts in straight line
+    (bool)(false) addModelFromPerceptsTowardsRobot,
+    (Angle)(5_deg) anglePrecisionLineDetection,
+    (unsigned)(20) distancePrecisionLineDetection,
+    (unsigned)(4) minPointsForLineDetection,
+    (unsigned)(6) minPointsForLineDetectionWalking,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
+    (Angle)(0.01_deg) gyroMaxVariance,
+    (unsigned)(9) stableInterpolationFrames
+  )
+);
 
 
 class BallModelProvider : public BallModelProviderBase
 {
 private:
-  static constexpr unsigned LOCAL_PERCEPT_DURATION = 1000;
-  static constexpr unsigned REMOTE_PERCEPT_DURATION = 4000;
+  static constexpr unsigned LOCAL_PERCEPT_DURATION = 5000;
+  static constexpr unsigned REMOTE_PERCEPT_DURATION = 1000;
 
 public:
-
   /** 
    * Constructor.
    */
   BallModelProvider()
-    : m_localMultipleBallModel(LOCAL_PERCEPT_DURATION)
-    , m_remoteMultipleBallModel(REMOTE_PERCEPT_DURATION)
-    , m_lastTimeStamp(0)
-    , m_lastGameState(STATE_INITIAL)
-    , m_lastPenaltyState(PENALTY_NONE)
-    , m_lastMotionType(MotionRequest::Motion::specialAction)
-    , m_kickDetected(false)
-    , m_ballDisappeared(true)
-    , m_timeWhenBallFirstDisappeared(0)
+      : m_localMultipleBallModel(LOCAL_PERCEPT_DURATION), m_remoteMultipleBallModel(REMOTE_PERCEPT_DURATION), m_lastTimeStamp(0), m_lastGameState(STATE_INITIAL),
+        m_lastPenaltyState(PENALTY_NONE), m_lastMotionType(MotionRequest::Motion::specialAction), m_kickDetected(false), m_ballDisappeared(true), m_timeWhenBallFirstDisappeared(0)
   {
     initialize();
   }
@@ -111,8 +124,8 @@ public:
    * Destructor.
    */
   ~BallModelProvider() {}
-  
-  
+
+
   // MARK: Update methods for provided representations.
 
   /**
@@ -123,12 +136,19 @@ public:
   void update(BallModel& ballModel);
 
   /**
+  * This method provides the local multiple ball model. It is computes only by own
+  * percepts.
+  * \param [out] multipleBallModel The local multiple ball model (relative robot coordinates).
+  */
+  void update(MultipleBallModel& multipleBallModel);
+
+  /**
    * This method provides the remote ball model. It is computes only by ball 
    * models from teammates.
    * \param [out] remoteBallModel The remote ball model (absolute field coordinates).
    */
   void update(RemoteBallModel& remoteBallModel);
-  
+
   /**
    * This method provides the team ball model. It is merged from both the local
    * and the remote ball model. The remote ball model is derived from the local
@@ -136,7 +156,7 @@ public:
    * \param [out] teamBallModel The team ball model (absolute field coordinates).
    */
   void update(TeamBallModel& teamBallModel);
-  
+
 
 private:
   // MARK: BallModelProvider methods.
@@ -176,7 +196,7 @@ private:
    * This method performs the correction step of each local ball hypothesis.
    */
   void sensorUpdateLocal();
-  
+
   /**
    * \brief Correction of \c m_localMultipleBallModel with one percept
    *
@@ -185,7 +205,7 @@ private:
    * This method is used in \c sensorUpdateLocal to reduce code duplication.
    * \param [in] ball The ball percept.
    */
-  void sensorUpdateLocalSingle(const BallPercept& ball);
+  void sensorUpdateLocalSingle(const BallPercept& ball, const Vector2f* velocity = nullptr);
 
   /**
    * \brief Correction of \c m_remoteMultipleBallModel
@@ -193,18 +213,23 @@ private:
    * This method performs the correction step of each remote ball hypothesis.
    */
   void sensorUpdateRemote();
-  
+
   /**
    * This method executes game state depending actions.
    */
   void handleGameState();
-  
+
+  /**
+   * This method add fakePercepts when the ballposition is known
+   */
+  void addFakePercepts(Vector2f pointOnField);
+
   /**
    * This method checks if a kick is executed and increases the validity 
    * uncertainty.
    */
   void handleKick();
-  
+
   /**
    * \brief Checks whether the ball is disappeared or not.
    * 
@@ -220,7 +245,7 @@ private:
    * \see ballDisappeared, timeWhenBallFirstDisappeared, BallModel::timeWhenDisappeared
    */
   void updateTimeWhenBallFirstDisappeared(const KalmanPositionHypothesis* hypothesis, BallModel& ballModel);
-  
+
   /**
    * Fills \c m_localBallModel with contents of \c m_localMultipleBallModel 
    * (best hypothesis).
@@ -228,10 +253,21 @@ private:
   void generateLocalBallModel();
 
   /**
+  * Fills \c m_multipleBallModel with contents of \c m_localMultipleBallModel
+  * (best hypothesis).
+  */
+  void generateMultipleBallModel();
+
+  /**
    * Fills \c m_remoteBallModel with contents of \c m_remoteMultipleBallModel 
    * (best hypothesis).
    */
   void generateRemoteBallModel();
+
+  /**
+   * Checks if 3 points are on a line
+   */
+  bool checkIfCollinear(const Vector2f& first, const Vector2f& second, const Vector2f& third);
 
 
   // MARK: Debug methods.
@@ -250,19 +286,30 @@ private:
    * Does debug drawings.
    */
   void draw();
-  
-  
+
+  bool isBallInGoalBox(const Vector2f& positionOnField);
+
+
 private:
+  std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersX;
+  std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersY;
+  bool isStable = false;
+  unsigned interpolationCounter = 0;
+
   // ----- local ball model -----
   /**
    * The local \c BallModel which is provided by this module (local robot coordinates).
    */
   BallModel m_localBallModel;
   /**
+  * The local \c MultipleBallModel which is provided by this module (local robot coordinates).
+  */
+  MultipleBallModel m_multipleBallModel;
+  /**
    * The storage of all local ball hypotheses (local robot coordinates).
    */
   LocalMultipleBallModel m_localMultipleBallModel;
-  
+
   // ----- remote ball model (only teammates) -----
   /**
    * The \c RemoteBallModel which is provided by this module (global field coordinates).
@@ -272,6 +319,10 @@ private:
    * The storage of all remote ball hypotheses (global field coordinates).
    */
   RemoteMultipleBallModel m_remoteMultipleBallModel;
+
+  HoughLineDetector houghLineDetector;
+  RANSACLineFitter ransacLineFitter;
+  RingBuffer<std::vector<BallPercept>, BALLPERCEPT_BUFFER_LENGTH> perceptBuffer; // percept buffer for a half second
 
   /**
    * Saves the timestamp of the last percept (from the robot with player number
@@ -295,7 +346,7 @@ private:
    * per frame.
    */
   unsigned m_lastTimeStamp;
-  
+
   /**
    * Save game state at each invocation of the method \c handleGameState(). This
    * is used to handle state transitions.
@@ -307,13 +358,13 @@ private:
    * is used to handle state transitions.
    */
   uint8_t m_lastSetPlay;
-  
+
   /**
    * Save state of penalty at each invocation of the method \c handleGameState().
    * This is used to remove all ball hypotheses after a penalty.
    */
   uint8_t m_lastPenaltyState;
-  
+
   /**
    * Save motion type at each invocation of the method \c handleKick(). This is 
    * used to check if a new kick is triggered.
@@ -325,14 +376,14 @@ private:
    * \see m_lastMotionType
    */
   bool m_kickDetected;
-  
+
   /**
    * Save the \c OdometryData at each invocation of the method \c execute().
    * This is used one iteration later to compute the odometry change since the
    * last iteration.
    */
   OdometryData m_lastOdometryData;
-  
+
   /**
    * The ball is believed to be disappeared, if it should be visible in current
    * image by any of the two cameras, but is not.

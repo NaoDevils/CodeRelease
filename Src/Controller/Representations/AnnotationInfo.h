@@ -23,9 +23,11 @@ public:
 
   std::vector<AnnotationData> newAnnotations;
   unsigned timeOfLastMessage;
+  unsigned frame = 0;
 
   AnnotationInfo();
   bool handleMessage(InMessage& message);
+  bool handleMessage(InMessage& message, unsigned frameNumber);
 
   DECLARE_SYNC;
 };

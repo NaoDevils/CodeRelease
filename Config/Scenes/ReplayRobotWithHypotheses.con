@@ -1,4 +1,0 @@
-call ReplayRobot
-call Includes/FieldViewsLoca
-
-mr RobotPoseHypotheses CognitionLogDataProvider

@@ -10,17 +10,16 @@
 
 MAKE_MODULE(MotionLogDataProvider, motionInfrastructure)
 
-PROCESS_LOCAL MotionLogDataProvider* MotionLogDataProvider::theInstance = 0;
+CycleLocal<MotionLogDataProvider*> MotionLogDataProvider::theInstance(nullptr);
 
-MotionLogDataProvider::MotionLogDataProvider() :
-  frameDataComplete(false)
+MotionLogDataProvider::MotionLogDataProvider() : frameDataComplete(false)
 {
   theInstance = this;
 }
 
 MotionLogDataProvider::~MotionLogDataProvider()
 {
-  theInstance = 0;
+  theInstance.reset();
 }
 
 void MotionLogDataProvider::update(GroundTruthOdometryData& groundTruthOdometryData)
@@ -35,17 +34,17 @@ void MotionLogDataProvider::update(GroundTruthOdometryData& groundTruthOdometryD
 
 bool MotionLogDataProvider::handleMessage(InMessage& message)
 {
-  return theInstance && theInstance->handleMessage2(message);
+  return *theInstance && (*theInstance)->handleMessage2(message);
 }
 
 bool MotionLogDataProvider::isFrameDataComplete()
 {
-  if(!theInstance)
+  if (!*theInstance)
     return true;
-  else if(theInstance->frameDataComplete)
+  else if ((*theInstance)->frameDataComplete)
   {
     OUTPUT(idLogResponse, bin, '\0');
-    theInstance->frameDataComplete = false;
+    (*theInstance)->frameDataComplete = false;
     return true;
   }
   else
@@ -54,44 +53,55 @@ bool MotionLogDataProvider::isFrameDataComplete()
 
 bool MotionLogDataProvider::handleMessage2(InMessage& message)
 {
-  switch(message.getMessageID())
+  switch (message.getMessageID())
   {
-    case idJointAngles:
-      if(handle(message) && Blackboard::getInstance().exists("FrameInfo"))
+  case idJointAngles:
+    if (handle(message) && Blackboard::getInstance().exists("FrameInfo"))
+    {
+      FrameInfo& frameInfo = (FrameInfo&)Blackboard::getInstance()["FrameInfo"];
+      const JointAngles& jointAngles = Blackboard::get<JointAngles>();
+      if (jointAngles.timestamp != frameInfo.time)
       {
-        FrameInfo& frameInfo = (FrameInfo&) Blackboard::getInstance()["FrameInfo"];
-        const JointAngles& jointAngles = (const JointAngles&)Blackboard::getInstance()["JointAngles"];
-        if (jointAngles.timestamp != frameInfo.time)
-        {
-          frameInfo.cycleTime = (float)(jointAngles.timestamp - frameInfo.time) * 0.001f;
-          frameInfo.time = jointAngles.timestamp;
-        }
+        frameInfo.cycleTime = 0.012f;
+        frameInfo.time = jointAngles.timestamp;
       }
-      return true;
+    }
+    return true;
 
-    case idJointSensorData:
-      if(handle(message) && Blackboard::getInstance().exists("FrameInfo"))
+  case idJointSensorData:
+    if (handle(message) && Blackboard::getInstance().exists("FrameInfo"))
+    {
+      FrameInfo& frameInfo = (FrameInfo&)Blackboard::getInstance()["FrameInfo"];
+      const JointSensorData& jointSensorData = Blackboard::get<JointSensorData>();
+      if (jointSensorData.timestamp != frameInfo.time)
       {
-        FrameInfo& frameInfo = (FrameInfo&) Blackboard::getInstance()["FrameInfo"];
-        const JointSensorData& jointSensorData = (const JointSensorData&)Blackboard::getInstance()["JointSensorData"];
-        if (jointSensorData.timestamp != frameInfo.time)
-        {
-          frameInfo.cycleTime = (float)(jointSensorData.timestamp - frameInfo.time) * 0.001f;
-          frameInfo.time = jointSensorData.timestamp;
-        }
+        frameInfo.cycleTime = 0.012f;
+        frameInfo.time = jointSensorData.timestamp;
       }
-      return true;
+    }
+    return true;
 
-    case idGroundTruthOdometryData:
-      if(handle(message) && Blackboard::getInstance().exists("OdometryData"))
-        (OdometryData&) Blackboard::getInstance()["OdometryData"] = (OdometryData&) Blackboard::getInstance()["GroundTruthOdometryData"];
-      return true;
+  case idGroundTruthOdometryData:
+    if (handle(message) && Blackboard::getInstance().exists("OdometryData"))
+      (OdometryData&)Blackboard::getInstance()["OdometryData"] = (OdometryData&)Blackboard::getInstance()["GroundTruthOdometryData"];
+    return true;
 
-    case idProcessFinished:
-      frameDataComplete = true;
-      return true;
+  case idProcessFinished:
+    frameDataComplete = true;
+    return true;
 
-    default:
-      return handle(message);
+  case idStopwatch:
+  {
+    const int size = message.getMessageSize();
+    std::vector<unsigned char> data;
+    data.resize(size);
+    message.bin.read(&data[0], size);
+    Global::getDebugOut().bin.write(&data[0], size);
+    Global::getDebugOut().finishMessage(idStopwatch);
+    return true;
+  }
+
+  default:
+    return handle(message);
   }
 }

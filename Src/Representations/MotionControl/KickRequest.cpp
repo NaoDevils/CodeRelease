@@ -9,8 +9,8 @@
 
 KickRequest::KickMotionID KickRequest::getKickMotionFromName(const char* name)
 {
-  for(int i = 0; i < numOfKickMotionIDs; ++i)
-    if(!strcmp(name, getName(KickMotionID(i))))
+  for (int i = 0; i < numOfKickMotionIDs; ++i)
+    if (!strcmp(name, getName(KickMotionID(i))))
       return KickMotionID(i);
   return numOfKickMotionIDs;
 }

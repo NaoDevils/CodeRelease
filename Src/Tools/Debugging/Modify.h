@@ -28,14 +28,19 @@
 #define MODIFY_ONCE(id, object) _MODIFY(id, object, true)
 
 /** Private helper for MODIFY and MODIFY_ONCE. Do not use directly. */
-#define _MODIFY(id, object, once) \
-  do \
-  { \
-    Global::getDebugDataTable().updateObject(id, object, once); \
-    DEBUG_RESPONSE_ONCE("debug data:" id) \
+#define _MODIFY(id, object, once)                                                                   \
+  do                                                                                                \
+  {                                                                                                 \
+    Global::getDebugDataTable().updateObject(id, object, once);                                     \
+    DECLARE_DEBUG_RESPONSE("visualize data:" id);                                                   \
+    DEBUG_RESPONSE_ONCE("debug data:" id)                                                           \
+    {                                                                                               \
       OUTPUT(idDebugDataResponse, bin, id << Streaming::demangle(typeid(object).name()) << object); \
-  } \
-  while(false)
+      break;                                                                                        \
+    }                                                                                               \
+    DECLARED_DEBUG_RESPONSE("visualize data:" id)                                                   \
+    OUTPUT(idDebugDataResponse, bin, id << Streaming::demangle(typeid(object).name()) << object);   \
+  } while (false)
 
 /**
  * Allows for the continuous modification of an enumerated value.
@@ -58,17 +63,15 @@
 #define MODIFY_ENUM_ONCE(id, ...) _MODIFY_ENUM(id, true, __VA_ARGS__)
 
 /** Private helpers for MODIFY_ENUM and MODIFY_ENUM_ONCE. Do not use directly. */
-#define _MODIFY_ENUM(id, once, ...) \
-  _STREAM_EXPAND(_STREAM_EXPAND(_STREAM_THIRD(__VA_ARGS__, _MODIFY_ENUM_WITH_CLASS, _MODIFY_ENUM_WITHOUT_CLASS))(id, once, __VA_ARGS__))
+#define _MODIFY_ENUM(id, once, ...) _STREAM_EXPAND(_STREAM_EXPAND(_STREAM_THIRD(__VA_ARGS__, _MODIFY_ENUM_WITH_CLASS, _MODIFY_ENUM_WITHOUT_CLASS))(id, once, __VA_ARGS__))
 
 #define _MODIFY_ENUM_WITHOUT_CLASS(id, once, object) _MODIFY_ENUM2(id, object, once, )
-#define _MODIFY_ENUM_WITH_CLASS(id, once, object, class) _MODIFY_ENUM2(id, object, once, class::)
-#define _MODIFY_ENUM2(id, object, once, class) \
-  do \
-  { \
-    Streaming::registerEnum(typeid(object), Streaming::castFunction(object, class getName)); \
-    Global::getDebugDataTable().updateObject(id, object, once); \
-    DEBUG_RESPONSE_ONCE("debug data:" id) \
-      OUTPUT(idDebugDataResponse, bin, id << Streaming::demangle(typeid(object).name()) << (unsigned char) object); \
-  } \
-  while(false)
+#define _MODIFY_ENUM_WITH_CLASS(id, once, object, class) _MODIFY_ENUM2(id, object, once, class ::)
+#define _MODIFY_ENUM2(id, object, once, class)                                                                   \
+  do                                                                                                             \
+  {                                                                                                              \
+    Streaming::registerEnum(typeid(object), Streaming::castFunction(object, class getName));                     \
+    Global::getDebugDataTable().updateObject(id, object, once);                                                  \
+    DEBUG_RESPONSE_ONCE("debug data:" id)                                                                        \
+    OUTPUT(idDebugDataResponse, bin, id << Streaming::demangle(typeid(object).name()) << (unsigned char)object); \
+  } while (false)

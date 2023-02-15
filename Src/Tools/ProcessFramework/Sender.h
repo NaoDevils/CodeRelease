@@ -23,10 +23,10 @@ class SenderList
 {
 private:
   SenderList* next = nullptr; /**< The successor of the current sender. */
-  std::string name;           /**< The name of a sender without the module's name. */
+  std::string name; /**< The name of a sender without the module's name. */
 
 protected:
-  PlatformProcess* process;   /**< The process this sender is associated with. */
+  PlatformProcess* process; /**< The process this sender is associated with. */
 
   /**
    * The function sends a package to all receivers that requested it.
@@ -52,13 +52,13 @@ public:
    * Returns the next sender in the list.
    * @return The next sender in the list, or 0 if this sender is the last one.
    */
-  SenderList* getNext() const {return next;}
+  SenderList* getNext() const { return next; }
 
   /**
    * Returns the connection name of the sender.
    * @return The connection name without the process name ("Sender.type.O")
    */
-  const std::string& getName() const {return name;}
+  const std::string& getName() const { return name; }
 
   /**
    * The function must be called to finish the current frame.
@@ -85,11 +85,11 @@ public:
  * The class implements a sender.
  * A sender is an object that sends packages to an queue.
  */
-template<class T> class Sender : public SenderList, public T
+template <class T> class Sender : public SenderList, public T
 {
 protected:
-  ReceiverList* receiver[RECEIVERS_MAX], /**< A list of all receivers. */
-              * alreadyReceived[RECEIVERS_MAX]; /**< A list of all receivers that have already received the current package. */
+  ReceiverList *receiver[RECEIVERS_MAX], /**< A list of all receivers. */
+      *alreadyReceived[RECEIVERS_MAX]; /**< A list of all receivers that have already received the current package. */
   int numOfReceivers = 0, /**< The number of entries in the receiver list. */
       numOfAlreadyReceived = -1; /**< The number of entries in the already received list. */
 
@@ -97,30 +97,30 @@ protected:
    * The function adds a receiver to this sender.
    * @param r The receiver that is attached to this sender.
    */
-  virtual void add(ReceiverList* r) {receiver[numOfReceivers++] = r;}
+  virtual void add(ReceiverList* r) { receiver[numOfReceivers++] = r; }
 
   /**
    * The function sends a package to all receivers that requested it.
    */
   virtual void sendPackage()
   {
-    if(numOfAlreadyReceived != -1)
+    if (numOfAlreadyReceived != -1)
     {
       // send() has been called at least once
       int i;
-      for(i = 0; i < numOfReceivers; ++i)
+      for (i = 0; i < numOfReceivers; ++i)
       {
         int j;
-        for(j = 0; j < numOfAlreadyReceived; ++j)
-          if(receiver[i] == alreadyReceived[j])
+        for (j = 0; j < numOfAlreadyReceived; ++j)
+          if (receiver[i] == alreadyReceived[j])
             break;
-        if(j == numOfAlreadyReceived)
+        if (j == numOfAlreadyReceived)
         {
           // receiver[i] has not received its requested package yet
           const T& data = *static_cast<const T*>(this);
           OutBinarySize size;
           size << data;
-          void* r = (void*) new char[size.getSize()];
+          void* r = (void*)new char[size.getSize()];
           ASSERT(r);
           OutBinaryMemory memory(r);
           memory << data;
@@ -138,9 +138,7 @@ public:
    * @param process The process this sender is associated with.
    * @param senderName The connection name of the sender without the process name.
    */
-  Sender(PlatformProcess* process, const char* senderName) :
-    SenderList(process, senderName)
-  {}
+  Sender(PlatformProcess* process, const char* senderName) : SenderList(process, senderName) {}
 
   /**
    * Returns whether a new package was requested from the sender.
@@ -149,8 +147,8 @@ public:
    */
   bool requestedNew() const
   {
-    for(int i = 0; i < numOfReceivers; ++i)
-      if(!receiver[i]->hasPendingPackage())
+    for (int i = 0; i < numOfReceivers; ++i)
+      if (!receiver[i]->hasPendingPackage())
         return true;
     return false;
   }

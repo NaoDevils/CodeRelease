@@ -27,7 +27,7 @@ public:
   /**
    * Default constructor.
    */
-  Matrix3x3<V>() : c0(1,0,0), c1(0,1,0), c2(0,0,1) {}
+  Matrix3x3<V>() : c0(1, 0, 0), c1(0, 1, 0), c2(0, 0, 1) {}
 
   /**
    * Constructor.
@@ -36,7 +36,7 @@ public:
    * \param  c1  the second column of the matrix.
    * \param  c2  the third column of the matrix.
   */
-  Matrix3x3<V>(const Vector3<V>& c0, const Vector3<V>& c1,  const Vector3<V>& c2) : c0(c0), c1(c1), c2(c2) {}
+  Matrix3x3<V>(const Vector3<V>& c0, const Vector3<V>& c1, const Vector3<V>& c2) : c0(c0), c1(c1), c2(c2) {}
 
   /**
    * Copy constructor.
@@ -72,15 +72,8 @@ public:
    * \return         A new matrix containing the result
    *                 of the calculation.
   */
-  Matrix3x3<V> operator+(const Matrix3x3<V>& other) const
-  {
-    return Matrix3x3<V>(
-      c0 + other.c0,
-      c1 + other.c1,
-      c2 + other.c2
-    );
-  }
-   /**
+  Matrix3x3<V> operator+(const Matrix3x3<V>& other) const { return Matrix3x3<V>(c0 + other.c0, c1 + other.c1, c2 + other.c2); }
+  /**
    * Adds another matrix to this matrix.
    *
    * \param  other  The other matrix that is added to this one
@@ -101,15 +94,8 @@ public:
    * \return         A new matrix containing the result
    *                 of the calculation.
   */
-  Matrix3x3<V> operator-(const Matrix3x3<V>& other) const
-  {
-    return Matrix3x3<V>(
-      c0 - other.c0,
-      c1 - other.c1,
-      c2 - other.c2
-    );
-  }
-   /**
+  Matrix3x3<V> operator-(const Matrix3x3<V>& other) const { return Matrix3x3<V>(c0 - other.c0, c1 - other.c1, c2 - other.c2); }
+  /**
    * Substracts another matrix from this one
    *
    * \param  other  The other matrix that is substracted from this one
@@ -135,10 +121,7 @@ public:
     /*
     return c0 * vector.x + c1 * vector.y + c2 * vector.z;
     */
-    return Vector3<V>(
-      c0.x * vector.x + c1.x * vector.y + c2.x * vector.z,
-      c0.y * vector.x + c1.y * vector.y + c2.y * vector.z,
-      c0.z * vector.x + c1.z * vector.y + c2.z * vector.z);
+    return Vector3<V>(c0.x * vector.x + c1.x * vector.y + c2.x * vector.z, c0.y * vector.x + c1.y * vector.y + c2.y * vector.z, c0.z * vector.x + c1.z * vector.y + c2.z * vector.z);
   }
 
   /**
@@ -222,10 +205,7 @@ public:
    * \param  factor  The factor this matrix is multiplied by
    * \return         A new object that contains the result of the calculation.
    */
-  Matrix3x3<V> operator*(const V& factor) const
-  {
-    return Matrix3x3<V>(c0 * factor, c1 * factor, c2 * factor);
-  }
+  Matrix3x3<V> operator*(const V& factor) const { return Matrix3x3<V>(c0 * factor, c1 * factor, c2 * factor); }
 
   /**
    * Division of this matrix by a factor.
@@ -245,10 +225,7 @@ public:
    * \param  other  The other matrix that will be compared to this one
    * \return        Whether the two matrices are equal.
    */
-  bool operator==(const Matrix3x3<V>& other) const
-  {
-    return c0 == other.c0 && c1 == other.c1 && c2 == other.c2;
-  }
+  bool operator==(const Matrix3x3<V>& other) const { return c0 == other.c0 && c1 == other.c1 && c2 == other.c2; }
 
   /**
    * Comparison of another matrix with this one.
@@ -256,42 +233,26 @@ public:
    * \param  other  The other matrix that will be compared to this one
    * \return        Whether the two matrixs are unequal.
    */
-  bool operator!=(const Matrix3x3<V>& other) const
-  {
-    return c0 != other.c0 || c1 != other.c1 || c2 != other.c2;
-  }
+  bool operator!=(const Matrix3x3<V>& other) const { return c0 != other.c0 || c1 != other.c1 || c2 != other.c2; }
 
   /**
    * Array-like member access.
    * \param  i index
    * \return reference to column
    */
-  Vector3<V>& operator[](int i)
-  {
-    return (&c0)[i];
-  }
+  Vector3<V>& operator[](int i) { return (&c0)[i]; }
 
   /**
    * const array-like member access.
    * \param  i index
    * \return reference to column
    */
-  const Vector3<V>& operator[](int i) const
-  {
-    return (&c0)[i];
-  }
+  const Vector3<V>& operator[](int i) const { return (&c0)[i]; }
 
   /**
    * Transpose the matrix
    *
    * \return  A new object containing transposed matrix
    */
-  Matrix3x3<V> transpose() const
-  {
-    return Matrix3x3<V>(
-      Vector3<V>(c0.x, c1.x, c2.x),
-      Vector3<V>(c0.y, c1.y, c2.y),
-      Vector3<V>(c0.z, c1.z, c2.z)
-    );
-  }
+  Matrix3x3<V> transpose() const { return Matrix3x3<V>(Vector3<V>(c0.x, c1.x, c2.x), Vector3<V>(c0.y, c1.y, c2.y), Vector3<V>(c0.z, c1.z, c2.z)); }
 };

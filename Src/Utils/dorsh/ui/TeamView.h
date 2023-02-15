@@ -36,18 +36,19 @@ class TeamView : public QFrame
   //QComboBox* cbColorOpp;
   QSpinBox* sbNumber;
   QLineEdit* lePort;
-  QComboBox* cbLocation;
+  QComboBox* cbOverlays;
   QComboBox* cbGameMode;
   QComboBox* cbWlanConfig;
   QComboBox* cbWlanFrequency;
   QComboBox* cbLogConfig;
-  QCheckBox* cbMocapConfig;
   QComboBox* cbBuildConfig;
   QComboBox* cbDeployDevice;
   QSlider* sVolume;
   QSlider* sMicVolume;
+  QLabel* gcLabel;
 
   void init();
+
 public:
   TeamView(TeamSelector* parent, Team* team);
   void generateRobotViews(QGridLayout* teamGrid);
@@ -61,14 +62,13 @@ private slots:
   void colorOwnChanged(const QColor color);
   void colorOppChanged(const QColor color);
   void numberChanged(int number);
-  void locationChanged(const QString& location);
+  void overlaysChanged(const QString& overlays);
   void gameModeChanged(const QString& gameMode);
   void wlanConfigChanged(const QString& config);
-  void wlanFrequencyChanged(const QString& frequency);
   void logConfigChanged(const QString& config);
-  void mocapConfigChanged(bool checked);
   void buildConfigChanged(const QString& build);
   void volumeChanged(const int volume);
   void micVolumeChanged(const int volume);
   void deployDeviceChanged(const QString& device);
+  void gcStatusChanged(bool);
 };

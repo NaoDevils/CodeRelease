@@ -8,7 +8,7 @@
 #pragma once
 
 #include <cstdio>
-#include "ndevilsbase/ndevils.h"
+#include "naodevilsbase/naodevilsbase.h"
 
 /**
 * @class NaoBodyV6
@@ -17,18 +17,16 @@
 class NaoBodyV6
 {
 private:
-  int writingActuators = -1; /**< The index of the opened exclusive actuator writing buffer. */
-
   FILE* fdCpuTemp = nullptr;
 
 public:
   ~NaoBodyV6();
 
-  /** Initializes access to libbhuman
+  /** Initializes access to ndevilsbase
   * @return Whether the initialization was successful or not */
   bool init();
 
-  /** Finalize access to libbhuman */
+  /** Finalize access to ndevilsbase */
   void cleanup();
 
   /** Waits for a new set of sensor data */
@@ -51,22 +49,22 @@ public:
   const char* getBodyId() const;
 
   /** Accesses the sensor value buffer.
-  * @return An array of sensor values. Ordered corresponding to \c lbhSensorNames of \c bhuman.h for V5 
-  * or as a NDSensorData struct for V6. */
-  NDSensorData* getSensors();
+  * @return An array of sensor values. Ordered corresponding to 
+  * a SensorData struct. */
+  const NDData::SensorData& getSensors();
 
   /** Accesses CPU temperature sensor */
   float getCPUTemperature();
 
-  /** If ndevilsbase has given full control to bhuman. (0 = ndevilsbase, 1 = bhuman) Range: [0.0, 1.0] */
-  float getTransitionToBhuman();
+  /** If ndevilsbase has given full control to framework. (0 = ndevilsbase, 1 = framework) Range: [0.0, 1.0] */
+  float getTransitionToFramework();
 
   /** Determine status of wlan hardware. */
-  bool getWlanStatus();
+  static bool getWlanStatus();
 
   /** Accesses the actuator value buffer for writing.
   * @param actuators A reference to a variable to store a pointer to the actuator value buffer in.*/
-  void openActuators(NDActuatorData*& actuators);
+  NDData::ActuatorData& openActuators();
 
   /** Commits the actuator value buffer. */
   void closeActuators();

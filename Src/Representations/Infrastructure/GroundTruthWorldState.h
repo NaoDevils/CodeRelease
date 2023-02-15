@@ -17,16 +17,14 @@
  * A struct that contains the state of the world in the current simulation szene.
  */
 STREAMABLE(GroundTruthWorldState,
-{
-  STREAMABLE(GroundTruthPlayer,
-  {,
+  STREAMABLE(GroundTruthPlayer,,
     (int) number,
     (Pose2f) pose,
-    (bool) upright,
-  }),
+    (bool) upright
+  ),
 
   (std::vector<GroundTruthPlayer>) bluePlayers,
   (std::vector<GroundTruthPlayer>) redPlayers,
   (std::vector<Vector2f>) balls,
-  (Pose2f) ownPose,
-});
+  (Pose2f) ownPose
+);

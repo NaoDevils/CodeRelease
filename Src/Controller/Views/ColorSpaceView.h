@@ -28,12 +28,11 @@ public:
   * The image formats available.
   */
   ENUM(ColorModel,
-  {,
     YCbCr,
     RGB,
     HSI,
-    user,
-  });
+    user
+  );
 
   /**
   * Constructor.
@@ -54,13 +53,7 @@ public:
   */
   static const char* getChannelNameForColorModel(ColorModel cm, int channel)
   {
-    static const char* names[][4] =
-    {
-      {"all", "Cb", "Y", "Cr"},
-      {"all", "R", "G", "B"},
-      {"all", "H", "S", "I"},
-      {"all", "0", "1", "2"}
-    };
+    static const char* names[][4] = {{"all", "Cb", "Y", "Cr"}, {"all", "R", "G", "B"}, {"all", "H", "S", "I"}, {"all", "0", "1", "2"}};
     return names[cm][channel];
   }
 
@@ -80,7 +73,7 @@ protected:
   * The function returns the view distance.
   * @return The distance from which the scene is viewed.
   */
-  virtual float getViewDistance() const {return channel ? 5.0f : 8.0f;}
+  virtual float getViewDistance() const { return channel ? 5.0f : 8.0f; }
 
 private:
   RobotConsole& console; /**< A reference to the console object. */

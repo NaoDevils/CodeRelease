@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Utils/dorsh/Session.h"
+#include <QScopedPointer>
 
 class QApplication;
 class MainWindow;
@@ -8,10 +9,11 @@ class MainWindow;
 class Initializer
 {
   LogLevel logLevel;
-  QApplication* app;
-  MainWindow* mainWindow;
+  QScopedPointer<QApplication> app;
+  QScopedPointer<MainWindow> mainWindow;
+
 public:
-  Initializer(int &argc, char** argv);
+  Initializer(int& argc, char** argv);
   ~Initializer();
   int start();
   void log(LogLevel logLevel, const std::string& message);

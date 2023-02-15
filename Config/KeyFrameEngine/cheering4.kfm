@@ -1,0 +1,55 @@
+//copy from stand
+keyFrameID = cheering4;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [20000,20000];
+    armsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
+    legsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 400;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  {
+    headAngles = [20000,20000];
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 1000;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  {
+    headAngles = [20000,20000];
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 100;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = true;
+  }
+];

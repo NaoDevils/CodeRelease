@@ -68,7 +68,7 @@ public:
   * The function returns the full name of the robot currently constructed.
   * @return The name of the robot.
   */
-  static const char* getRobotFullName() {return controller->robotName;}
+  static const char* getRobotFullName() { return controller->robotName; }
 
   /**
   * The function returns the name of the robot associated to the current thread.

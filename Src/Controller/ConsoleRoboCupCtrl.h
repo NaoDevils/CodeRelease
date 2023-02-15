@@ -9,13 +9,13 @@
 #pragma once
 
 #include <set>
+#include <memory>
 
-#include "Tools/ProcessFramework/TeamHandler.h"
+#include "RobotConsole.h" // This must be included first to prevent errors, since windows.h is included in one of the following headers.
 #include "RoboCupCtrl.h"
 #include "Tools/Settings.h"
-#include "Tools/Network/NTP.h"
-#include "RobotConsole.h"
-#include "BHToolBar.h"
+#include "ButtonToolBar.h"
+#include "StdInConsole.h"
 
 class ConsoleView;
 class RemoteRobot;
@@ -29,11 +29,10 @@ class ConsoleRoboCupCtrl : public RoboCupCtrl, public MessageHandler
 {
 public:
   DECLARE_SYNC;
-  NTP ntp; /**< The Network Time Protocol. */
   std::unordered_map<std::string, std::string> representationToFile;
   bool calculateImage; /**< Decides whether images are calculated by the simulator. */
   unsigned calculateImageFps; /**< Declares the simulated image framerate. */
-  unsigned globalNextImageTimeStamp;  /**< The theoretical timestamp of the next image to be calculated shared among all robots to synchronize image calculation. */
+  unsigned globalNextImageTimeStamp; /**< The theoretical timestamp of the next image to be calculated shared among all robots to synchronize image calculation. */
 
   /**
   * Constructor.
@@ -51,7 +50,7 @@ public:
   * The function returns whether the current robot constructed shall play back a log file.
   * @return Play back a log file?
   */
-  const std::string& getLogFile() const {return logFile;}
+  const std::string& getLogFile() const { return logFile; }
 
   /**
    * Sets a representation.
@@ -65,7 +64,7 @@ public:
   * @param command The command.
   * @param console Use this console to execute the command.
   */
-  void executeConsoleCommand(std::string command, RobotConsole* console = 0);
+  void executeConsoleCommand(std::string command, RobotConsole* console = 0, bool fromCall = false);
 
   /**
   * The function is called when the tabulator key is pressed.
@@ -87,7 +86,11 @@ public:
   /**
   * The function forces an update of the command completion table.
   */
-  void updateCommandCompletion() {SYNC; completion.clear();}
+  void updateCommandCompletion()
+  {
+    SYNC;
+    completion.clear();
+  }
 
   /**
   * The function prints a string into the console window.
@@ -127,43 +130,43 @@ public:
   * The function sets the DebugRequestTable used by the command completion.
   * @param drt The new debug request table.
   */
-  void setDebugRequestTable(const DebugRequestTable& drt) {debugRequestTable = &drt;}
+  void setDebugRequestTable(const DebugRequestTable& drt) { debugRequestTable = &drt; }
 
   /**
   * The function sets the solution info used by the command completion.
   * @param moduleInfo The new solution info.
   */
-  void setModuleInfo(const ModuleInfo& moduleInfo) {this->moduleInfo = &moduleInfo;}
+  void setModuleInfo(const ModuleInfo& moduleInfo) { this->moduleInfo = &moduleInfo; }
 
   /**
   * The function sets the drawing manager used by the command completion.
   * @param drawingManager The new drawing manager.
   */
-  void setDrawingManager(const DrawingManager& drawingManager) {this->drawingManager = &drawingManager;}
+  void setDrawingManager(const DrawingManager& drawingManager) { this->drawingManager = &drawingManager; }
 
   /**
   * The function sets the drawing manager 3D used by the command completion.
   * @param drawingManager3D The new drawing manager.
   */
-  void setDrawingManager3D(const DrawingManager3D& drawingManager3D) {this->drawingManager3D = &drawingManager3D;}
+  void setDrawingManager3D(const DrawingManager3D& drawingManager3D) { this->drawingManager3D = &drawingManager3D; }
 
   /**
   * The function sets the map of image views used by the command completion.
   * @param imageViews The map of image views.
   */
-  void setImageViews(const RobotConsole::Views& imageViews) {this->imageViews = &imageViews;}
+  void setImageViews(const RobotConsole::Views& imageViews) { this->imageViews = &imageViews; }
 
   /**
   * The function sets the map of field views used by the command completion.
   * @param fieldViews The map of field views.
   */
-  void setFieldViews(const RobotConsole::Views& fieldViews) {this->fieldViews = &fieldViews;}
+  void setFieldViews(const RobotConsole::Views& fieldViews) { this->fieldViews = &fieldViews; }
 
   /**
   * The function sets the map of plot views used by the command completion.
   * @param plotViews The map of plot views.
   */
-  void setPlotViews(const RobotConsole::PlotViews& plotViews) {this->plotViews = &plotViews;}
+  void setPlotViews(const RobotConsole::PlotViews& plotViews) { this->plotViews = &plotViews; }
 
   /**
   * The function read text from the stream and prints it to the console.
@@ -177,7 +180,6 @@ private:
   ConsoleView* consoleView; /**< The scene graph object that describes the console widget. */
   std::list<RobotConsole*> selected; /**< The currently selected simulated robot. */
   std::list<RemoteRobot*> remoteRobots; /**< The list of all remote robots. */
-  std::list<TeamRobot*> teamRobots; /**< The list of all team robots. */
   std::list<std::string> textMessages; /**< A list of all text messages received in the current frame. */
   bool newLine; /**< States whether the last line of text was finished by a new line. */
   int nesting; /**< The number of recursion level during the execution of console files. */
@@ -185,7 +187,6 @@ private:
   std::set<std::string>::const_iterator currentCompletionIndex; /** Points to the last string that was used for auto completion */
   Settings settings; /**< The current location. */
   StreamHandler streamHandler; /**< The handler used by streams in this thread. */
-  TEAM_COMM; // Listen to team communication
   unsigned timeStamp; /**< The time when the messages currently processed were received. */
   int robotNumber; /**< The number of the robot the messages of which are currently processed. */
   const DebugRequestTable* debugRequestTable; /**< Points to the debug request table used for tab-completion. */
@@ -195,7 +196,8 @@ private:
   const RobotConsole::Views* imageViews; /**< Points to the map of image views used for tab-completion. */
   const RobotConsole::Views* fieldViews; /**< Points to the map of field views used for tab-completion. */
   const RobotConsole::PlotViews* plotViews; /**< Points to the map of plot views used for tab-completion. */
-  BHToolBar toolBar; /**< The toolbar shown for this controller. */
+  ButtonToolBar toolBar; /**< The toolbar shown for this controller. */
+  std::unique_ptr<StdInConsole> stdInConsole = std::make_unique<StdInConsole>(this);
 
   /**
   * The function executes the specified file.
@@ -238,13 +240,6 @@ private:
   * @return Returns true if the parameters were correct.
   */
   bool startLogFile(In& stream);
-
-  /**
-  * The function handles the console input for the "su" command.
-  * @param stream The stream containing the parameters of "su".
-  * @return Returns true if the parameters were correct.
-  */
-  bool startTeamRobot(In& stream);
 
   /**
    * The function handles the console input for the "ci" command.
@@ -314,7 +309,7 @@ private:
   /**
   * Create the user menu for this module.
   */
-  virtual QMenu* createUserMenu() const override {return toolBar.createUserMenu();}
+  virtual QMenu* createUserMenu() const override { return toolBar.createUserMenu(); }
 
   /**
   * Show dialog and replace ${}-substrings with user input.

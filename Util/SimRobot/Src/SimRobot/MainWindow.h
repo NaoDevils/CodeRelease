@@ -16,21 +16,6 @@
 
 #include "SimRobot.h"
 
-#ifdef LINUX
-#if QT_VERSION >= QT_VERSION_CHECK(4, 6, 0) && QT_VERSION < QT_VERSION_CHECK(4, 9, 0)
-#define FIX_LINUX_DOCK_WIDGET_SIZE_RESTORING_BUG
-#endif
-#endif
-
-#ifdef OSX
-#define FIX_MACOSX_TOOLBAR_VISIBILITY_RESTORING_BUG
-#define FIX_MACOSX_UNDOCKED_WIDGETS_DISAPPEAR_WHEN_DOCKED_BUG
-#endif
-
-#ifdef WINDOWS
-#define FIX_WIN32_WINDOWS7_BLOCKING_BUG
-#define FIX_WIN32_CRASH_WITHOUT_QGLWIDGET_BUG
-#endif
 
 class SceneGraphDockWidget;
 class RegisteredDockWidget;
@@ -43,16 +28,12 @@ class MainWindow : public QMainWindow, public SimRobot::Application
 public:
   static SimRobot::Application* application;
 
-  MainWindow(int argc, char *argv[]);
+  MainWindow(int argc, char* argv[]);
+  ~MainWindow();
 
   QMenu* createSimMenu();
 
-  // public only for FIX_WIN32_WINDOWS7_BLOCKING_BUG
-  int timerId; /**< The id of the timer used to get something like an OnIdle callback function to update the simulation. */
-  virtual void timerEvent(QTimerEvent* event);
-
 private:
-
   static QString getAppPath(const char* argv0);
   static unsigned int getAppLocationSum(const QString& appPath);
   static unsigned int getSystemTime();
@@ -68,6 +49,8 @@ private:
 
     LoadedModule(const QString& name, int flags) : QLibrary(name), module(0), flags(flags), compiled(false) {}
   };
+
+  int timerId; /**< The id of the timer used to get something like an OnIdle callback function to update the simulation. */
 
   QAction* fileOpenAct;
   QAction* fileCloseAct;
@@ -92,6 +75,7 @@ private:
   QToolBar* toolBar;
   StatusBar* statusBar;
 
+  QString baseName;
   QString appPath;
   QString appString;
 
@@ -115,6 +99,7 @@ private:
     RegisteredModule(const QString& name, const QString& displayName, int flags) : name(name), displayName(displayName), flags(flags) {}
   };
 
+  QMap<QString, LoadedModule*> loadedLibraries;
   QMap<QString, RegisteredModule> registeredModules; /**< suggested modules (a.k.a. addons) */
   QStringList manuallyLoadedModules; /**< modules (a.k.a. addons) that were loaded manually */
   QList<LoadedModule*> loadedModules;
@@ -144,18 +129,21 @@ private:
   virtual bool selectObject(const SimRobot::Object& object);
   virtual void showWarning(const QString& title, const QString& message);
   virtual void setStatusMessage(const QString& message);
-  virtual const QString& getFilePath() const {return filePath;}
-  virtual const QString& getAppPath() const {return appPath;}
-  virtual QSettings& getSettings() {return settings;}
-  virtual QSettings& getLayoutSettings() {return layoutSettings;}
+  virtual const QString& getFilePath() const { return filePath; }
+  virtual const QString& getAppPath() const { return appPath; }
+  virtual QSettings& getSettings() { return settings; }
+  virtual QSettings& getLayoutSettings() { return layoutSettings; }
 
   virtual void closeEvent(QCloseEvent* event);
+  virtual void timerEvent(QTimerEvent* event);
   virtual void dragEnterEvent(QDragEnterEvent* event);
   virtual void dropEvent(QDropEvent* event);
   virtual void keyPressEvent(QKeyEvent* event);
   virtual void keyReleaseEvent(QKeyEvent* event);
   virtual QMenu* createPopupMenu();
 
+  LoadedModule* loadLibrary(const QString& name, int flags);
+  void unloadLibrary(const QString& name);
   bool loadModule(const QString& name, bool manually);
   void unloadModule(const QString& name);
   bool compileModules();
@@ -178,7 +166,7 @@ private slots:
 
   void open();
   bool closeFile();
-  void help();
+  void saveLayout();
   void about();
   void loadAddon(const QString& name);
 
@@ -187,7 +175,7 @@ private slots:
   void closedObject(const QString& fullName);
   void visibilityChanged(bool visible);
 
-  void focusChanged(QWidget *old, QWidget* now);
+  void focusChanged(QWidget* old, QWidget* now);
 
 public slots:
   void simReset();

@@ -25,12 +25,12 @@ namespace Streaming
 {
   void trimName(const char*& name)
   {
-    if(name)
+    if (name)
     {
       const char* p = name + strlen(name) - 1;
-      while(p >= name && *p != ')' && *p != ' ')
+      while (p >= name && *p != ')' && *p != ' ')
         --p;
       name = p + 1;
     }
   }
-}
+} // namespace Streaming

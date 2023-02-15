@@ -10,48 +10,47 @@
 #include "Tools/MessageQueue/InMessage.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Configuration/CameraCalibration.h"
-#include "Representations/Configuration/ColorTable.h"
-#include "Representations/Configuration/ColorCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Configuration/HeadLimits.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/Infrastructure/TeamInfo.h"
+#include "Representations/Infrastructure/USBStatus.h"
+#include "Representations/Infrastructure/USBSettings.h"
+#include "Tools/ProcessFramework/CycleLocal.h"
+#include <memory>
 
 MODULE(CognitionConfigurationDataProvider,
-{,
-  REQUIRES(OwnTeamInfo),
-  USES(CameraCalibrationNext),
+  USES(OwnTeamInfo),
+  REQUIRES(USBStatus),
   PROVIDES_WITHOUT_MODIFY(FieldDimensions),
-  PROVIDES(CameraCalibration),
-  PROVIDES_WITHOUT_MODIFY(ColorTable),
   PROVIDES(RobotDimensions),
   PROVIDES(HeadLimits),
   PROVIDES_WITHOUT_MODIFY(OdometryCorrectionTables),
-});
+  PROVIDES(USBSettings)
+);
 
 class CognitionConfigurationDataProvider : public CognitionConfigurationDataProviderBase
 {
 private:
-  static PROCESS_LOCAL CognitionConfigurationDataProvider* theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
+  static CycleLocal<CognitionConfigurationDataProvider*> theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
 
-  FieldDimensions* theFieldDimensions = nullptr;
-  CameraCalibration* theCameraCalibration = nullptr;
-  ColorCalibration* theColorCalibration = nullptr;
-  RobotDimensions* theRobotDimensions = nullptr;
-  HeadLimits* theHeadLimits = nullptr;
-  ColorCalibration colorCalibration;
-  OdometryCorrectionTables* theOdometryCorrectionTables = nullptr;
+  std::unique_ptr<FieldDimensions> theFieldDimensions = nullptr;
+  std::unique_ptr<CameraCalibration> theCameraCalibration = nullptr;
+  std::unique_ptr<RobotDimensions> theRobotDimensions = nullptr;
+  std::unique_ptr<HeadLimits> theHeadLimits = nullptr;
+  std::unique_ptr<OdometryCorrectionTables> theOdometryCorrectionTables = nullptr;
 
+  unsigned lastMountTimestamp = 0;
+
+  void update(USBSettings& usbSettings);
   void update(FieldDimensions& fieldDimensions);
   void update(CameraCalibration& cameraCalibration);
-  void update(ColorTable& cameraCalibration);
   void update(RobotDimensions& robotDimensions);
   void update(HeadLimits& headLimits);
   void update(OdometryCorrectionTables& odometryCorrectionTables);
 
   void readFieldDimensions();
   void readCameraCalibration();
-  void readColorCalibration();
   void readRobotDimensions();
   void readHeadLimits();
   void readOdometryCorrectionTables();

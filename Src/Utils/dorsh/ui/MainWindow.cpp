@@ -1,29 +1,66 @@
 #include "Platform/File.h"
+#include <QGuiApplication>
+#include <QScreen>
 #include <QBoxLayout>
-#include <QDesktopWidget>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QLabel>
 #include <QMenuBar>
 #include <QPixmap>
 #include <QSplitter>
+#include <QCheckBox>
+#include <vector>
 #include "Utils/dorsh/ui/Console.h"
 #include "Utils/dorsh/ui/MainWindow.h"
 #include "Utils/dorsh/ui/RobotPool.h"
 #include "Utils/dorsh/ui/ShortcutBar.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
 
 #include "Utils/dorsh/cmdlib/ProcessRunner.h"
 #include "Utils/dorsh/tools/Filesystem.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/tools/Platform.h"
+#include "Utils/dorsh/models/Team.h"
+#include <algorithm>
 
 MainWindow::MainWindow()
 {
-  setWindowTitle("dorsh");
+  QString windowTitle = "dorsh";
+
+  QString shellDelegate;
+#ifdef WINDOWS
+  shellDelegate = qEnvironmentVariable("ComSpec");
+  if (shellDelegate.isEmpty())
+  {
+    shellDelegate = qEnvironmentVariable("SystemRoot");
+    if (shellDelegate.isEmpty())
+    {
+      shellDelegate = QDir::toNativeSeparators(QDir::rootPath()) + QStringLiteral("Windows");
+    }
+    shellDelegate.push_back(QStringLiteral("\\System32\\cmd.exe"));
+  }
+  ProcessRunner r(shellDelegate,
+      QStringList()
+          << "/c"
+          << "git"
+          << "rev-parse"
+          << "--abbrev-ref"
+          << "HEAD");
+#else
+  shellDelegate = "/bin/sh";
+  ProcessRunner r(shellDelegate,
+      QStringList() << "-c"
+                    << "git rev-parse --abbrev-ref HEAD");
+#endif
+  r.run();
+  if (!r.error())
+  {
+    QString gitBranchName = r.getOutput();
+    if (gitBranchName != "")
+      windowTitle = windowTitle + " -> " + gitBranchName.trimmed();
+  }
+  setWindowTitle(windowTitle);
 
   QSplitter* splitter(new QSplitter(Qt::Vertical));
-  TeamSelector* teamSelector(new TeamSelector());
+  teamSelector = new TeamSelector();
   splitter->addWidget(teamSelector);
 
   Console* console = new Console(teamSelector);
@@ -41,51 +78,68 @@ MainWindow::MainWindow()
   shortcutBar->addShortcut("delete logs", "deleteLogs");
   shortcutBar->addShortcut("simulator", "sim");
   shortcutBar->addShortcut("shutdown", "shutdown -s");
+  shortcutBar->addShortcut("shutdown all", "shutdown all");
   shortcutBar->addShortcut("reboot", "restart robot");
-  shortcutBar->addShortcut("bhuman restart", "restart bhuman");
-  shortcutBar->addShortcut("bhuman ssh start", "ssh bhumand start");
-  shortcutBar->addShortcut("bhuman stop", "ssh bhumand stop");
-  shortcutBar->addShortcut("naoqi start", "ssh sudo /etc/init.d/naoqi start");
-  shortcutBar->addShortcut("naoqi stop", "ssh sudo /etc/init.d/naoqi stop");
+  shortcutBar->addShortcut("naodevils restart", "restart naodevils");
+  shortcutBar->addShortcut("naodevils start", "ssh systemctl --user start naodevils");
+  shortcutBar->addShortcut("naodevils stop", "ssh systemctl --user stop naodevils");
+  shortcutBar->addShortcut("base start", "ssh systemctl --user start naodevilsbase");
+  shortcutBar->addShortcut("base stop", "ssh systemctl --user stop naodevilsbase");
+  shortcutBar->addShortcut("clear persistent", "ssh \"systemctl --user stop naodevils && rm -r /home/nao/Persistent/ && systemctl --user start naodevils\"");
   shortcutBar->setContextMenuPolicy(Qt::PreventContextMenu);
 
   QSplitter* hSplitter(new QSplitter(Qt::Horizontal));
   hSplitter->addWidget(splitter);
   RobotPool* robotPool = new RobotPool(teamSelector);
   connect(teamSelector, SIGNAL(currentChanged(int)), robotPool, SLOT(update()));
+  QFrame* righterSide = new QFrame(this);
+  QVBoxLayout* rserLayout = new QVBoxLayout(righterSide);
+  rserLayout->addWidget(new QLabel("<b>Config Overlays:</b>"));
+  std::vector<std::string> overlays = Filesystem::getOverlays();
+  teamSelector->loadTeams();
+  std::vector<std::string>& enabledOverlays = teamSelector->getSelectedTeam()->overlays;
+  for (size_t i = 0; i < overlays.size(); ++i)
+  {
+    checkboxes[overlays[i]] = new QCheckBox(QString::fromStdString(overlays[i]));
+    checkboxes[overlays[i]]->setChecked(std::find(enabledOverlays.begin(), enabledOverlays.end(), overlays[i]) != enabledOverlays.end());
+    connect(checkboxes[overlays[i]], SIGNAL(stateChanged(int)), this, SLOT(updateTeam()));
+    rserLayout->addWidget(checkboxes[overlays[i]]);
+  }
+  rserLayout->setAlignment(Qt::AlignTop);
   QFrame* rightSide = new QFrame(this);
-  QGridLayout* rsLayout = new QGridLayout(rightSide);
-  rsLayout->addWidget(new QLabel("<b>Robot Pool:</b>"), 0, 0);
-  rsLayout->addWidget(robotPool, 1, 0);
+  QVBoxLayout* rsLayout = new QVBoxLayout(rightSide);
+  rsLayout->addWidget(new QLabel("<b>Robot Pool:</b>"));
+  rsLayout->addWidget(robotPool, 1);
   rightSide->setLayout(rsLayout);
   rightSide->setMinimumWidth(250);
   rightSide->setMaximumWidth(325);
   hSplitter->addWidget(rightSide);
+  hSplitter->addWidget(righterSide);
   setCentralWidget(hSplitter);
 
   this->setWindowIcon(QPixmap(":icons/dorsh_terminal.png"));
   console->setFocus(Qt::OtherFocusReason);
   console->resize(60, 500);
 
-  teamSelector->loadTeams();
   int widgetWidth = 1200;
   int widgetHeight = 695;
   splitter->setMinimumWidth(200);
   QWidget::setMinimumHeight(widgetHeight);
   QWidget::setMinimumWidth(widgetWidth);
-  QWidget::resize(widgetWidth+200, widgetHeight);
-  QDesktopWidget desktop;
-  QPoint position((desktop.screenGeometry().width() - frameGeometry().width()) / 2, (desktop.screenGeometry().height() - frameGeometry().height()) / 2);
+  QWidget::resize(widgetWidth + 200, widgetHeight);
+  QRect geometry = QGuiApplication::screens().first()->geometry();
+  QPoint position((geometry.width() - frameGeometry().width()) / 2, (geometry.height() - frameGeometry().height()) / 2);
   QWidget::move(position);
 }
 
-void MainWindow::cleanUp()
+void MainWindow::updateTeam()
 {
-#ifdef WINDOWS
-  ProcessRunner scripts(fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/dorshCleanUp.cmd"));
-  scripts.run();
-
-  ProcessRunner killSwitch("taskkill /F /IM dorsh.exe");
-  killSwitch.run();
-#endif
+  teamSelector->getSelectedTeam()->overlays.clear();
+  for (auto it = checkboxes.cbegin(), end = checkboxes.cend(); it != end; ++it)
+  {
+    if (it->second->checkState() == Qt::Checked)
+    {
+      teamSelector->getSelectedTeam()->overlays.push_back(it->first);
+    }
+  }
 }

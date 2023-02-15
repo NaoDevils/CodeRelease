@@ -22,7 +22,7 @@ void CylinderGeometry::drawPhysics(unsigned int flags) const
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  if(flags & SimRobotCore2::Renderer::showPhysics)
+  if (flags & SimRobotCore2::Renderer::showPhysics)
   {
     glColor4fv(color);
     GLUquadricObj* q = gluNewQuadric();
@@ -31,7 +31,7 @@ void CylinderGeometry::drawPhysics(unsigned int flags) const
     glRotatef(180.0f, 0.0f, 1.0f, 0.0f);
     gluDisk(q, 0, radius, 16, 1);
     glRotatef(180.0f, 0.0f, 1.0f, 0.0f);
-    glTranslatef(0,0,height);
+    glTranslatef(0, 0, height);
     gluDisk(q, 0, radius, 16, 1);
     gluDeleteQuadric(q);
   }

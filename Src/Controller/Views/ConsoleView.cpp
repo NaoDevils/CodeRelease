@@ -25,7 +25,7 @@ SimRobot::Widget* ConsoleView::createWidget()
 void ConsoleView::clear()
 {
   output.clear();
-  if(consoleWidget)
+  if (consoleWidget)
     consoleWidget->setPlainText(QString());
 }
 
@@ -36,21 +36,20 @@ void ConsoleView::printLn(const QString& text)
 
 void ConsoleView::print(const QString& text)
 {
-  if(consoleWidget)
+  if (consoleWidget)
     consoleWidget->print(text);
   else
     output += text;
 }
 
-ConsoleWidget::ConsoleWidget(ConsoleView& consoleView, ConsoleRoboCupCtrl& console, QString& output, ConsoleWidget*& consoleWidget) :
-  consoleView(consoleView), console(console), output(output), consoleWidget(consoleWidget),
-  canCopy(false), canUndo(false), canRedo(false)
+ConsoleWidget::ConsoleWidget(ConsoleView& consoleView, ConsoleRoboCupCtrl& console, QString& output, ConsoleWidget*& consoleWidget)
+    : consoleView(consoleView), console(console), output(output), consoleWidget(consoleWidget), canCopy(false), canUndo(false), canRedo(false)
 {
   setFrameStyle(QFrame::NoFrame);
   setAcceptRichText(false);
 
   bool restoredCursor = false;
-  if(consoleView.loadAndSaveOutput)
+  if (consoleView.loadAndSaveOutput)
   {
     QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
     settings.beginGroup(consoleView.fullName);
@@ -60,7 +59,7 @@ ConsoleWidget::ConsoleWidget(ConsoleView& consoleView, ConsoleRoboCupCtrl& conso
 
     int selectionStart = settings.value("selectionStart").toInt();
     int selectionEnd = settings.value("selectionEnd").toInt();
-    if(selectionStart || selectionEnd)
+    if (selectionStart || selectionEnd)
     {
       QTextCursor cursor = textCursor();
       cursor.setPosition(selectionStart);
@@ -79,7 +78,7 @@ ConsoleWidget::ConsoleWidget(ConsoleView& consoleView, ConsoleRoboCupCtrl& conso
     setPlainText(output);
     output.clear();
   }
-  if(!restoredCursor)
+  if (!restoredCursor)
   {
     QTextCursor cursor = textCursor();
     cursor.movePosition(QTextCursor::End, QTextCursor::MoveAnchor);
@@ -93,10 +92,15 @@ ConsoleWidget::ConsoleWidget(ConsoleView& consoleView, ConsoleRoboCupCtrl& conso
 
 ConsoleWidget::~ConsoleWidget()
 {
-  output = toPlainText();
   consoleWidget = 0;
 
-  if(consoleView.loadAndSaveOutput)
+  //saveLayout();
+}
+
+void ConsoleWidget::saveLayout()
+{
+  output = toPlainText();
+  if (consoleView.loadAndSaveOutput)
   {
     QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
     settings.beginGroup(consoleView.fullName);
@@ -128,7 +132,7 @@ void ConsoleWidget::print(const QString& text)
     cursor.movePosition(QTextCursor::NextBlock);
   }*/
   cursor.insertText(text);
-  if(scroll)
+  if (scroll)
     scrollBar->setValue(scrollBar->maximum());
   cursor.movePosition(QTextCursor::End);
 }
@@ -193,190 +197,189 @@ QMenu* ConsoleWidget::createEditMenu() const
 
 void ConsoleWidget::keyPressEvent(QKeyEvent* event)
 {
-  switch(event->key())
+  switch (event->key())
   {
-    case Qt::Key_Tab:
-    case Qt::Key_Backtab:
-      event->accept();
+  case Qt::Key_Tab:
+  case Qt::Key_Backtab:
+    event->accept();
+    {
+      QTextCursor cursor = textCursor();
+      int begin = cursor.position();
+      int end = cursor.anchor();
+      if (end < begin)
       {
-        QTextCursor cursor = textCursor();
-        int begin = cursor.position();
-        int end = cursor.anchor();
-        if(end < begin)
-        {
-          int tmp = end;
-          end = begin;
-          begin = tmp;
-        }
-
-        cursor.setPosition(begin);
-        cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
-        QString line = cursor.selectedText();
-        std::string command(line.toUtf8().constData());
-        std::string inputCommand = command;
-        console.completeConsoleCommand(command, event->key() == Qt::Key_Tab, begin == end);
-
-        if(command == inputCommand)
-          QApplication::beep();
-        else
-        {
-          cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
-          cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
-          QString fullLine = cursor.selectedText();
-          std::string fullCommand(fullLine.toUtf8().constData());
-
-          if(fullCommand == command) // There is only one possible completion -> move cursor so right arrow is unnecessary
-          {
-            cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
-          }
-          else
-          {
-            cursor.insertText(command.c_str());
-            cursor.setPosition(begin);
-            cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
-          }
-          setTextCursor(cursor);
-        }
+        int tmp = end;
+        end = begin;
+        begin = tmp;
       }
-      break;
 
-    case Qt::Key_Return:
-    case Qt::Key_Enter:
-      if(event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))
-      {
-        QTextCursor cursor = textCursor();
-        cursor.insertBlock();
-        setTextCursor(cursor);
-      }
+      cursor.setPosition(begin);
+      cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+      QString line = cursor.selectedText();
+      std::string command(line.toUtf8().constData());
+      std::string inputCommand = command;
+      console.completeConsoleCommand(command, event->key() == Qt::Key_Tab, begin == end);
+
+      if (command == inputCommand)
+        QApplication::beep();
       else
       {
-        event->accept();
+        cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
+        cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+        QString fullLine = cursor.selectedText();
+        std::string fullCommand(fullLine.toUtf8().constData());
+
+        if (fullCommand == command) // There is only one possible completion -> move cursor so right arrow is unnecessary
         {
-          QTextCursor cursor = textCursor();
-          cursor.movePosition(QTextCursor::StartOfBlock);
-          cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-          QString line = cursor.selectedText();
-          cursor.movePosition(QTextCursor::EndOfLine);
-          if(cursor.atEnd())
-            cursor.insertText("\n");
-          cursor.movePosition(QTextCursor::NextBlock);
-          setTextCursor(cursor);
-
-          // save output for the case that the simulator crashes
-          if(consoleView.loadAndSaveOutput)
-          {
-            QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
-            settings.beginGroup(consoleView.fullName);
-            settings.setValue("Output", toPlainText());
-            settings.endGroup();
-            output.clear();
-          }
-
-          // execute the command
-          console.executeConsoleCommand(line.toUtf8().constData());
-
-          // stores unix like history entry
-          history.removeAll(line);
-          history.append(line);
-          history_iter = history.end();
+          cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
         }
-      }
-      break;
-
-    case Qt::Key_Right:
-    {
-      // avoid jumping to the next line when the right arrow key is used to accept suggestions from tab completion
-      bool handled = false;
-      if(event->modifiers() == 0)
-      {
-        QTextCursor cursor = textCursor();
-        int position = cursor.position();
-        if(position > cursor.anchor())
+        else
         {
-          cursor.movePosition(QTextCursor::EndOfBlock);
-          if(cursor.position() == position)
-          {
-            handled = true;
-            setTextCursor(cursor);
-          }
+          cursor.insertText(command.c_str());
+          cursor.setPosition(begin);
+          cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
         }
+        setTextCursor(cursor);
       }
-      if(!handled)
-        QTextEdit::keyPressEvent(event);
     }
     break;
 
-    // History browsing keys
-    case Qt::Key_Up:
-      if((event->modifiers() & Qt::ControlModifier)
-         && !history.isEmpty() && history_iter != history.begin())
-      {
-        event->accept();
-        history_iter--;
-        QTextCursor cursor = textCursor();
-        cursor.movePosition(QTextCursor::End);
-        cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
-        cursor.removeSelectedText();
-        cursor.insertText(*history_iter);
-        setTextCursor(cursor);
-      }
-      else
-      {
-        QTextEdit::keyPressEvent(event);
-      }
-      break;
-    case Qt::Key_Down:
-      if(event->modifiers() & Qt::ControlModifier)
-      {
-        event->accept();
-        QTextCursor cursor = textCursor();
-        cursor.movePosition(QTextCursor::End);
-        cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
-        cursor.removeSelectedText();
-        if(!history.isEmpty() && history_iter != history.end())
-        {
-          history_iter++;
-          if(history_iter != history.end())
-          {
-            cursor.insertText(*history_iter);
-            setTextCursor(cursor);
-          }
-        }
-      }
-      else
-      {
-        QTextEdit::keyPressEvent(event);
-      }
-      break;
-    default:
-
-      QTextEdit::keyPressEvent(event);
-
-      if(event->matches(QKeySequence::Copy) || event->matches(QKeySequence::Cut))
-        emit pasteAvailable(canPaste());
-      else if((!event->modifiers() || event->modifiers() & Qt::ShiftModifier) && event->key() >= Qt::Key_A && event->key() <= Qt::Key_Z)
+  case Qt::Key_Return:
+  case Qt::Key_Enter:
+    if (event->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))
+    {
+      QTextCursor cursor = textCursor();
+      cursor.insertBlock();
+      setTextCursor(cursor);
+    }
+    else
+    {
+      event->accept();
       {
         QTextCursor cursor = textCursor();
-        int begin = std::min(cursor.position(), cursor.anchor());
-        cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
-        cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+        cursor.movePosition(QTextCursor::StartOfBlock);
+        cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
         QString line = cursor.selectedText();
-        std::string command(line.toUtf8().constData());
-        std::string inputCommand = command;
-        console.completeConsoleCommandOnLetterEntry(command);
-        if(command != inputCommand)
+        cursor.movePosition(QTextCursor::EndOfLine);
+        if (cursor.atEnd())
+          cursor.insertText("\n");
+        cursor.movePosition(QTextCursor::NextBlock);
+        setTextCursor(cursor);
+
+        // save output for the case that the simulator crashes
+        if (consoleView.loadAndSaveOutput)
         {
-          cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
-          cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
-          cursor.insertText(command.c_str());
+          QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
+          settings.beginGroup(consoleView.fullName);
+          settings.setValue("Output", toPlainText());
+          settings.endGroup();
+          output.clear();
+        }
 
-          cursor.setPosition(begin);
-          cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+        // execute the command
+        console.executeConsoleCommand(line.toUtf8().constData());
 
+        // stores unix like history entry
+        history.removeAll(line);
+        history.append(line);
+        history_iter = history.end();
+      }
+    }
+    break;
+
+  case Qt::Key_Right:
+  {
+    // avoid jumping to the next line when the right arrow key is used to accept suggestions from tab completion
+    bool handled = false;
+    if (event->modifiers() == 0)
+    {
+      QTextCursor cursor = textCursor();
+      int position = cursor.position();
+      if (position > cursor.anchor())
+      {
+        cursor.movePosition(QTextCursor::EndOfBlock);
+        if (cursor.position() == position)
+        {
+          handled = true;
           setTextCursor(cursor);
         }
       }
-      break;
+    }
+    if (!handled)
+      QTextEdit::keyPressEvent(event);
+  }
+  break;
+
+  // History browsing keys
+  case Qt::Key_Up:
+    if ((event->modifiers() & Qt::ControlModifier) && !history.isEmpty() && history_iter != history.begin())
+    {
+      event->accept();
+      history_iter--;
+      QTextCursor cursor = textCursor();
+      cursor.movePosition(QTextCursor::End);
+      cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
+      cursor.removeSelectedText();
+      cursor.insertText(*history_iter);
+      setTextCursor(cursor);
+    }
+    else
+    {
+      QTextEdit::keyPressEvent(event);
+    }
+    break;
+  case Qt::Key_Down:
+    if (event->modifiers() & Qt::ControlModifier)
+    {
+      event->accept();
+      QTextCursor cursor = textCursor();
+      cursor.movePosition(QTextCursor::End);
+      cursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
+      cursor.removeSelectedText();
+      if (!history.isEmpty() && history_iter != history.end())
+      {
+        history_iter++;
+        if (history_iter != history.end())
+        {
+          cursor.insertText(*history_iter);
+          setTextCursor(cursor);
+        }
+      }
+    }
+    else
+    {
+      QTextEdit::keyPressEvent(event);
+    }
+    break;
+  default:
+
+    QTextEdit::keyPressEvent(event);
+
+    if (event->matches(QKeySequence::Copy) || event->matches(QKeySequence::Cut))
+      emit pasteAvailable(canPaste());
+    else if ((!event->modifiers() || event->modifiers() & Qt::ShiftModifier) && event->key() >= Qt::Key_A && event->key() <= Qt::Key_Z)
+    {
+      QTextCursor cursor = textCursor();
+      int begin = std::min(cursor.position(), cursor.anchor());
+      cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
+      cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+      QString line = cursor.selectedText();
+      std::string command(line.toUtf8().constData());
+      std::string inputCommand = command;
+      console.completeConsoleCommandOnLetterEntry(command);
+      if (command != inputCommand)
+      {
+        cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::MoveAnchor);
+        cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::KeepAnchor);
+        cursor.insertText(command.c_str());
+
+        cursor.setPosition(begin);
+        cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+
+        setTextCursor(cursor);
+      }
+    }
+    break;
   }
 }
 

@@ -20,10 +20,7 @@
 /**A simple QTableWidgetItem that enables correct sorting of numbers*/
 class NumberTableWidgetItem : public QTableWidgetItem
 {
-  bool operator<(const QTableWidgetItem &other) const override
-  {
-    return this->text().toFloat() < other.text().toFloat();
-  }
+  bool operator<(const QTableWidgetItem& other) const override { return this->text().toFloat() < other.text().toFloat(); }
 };
 
 struct Row
@@ -32,19 +29,25 @@ struct Row
   NumberTableWidgetItem* min;
   NumberTableWidgetItem* max;
   NumberTableWidgetItem* avg;
+  NumberTableWidgetItem* last;
 };
 
 TimeWidget::TimeWidget(TimeView& timeView) : timeView(timeView), lastTimeInfoTimeStamp(0)
 {
   table = new QTableWidget();
-  table->setColumnCount(4);
+  table->setColumnCount(5);
   QStringList headerNames;
-  headerNames << "Stopwatch" << "Min" << "Max" << "Avg";
+  headerNames
+      << "Stopwatch"
+      << "Min"
+      << "Max"
+      << "Avg"
+      << "Last";
   table->setHorizontalHeaderLabels(headerNames);
   table->verticalHeader()->setVisible(false);
-  table->verticalHeader()->setResizeMode(QHeaderView::Fixed);
+  table->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   table->verticalHeader()->setDefaultSectionSize(15);
-  table->horizontalHeader()->setResizeMode(3, QHeaderView::Stretch);
+  table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
   table->setEditTriggers(QAbstractItemView::NoEditTriggers);
   table->setAlternatingRowColors(true);
   table->setSortingEnabled(true);
@@ -69,18 +72,23 @@ TimeWidget::TimeWidget(TimeView& timeView) : timeView(timeView), lastTimeInfoTim
   this->setLayout(layout);
   lastTimeInfoTimeStamp = SystemCall::getCurrentSystemTime();
   lastUpdate = SystemCall::getCurrentSystemTime();
-  QObject::connect(filterEdit,SIGNAL(textChanged(QString)),this,SLOT(filterChanged(QString)));
+  QObject::connect(filterEdit, SIGNAL(textChanged(QString)), this, SLOT(filterChanged(QString)));
 
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(timeView.fullName);
   table->horizontalHeader()->restoreState(settings.value("HeaderState").toByteArray());
-  table->sortItems(settings.value("SortBy").toInt(), (Qt::SortOrder) settings.value("SortOrder").toInt());
+  table->sortItems(settings.value("SortBy").toInt(), (Qt::SortOrder)settings.value("SortOrder").toInt());
   filter = settings.value("Filter").toString();
   filterEdit->setText(filter);
   settings.endGroup();
 }
 
 TimeWidget::~TimeWidget()
+{
+  //saveLayout();
+}
+
+void TimeWidget::saveLayout()
 {
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(timeView.fullName);
@@ -91,18 +99,21 @@ TimeWidget::~TimeWidget()
   settings.endGroup();
 }
 
-QWidget* TimeWidget::getWidget() {return this;}
+QWidget* TimeWidget::getWidget()
+{
+  return this;
+}
 void TimeWidget::update()
 {
   SYNC_WITH(timeView.console);
   {
-    if(timeView.info.timeStamp == lastTimeInfoTimeStamp)
+    if (timeView.info.timeStamp == lastTimeInfoTimeStamp)
     {
       return;
     }
     lastTimeInfoTimeStamp = timeView.info.timeStamp;
 
-    if(SystemCall::getTimeSince(lastUpdate) < 200) //only update 5 times per second
+    if (SystemCall::getTimeSince(lastUpdate) < 200) //only update 5 times per second
     {
       return;
     }
@@ -113,21 +124,22 @@ void TimeWidget::update()
     frequency->setText(" Frequency: " + QString::number(avgFrequency));
 
     table->setUpdatesEnabled(false);
-    table->setSortingEnabled(false);//disable sorting while updating to avoid race conditions
-    for(TimeInfo::Infos::const_iterator i = timeView.info.infos.begin(), end = timeView.info.infos.end(); i != end; ++i)
+    table->setSortingEnabled(false); //disable sorting while updating to avoid race conditions
+    for (TimeInfo::Infos::const_iterator i = timeView.info.infos.begin(), end = timeView.info.infos.end(); i != end; ++i)
     {
       std::string name = timeView.info.getName(i->first);
       Row* currentRow = nullptr;
-      if(items.find(i->first) != items.end())
-      {//already know this one
+      if (items.find(i->first) != items.end())
+      { //already know this one
         currentRow = items[i->first];
       }
       else
-      {//new item
+      { //new item
         currentRow = new Row;
         currentRow->avg = new NumberTableWidgetItem();
         currentRow->max = new NumberTableWidgetItem();
         currentRow->min = new NumberTableWidgetItem();
+        currentRow->last = new NumberTableWidgetItem();
         currentRow->name = new QTableWidgetItem();
         const int rowCount = table->rowCount();
         table->setRowCount(rowCount + 1);
@@ -135,13 +147,15 @@ void TimeWidget::update()
         table->setItem(rowCount, 1, currentRow->min);
         table->setItem(rowCount, 2, currentRow->max);
         table->setItem(rowCount, 3, currentRow->avg);
+        table->setItem(rowCount, 4, currentRow->last);
         items[i->first] = currentRow;
       }
-      float minTime = -1, maxTime = -1, avgTime = -1;
-      timeView.info.getStatistics(i->second, minTime, maxTime, avgTime);
+      float minTime = -1, maxTime = -1, avgTime = -1, lastTime = -1;
+      timeView.info.getStatistics(i->second, minTime, maxTime, avgTime, lastTime);
       currentRow->avg->setText(QString::number(avgTime));
       currentRow->min->setText(QString::number(minTime));
       currentRow->max->setText(QString::number(maxTime));
+      currentRow->last->setText(QString::number(lastTime));
       currentRow->name->setText(QString(name.c_str())); //refresh name every time to eliminate unknown
     }
   }
@@ -158,7 +172,7 @@ void TimeWidget::filterChanged(const QString& newFilter)
 
 void TimeWidget::applyFilter()
 {
-  for(int i = 0; i < table->rowCount(); ++i)
+  for (int i = 0; i < table->rowCount(); ++i)
   {
     QTableWidgetItem* item = table->item(i, 0); //assuming that column 0 is the name column
     QTableWidgetItem* maximum = table->item(i, 2); //assuming that column 2 is the maximum column

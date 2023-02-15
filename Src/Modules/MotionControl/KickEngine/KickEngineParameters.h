@@ -12,7 +12,6 @@
 #include "Tools/Streams/AutoStreamable.h"
 
 STREAMABLE(DynPoint,
-{
   DynPoint() = default;
   DynPoint(int limb, int phaseNumber, int duration, const Vector3f& translation, const Vector3f& angle, const Vector3f& odometryOffset);
   DynPoint(int limb, int phaseNumber, const Vector3f& translation);
@@ -32,24 +31,20 @@ STREAMABLE(DynPoint,
   (int)(0) duration,
   (Vector3f)(Vector3f::Zero()) translation,
   (Vector3f)(Vector3f::Zero()) angle,
-  (Vector3f)(Vector3f::Zero()) odometryOffset,
-});
+  (Vector3f)(Vector3f::Zero()) odometryOffset
+);
 
-inline DynPoint::DynPoint(int limb, int phaseNumber, int duration, const Vector3f& translation,
-                          const Vector3f& angle, const Vector3f& odometryOffset) :
-  limb(limb), phaseNumber(phaseNumber), duration(duration),
-  translation(translation), angle(angle), odometryOffset(odometryOffset)
-{}
+inline DynPoint::DynPoint(int limb, int phaseNumber, int duration, const Vector3f& translation, const Vector3f& angle, const Vector3f& odometryOffset)
+    : limb(limb), phaseNumber(phaseNumber), duration(duration), translation(translation), angle(angle), odometryOffset(odometryOffset)
+{
+}
 
-inline DynPoint::DynPoint(int limb, int phaseNumber, const Vector3f& translation) :
-  limb(limb), phaseNumber(phaseNumber), translation(translation)
-{}
+inline DynPoint::DynPoint(int limb, int phaseNumber, const Vector3f& translation) : limb(limb), phaseNumber(phaseNumber), translation(translation) {}
 
 class Phase : public Streamable
 {
 public:
   ENUM(Limb,
-  {,
     leftFootTra,
     leftFootRot,
     rightFootTra,
@@ -57,10 +52,13 @@ public:
     leftArmTra,
     leftHandRot,
     rightArmTra,
-    rightHandRot,
-  });
+    rightHandRot
+  );
 
-  enum { numOfPoints = 3 };
+  enum
+  {
+    numOfPoints = 3
+  };
 
   unsigned int duration;
 
@@ -78,7 +76,6 @@ public:
 };
 
 STREAMABLE(KickEngineParameters,
-{
   int numberOfPhases = 0;
   char name[260];
 
@@ -115,5 +112,5 @@ STREAMABLE(KickEngineParameters,
   (bool)(false) autoComTra,
   (bool)(false) ignoreHead,
 
-  (std::vector<Phase>) phaseParameters,
-});
+  (std::vector<Phase>) phaseParameters
+);

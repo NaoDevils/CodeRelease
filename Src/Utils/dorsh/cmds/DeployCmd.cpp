@@ -20,18 +20,15 @@
 
 DeployCmd DeployCmd::theDeployCmd;
 
-DeployCmd::DeployTask::DeployTask(Context &context, const QString& buildConfig, Team* team, RobotConfigDorsh *robot)
-: RobotTask(context, robot),
-  buildConfig(buildConfig),
-  team(team)
-{}
+DeployCmd::DeployTask::DeployTask(Context& context, const QString& buildConfig, Team* team, RobotConfigDorsh* robot)
+    : RobotTask(context, robot), buildConfig(buildConfig), team(team)
+{
+}
 
 bool DeployCmd::DeployTask::execute()
 {
   // Change TargetCoM in modules.cfg
-  
 
-  
 
   /* Since the PingAgent knows the roundtrip time for all robots, maybe we can
    * adjust the timeout of rsync to determine faster if the connection is
@@ -41,132 +38,39 @@ bool DeployCmd::DeployTask::execute()
 
   QStringList args = QStringList();
   args.push_back(QString("-d")); //Arne 27.04.17 - delete Logs on every deploy
-  args.push_back(QString("-nc"));
   //args.push_back(QString("-nr")); reachability check on every deploy
   args.push_back(buildConfig);
-  args.push_back(fromString(robot->getBestIP(context())));
+  args.push_back(QString::fromStdString(robot->getBestIP(context())));
   args.push_back(QString("-r"));
   args.push_back(QString("-n"));
   args.push_back(QString::number(team->number));
   args.push_back(QString("-o"));
   args.push_back(QString::number(team->port));
-  //args.push_back(QString("-t"));
-  //args.push_back(team->colorOwn.c_str());
   args.push_back(QString("-own"));
-  //args.push_back(mapColorToConf(team->colorOwn).c_str());
-  args.push_back(mapColorToConf(team->colorOwn).c_str());
+  args.push_back(mapColorToConf(context(), team->colorOwn).c_str());
   args.push_back(QString("-opp"));
-  //args.push_back(mapColorToConf(team->colorOpp).c_str());
-  args.push_back(mapColorToConf(team->colorOpp).c_str());
+  args.push_back(mapColorToConf(context(), team->colorOpp).c_str());
   args.push_back(QString("-p"));
   args.push_back(QString::number(team->getPlayerNumber(*robot)));
-  args.push_back(QString("-l"));
-  args.push_back(team->location.c_str());
+  for (const std::string& overlay : team->overlays)
+  {
+    args.push_back(QString("-eo"));
+    args.push_back(overlay.c_str());
+  }
   args.push_back(QString("-g"));
   args.push_back(team->gameMode.c_str());
   args.push_back(QString("-w"));
-
-  QString wifi = team->wlanConfig.c_str();
-  bool fiveGConfigExists = false;
-  bool configExists = false;
-
-  std::vector<std::string> configs = Filesystem::getWlanConfigs();
-  for (size_t i = 0; i < configs.size(); ++i) 
-  {
-    QString tmpConfig = fromString(configs[i]);
-    if (tmpConfig.contains(wifi + "_5GHz")) 
-    {
-      fiveGConfigExists = true;
-    }
-    if (tmpConfig.startsWith(wifi) && tmpConfig.endsWith(wifi))
-    {
-      configExists = true;
-    }
-  }
-
-  if (team->wlanFrequency == "auto")
-  {
-    if (robot->naoVersion == RobotConfig::V6)
-    {
-      if (fiveGConfigExists)
-      {
-        args.push_back(wifi + "_5GHz");
-      }
-      else
-      {
-        args.push_back(wifi);
-      }
-    }
-    else
-    {
-      if (configExists)
-      {
-        args.push_back(wifi);
-      }
-      else
-      {
-        context().errorLine("2.4GHz config of network " + team->wlanConfig + " does not exist!");
-        return false;
-      }
-    }
-  }
-  else if (team->wlanFrequency == "2.4 GHz")
-  {
-    if (configExists)
-    {
-      args.push_back(wifi);
-    }
-    else
-    {
-      context().errorLine("2.4GHz config of network " + team->wlanConfig + " does not exist!");
-      return false;
-    }
-  }
-  else
-  {
-    if (fiveGConfigExists)
-    {
-      args.push_back(wifi + "_5GHz");
-    }
-    else
-    {
-      context().errorLine("5GHz config of network " + team->wlanConfig + " does not exist!");
-      return false;
-    }
-  }
+  args.push_back(team->wlanConfig.c_str());
   args.push_back(QString("-v"));
   args.push_back(QString::number(team->volume));
   args.push_back(QString("-mv"));
   args.push_back(QString::number(team->micVolume));
-  args.push_back(QString("-log"));
-  args.push_back(QString(team->logConfig.c_str()));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("MocapData"));
-  args.push_back(QString((team->mocapConfig) ? "MocapDataProvider" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("MocapRobotPose"));
-  args.push_back(QString((team->mocapConfig) ? "MocapRobotPoseProvider" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("MocapBallModel"));
-  args.push_back(QString((team->mocapConfig) ? "MocapRobotPoseProvider" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettings"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "default" : "CameraProvider"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettingsUpper"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "default" : "CameraProvider"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettingsV6"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "CameraProviderV6" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettingsUpperV6"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "CameraProviderV6" : "default"));
   args.push_back(QString("-nv"));
-  args.push_back(fromString(RobotConfigDorsh::getName(robot->naoVersion)));
+  args.push_back(QString::fromStdString(RobotConfigDorsh::getName(robot->naoVersion)));
 
   ProcessRunner r(context(), command, args);
   r.run();
-  if(r.error())
+  if (r.error())
   {
     context().errorLine("Deploy of \"" + robot->name + "\" failed!");
     return false;
@@ -178,43 +82,34 @@ bool DeployCmd::DeployTask::execute()
   }
 }
 
-/*std::string DeployCmd::mapColorToConf(std::string color)
+std::string DeployCmd::mapColorToConf(Context& context, int color)
 {
-  if (color == "black")
-    return "x = 50; y = 128; z = 128;";
-  else if (color == "yellow")
-    return "x = 128; y = 80; z = 150;";
-  else if (color == "red")
-    return "x = 128; y = 150; z = 150;";
-  else if (color == "blue")
-    return "x = 128; y = 150; z = 80;";
-  else if (color == "green")
-    return "x = 128; y = 100; z = 100;";
-  else // if (color == "gray")
-    return "x = 150; y = 128; z = 128;";
-}*/
+  std::map<int, int> teamColorMap{
+      {65535, 0}, //yellow
+      {16711680, 1}, //black
+      {16776960, 2}, //cyan
+      {0, 3}, //red
+      {16777215, 4}, //white
+      {891904, 5}, //darkgreen
+      {16744960, 6}, //orange
+      {14221567, 7}, //purple
+      {7024663, 8}, //brown
+      {8421504, 9}, //grey
+  };
 
-std::string DeployCmd::mapColorToConf(int color)
-{
-  unsigned char y;
-  unsigned char cb;
-  unsigned char cr;
-
-  unsigned char r = static_cast<unsigned char>(color / (256 * 256));
-  unsigned char g = static_cast<unsigned char>(color % (256 * 256) / 256);
-  unsigned char b = static_cast<unsigned char>(color % 256);
-
-  ColorModelConversions::fromRGBToYCbCr(r, g, b, y, cb, cr);
+  int gcColor;
+  if (teamColorMap.find(color) == teamColorMap.end())
+  {
+    context.errorLine("Selected Color is unknown! Please use only the custom colors!");
+    gcColor = 2; //yellow
+  }
+  else
+  {
+    gcColor = teamColorMap[color];
+  }
 
   std::stringstream config;
-  config << "y = " << static_cast<int>(y)
-    << "; cb = " << static_cast<int>(cb)
-    << "; cr = " << static_cast<int>(cr) << ";" ;
-  std::cout << config.str() << "\n";
-  std::cout << "rgb( " <<  color << ")"
-    << static_cast<unsigned>(r) << " "
-    << static_cast<unsigned>(g) << " "
-    << static_cast<unsigned>(b) << " " << "\n";
+  config << static_cast<int>(gcColor);
   return config.str();
 }
 
@@ -237,30 +132,30 @@ std::vector<std::string> DeployCmd::complete(const std::string& cmdLine) const
 {
   std::vector<std::string> commandWithArgs = split(cmdLine);
 
-  if(commandWithArgs.size() == 1)
+  if (commandWithArgs.size() == 1)
     return getBuildConfigs();
   else
     return getBuildConfigs(commandWithArgs[1]);
 }
 
-bool DeployCmd::preExecution(Context &context, const std::vector<std::string> &params)
+bool DeployCmd::preExecution(Context& context, const std::vector<std::string>& params)
 {
   team = context.getSelectedTeam();
-  if(!team)
+  if (!team)
   {
     context.errorLine("No team selected!");
     return false;
   }
 
-  buildConfig = fromString(team->buildConfig);
-  if(params.size() > 0)
-    buildConfig = fromString(params[0]);
+  buildConfig = QString::fromStdString(team->buildConfig);
+  if (params.size() > 0)
+    buildConfig = QString::fromStdString(params[0]);
 
   // compile and deploy if compiling was successful
-  return context.execute("compile " + toString(buildConfig));
+  return context.execute("compile " + buildConfig.toStdString());
 }
 
-Task* DeployCmd::perRobotExecution(Context &context, RobotConfigDorsh &robot)
+Task* DeployCmd::perRobotExecution(Context& context, RobotConfigDorsh& robot)
 {
   return new DeployTask(context, buildConfig, team, &robot);
 }
@@ -268,11 +163,11 @@ Task* DeployCmd::perRobotExecution(Context &context, RobotConfigDorsh &robot)
 #ifdef WINDOWS
 QString DeployCmd::getCommand()
 {
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/copyfiles.cmd");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/copyfiles.cmd");
 }
 #else
 QString DeployCmd::getCommand()
 {
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/copyfiles");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/copyfiles");
 }
 #endif

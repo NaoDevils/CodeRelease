@@ -29,7 +29,8 @@ public:
 private:
   TcpComm* tcpComm = nullptr; /**< The TCP/IP connection. */
   bool ack = false;
-  bool client = false;;
+  bool client = false;
+  ;
   Handshake handshake = noHandshake; /**< The handshake mode. */
 
 public:
@@ -49,13 +50,16 @@ public:
   * @param maxPackageReceiveSize The maximum size of an incouming package.
   *                              If 0, this setting is ignored.
   */
-  TcpConnection(const char* ip, int port, Handshake handshake = noHandshake,
-                int maxPackageSendSize = 0, int maxPackageReceiveSize = 0)
+  TcpConnection(const char* ip, int port, Handshake handshake = noHandshake, int maxPackageSendSize = 0, int maxPackageReceiveSize = 0)
   {
     connect(ip, port, handshake, maxPackageSendSize, maxPackageReceiveSize);
   }
 
-  ~TcpConnection() { if(tcpComm) delete tcpComm; }
+  ~TcpConnection()
+  {
+    if (tcpComm)
+      delete tcpComm;
+  }
 
   /**
   * The function will first try to connect another process as
@@ -67,8 +71,7 @@ public:
   * @param maxPackageSendSize The maximum size of packages to send.
   * @param maxPackageReceiveSize The maximum size of packages to receive.
   */
-  void connect(const char* ip, int port, Handshake handshake = noHandshake,
-               int maxPackageSendSize = 0, int maxPackageReceiveSize = 0);
+  void connect(const char* ip, int port, Handshake handshake = noHandshake, int maxPackageSendSize = 0, int maxPackageReceiveSize = 0);
 
   /**
   * The function sends and receives data.

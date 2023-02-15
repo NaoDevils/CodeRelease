@@ -24,6 +24,7 @@ public:
 
   virtual QWidget* getWidget();
   virtual void update();
+  virtual void saveLayout();
 
 private:
   AnnotationView& view;

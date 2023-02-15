@@ -7,6 +7,9 @@
 #pragma once
 
 #include "Tools/ProcessFramework/ProcessFramework.h"
+#include <memory>
+
+class Logger;
 
 /**
 * The class implements a robot as a list of processes.
@@ -18,6 +21,7 @@ public:
   * Default constructor.
   */
   Robot();
+  ~Robot();
 
   /**
   * The function connects a sender and a receiver.
@@ -42,4 +46,6 @@ private:
   * @return A pointer to the receiver or 0 if no receiver exists with the specified name.
   */
   ReceiverList* getReceiver(const std::string& receiverName);
+
+  std::unique_ptr<Logger> logger;
 };

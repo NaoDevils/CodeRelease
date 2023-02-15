@@ -42,6 +42,11 @@ DotViewWidget::DotViewWidget(DotViewObject& dotViewObject) : dotViewObject(dotVi
 
 DotViewWidget::~DotViewWidget()
 {
+  //saveLayout();
+}
+
+void DotViewWidget::saveLayout()
+{
   // save window state
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(dotViewObject.fullName);
@@ -54,11 +59,11 @@ DotViewWidget::~DotViewWidget()
 
 bool DotViewWidget::openSvgFile(const QString& fileName)
 {
-  QGraphicsScene *s = scene();
+  QGraphicsScene* s = scene();
   s->clear();
 
   QGraphicsSvgItem* svgItem = new QGraphicsSvgItem(fileName);
-  if(!svgItem->boundingRect().isValid())
+  if (!svgItem->boundingRect().isValid())
   {
     delete svgItem;
     return false;
@@ -71,7 +76,7 @@ bool DotViewWidget::openSvgFile(const QString& fileName)
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(dotViewObject.fullName);
   QVariant scaleVar = settings.value("scale");
-  if(scaleVar.isValid())
+  if (scaleVar.isValid())
   {
     float scale = scaleVar.toFloat();
     setTransform(QTransform().scale(scale, scale));
@@ -85,10 +90,10 @@ bool DotViewWidget::openSvgFile(const QString& fileName)
 
 bool DotViewWidget::viewportEvent(QEvent* event)
 {
-  if(event->type() == QEvent::Gesture)
+  if (event->type() == QEvent::Gesture)
   {
     QPinchGesture* pinch = static_cast<QPinchGesture*>(static_cast<QGestureEvent*>(event)->gesture(Qt::PinchGesture));
-    if(pinch && (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged))
+    if (pinch && (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged))
     {
       qreal factor = pinch->scaleFactor() / pinch->lastScaleFactor();
       scale(factor, factor);
@@ -100,9 +105,9 @@ bool DotViewWidget::viewportEvent(QEvent* event)
 
 void DotViewWidget::wheelEvent(QWheelEvent* event)
 {
-#ifndef OSX
+#ifndef MACOS
   // scroll with mouse wheel
-  qreal factor = qPow(1.2, event->delta() / 240.0);
+  qreal factor = qPow(1.2, event->angleDelta().manhattanLength() / 240.0);
   scale(factor, factor);
   event->accept();
 #else
@@ -119,27 +124,27 @@ void DotViewWidget::mouseDoubleClickEvent(QMouseEvent* event)
 
 void DotViewWidget::keyPressEvent(QKeyEvent* event)
 {
-  switch(event->key())
+  switch (event->key())
   {
-    case Qt::Key_PageUp:
-    case Qt::Key_Plus:
-      event->accept();
-      {
-        qreal factor = qPow(1.2, 60.0 / 240.0);
-        scale(factor, factor);
-      }
-      break;
-    case Qt::Key_PageDown:
-    case Qt::Key_Minus:
-      event->accept();
-      {
-        qreal factor = qPow(1.2, -60.0 / 240.0);
-        scale(factor, factor);
-      }
-      break;
-    default:
-      QWidget::keyPressEvent(event);
-      break;
+  case Qt::Key_PageUp:
+  case Qt::Key_Plus:
+    event->accept();
+    {
+      qreal factor = qPow(1.2, 60.0 / 240.0);
+      scale(factor, factor);
+    }
+    break;
+  case Qt::Key_PageDown:
+  case Qt::Key_Minus:
+    event->accept();
+    {
+      qreal factor = qPow(1.2, -60.0 / 240.0);
+      scale(factor, factor);
+    }
+    break;
+  default:
+    QWidget::keyPressEvent(event);
+    break;
   }
 }
 
@@ -156,7 +161,7 @@ bool DotViewWidget::openDotFile(const QString& fileName)
   const QString svgFileName = QDir::temp().filePath("DotView.svg");
   QString cmd = builtDotCommand("svg", fileName, svgFileName);
   int exitCode = QProcess::execute(cmd);
-  if(exitCode != 0)
+  if (exitCode != 0)
     return false;
 
   // load svg file
@@ -167,11 +172,11 @@ bool DotViewWidget::openDotFile(const QString& fileName)
 
 bool DotViewWidget::saveDotFileContent(const QString& content, const QString& fileName)
 {
-  if(content.isEmpty())
+  if (content.isEmpty())
     return false;
 
   QFile dotFile(fileName);
-  if(!dotFile.open(QIODevice::WriteOnly | QIODevice::Text))
+  if (!dotFile.open(QIODevice::WriteOnly | QIODevice::Text))
     return false;
   QTextStream out(&dotFile);
   out << content;
@@ -180,12 +185,12 @@ bool DotViewWidget::saveDotFileContent(const QString& content, const QString& fi
 
 bool DotViewWidget::openDotFileContent(const QString& content)
 {
-  if(content.isEmpty())
+  if (content.isEmpty())
     return false;
 
   // generate dot file
   const QString dotFileName = QDir::temp().filePath("DotView.dot");
-  if(!saveDotFileContent(content, dotFileName))
+  if (!saveDotFileContent(content, dotFileName))
     return false;
 
   // open dot fiile
@@ -196,7 +201,7 @@ bool DotViewWidget::openDotFileContent(const QString& content)
 
 void DotViewWidget::update()
 {
-  if(!dotViewObject.hasChanged())
+  if (!dotViewObject.hasChanged())
     return;
   openDotFileContent(dotViewObject.generateDotFileContent());
 }
@@ -228,14 +233,13 @@ QMenu* DotViewWidget::createUserMenu() const
 void DotViewWidget::exportAsSvg()
 {
   QSettings& settings = RoboCupCtrl::application->getSettings();
-  QString fileName = QFileDialog::getSaveFileName(this,
-                     tr("Export as SVG"), settings.value("ExportDirectory", "").toString(), tr("Scalable Vector Graphics (*.svg)"));
-  if(fileName.isEmpty())
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Export as SVG"), settings.value("ExportDirectory", "").toString(), tr("Scalable Vector Graphics (*.svg)"));
+  if (fileName.isEmpty())
     return;
   settings.setValue("ExportDirectory", QFileInfo(fileName).dir().path());
 
   const QString dotFileName = QDir::temp().filePath("DotView.dot");
-  if(!saveDotFileContent(dotViewObject.generateDotFileContent(), dotFileName))
+  if (!saveDotFileContent(dotViewObject.generateDotFileContent(), dotFileName))
     return;
   convertDotFile("svg", dotFileName, fileName);
   QFile::remove(dotFileName);
@@ -244,14 +248,13 @@ void DotViewWidget::exportAsSvg()
 void DotViewWidget::exportAsPdf()
 {
   QSettings& settings = RoboCupCtrl::application->getSettings();
-  QString fileName = QFileDialog::getSaveFileName(this,
-                     tr("Export as PDF"), settings.value("ExportDirectory", "").toString(), tr("Portable Document Format (*.pdf)"));
-  if(fileName.isEmpty())
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Export as PDF"), settings.value("ExportDirectory", "").toString(), tr("Portable Document Format (*.pdf)"));
+  if (fileName.isEmpty())
     return;
   settings.setValue("ExportDirectory", QFileInfo(fileName).dir().path());
 
   const QString dotFileName = QDir::temp().filePath("DotView.dot");
-  if(!saveDotFileContent(dotViewObject.generateDotFileContent(), dotFileName))
+  if (!saveDotFileContent(dotViewObject.generateDotFileContent(), dotFileName))
     return;
   convertDotFile("pdf", dotFileName, fileName);
   QFile::remove(dotFileName);
@@ -260,9 +263,8 @@ void DotViewWidget::exportAsPdf()
 void DotViewWidget::exportAsDot()
 {
   QSettings& settings = RoboCupCtrl::application->getSettings();
-  QString fileName = QFileDialog::getSaveFileName(this,
-                     tr("Export as DOT File"), settings.value("ExportDirectory", "").toString(), tr("Graphviz Graph File (*.dot)"));
-  if(fileName.isEmpty())
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Export as DOT File"), settings.value("ExportDirectory", "").toString(), tr("Graphviz Graph File (*.dot)"));
+  if (fileName.isEmpty())
     return;
   settings.setValue("ExportDirectory", QFileInfo(fileName).dir().path());
 

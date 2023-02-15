@@ -1,10 +1,10 @@
 /**
 * @author Alexis Tsogias
 */
-
+#include "Tools/SIMD.h"
 #include "ThumbnailProvider.h"
 #include "Platform/BHAssert.h"
-#include "Tools/SIMD.h"
+#include "Tools/SSE.h"
 #include <cstring>
 #include <cstddef>
 #include <cmath>
@@ -15,32 +15,32 @@ void ThumbnailProvider::update(Thumbnail& thumbnail)
 {
   thumbnail.grayscale = grayscale;
   thumbnail.scale = static_cast<int>(std::pow(2.0, downScales));
-  if(grayscale)
+  if (grayscale)
   {
-    switch(thumbnail.scale)
+    switch (thumbnail.scale)
     {
-      case 8:
-        shrinkGrayscale8x8SSE(theImage, thumbnail.imageGrayscale);
-        break;
-      case 4:
-        shrinkGrayscale4x4SSE(theImage, thumbnail.imageGrayscale);
-        break;
-      default:
-        shrinkGrayscaleNxN(theImage, thumbnail.imageGrayscale);
+    case 8:
+      shrinkGrayscale8x8SSE(theImage, thumbnail.imageGrayscale);
+      break;
+    case 4:
+      shrinkGrayscale4x4SSE(theImage, thumbnail.imageGrayscale);
+      break;
+    default:
+      shrinkGrayscaleNxN(theImage, thumbnail.imageGrayscale);
     }
   }
   else
   {
-    switch(thumbnail.scale)
+    switch (thumbnail.scale)
     {
-      case 8:
-        shrink8x8SSE(theImage, thumbnail.image);
-        break;
-      case 4:
-        shrink4x4SSE(theImage, thumbnail.image);
-        break;
-      default:
-        shrinkNxN(theImage, thumbnail.image);
+    case 8:
+      shrink8x8SSE(theImage, thumbnail.image);
+      break;
+    case 4:
+      shrink4x4SSE(theImage, thumbnail.image);
+      break;
+    default:
+      shrinkNxN(theImage, thumbnail.image);
     }
     thumbnail.compressedImage.compress(thumbnail.image);
   }
@@ -83,7 +83,8 @@ void ThumbnailProvider::update(ThumbnailUpper& thumbnail)
 
 void ThumbnailProvider::shrinkNxN(const Image& srcImage, Thumbnail::ThumbnailImage& destImage)
 {
-  const int scaleFactor = static_cast<int>(std::pow(2.0, downScales));;
+  const int scaleFactor = static_cast<int>(std::pow(2.0, downScales));
+  ;
   const int averagedPixels = scaleFactor * scaleFactor;
   const int width = srcImage.width;
   const int height = srcImage.height;
@@ -106,17 +107,17 @@ void ThumbnailProvider::shrinkNxN(const Image& srcImage, Thumbnail::ThumbnailIma
   Thumbnail::ThumbnailImage::PixelType* pDest;
   pixelSum* pSumms;
 
-  for(int y = 0; y < height; ++y)
+  for (int y = 0; y < height; ++y)
   {
-    if(y % scaleFactor == 0)
+    if (y % scaleFactor == 0)
     {
       pDest = destImage[y / scaleFactor];
     }
     pSrc = srcImage[y];
     pSumms = summs;
-    for(int x = 0; x < width; x += scaleFactor, ++pSumms)
+    for (int x = 0; x < width; x += scaleFactor, ++pSumms)
     {
-      for(int i = 0; i < scaleFactor; ++i, ++pSrc)
+      for (int i = 0; i < scaleFactor; ++i, ++pSrc)
       {
         pSumms->y += pSrc->y;
         pSumms->cb += pSrc->cb;
@@ -124,10 +125,10 @@ void ThumbnailProvider::shrinkNxN(const Image& srcImage, Thumbnail::ThumbnailIma
       }
     }
 
-    if(y % scaleFactor == scaleFactor - 1)
+    if (y % scaleFactor == scaleFactor - 1)
     {
       pSumms = summs;
-      for(int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
+      for (int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
       {
         pDest->y = static_cast<unsigned char>(pSumms->y / averagedPixels);
         pDest->cb = static_cast<unsigned char>(pSumms->cb / averagedPixels);
@@ -165,15 +166,15 @@ void ThumbnailProvider::shrink8x8SSE(const Image& srcImage, Thumbnail::Thumbnail
   __m128i lower;
   __m128i upper;
 
-  for(int y = 0; y < height; ++y)
+  for (int y = 0; y < height; ++y)
   {
-    if(y % scaleFactor == 0)
+    if (y % scaleFactor == 0)
     {
       pDest = destImage[y / scaleFactor];
     }
     pSrc = srcImage[y];
     pSumms = summs;
-    for(int x = 0; x < width; x += scaleFactor, pSrc += scaleFactor, ++pSumms)
+    for (int x = 0; x < width; x += scaleFactor, pSrc += scaleFactor, ++pSumms)
     {
       tmp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
       lower = _mm_unpacklo_epi8(tmp, zero);
@@ -188,10 +189,10 @@ void ThumbnailProvider::shrink8x8SSE(const Image& srcImage, Thumbnail::Thumbnail
       *pSumms = _mm_add_epi16(*pSumms, upper);
     }
 
-    if(y % scaleFactor == scaleFactor - 1)
+    if (y % scaleFactor == scaleFactor - 1)
     {
       pSumms = summs;
-      for(int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
+      for (int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
       {
         const short* ptr = reinterpret_cast<short*>(pSumms);
 
@@ -234,15 +235,15 @@ void ThumbnailProvider::shrink4x4SSE(const Image& srcImage, Thumbnail::Thumbnail
   __m128i lower;
   __m128i upper;
 
-  for(int y = 0; y < height; ++y)
+  for (int y = 0; y < height; ++y)
   {
-    if(y % scaleFactor == 0)
+    if (y % scaleFactor == 0)
     {
       pDest = destImage[y / scaleFactor];
     }
     pSrc = srcImage[y];
     pSumms = summs;
-    for(int x = 0; x < width; x += scaleFactor, pSrc += scaleFactor, ++pSumms)
+    for (int x = 0; x < width; x += scaleFactor, pSrc += scaleFactor, ++pSumms)
     {
       tmp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
       lower = _mm_unpacklo_epi8(tmp, zero);
@@ -251,10 +252,10 @@ void ThumbnailProvider::shrink4x4SSE(const Image& srcImage, Thumbnail::Thumbnail
       *pSumms = _mm_add_epi16(*pSumms, upper);
     }
 
-    if(y % scaleFactor == scaleFactor - 1)
+    if (y % scaleFactor == scaleFactor - 1)
     {
       pSumms = summs;
-      for(int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
+      for (int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
       {
         const short* ptr = reinterpret_cast<short*>(pSumms);
 
@@ -274,7 +275,8 @@ void ThumbnailProvider::shrink4x4SSE(const Image& srcImage, Thumbnail::Thumbnail
 
 void ThumbnailProvider::shrinkGrayscaleNxN(const Image& srcImage, Thumbnail::ThumbnailImageGrayscale& destImage)
 {
-  const int scaleFactor = static_cast<int>(std::pow(2.0, downScales));;
+  const int scaleFactor = static_cast<int>(std::pow(2.0, downScales));
+  ;
   const int averagedPixels = scaleFactor * scaleFactor;
   const int width = srcImage.width;
   const int height = srcImage.height;
@@ -291,26 +293,26 @@ void ThumbnailProvider::shrinkGrayscaleNxN(const Image& srcImage, Thumbnail::Thu
   Thumbnail::ThumbnailImageGrayscale::PixelType* pDest;
   unsigned int* pSumms;
 
-  for(int y = 0; y < height; ++y)
+  for (int y = 0; y < height; ++y)
   {
-    if(y % scaleFactor == 0)
+    if (y % scaleFactor == 0)
     {
       pDest = destImage[y / scaleFactor];
     }
     pSrc = srcImage[y];
     pSumms = summs;
-    for(int x = 0; x < width; x += scaleFactor, ++pSumms)
+    for (int x = 0; x < width; x += scaleFactor, ++pSumms)
     {
-      for(int i = 0; i < scaleFactor; ++i, ++pSrc)
+      for (int i = 0; i < scaleFactor; ++i, ++pSrc)
       {
         *pSumms += pSrc->y;
       }
     }
 
-    if(y % scaleFactor == scaleFactor - 1)
+    if (y % scaleFactor == scaleFactor - 1)
     {
       pSumms = summs;
-      for(int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
+      for (int i = 0; i < destImage.width; ++i, ++pSumms, ++pDest)
       {
         *pDest = static_cast<unsigned char>(*pSumms / averagedPixels);
       }
@@ -339,13 +341,7 @@ void ThumbnailProvider::shrinkGrayscale8x8SSE(const Image& srcImage, Thumbnail::
   destImage.setResolution(width / scaleFactor, height / scaleFactor);
 
   const unsigned char offset = offsetof(Image::Pixel, y);
-  unsigned char mask[16] =
-  {
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF
-  };
+  unsigned char mask[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   mask[0] = offset;
   mask[1] = offset + 4;
   mask[2] = offset + 8;
@@ -370,15 +366,15 @@ void ThumbnailProvider::shrinkGrayscale8x8SSE(const Image& srcImage, Thumbnail::
   __m128i p6;
   __m128i p7;
 
-  for(int y = 0; y < height; ++y)
+  for (int y = 0; y < height; ++y)
   {
-    if(y % scaleFactor == 0)
+    if (y % scaleFactor == 0)
     {
       pDest = destImage[y / scaleFactor];
     }
     pSrc = srcImage[y];
     pSumms = summs;
-    for(int x = 0; x < width; x += 8, pSrc += 8, ++pSumms)
+    for (int x = 0; x < width; x += 8, pSrc += 8, ++pSumms)
     {
       p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
       p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + 4));
@@ -391,10 +387,10 @@ void ThumbnailProvider::shrinkGrayscale8x8SSE(const Image& srcImage, Thumbnail::
       *pSumms = _mm_add_epi16(*pSumms, p0);
     }
 
-    if(y % scaleFactor == scaleFactor - 1)
+    if (y % scaleFactor == scaleFactor - 1)
     {
       pSumms = summs;
-      for(int i = 0; i < destImage.width; i += 8, pSumms += 8, pDest += 8)
+      for (int i = 0; i < destImage.width; i += 8, pSumms += 8, pDest += 8)
       {
         p0 = *pSumms;
         p1 = *(pSumms + 1);
@@ -441,13 +437,7 @@ void ThumbnailProvider::shrinkGrayscale4x4SSE(const Image& srcImage, Thumbnail::
   destImage.setResolution(width / scaleFactor, height / scaleFactor);
 
   const unsigned char offset = offsetof(Image::Pixel, y);
-  unsigned char mask[16] =
-  {
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF
-  };
+  unsigned char mask[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   mask[0] = offset;
   mask[1] = offset + 4;
   mask[2] = offset + 8;
@@ -468,15 +458,15 @@ void ThumbnailProvider::shrinkGrayscale4x4SSE(const Image& srcImage, Thumbnail::
   __m128i p2;
   __m128i p3;
 
-  for(int y = 0; y < height; ++y)
+  for (int y = 0; y < height; ++y)
   {
-    if(y % scaleFactor == 0)
+    if (y % scaleFactor == 0)
     {
       pDest = destImage[y / scaleFactor];
     }
     pSrc = srcImage[y];
     pSumms = summs;
-    for(int x = 0; x < width; x += 8, pSrc += 8, ++pSumms)
+    for (int x = 0; x < width; x += 8, pSrc += 8, ++pSumms)
     {
       p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
       p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + 4));
@@ -489,7 +479,7 @@ void ThumbnailProvider::shrinkGrayscale4x4SSE(const Image& srcImage, Thumbnail::
       *pSumms = _mm_add_epi16(*pSumms, p0);
     }
 
-    if(y % scaleFactor == scaleFactor - 1)
+    if (y % scaleFactor == scaleFactor - 1)
     {
       pSumms = summs;
       for (int i = 0; i < destImage.width; i += 8, pSumms += 4, pDest += 8)

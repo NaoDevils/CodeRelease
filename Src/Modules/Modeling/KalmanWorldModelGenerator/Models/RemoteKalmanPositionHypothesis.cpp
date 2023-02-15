@@ -39,8 +39,9 @@ unsigned RemoteKalmanPositionHypothesis::timeWhenUpdatedByTeammate(int playerNum
 {
   // Search for playerNumber in the current map of teammates.
   bool inMap = (m_teammates.find(playerNumber) != m_teammates.end());
-  
-  if (!inMap) return 0; // not updated by this player
+
+  if (!inMap)
+    return 0; // not updated by this player
   return m_teammates.find(playerNumber)->second.timeWhenLastUpdated;
 }
 
@@ -51,7 +52,8 @@ std::string RemoteKalmanPositionHypothesis::teammatesString() const
   bool first = true;
   for (const auto& t : m_teammates)
   {
-    if (!first) ss << ",";
+    if (!first)
+      ss << ",";
     first = false;
     ss << t.first;
   }

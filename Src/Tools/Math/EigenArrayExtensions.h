@@ -18,7 +18,7 @@ Array<_Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols> gradient(const _Scala
 
   const int end = static_cast<int>(Base::cols()) - 1;
   const _Scalar dt2 = 2 * dt;
-  for(int i = 1; i < end; ++i)
+  for (int i = 1; i < end; ++i)
   { //central difference quotient for each inner element
     ret.col(i) = (Base::col(i + 1) - Base::col(i - 1)) / dt2;
   }

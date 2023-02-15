@@ -14,31 +14,28 @@
  * @struct MotionRobotHealth
  * All information collected within motion process.
  */
-STREAMABLE(MotionRobotHealth,
-{,
+STREAMABLE(MotionRobotHealth,,
   (float)(0) motionFrameRate, /**< Frames per second within process "Motion" */
   (float)(0) avgMotionTime, /**< average execution time */
   (float)(0) maxMotionTime, /**< Maximum execution time */
-  (float)(0) minMotionTime, /**< Minimum execution time */
-});
+  (float)(0) minMotionTime /**< Minimum execution time */
+);
 
 /**
  * @struct RobotHealth
  * Full information about the robot.
  */
 STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth,
-{
+
   /**
    * Configurations that can be deployed-
    * Note that they must start with an uppercase letter.
    */
   ENUM(Configuration,
-  {,
     Debug,
-    DevEnC,
     Develop,
-    Release,
-  });
+    Release
+  );
 
   RobotHealth()
   {
@@ -91,5 +88,5 @@ STREAMABLE_WITH_BASE(RobotHealth, MotionRobotHealth,
   (unsigned)(0) goalPercepts, /**< A goal percept counter used to determine goal percepts per hour */
   (bool)(true) wlan, /**< Status of the wlan hardware. true: wlan hardware is ok. false: wlan hardware is (probably physically) broken. */
   (Configuration)(Develop) configuration, /**< The configuration that was deployed. */
-  (std::string)("unknown") location, /**< The location selected. */
-});
+  (std::vector<std::string>) overlays /**< The activated config overlays. */
+);

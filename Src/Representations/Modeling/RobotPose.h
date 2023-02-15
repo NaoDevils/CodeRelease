@@ -10,13 +10,13 @@
 
 #include "Tools/Math/Pose2f.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Representations/Modeling/SideConfidence.h"
 
 /**
  * @struct RobotPose
  * The pose of the robot with additional information
  */
 STREAMABLE_WITH_BASE(RobotPose, Pose2f,
-{
   /**
    * Assignment operator for Pose2f objects
    * @param other A Pose2f object
@@ -33,8 +33,8 @@ STREAMABLE_WITH_BASE(RobotPose, Pose2f,
   void draw() const,
 
   (float)(0) validity,                         /**< The validity of the robot pose. (0 = invalid, 1 = perfect) */
-  (float)(0) symmetry,                         /**< The symmetry confidence of the robot pose. (0 = invalid, 1 = perfect) */
-});
+  ((SideConfidence) ConfidenceState)(CONFUSED) sideConfidenceState                         /**< The side confidence of the robot pose. */
+);
 
 /**
  * @struct GroundTruthRobotPose
@@ -42,26 +42,12 @@ STREAMABLE_WITH_BASE(RobotPose, Pose2f,
  * source that has ground truth quality
  */
 STREAMABLE_WITH_BASE(GroundTruthRobotPose, RobotPose,
-{
+
   /** Draws the robot pose to the field view*/
   void draw() const,
 
-  (unsigned int)(0) timestamp,
-});
-
-/**
-* @struct MocapRobotPose
-* The same as the RobotPose, but
-* provided by the mocap system
-*/
-STREAMABLE_WITH_BASE(MocapRobotPose, RobotPose,
-{ 
-  /** Draws the robot pose to the field view*/
-  void draw() const,
-
-  (unsigned int)(0) mocapFrameNumber,
-  (unsigned int)(0) timestamp,
-});
+  (unsigned int)(0) timestamp
+);
 
 
 /**
@@ -70,20 +56,17 @@ STREAMABLE_WITH_BASE(MocapRobotPose, RobotPose,
 * the preview phase of Dortmund Walking Engine.
 */
 STREAMABLE_WITH_BASE(RobotPoseAfterPreview, RobotPose,
-{
-  void draw() const,
-});
 
-STREAMABLE_WITH_BASE(FixedOdometryRobotPose, RobotPose,
-{ ,
-});
+  void draw() const
+);
+
+STREAMABLE_WITH_BASE(FixedOdometryRobotPose, RobotPose,);
 
 /**
  * @struct RobotPoseCompressed
  * A compressed version of RobotPose used in team communication
  */
 STREAMABLE(RobotPoseCompressed,
-{
   RobotPoseCompressed() = default;
   RobotPoseCompressed(const RobotPose& robotPose);
   operator RobotPose() const,
@@ -91,5 +74,5 @@ STREAMABLE(RobotPoseCompressed,
   (Vector2s) translation,
   (short) rotation,
   (unsigned char) validity,
-  (unsigned char) symmetry,
-});
+  ((SideConfidence) ConfidenceState)(CONFUSED) sideConfidenceState
+);

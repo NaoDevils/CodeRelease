@@ -25,25 +25,18 @@
 
 
 MODULE(NaoKinematic,
-{ ,
   REQUIRES(RobotDimensions),
   REQUIRES(JointSensorData),
   REQUIRES(KinematicRequest),
   PROVIDES(KinematicOutput),
-  LOADS_PARAMETERS(
-  {,
-    (bool) useBHKinematics,
-  }),
-});
+  LOADS_PARAMETERS(,
+    (bool) useBHKinematics
+  )
+);
 
 class CombinedIterativeNaoKinematic;
 
-class RCXPKinematicInterface : public Streamable
-{
-public: JointRequest jointRequest;
-		double kinematicRequest[12];
-		bool calculated;
-
+STREAMABLE(RCXPKinematicInterface,
   RCXPKinematicInterface()
   {
 	  calculated = false;
@@ -53,16 +46,11 @@ public: JointRequest jointRequest;
 		  kinematicRequest[i] = 0;
 	  }
   }
-
-  virtual void serialize(In* in, Out* out)
-  {  
-    STREAM_REGISTER_BEGIN;
-    STREAM(jointRequest)
-	  STREAM(kinematicRequest)
-	  STREAM(calculated)
-    STREAM_REGISTER_FINISH;
-  }
-};
+	,
+	(JointRequest) jointRequest,
+	(double[12]) kinematicRequest,
+	(bool)(false) calculated
+);
 
 #else
 #include "math/Vector3_D.h"
@@ -79,15 +67,14 @@ public: JointRequest jointRequest;
 class NaoKinematicBase
 {
 public:
+  /** The desired foot positions. */
+  KinematicRequest theKinematicRequest;
 
-	/** The desired foot positions. */
-	KinematicRequest	theKinematicRequest;
+  /** Actual angles. */
+  JointData theJointData;
 
-	/** Actual angles. */
-	JointData			theJointData;
-
-	/** Dimensions of the robot. */
-	RobotDimensions		theRobotDimensions;
+  /** Dimensions of the robot. */
+  RobotDimensions theRobotDimensions;
 };
 
 
@@ -116,9 +103,9 @@ public:
 	 * \param rotation The desired foot rotation.
 	 * \param jointRequest Filled with the calculated angles.
 	 */
-  static bool calcLegJoints(Joints::Joint whichSideJoint0, const Vector3f& position, const Vector3f& rotation, JointRequest& jointRequest, const RobotDimensions &robotDimensions);
+  static bool calcLegJoints(Joints::Joint whichSideJoint0, const Vector3f& position, const Vector3f& rotation, JointRequest& jointRequest, const RobotDimensions& robotDimensions);
 
-	/** This method implemenets a mixed kinematic. Here you can set t0, given by the calcLegJoints, to be
+  /** This method implemenets a mixed kinematic. Here you can set t0, given by the calcLegJoints, to be
 	 * compatible to the real Joint 0 (where the angle of both legs has to be equal)
 	 * This resuts in a z rotation of the foot.
 	 * \param whichSideJoint0 Index of first joint of leg.
@@ -126,23 +113,21 @@ public:
 	 * \param rotation The desired foot rotation. z is ignored here.
 	 * \param jointRequest Filled with the calculated angles.
 	 */
-	static bool calcLegJoints(Joints::Joint whichSideJoint0, const Vector3f& position, const Vector3f& rotation, float t0, JointRequest& jointRequest, const RobotDimensions &robotDimensions);
-	
+  static bool calcLegJoints(Joints::Joint whichSideJoint0, const Vector3f& position, const Vector3f& rotation, float t0, JointRequest& jointRequest, const RobotDimensions& robotDimensions);
+
   /**
    * Calculates the angles from the given foot positions in theKinematicRequest.
    * \param walkingEngineOutput Filled with the angles.
    */
-   void update(KinematicOutput& walkingEngineOutput);
+  void update(KinematicOutput& walkingEngineOutput);
 #if 0
    void update(RawKinematicOutput& rawKinematicOutput);
 	
    RCXPKinematicInterface rcxpKinematic;
 #endif
 private:
-	
-	Vector3f checkConstraints(Vector3f lf, float lfr, Vector3f rf, float rfr, bool left);
-	std::ofstream logfile;	  
-
+  Vector3f checkConstraints(Vector3f lf, float lfr, Vector3f rf, float rfr, bool left);
+  std::ofstream logfile;
 };
 
-#endif 
+#endif

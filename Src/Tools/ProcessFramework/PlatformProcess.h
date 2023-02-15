@@ -15,7 +15,7 @@
 class SenderList;
 class ReceiverList;
 class ProcessBase;
-template<class T> class ProcessFrame;
+template <class T> class ProcessFrame;
 
 /**
  * This class is the base class for all processes.
@@ -46,14 +46,14 @@ public:
    * Note that the function returns a reference that can be changed.
    * @return A reference to the address of the first element.
    */
-  SenderList*& getFirstSender() {return firstSender;}
+  SenderList*& getFirstSender() { return firstSender; }
 
   /**
    * The function returns the begin of list of all receivers.
    * Note that the function returns a reference that can be changed.
    * @return A reference to the address of the first element.
    */
-  ReceiverList*& getFirstReceiver() {return firstReceiver;}
+  ReceiverList*& getFirstReceiver() { return firstReceiver; }
 
   /**
    * The function sets the priority of the process.
@@ -67,7 +67,7 @@ public:
    * The function determines the priority of the process.
    * @return The priority of the process.
    */
-  int getPriority() const {return priority;}
+  int getPriority() const { return priority; }
 
   /**
    * The method is called when the process is terminated.
@@ -79,16 +79,16 @@ public:
    */
   void wait()
   {
-    if(SystemCall::getMode() == SystemCall::physicalRobot)
+    if (SystemCall::getMode() == SystemCall::physicalRobot)
       sem.wait(100);
-    else 
+    else
       sem.wait();
   }
 
   /**
    * The method has to be called to announce the receiption of a package.
    */
-  void trigger() {sem.post();}
+  void trigger() { sem.post(); }
 
-  template<class T> friend class ProcessFrame; /**< For setting processBase. */
+  template <class T> friend class ProcessFrame; /**< For setting processBase. */
 };

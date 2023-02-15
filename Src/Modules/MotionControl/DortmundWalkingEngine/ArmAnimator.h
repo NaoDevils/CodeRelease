@@ -10,11 +10,11 @@
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/BodyTilt.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/ArmContact.h"
 #include <algorithm>
 
 MODULE(ArmAnimator,
-{ ,
   REQUIRES(FrameInfo),
   REQUIRES(JointSensorData),
   REQUIRES(WalkingEngineParams),
@@ -22,11 +22,10 @@ MODULE(ArmAnimator,
   REQUIRES(MotionSelection),
   REQUIRES(KinematicRequest),
   REQUIRES(WalkingInfo),
-  REQUIRES(BodyTilt),
+  REQUIRES(JoinedIMUData),
   REQUIRES(ArmContact),
   PROVIDES(ArmMovement),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (Angle) wristOffset,
     (Angle) handOffset,
     (int) timeToHoldArmBack,
@@ -38,8 +37,11 @@ MODULE(ArmAnimator,
     (int) timeToPullArmIn,
     (int) timeUntilArmContactActive,
     (bool)(false) useBodyTiltForArmMovement,
-  }),
-});
+    (float)(0.005f) armFactor,
+    (Angle)(10_deg) armsAngle,
+    ((JoinedIMUData)InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+  )
+);
 
 class ArmAnimator : public ArmAnimatorBase
 {

@@ -1,0 +1,9 @@
+target_sources(${PROJECT_NAME}
+    PRIVATE
+        Cognition.cpp
+        Cognition.h
+        Debug.cpp
+        Debug.h
+        Motion.cpp
+        Motion.h
+)

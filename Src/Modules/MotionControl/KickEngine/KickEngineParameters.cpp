@@ -66,12 +66,12 @@ void KickEngineParameters::onRead()
 
 void KickEngineParameters::mirror()
 {
-  for(int phaseNumber = 0; phaseNumber < numberOfPhases - 1; phaseNumber++)
+  for (int phaseNumber = 0; phaseNumber < numberOfPhases - 1; phaseNumber++)
   {
-    for(int point = 0; point < Phase::numOfPoints; point++)
+    for (int point = 0; point < Phase::numOfPoints; point++)
     {
       // iterate over all limb translations
-      for (int limb = 0; limb < Phase::numOfLimbs; limb+=2)
+      for (int limb = 0; limb < Phase::numOfLimbs; limb += 2)
       {
         phaseParameters[phaseNumber].controlPoints[limb][point].y() *= -1;
       }
@@ -94,39 +94,29 @@ void KickEngineParameters::mirror()
 
 void KickEngineParameters::calcControlPoints()
 {
-  for(int phaseNumber = 0; phaseNumber < numberOfPhases - 1; phaseNumber++)
+  for (int phaseNumber = 0; phaseNumber < numberOfPhases - 1; phaseNumber++)
   {
-    float factor = static_cast<float>(phaseParameters[phaseNumber].duration) /
-                   static_cast<float>(phaseParameters[phaseNumber + 1].duration);
+    float factor = static_cast<float>(phaseParameters[phaseNumber].duration) / static_cast<float>(phaseParameters[phaseNumber + 1].duration);
 
-    phaseParameters[phaseNumber + 1].comTra[0] =
-      phaseParameters[phaseNumber].comTra[2] -
-      phaseParameters[phaseNumber].comTra[1];
+    phaseParameters[phaseNumber + 1].comTra[0] = phaseParameters[phaseNumber].comTra[2] - phaseParameters[phaseNumber].comTra[1];
 
     phaseParameters[phaseNumber + 1].comTra[0] *= factor;
 
-    phaseParameters[phaseNumber + 1].comTra[0] +=
-      phaseParameters[phaseNumber].comTra[2];
+    phaseParameters[phaseNumber + 1].comTra[0] += phaseParameters[phaseNumber].comTra[2];
 
-    phaseParameters[phaseNumber + 1].headTra[0] =
-      phaseParameters[phaseNumber].headTra[2] -
-      phaseParameters[phaseNumber].headTra[1];
+    phaseParameters[phaseNumber + 1].headTra[0] = phaseParameters[phaseNumber].headTra[2] - phaseParameters[phaseNumber].headTra[1];
 
     phaseParameters[phaseNumber + 1].headTra[0] *= factor;
 
-    phaseParameters[phaseNumber + 1].headTra[0] +=
-      phaseParameters[phaseNumber].headTra[2];
+    phaseParameters[phaseNumber + 1].headTra[0] += phaseParameters[phaseNumber].headTra[2];
 
-    for(int limb = 0; limb < Phase::numOfLimbs; limb++)
+    for (int limb = 0; limb < Phase::numOfLimbs; limb++)
     {
-      phaseParameters[phaseNumber + 1].controlPoints[limb][0] =
-        phaseParameters[phaseNumber].controlPoints[limb][2] -
-        phaseParameters[phaseNumber].controlPoints[limb][1];
+      phaseParameters[phaseNumber + 1].controlPoints[limb][0] = phaseParameters[phaseNumber].controlPoints[limb][2] - phaseParameters[phaseNumber].controlPoints[limb][1];
 
       phaseParameters[phaseNumber + 1].controlPoints[limb][0] *= factor;
 
-      phaseParameters[phaseNumber + 1].controlPoints[limb][0] +=
-        phaseParameters[phaseNumber].controlPoints[limb][2];
+      phaseParameters[phaseNumber + 1].controlPoints[limb][0] += phaseParameters[phaseNumber].controlPoints[limb][2];
     }
   }
 }
@@ -134,7 +124,7 @@ void KickEngineParameters::calcControlPoints()
 Vector3f KickEngineParameters::getPosition(const float& phase, const int& phaseNumber, const int& limb)
 {
   Vector3f p0, p1;
-  if(phaseNumber == 0)
+  if (phaseNumber == 0)
     p0 = p1 = phaseParameters[phaseNumber].originPos[limb];
   else
   {
@@ -151,7 +141,7 @@ Vector3f KickEngineParameters::getPosition(const float& phase, const int& phaseN
 Vector2f KickEngineParameters::getComRefPosition(const float& phase, const int& phaseNumber)
 {
   Vector2f p0, p1;
-  if(phaseNumber == 0)
+  if (phaseNumber == 0)
     p0 = p1 = phaseParameters[phaseNumber].comOriginPos;
   else
   {
@@ -168,7 +158,7 @@ Vector2f KickEngineParameters::getComRefPosition(const float& phase, const int& 
 Vector2f KickEngineParameters::getHeadRefPosition(const float& phase, const int& phaseNumber)
 {
   Vector2f p0, p1;
-  if(phaseNumber == 0)
+  if (phaseNumber == 0)
   {
     p0 = p1 = phaseParameters[phaseNumber].headOrigin;
   }
@@ -187,7 +177,7 @@ Vector2f KickEngineParameters::getHeadRefPosition(const float& phase, const int&
 void KickEngineParameters::initFirstPhase()
 {
   //this function is only called by kickView
-  if(numberOfPhases > 0)
+  if (numberOfPhases > 0)
   {
     phaseParameters[0].originPos[Phase::leftFootTra] = footOrigin;
     phaseParameters[0].originPos[Phase::rightFootTra] = Vector3f(footOrigin.x(), -footOrigin.y(), footOrigin.z());
@@ -227,7 +217,7 @@ void KickEngineParameters::initFirstPhase()
 
 void KickEngineParameters::initFirstPhase(const Vector3f* origins, const Vector2f& head)
 {
-  for(int i = 0; i < Phase::numOfLimbs; ++i)
+  for (int i = 0; i < Phase::numOfLimbs; ++i)
     phaseParameters[0].originPos[i] = origins[i];
   phaseParameters[0].comOriginPos = Vector2f::Zero();
   phaseParameters[0].comOriginOffset = Vector2f::Zero();
@@ -236,7 +226,7 @@ void KickEngineParameters::initFirstPhase(const Vector3f* origins, const Vector2
 
 void KickEngineParameters::initFirstPhaseLoop(const Vector3f* origins, const Vector2f& lastCom, const Vector2f& head)
 {
-  for(int i = 0; i < Phase::numOfLimbs; ++i)
+  for (int i = 0; i < Phase::numOfLimbs; ++i)
     phaseParameters[0].originPos[i] = origins[i];
   phaseParameters[0].comOriginPos = lastCom;
   phaseParameters[0].comOriginOffset = Vector2f::Zero();

@@ -10,6 +10,7 @@
 #include <SimRobotCore2.h>
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Configuration/UsConfiguration.h"
+#include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/CameraIntrinsics.h"
 #include "Representations/Infrastructure/CameraResolution.h"
@@ -17,7 +18,14 @@
 #include "Tools/Joints.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Math/Pose3f.h"
+#include "Tools/RingBuffer.h"
+#include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Streams/Eigen.h"
+#include <array>
+#include "Tools/Math/Probabilistics.h"
+#include "Representations/Infrastructure/GameInfo.h"
 
+struct FsrSensorData;
 struct GroundTruthWorldState;
 struct Image;
 struct ImageUpper;
@@ -42,6 +50,7 @@ private:
   SimRobot::Object* leftFoot; /**< The simulated left foot of the robot. */
   SimRobot::Object* rightFoot; /**< The simulated right foot of the robot. */
   static SimRobot::Object* ball; /**< The simulated ball. */
+  std::vector<SimRobot::Object*> balls;
   std::vector<SimRobot::Object*> blueRobots; /**< The simulated blue robots (excluding this robot). */
   std::vector<SimRobot::Object*> redRobots; /**< The simulated red robots (excluding this robot). */
 
@@ -50,14 +59,14 @@ private:
   SimRobot::Object* cameraSensor; /**< The handle to the sensor port of the selected camera. */
   SimRobot::Object* upperCameraSensor; /**< The handle to the sensor port of the upper camera. */
   SimRobot::Object* lowerCameraSensor; /**< The handle to the sensor port of the lower camera. */
-  SimRobot::Object* accSensor;    /**< The handle to the sensor port of the virtual accelerometer. */
-  SimRobot::Object* gyroSensor;   /**< The handle to the sensor port of the virtual gyrosope. */
-  SimRobot::Object* leftUsSensor;     /** The handle to the sensor port of the virtual us sensor */
-  SimRobot::Object* rightUsSensor;    /** The handle to the sensor port of the virtual us sensor */
+  SimRobot::Object* accSensor; /**< The handle to the sensor port of the virtual accelerometer. */
+  SimRobot::Object* gyroSensor; /**< The handle to the sensor port of the virtual gyrosope. */
+  SimRobot::Object* leftUsSensor; /** The handle to the sensor port of the virtual us sensor */
+  SimRobot::Object* rightUsSensor; /** The handle to the sensor port of the virtual us sensor */
   SimRobot::Object* centerLeftUsSensor; /** The handle to the sensor port of the virtual us sensor */
   SimRobot::Object* centerRightUsSensor; /** The handle to the sensor port of the virtual us sensor */
 
-  static SimRobotCore2::SensorPort* activeCameras[12]; /**< An array of all activated cameras */
+  static SimRobotCore2::SensorPort* activeCameras[MAX_NUM_PLAYERS * 2]; /**< An array of all activated cameras */
   static unsigned activeCameraCount; /**< Total count of constructed cameras */
   unsigned activeCameraIndex; /**< Index of this robot in the \c activeCameras array */
 
@@ -67,6 +76,53 @@ private:
   CameraIntrinsics cameraIntrinsics;
   CameraResolution cameraResolution;
   UsConfiguration usConfig;
+  RobotDimensions robotDimensions;
+
+  template <typename T> class JointParameters : public Streamable
+  {
+  public:
+    std::array<T, Joints::numOfJoints> joints;
+    T operator[](size_t index)
+    {
+      if (index < joints.size())
+      {
+        return joints[index];
+      }
+      return 0;
+    }
+
+  private:
+    void serialize(In* in, Out* out)
+    {
+      STREAM_REGISTER_BEGIN
+      for (int i = 0; i < Joints::numOfJoints; ++i)
+        Streaming::streamIt(in, out, Joints::getName(static_cast<Joints::Joint>(i)), joints[i], nullptr);
+      STREAM_REGISTER_FINISH
+    }
+  };
+  template <typename T> STREAMABLE(SensorParameters,,
+      (T) fsr,
+      (T) gyro,
+      (T) acc,
+      (JointParameters<T>) joints
+    );
+  SensorParameters<float> noiseParams;
+  SensorParameters<unsigned short> delayFrames;
+
+
+  /** Buffer for sensor delays */
+
+
+  RingBuffer<Vector3a> gyroDelayBuffer;
+  RingBuffer<Vector3f> accDelayBuffer;
+
+  struct fsrBufferStruct
+  {
+    RingBuffer<VectorXf> left;
+    RingBuffer<VectorXf> right;
+  } fsrDelayBuffer;
+
+  RingBuffer<float> jointDelayBuffer[Joints::numOfJoints];
 
 public:
   /** Default constructor */
@@ -139,7 +195,7 @@ public:
    * @param jointRequest The joint request to set.
    * @param jointAngles The determined joint angles.
    */
-  void getAndSetJointData(const JointRequest& jointRequest, JointSensorData& jointSensorData) const;
+  void getAndSetJointData(const JointRequest& jointRequest, JointSensorData& jointSensorData);
 
   /**
    * Sets the values off all joint actuators.
@@ -158,7 +214,7 @@ public:
    * @param usSensorData The determined usSensorData sensor data.
    * @param usRequest The request that determines which sonars are read.
    */
-  void getSensorData(InertialSensorData& inertialSensorData, UsSensorData& usSensorData, const USRequest& usRequest);
+  void getSensorData(FsrSensorData& fsrSensorData, InertialSensorData& inertialSensorData, UsSensorData& usSensorData, const USRequest& usRequest);
 
   /**
    * Moves and rotates the robot to an absolute pose

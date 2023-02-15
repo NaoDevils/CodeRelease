@@ -58,6 +58,13 @@ public:
   JPEGImage& operator=(const Image& src);
 
   /**
+   * Compress image.
+   * @param src The uncompressed image.
+   * @param quality The JPEG quality (0...100).
+   */
+  void fromImage(const Image& src, int quality = defaultQuality);
+
+  /**
    * Uncompress image.
    * @param dest Will receive the uncompressed image.
    */
@@ -66,13 +73,15 @@ public:
 private:
   //!@name Handlers for JPEG-compression
   //!@{
-  static int onDestEmpty(j_compress_ptr);
+  static boolean onDestEmpty(j_compress_ptr);
   static void onDestIgnore(j_compress_ptr);
 
   static void onSrcSkip(j_decompress_ptr cInfo, long numBytes);
-  static int onSrcEmpty(j_decompress_ptr);
+  static boolean onSrcEmpty(j_decompress_ptr);
   static void onSrcIgnore(j_decompress_ptr);
   //!@}
+
+  static constexpr int defaultQuality = 85;
 
   /**
    * Convert image from Nao's alignment (YUV422) to Aibo's alignment (one channel per line)
@@ -95,5 +104,4 @@ private:
 
 struct JPEGImageUpper : JPEGImage
 {
-
 };

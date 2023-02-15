@@ -21,14 +21,15 @@
 #include "Tools/Enum.h"
 
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <vector>
+#include "AutoStreamable.h"
 
 /**
  * The class is simple backend for the stream classes that work on
  * the "ConfigMap" format.
  */
-class SimpleMap
+class SimpleMap : public Streamable
 {
 public:
   /**< Base class for syntax tree nodes. */
@@ -36,6 +37,8 @@ public:
   {
   public:
     virtual ~Value() = default;
+    virtual bool operator==(const Value&) const = 0;
+    inline bool operator!=(const Value& that) const { return !(*this == that); }
   };
 
   /** A class representing a literal. */
@@ -47,21 +50,24 @@ public:
 
   public:
     Literal(const std::string& literal) : literal(literal) {}
-    
+
     ~Literal()
     {
-      if(stream != nullptr)
+      if (stream != nullptr)
         delete stream;
     }
 
     operator In&() const; /**< Returns a stream that can parse the literal. */
+    virtual bool operator==(const Value&) const;
   };
 
   /** A class representing a record of attributes, i.e. a mapping of names to values. */
-  class Record : public Value, public std::unordered_map<std::string, Value*>
+  class Record : public Value, public std::map<std::string, Value*>
   {
   public:
     ~Record();
+    virtual bool operator==(const Value&) const;
+    Record& operator-=(const Record&);
   };
 
   /**< A class representing an array of values, i.e. a mapping of indices to values. */
@@ -69,6 +75,7 @@ public:
   {
   public:
     ~Array();
+    virtual bool operator==(const Value&) const;
   };
 
   /**
@@ -83,26 +90,36 @@ public:
    */
   ~SimpleMap();
 
-  operator const Value*() const {return root;} /**< Returns the root of the syntax tree. 0 if parsing failed. */
+  /**
+   * Parse another stream
+   * @param stream The stream that is parsed according to the grammar given above.
+   * @param name The name of the file if the stream is a file. Used for error messages.
+   */
+  void parse(In& stream, const std::string& name = "");
+
+  operator const Value*() const { return root; } /**< Returns the root of the syntax tree. 0 if parsing failed. */
+
+  virtual void serialize(In*, Out*);
+
+  SimpleMap& operator-=(const SimpleMap& that);
 
 private:
   /** Lexicographical symbols. */
   ENUM(Symbol,
-  {,
     literal, equals,
     comma, semicolon,
     lBracket, rBracket,
     lBrace, rBrace,
-    eof,
-  });
+    eof
+  );
 
-  In& stream; /**< The stream from which is read. */
+  In* stream; /**< The stream from which is read. */
   char c; /**< The current character. 0 means EOF reached. */
   int row; /**< The current row in the stream. */
   int column; /**< The current column in the stream. */
   Symbol symbol; /**< The current lexicographical symbol. */
   std::string string; /**< The string if the current symbol is "literal". */
-  Value* root;  /**< The root of the syntax tree. 0 if parsing failed. */
+  Value* root; /**< The root of the syntax tree. 0 if parsing failed. */
 
   void nextChar(); /**< Read the next character into "c". */
   void nextSymbol(); /**< Read the next symbol into "symbol". */
@@ -114,6 +131,8 @@ private:
    * @param expected The symbol expected.
    */
   void expectSymbol(Symbol expected);
-  Record* parseRecord(); /**< Parse a record. */
+  void parseRecord(Record*& r); /**< Parse a record. */
   Array* parseArray(); /**< Parse an array. */
+
+  void serialize(In*, Out*, const SimpleMap::Value* value);
 };

@@ -11,14 +11,11 @@
 //#include "Platform/GTAssert.h"
 
 STREAMABLE(SelfLocator2017Parameters,
-{
   STREAMABLE(ProcessUpdate,
-  {
     ENUM(MeasurementModelCalculation,
-    { ,
       vector,
-      singles,
-    }),
+      singles
+    ),
 
     // Determines whether to update the coVar matrix based on odometry data
     (bool)(false) odometryBasedVarianceUpdate,
@@ -31,11 +28,10 @@ STREAMABLE(SelfLocator2017Parameters,
 
     (float)(0.15f) positionConfidenceHysteresisForKeepingBestHypothesis,
 
-    (MeasurementModelCalculation)(vector) jacobianMeasurementCalculation,
-  });
+    (MeasurementModelCalculation)(vector) jacobianMeasurementCalculation
+  );
 
-  STREAMABLE(SensorUpdate,
-  { ,
+  STREAMABLE(SensorUpdate,,
     (float)(0.08f) verticalAngleVariance,
     (float)(0.2f) horizontalAngleVariance,
     (float)(0.008f) projectiveNormalVariance,
@@ -51,40 +47,25 @@ STREAMABLE(SelfLocator2017Parameters,
     (bool)(true) use1stLevelUpdate,
     (bool)(true) use2ndLevelUpdate,
     (bool)(true) use3rdLevelUpdate,
+    (float)(-0.001f) confidencePenaltyPerFailedMatch,
 
     (float)(300.f) minLineLengthOnField, // factor 0
     (float)(0.5f) worstAngleDifference, // factor 0
     (float)(0.3f) maxDistanceError, // (expected dist / real dist) error
     (float)(1.2f) lineLengthMatchFactorMax,
-    (float)(0.75f) confidenceScaleFactorAfterFallDown,
-  });
+    (float)(0.75f) confidenceScaleFactorAfterFallDown
+  );
 
-  STREAMABLE(SymmetryUpdate,
-  { ,
+  STREAMABLE(SymmetryUpdate,,
     (bool)(true) updateWithRemoteModels,
     (float)(500.f) maxDistanceToClosestRemoteModel, // max distance between local and remote model for doing symmetry update (in mm)
     (float)(0.02f) influenceOfNewBallMeasurement, // [0..1]
     (float)(0.02f) influenceOfNewBallMeasurementByGoalie, // [0..1]
     (float)(0.02f) influenceOfNewTeammateRobotMeasurement, // [0..1]
-    (float)(0.02f) influenceOfNewOpponentRobotMeasurement, // [0..1]
-  });
+    (float)(0.02f) influenceOfNewOpponentRobotMeasurement // [0..1]
+  );
 
-  STREAMABLE(LocalizationStateUpdate,
-  {
-    // Define how to handle symmetry
-    ENUM(SymmetryHandling,
-    {,
-      // Strictly use one pose only and switch confidence to 1 - confidence when mirroring pose.
-      // Pose is mirrored when confidence below symmetryLostWhenBestConfidenceBelowThisThreshold.
-      // This ignores symmetryFoundAgainWhenBestConfidenceAboveThisThreshold.
-      noSymmetricPoses,
-      // Allow two symmetrical poses until best one hits symmetryFoundAgainWhenBestConfidenceAboveThisThreshold.
-		  // Afterwards, delete the symmetrical pose.
-		  // A symmetrical pose will spawn once the symmetry confidence is below symmetryLostWhenBestConfidenceBelowThisThreshold.
-		  // The new pose will have the same confidence as the other.
-      useThresholds,
-    }),
-    
+  STREAMABLE(LocalizationStateUpdate,,
     (bool)(false) symmetryLostWhenFallDownInCenterCircle,
     (float)(200.f) unknownSymmetryRadiusAroundCenter,
 
@@ -92,21 +73,17 @@ STREAMABLE(SelfLocator2017Parameters,
     (float)(0.5f) positionFoundAgainWhenBestConfidenceAboveThisThreshold,
 
     (float)(0.2f) symmetryLostWhenBestConfidenceBelowThisThreshold,
-    (float)(0.8f) symmetryFoundAgainWhenBestConfidenceAboveThisThreshold,
-
-    (SymmetryHandling)(useThresholds) symmetryHandling,
-  });
+    (float)(0.8f) symmetryFoundAgainWhenBestConfidenceAboveThisThreshold
+  );
 
   STREAMABLE(Spawning,
-  {
     // This is used as a flag in SelfLocator2017::addNewHypotheses
     ENUM(LandmarkBasedHypothesesSpawn,
-    { ,
       off,
       spawnIfPositionLost,
       spawnIfPositionTracking,
-      spawnIfLostOrTracking,
-    }),
+      spawnIfLostOrTracking
+    ),
 
     // Adding new Hypotheses
     (bool)(0.1f) useOdometryForSpawning,
@@ -140,36 +117,32 @@ STREAMABLE(SelfLocator2017Parameters,
     (float)(500.f) minDistanceBetweenFallDowns,
 
     // Acc Z difference/peak to consider oneself as picked up and spawn on manual positions in SET state
-    (float)(4.f) accZforPickedUpDifference,
-  });
+    (float)(4.f) accZforPickedUpDifference
+  );
 
-  STREAMABLE(Pruning,
-  { ,
+  STREAMABLE(Pruning,,
     (float)(0.5f) likelihoodTresholdForMerging,
-    (unsigned char)(12) maxNumberOfHypotheses,
-  });
+    (unsigned char)(12) maxNumberOfHypotheses
+  );
 
-  STREAMABLE(Matching,
-  { ,
+  STREAMABLE(Matching,,
     (float)(250000.f) positionVarianceForLines,
     (float)(0.25f) orientationVarianceForLines,
     (float)(0.1f) likelihoodTresholdForLines,
 
     (float)(0.3f) maxAllowedVerticalAngleDifferenceForPoints,
-    (float)(0.3f) maxAllowedHorizontalAngleDifferenceForPoints,
-  });
+    (float)(0.3f) maxAllowedHorizontalAngleDifferenceForPoints
+  );
 
-  STREAMABLE(SensorReset,
-  { ,
+  STREAMABLE(SensorReset,,
     (float)(100.f) maxDistanceForLocalResetting,
-    (float)(0.8f) maxAngleForLocalResetting,
-  });
+    (float)(0.8f) maxAngleForLocalResetting
+  );
 
-  STREAMABLE(Debugging,
-  { ,
+  STREAMABLE(Debugging,,
     (float)(5000.f) durationHighlightAddedHypothesis,
-    (bool)(false) displayWarnings,
-  });
+    (bool)(false) displayWarnings
+  );
   ,
 
   (ProcessUpdate) processUpdate,
@@ -180,16 +153,15 @@ STREAMABLE(SelfLocator2017Parameters,
   (Pruning) pruning,
   (Matching) matching,
   (SensorReset) sensorReset,
-  (Debugging) debugging,
-});
+  (Debugging) debugging
+);
 
-STREAMABLE(PositionsByRules,
-{ ,
+STREAMABLE(PositionsByRules,,
   (std::vector<Vector2f>) fieldPlayerPositionsOwnKickoff,
   (std::vector<Vector2f>) fieldPlayerPositionsOppKickoff,
-  (std::vector<float>) xOffsetPenaltyPositions,
+  (std::vector<Pose2f>) penaltyPositions,
   (Vector2f) goaliePosition,
   (Vector2f) penaltyShootoutGoaliePosition,
   (float)(0.f) penaltyShootStartingRadius,
-  (std::vector<int>) penaltyShootAngles,
-});
+  (std::vector<int>) penaltyShootAngles
+);

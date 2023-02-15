@@ -5,6 +5,8 @@
  */
 
 #include "MotionConfigurationDataProvider.h"
+#include "Tools/Debugging/DebugDrawings.h"
+#include "Platform/File.h"
 
 MAKE_MODULE(MotionConfigurationDataProvider, motionInfrastructure)
 
@@ -12,6 +14,7 @@ MotionConfigurationDataProvider::MotionConfigurationDataProvider()
 {
   readFieldDimensions();
   readJointCalibration();
+  readJointDeCalibration();
   readMassCalibration();
   readMotionSettings();
   readOdometryCorrectionTables();
@@ -20,64 +23,55 @@ MotionConfigurationDataProvider::MotionConfigurationDataProvider()
   readUsConfiguration();
 }
 
-MotionConfigurationDataProvider::~MotionConfigurationDataProvider()
-{
-  if(theFieldDimensions)
-    delete theFieldDimensions;
-  if(theJointCalibration)
-    delete theJointCalibration;
-  if(theMassCalibration)
-    delete theMassCalibration;
-  if(theMotionSettings)
-    delete theMotionSettings;
-  if(theOdometryCorrectionTables)
-    delete theOdometryCorrectionTables;
-  if(theRobotDimensions)
-    delete theRobotDimensions;
-  if(theStiffnessSettings)
-    delete theStiffnessSettings;
-  if(theUsConfiguration)
-    delete theUsConfiguration;
-}
-
 void MotionConfigurationDataProvider::update(FieldDimensions& fieldDimensions)
 {
-  if(theFieldDimensions)
+  if (theFieldDimensions)
   {
     fieldDimensions = *theFieldDimensions;
-    delete theFieldDimensions;
-    theFieldDimensions = nullptr;
+    theFieldDimensions.reset();
+  }
+
+  if ((theUSBStatus.status == USBStatus::MountStatus::readOnly || theUSBStatus.status == USBStatus::MountStatus::readWrite) && lastMountTimestamp != theUSBStatus.mountTimestamp)
+  {
+    lastMountTimestamp = theUSBStatus.mountTimestamp;
+    fieldDimensions.loadFromJsonFile(theUSBStatus.path + "/field_dimensions.json");
   }
 }
 
 void MotionConfigurationDataProvider::update(JointCalibration& jointCalibration)
 {
-  if(theJointCalibration)
+  if (theJointCalibration)
   {
     jointCalibration = *theJointCalibration;
-    delete theJointCalibration;
-    theJointCalibration = nullptr;
+    theJointCalibration.reset();
   }
   DEBUG_RESPONSE_ONCE("representation:JointCalibration:once") OUTPUT(idJointCalibration, bin, jointCalibration);
 }
 
+void MotionConfigurationDataProvider::update(JointDeCalibration& jointDeCalibration)
+{
+  if (theJointDeCalibration)
+  {
+    jointDeCalibration = *theJointDeCalibration;
+    theJointDeCalibration.reset();
+  }
+}
+
 void MotionConfigurationDataProvider::update(MassCalibration& massCalibration)
 {
-  if(theMassCalibration)
+  if (theMassCalibration)
   {
     massCalibration = *theMassCalibration;
-    delete theMassCalibration;
-    theMassCalibration = nullptr;
+    theMassCalibration.reset();
   }
 }
 
 void MotionConfigurationDataProvider::update(MotionSettings& motionSettings)
 {
-  if(theMotionSettings)
+  if (theMotionSettings)
   {
     motionSettings = *theMotionSettings;
-    delete theMotionSettings;
-    theMotionSettings = nullptr;
+    theMotionSettings.reset();
   }
 }
 
@@ -86,39 +80,35 @@ void MotionConfigurationDataProvider::update(OdometryCorrectionTables& odometryC
   if (theOdometryCorrectionTables)
   {
     odometryCorrectionTables = *theOdometryCorrectionTables;
-    delete theOdometryCorrectionTables;
-    theOdometryCorrectionTables = nullptr;
+    theOdometryCorrectionTables.reset();
   }
 }
 
 void MotionConfigurationDataProvider::update(RobotDimensions& robotDimensions)
 {
-  if(theRobotDimensions)
+  if (theRobotDimensions)
   {
     robotDimensions = *theRobotDimensions;
-    delete theRobotDimensions;
-    theRobotDimensions = nullptr;
+    theRobotDimensions.reset();
   }
   DEBUG_RESPONSE_ONCE("representation:RobotDimensions:once") OUTPUT(idRobotDimensions, bin, robotDimensions);
 }
 
 void MotionConfigurationDataProvider::update(StiffnessSettings& stiffnessSettings)
 {
-  if(theStiffnessSettings)
+  if (theStiffnessSettings)
   {
     stiffnessSettings = *theStiffnessSettings;
-    delete theStiffnessSettings;
-    theStiffnessSettings = nullptr;
+    theStiffnessSettings.reset();
   }
 }
 
 void MotionConfigurationDataProvider::update(UsConfiguration& usConfiguration)
 {
-  if(theUsConfiguration)
+  if (theUsConfiguration)
   {
     usConfiguration = *theUsConfiguration;
-    delete theUsConfiguration;
-    theUsConfiguration = nullptr;
+    theUsConfiguration.reset();
   }
 }
 
@@ -126,8 +116,11 @@ void MotionConfigurationDataProvider::readFieldDimensions()
 {
   ASSERT(!theFieldDimensions);
 
-  theFieldDimensions = new FieldDimensions;
-  theFieldDimensions->load();
+  theFieldDimensions = std::make_unique<FieldDimensions>();
+
+  // try .json first, fallback to .cfg
+  if (!theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/field_dimensions.json"))
+    theFieldDimensions->load();
 }
 
 void MotionConfigurationDataProvider::readJointCalibration()
@@ -135,10 +128,22 @@ void MotionConfigurationDataProvider::readJointCalibration()
   ASSERT(!theJointCalibration);
 
   InMapFile stream("jointCalibration.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theJointCalibration = new JointCalibration;
+    theJointCalibration = std::make_unique<JointCalibration>();
     stream >> *theJointCalibration;
+  }
+}
+
+void MotionConfigurationDataProvider::readJointDeCalibration()
+{
+  ASSERT(!theJointDeCalibration);
+
+  InMapFile stream("jointDeCalibration.cfg");
+  if (stream.exists())
+  {
+    theJointDeCalibration = std::make_unique<JointDeCalibration>();
+    stream >> *theJointDeCalibration;
   }
 }
 
@@ -147,9 +152,9 @@ void MotionConfigurationDataProvider::readMassCalibration()
   ASSERT(!theMassCalibration);
 
   InMapFile stream("massCalibration.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theMassCalibration = new MassCalibration;
+    theMassCalibration = std::make_unique<MassCalibration>();
     stream >> *theMassCalibration;
   }
 }
@@ -159,9 +164,9 @@ void MotionConfigurationDataProvider::readMotionSettings()
   ASSERT(!theMotionSettings);
 
   InMapFile stream("motionSettings.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theMotionSettings = new MotionSettings;
+    theMotionSettings = std::make_unique<MotionSettings>();
     stream >> *theMotionSettings;
   }
 }
@@ -173,7 +178,7 @@ void MotionConfigurationDataProvider::readOdometryCorrectionTables()
   InMapFile stream("odometryCorrectionTables.cfg");
   if (stream.exists())
   {
-    theOdometryCorrectionTables = new OdometryCorrectionTables;
+    theOdometryCorrectionTables = std::make_unique<OdometryCorrectionTables>();
     stream >> *theOdometryCorrectionTables;
   }
 }
@@ -183,9 +188,9 @@ void MotionConfigurationDataProvider::readRobotDimensions()
   ASSERT(!theRobotDimensions);
 
   InMapFile stream("robotDimensions.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theRobotDimensions = new RobotDimensions;
+    theRobotDimensions = std::make_unique<RobotDimensions>();
     stream >> *theRobotDimensions;
   }
 }
@@ -195,9 +200,9 @@ void MotionConfigurationDataProvider::readStiffnessSettings()
   ASSERT(!theStiffnessSettings);
 
   InMapFile stream("stiffnessSettings.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theStiffnessSettings = new StiffnessSettings;
+    theStiffnessSettings = std::make_unique<StiffnessSettings>();
     stream >> *theStiffnessSettings;
   }
 }
@@ -207,9 +212,9 @@ void MotionConfigurationDataProvider::readUsConfiguration()
   ASSERT(!theUsConfiguration);
 
   InMapFile stream("usConfiguration.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theUsConfiguration = new UsConfiguration;
+    theUsConfiguration = std::make_unique<UsConfiguration>();
     stream >> *theUsConfiguration;
   }
 }

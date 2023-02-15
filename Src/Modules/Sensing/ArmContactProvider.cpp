@@ -23,16 +23,15 @@ ArmContactProvider::ArmContactProvider()
   lastMotionType = MotionRequest::specialAction;
 }
 
-ArmContactProvider::~ArmContactProvider()
-{
-}
+ArmContactProvider::~ArmContactProvider() {}
 
 void ArmContactProvider::update(ArmContact& armContact)
 {
   // Check if lastRequest can been set and return empty armContact if not
   requestSensorDelayBuffer.push_front(theJointRequest);
-  if(requestSensorDelayBuffer.full()){
-    lastRequest = requestSensorDelayBuffer.back();
+  if (requestSensorDelayBuffer.full())
+  {
+    lastRequest = requestSensorDelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1];
   }
   else
   {
@@ -54,11 +53,9 @@ void ArmContactProvider::update(ArmContact& armContact)
     lastMotionType = MotionRequest::specialAction; // whatever
 
   // Only when in standard walk (not in kicking, not in special actions etc)
-  if (enableAvoidArmContact && (theGameInfo.state == STATE_READY || theGameInfo.state == STATE_PLAYING) &&
-    lastMotionType == MotionRequest::walk &&
-    theFrameInfo.getTimeSince(timeWhenWalkStarted) > 2000 && // a little time to get started here to not move arms immediately on walk start
-    theFallDownState.state == FallDownState::upright &&
-      Global::getSettings().gameMode != Settings::penaltyShootout) // no robots to contact in penalty shootout
+  if (enableAvoidArmContact && (theGameInfo.state == STATE_READY || theGameInfo.state == STATE_PLAYING) && lastMotionType == MotionRequest::walk
+      && theFrameInfo.getTimeSince(timeWhenWalkStarted) > 2000 && // a little time to get started here to not move arms immediately on walk start
+      theFallDownState.state == FallDownState::upright && Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT) // no robots to contact in penalty shootout
   {
     bool wasContactLeft = localArmContact.armContactStateLeft != ArmContact::ArmContactState::None;
     bool wasContactRight = localArmContact.armContactStateRight != ArmContact::ArmContactState::None;
@@ -109,19 +106,20 @@ void ArmContactProvider::update(ArmContact& armContact)
     }
 
     // avoid contact via robot map
+    // ball chaser in fight for ball excluded if target between
     if (useRobotMap)
     {
-      for (auto &robot : theRobotMap.robots)
+      for (auto& robot : theRobotMap.robots)
       {
         Vector2f robotRelative = Transformation::fieldToRobot(theRobotPose, robot.pose.translation);
         Angle robotRelativeAngle = robotRelative.angle();
         float robotDist = robotRelative.norm();
         //float ballDist = theBallModelAfterPreview.estimate.position.norm();
-        Angle maxAngle = (wasContactLeft || wasContactRight) ? 150_deg : 120_deg;
-        Angle minAngle = (wasContactLeft || wasContactRight) ? 30_deg : 45_deg;
+        Angle maxAngle = (wasContactLeft || wasContactRight) ? maxAngleToRobot : static_cast<Angle>(maxAngleToRobot - 30_deg);
+        Angle minAngle = (wasContactLeft || wasContactRight) ? minAngleToRobot : static_cast<Angle>(minAngleToRobot + 30_deg);
         float maxDist = (wasContactLeft || wasContactRight) ? maxRobotDist + 150.f : maxRobotDist;
-        if (std::abs(robotRelativeAngle) < maxAngle && std::abs(robotRelativeAngle) > minAngle
-          && robotDist < maxDist)
+        if (std::abs(robotRelativeAngle) < maxAngle && std::abs(robotRelativeAngle) > minAngle && robotDist < maxDist
+            && !(theRoleSymbols.role == BehaviorData::ballchaser && theBallSymbols.ballPositionField.x() > robot.pose.translation.x()))
         {
           obstacleLeft = obstacleLeft || robotRelativeAngle > 0;
           obstacleRight = obstacleRight || robotRelativeAngle < 0;
@@ -159,8 +157,8 @@ void ArmContactProvider::update(ArmContact& armContact)
   }
 
   // if robot might fall down, put arm back to side
-  float fallDownAngle = falling ? 0.25f : 0.35f;
-  falling = (std::abs(theInertialSensorData.angle.y()) > fallDownAngle);
+  Angle fallDownAngle = falling ? 14_deg : 20_deg;
+  falling = (std::abs(theJoinedIMUData.imuData[anglesource].angle.y()) > fallDownAngle);
 
   if (falling)
   {
@@ -169,7 +167,7 @@ void ArmContactProvider::update(ArmContact& armContact)
   }
   else if (bothArmsBack)
   {
-    if (localArmContact.armContactStateLeft == ArmContact::None && localArmContact.armContactStateRight != ArmContact::None) 
+    if (localArmContact.armContactStateLeft == ArmContact::None && localArmContact.armContactStateRight != ArmContact::None)
     {
       localArmContact.armContactStateLeft = localArmContact.armContactStateRight;
     }
@@ -179,8 +177,8 @@ void ArmContactProvider::update(ArmContact& armContact)
     }
   }
 
-  PLOT("module:ArmContactProvider:bufferLeft", bufferLeft.sum());
-  PLOT("module:ArmContactProvider:bufferRight", bufferRight.sum());
+  PLOT("module:ArmContactProvider:bufferLeft", toDegrees(bufferLeft.sum()));
+  PLOT("module:ArmContactProvider:bufferRight", toDegrees(bufferRight.sum()));
 
   lastPitchLeft = theJointRequest.angles[Joints::lShoulderPitch];
   lastPitchRight = theJointRequest.angles[Joints::rShoulderPitch];

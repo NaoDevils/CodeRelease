@@ -6,30 +6,27 @@
 
 #pragma once
 
+#include "Tools/Module/Module.h"
+
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/StandEngineOutput.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/JointAngles.h"
 #include "Representations/Infrastructure/JointRequest.h"
-#include "Representations/Sensing/InertialData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Tools/MessageQueue/InMessage.h"
-#include "Tools/Module/Module.h"
 
 MODULE(StandEngine,
-{ ,
   REQUIRES(FrameInfo),
-  REQUIRES(JointAngles),
   REQUIRES(MotionSelection),
   REQUIRES(StiffnessSettings),
-  REQUIRES(InertialSensorData),
+  REQUIRES(JoinedIMUData),
   REQUIRES(FsrSensorData),
   REQUIRES(RobotInfo),
   REQUIRES(MotionRequest),
   PROVIDES(StandEngineOutput),
-  LOADS_PARAMETERS(
-  { ,
+  LOADS_PARAMETERS(,
     (Angle) targetAngle,
     (Angle) targetAngleDeviation,
     (Angle) targetAngleDeviationNoStiffness,
@@ -42,8 +39,9 @@ MODULE(StandEngine,
     (Angle[Joints::numOfJoints]) jointAngles,
     (int[Joints::numOfJoints]) defaultStiffnesses,
     (int[Joints::numOfJoints]) lowStiffnesses,
-  }),
-});
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+  )
+);
 
 class StandEngine : public StandEngineBase
 {
@@ -62,7 +60,8 @@ private:
 
 public:
   /*
-  * Default constructor.
+  * Default constructor & destructor.
   */
   StandEngine();
+  ~StandEngine();
 };

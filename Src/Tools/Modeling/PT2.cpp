@@ -9,14 +9,10 @@
 #include <cmath>
 #include "Platform/BHAssert.h"
 
-PT2::PT2(float T, float D, float K, float initialPosition,
-         float initialVelocity, float maxVelocity) :
-  x(T * initialVelocity),
-  y(initialPosition),
-  yd(initialVelocity),
-  T(T), D(D), K(K),
-  V(maxVelocity)
-{}
+PT2::PT2(float T, float D, float K, float initialPosition, float initialVelocity, float maxVelocity)
+    : x(T * initialVelocity), y(initialPosition), yd(initialVelocity), T(T), D(D), K(K), V(maxVelocity)
+{
+}
 
 void PT2::initialize(const float initialPosition, const float initialVelocity)
 {
@@ -50,8 +46,8 @@ void PT2::step(const float goal, const float dt)
   const float dy = std::fmin(dt / T * x, maxVel);
   const float dx = dt / T * (K * goal - y - 2 * D * x);
   x += dx;
-  yd = std::fmin(x / T, V);//convert x to velocity and limit it
-  x = yd * T;//convert limited velocity back to x to limit x as well
+  yd = std::fmin(x / T, V); //convert x to velocity and limit it
+  x = yd * T; //convert limited velocity back to x to limit x as well
   y += dy;
   ydd = (yd - oldYd) / dt;
 }

@@ -1,13 +1,13 @@
 /**
-* @file SimObjectWidget.h
-* Declaration of class SimObjectWidget
-* @author Colin Graf
-*/
+ * @file SimObjectWidget.h
+ * Declaration of class SimObjectWidget
+ * @author Colin Graf
+ */
 
 #pragma once
 
 #include "Platform/OpenGL.h"
-#include <QGLWidget>
+#include <QOpenGLWidget>
 
 #include "SimRobotCore2.h"
 #include "SimObjectRenderer.h"
@@ -17,48 +17,49 @@ class SimObject;
 class Simulation;
 
 /**
-* @class SimObjectWidget
-* A class that implements the 3D-view for simulated objects
-*/
-class SimObjectWidget : public QGLWidget, public SimRobot::Widget
+ * @class SimObjectWidget
+ * A class that implements the 3D-view for simulated objects
+ */
+class SimObjectWidget : public QOpenGLWidget, public SimRobot::Widget
 {
   Q_OBJECT
 
 public:
   /**
-  * Constructor
-  * @param simObject The object that should be displayed
-  */
+   * Constructor
+   * @param simObject The object that should be displayed
+   */
   SimObjectWidget(SimObject& simObject);
 
   /** Destructor */
-  virtual ~SimObjectWidget();
+  ~SimObjectWidget();
+
+  virtual void saveLayout() override;
 
 private:
   const SimRobot::Object& object; /**< The object that should be displayed */
   SimObjectRenderer objectRenderer; /**< For rendering the object */
   int fovy;
 
-  bool wkey, akey, skey, dkey;
+  bool wkey, akey, skey, dkey, midbut;
 
-  virtual QWidget* getWidget() {return this;}
-  virtual void update();
-  virtual QMenu* createEditMenu() const;
-  virtual QMenu* createUserMenu() const;
+  QWidget* getWidget() override { return this; }
+  void update() override;
+  QMenu* createEditMenu() const override;
+  QMenu* createUserMenu() const override;
 
-  virtual void initializeGL();
-  virtual void paintGL();
-  virtual void resizeGL(int width, int height);
-  virtual void paintEvent(QPaintEvent* event);
-  virtual void mouseMoveEvent(QMouseEvent* event);
-  virtual void mouseReleaseEvent(QMouseEvent* event);
-  virtual void mousePressEvent(QMouseEvent* event);
-  virtual void mouseDoubleClickEvent(QMouseEvent* event);
-  virtual void keyPressEvent(QKeyEvent* event);
-  virtual void keyReleaseEvent(QKeyEvent* event);
-  virtual bool event(QEvent* event);
-  virtual void wheelEvent(QWheelEvent* event);
-  virtual QSize sizeHint() const {return QSize(320, 240);}
+  void initializeGL() override;
+  void paintGL() override;
+  void resizeGL(int width, int height) override;
+  void mouseMoveEvent(QMouseEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override;
+  void mousePressEvent(QMouseEvent* event) override;
+  void mouseDoubleClickEvent(QMouseEvent* event) override;
+  void keyPressEvent(QKeyEvent* event) override;
+  void keyReleaseEvent(QKeyEvent* event) override;
+  bool event(QEvent* event) override;
+  void wheelEvent(QWheelEvent* event) override;
+  QSize sizeHint() const override { return QSize(320, 240); }
 
 private slots:
   void copy();

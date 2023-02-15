@@ -5,20 +5,15 @@
 #include "Tools/Streams/OutStreams.h"
 #include "Utils/dorsh/models/Team.h"
 #include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/ui/TeamSelector.h"
 #include "Utils/dorsh/ui/TeamView.h"
 #include "Utils/dorsh/ui/RobotView.h"
 
-TeamSelector::TeamSelector()
-  : teams(),
-    teamsMap(),
-    teamPages(),
-    teamViews()
+TeamSelector::TeamSelector() : teams(), teamsMap(), teamPages(), teamViews()
 {
   static const size_t NUM_PLAYERS = 12; //due to F1..F12 keys and two rows with 1-6 players
   selectActions.reserve(NUM_PLAYERS);
-  for(int i = 0; i < (int) NUM_PLAYERS; ++i)
+  for (int i = 0; i < (int)NUM_PLAYERS; ++i)
   {
     QAction* a = new QAction(this);
     a->setShortcut(QKeySequence(Qt::Key_F1 + i));
@@ -27,28 +22,28 @@ TeamSelector::TeamSelector()
     selectActions.push_back(a);
   }
 
-  QAction *aNext = new QAction(this);
-  aNext->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageDown));
+  QAction* aNext = new QAction(this);
+  aNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
   addAction(aNext);
   connect(aNext, SIGNAL(triggered()), this, SLOT(selectNext()));
 
-  QAction *aPrev = new QAction(this);
-  aPrev->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_PageUp));
+  QAction* aPrev = new QAction(this);
+  aPrev->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
   addAction(aPrev);
   connect(aPrev, SIGNAL(triggered()), this, SLOT(selectPrev()));
 
   QAction* aMulti = new QAction(this);
-  aMulti->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_U));
+  aMulti->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_U));
   addAction(aMulti);
   connect(aMulti, SIGNAL(triggered()), this, SLOT(selectUpperRow()));
 
   QAction* bMulti = new QAction(this);
-  bMulti->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
+  bMulti->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_L));
   addAction(bMulti);
   connect(bMulti, SIGNAL(triggered()), this, SLOT(selectLowerRow()));
 
   QAction* reload = new QAction(this);
-  reload->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
+  reload->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
   addAction(reload);
   connect(reload, SIGNAL(triggered()), this, SLOT(reloadTeam()));
 
@@ -56,68 +51,64 @@ TeamSelector::TeamSelector()
   lowerRowSelected = false;
 }
 
-void TeamSelector::addTeam(Team* team)
+
+void TeamSelector::addTeam(const Team& team)
 {
-  teams.push_back(team);
-  teamsMap[team->number] = team;
-  std::map<unsigned short, int>::iterator i = teamPages.find(team->number);
-  TeamView* teamPage = new TeamView(this, team);
+  teams.push_back(std::make_unique<Team>(team));
+  teamsMap[team.number] = teams.back().get();
+  std::map<unsigned short, int>::iterator i = teamPages.find(team.number);
+  TeamView* teamPage = new TeamView(this, teams.back().get());
   int index = -1;
-  if(i != teamPages.end())
+  if (i != teamPages.end())
   {
     index = i->second;
     QWidget* oldPage = widget(index);
     removeTab(index);
     oldPage->deleteLater();
-    insertTab(index, teamPage, fromString("Team: " + team->name));
+    insertTab(index, teamPage, QString::fromStdString("Team: " + team.name));
   }
   else
   {
-    index = addTab(teamPage, fromString("Team: " + team->name));
+    index = addTab(teamPage, QString::fromStdString("Team: " + team.name));
   }
-  teamViews[team->number] = teamPage;
-  teamPages[team->number] = index;
+  teamViews[team.number] = teamPage;
+  teamPages[team.number] = index;
 }
 
-void TeamSelector::removeTeam(Team* team)
+void TeamSelector::removeTeam(unsigned short number)
 {
-  std::map<unsigned short, int>::iterator pageIndexIter = teamPages.find(team->number);
-  if(pageIndexIter != teamPages.end())
+  std::map<unsigned short, int>::iterator pageIndexIter = teamPages.find(number);
+  if (pageIndexIter != teamPages.end())
   {
     removeTab(pageIndexIter->second);
     teamPages.erase(pageIndexIter);
   }
-  std::map<unsigned short, TeamView*>::iterator viewIndexIter = teamViews.find(team->number);
-  if(viewIndexIter != teamViews.end())
+  std::map<unsigned short, TeamView*>::iterator viewIndexIter = teamViews.find(number);
+  if (viewIndexIter != teamViews.end())
   {
     viewIndexIter->second->deleteLater();
     teamViews.erase(viewIndexIter);
   }
-  teamsMap.erase(team->number);
-  for(size_t i = 0; i < teams.size(); ++i)
+  teamsMap.erase(number);
+  for (auto it = teams.begin(); it != teams.end(); ++it)
   {
-    Team* t = teams[i];
-    if(t->name == team->name)
-    {
-      teams.erase(teams.begin() + i);
-      delete t;
-    }
+    if ((*it)->number == number)
+      it = teams.erase(it);
   }
-  // do not use team from here since it can be invalid
 }
 
 Team* TeamSelector::getSelectedTeam() const
 {
-  if(!teams.size())
+  if (!teams.size())
     return 0;
   int i = currentIndex();
-  return teams[i >= 0 ? i : 0];
+  return teams[i >= 0 ? i : 0].get();
 }
 
 std::vector<RobotConfigDorsh*> TeamSelector::getSelectedRobots() const
 {
   Team* selectedTeam = getSelectedTeam();
-  if(selectedTeam)
+  if (selectedTeam)
     return selectedTeam->getSelectedPlayers();
   else
   {
@@ -128,25 +119,25 @@ std::vector<RobotConfigDorsh*> TeamSelector::getSelectedRobots() const
 
 void TeamSelector::loadTeams(const QString& filename, bool overwrite)
 {
-  if(overwrite)
+  if (overwrite)
   {
     size_t teamCount = teams.size();
-    for(size_t i = 0; i < teamCount; ++i)
-      removeTeam(teams[i]);
+    for (size_t i = 0; i < teamCount; ++i)
+      removeTeam(teams[i]->number);
   }
 
-  std::vector<Team> loadedTeams = Team::getTeams(toString(filename));
-  for(size_t i = 0; i < loadedTeams.size(); ++i)
-    addTeam(new Team(loadedTeams[i]));
+  std::vector<Team> loadedTeams = Team::getTeams(filename.toStdString());
+  for (size_t i = 0; i < loadedTeams.size(); ++i)
+    addTeam(loadedTeams[i]);
 }
 
 void TeamSelector::saveTeams(const QString& filename)
 {
   std::vector<Team> _teams;
   _teams.reserve(teams.size());
-  for(size_t i = 0; i < teams.size(); ++i)
+  for (size_t i = 0; i < teams.size(); ++i)
     _teams.push_back(*teams[i]);
-  OutMapFile stream(toString(filename));
+  OutMapFile stream(filename.toStdString());
   Team::writeTeams(stream, _teams);
 }
 
@@ -158,14 +149,14 @@ void TeamSelector::saveTeams()
 void TeamSelector::selectPlayer()
 {
   QObject* s = sender();
-  if(!s)
+  if (!s)
     return;
   int number = -1;
-  for(int i = 0; i < (int) selectActions.size(); ++i)
-    if(selectActions[i] == s)
+  for (int i = 0; i < (int)selectActions.size(); ++i)
+    if (selectActions[i] == s)
       number = i;
 
-  if(number >= 0)
+  if (number >= 0)
   {
     Team* t = getSelectedTeam();
     t->setSelectPlayer(number, !t->isPlayerSelected(number));
@@ -212,17 +203,16 @@ void TeamSelector::multiSelectPlayer(bool upperRow)
     upperRowSelected = !upperRowSelected;
   else
     lowerRowSelected = !lowerRowSelected;
-  
 }
 
 void TeamSelector::selectNext()
 {
-  if(currentIndex() + 1 < count())
+  if (currentIndex() + 1 < count())
     setCurrentIndex(currentIndex() + 1);
 }
 
 void TeamSelector::selectPrev()
 {
-  if(currentIndex() > 0)
+  if (currentIndex() > 0)
     setCurrentIndex(currentIndex() - 1);
 }

@@ -24,26 +24,26 @@ void SimObject::addParent(Element& parent)
 
 SimObject::~SimObject()
 {
-  if(translation)
+  if (translation)
     delete translation;
-  if(rotation)
+  if (rotation)
     delete rotation;
 }
 
 void SimObject::registerObjects()
 {
-  for(std::list<SimObject*>::const_iterator iter = children.begin(), end = children.end(); iter != end; ++iter)
+  for (std::list<SimObject*>::const_iterator iter = children.begin(), end = children.end(); iter != end; ++iter)
   {
     SimObject* simObject = *iter;
-    if(simObject->name.empty())
+    if (simObject->name.empty())
     {
       const char* typeName = typeid(*simObject).name();
 #ifdef __GNUC__
-      while(isdigit(*typeName))
+      while (isdigit(*typeName))
         ++typeName;
 #else
       const char* str = strchr(typeName, ' ');
-      if(str)
+      if (str)
         typeName = str + 1;
 #endif
       simObject->fullName = fullName + "." + typeName;

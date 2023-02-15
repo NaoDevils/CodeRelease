@@ -22,11 +22,9 @@
 
 Simulation* Simulation::simulation = 0;
 
-Simulation::Simulation() : scene(0), physicalWorld(0), rootSpace(0), staticSpace(0), movableSpace(0),
-  currentFrameRate(0),
-  simulationStep(0), simulatedTime(0), collisions(0), contactPoints(0),
-  contactGroup(0),
-  lastFrameRateComputationTime(0), lastFrameRateComputationStep(0)
+Simulation::Simulation()
+    : scene(0), physicalWorld(0), rootSpace(0), staticSpace(0), movableSpace(0), currentFrameRate(0), simulationStep(0), simulatedTime(0), collisions(0), contactPoints(0),
+      contactGroup(0), lastFrameRateComputationTime(0), lastFrameRateComputationStep(0)
 {
   ASSERT(simulation == 0);
   simulation = this;
@@ -34,14 +32,14 @@ Simulation::Simulation() : scene(0), physicalWorld(0), rootSpace(0), staticSpace
 
 Simulation::~Simulation()
 {
-  for(std::list<Element*>::const_iterator iter = elements.begin(), end = elements.end(); iter != end; ++iter)
+  for (std::list<Element*>::const_iterator iter = elements.begin(), end = elements.end(); iter != end; ++iter)
     delete *iter;
 
-  if(contactGroup)
+  if (contactGroup)
     dJointGroupDestroy(contactGroup);
-  if(rootSpace)
+  if (rootSpace)
     dSpaceDestroy(rootSpace);
-  if(physicalWorld)
+  if (physicalWorld)
   {
 #ifdef MULTI_THREADING
     dThreadingImplementationShutdownProcessing(threading);
@@ -63,7 +61,7 @@ bool Simulation::loadFile(const std::string& filename, std::list<std::string>& e
   ASSERT(scene == 0);
 
   Parser parser;
-  if(!parser.parse(filename, errors))
+  if (!parser.parse(filename, errors))
     return false;
 
   ASSERT(scene);
@@ -76,11 +74,11 @@ bool Simulation::loadFile(const std::string& filename, std::list<std::string>& e
   contactGroup = dJointGroupCreate(0);
 
   dWorldSetGravity(physicalWorld, 0, 0, scene->gravity);
-  if(scene->erp != -1.f)
+  if (scene->erp != -1.f)
     dWorldSetERP(physicalWorld, scene->erp);
-  if(scene->cfm != -1.f)
+  if (scene->cfm != -1.f)
     dWorldSetCFM(physicalWorld, scene->cfm);
-  if(scene->quickSolverIterations != -1)
+  if (scene->quickSolverIterations != -1)
     dWorldSetQuickStepNumIterations(physicalWorld, scene->quickSolverIterations);
 #ifdef MULTI_THREADING
   threading = dThreadingAllocateMultiThreadedImplementation();
@@ -105,11 +103,11 @@ void Simulation::doSimulationStep()
 
   collisions = contactPoints = 0;
 
-  dSpaceCollide2((dGeomID)staticSpace, (dGeomID)movableSpace, this, (dNearCallback*)&staticCollisionWithSpaceCallback);
-  if(scene->detectBodyCollisions)
-    dSpaceCollide(movableSpace, this, (dNearCallback*)&staticCollisionSpaceWithSpaceCallback);
+  dSpaceCollide2(reinterpret_cast<dGeomID>(staticSpace), reinterpret_cast<dGeomID>(movableSpace), this, reinterpret_cast<dNearCallback*>(&staticCollisionWithSpaceCallback));
+  if (scene->detectBodyCollisions)
+    dSpaceCollide(movableSpace, this, reinterpret_cast<dNearCallback*>(&staticCollisionSpaceWithSpaceCallback));
 
-  if(scene->useQuickSolver && (simulationStep % scene->quickSolverSkip) == 0)
+  if (scene->useQuickSolver && (simulationStep % scene->quickSolverSkip) == 0)
     dWorldQuickStep(physicalWorld, scene->stepLength);
   else
     dWorldStep(physicalWorld, scene->stepLength);
@@ -122,14 +120,14 @@ void Simulation::staticCollisionWithSpaceCallback(Simulation* simulation, dGeomI
 {
   ASSERT(!dGeomIsSpace(geomId1));
   ASSERT(dGeomIsSpace(geomId2));
-  dSpaceCollide2(geomId1, geomId2, simulation, (dNearCallback*)&staticCollisionCallback);
+  dSpaceCollide2(geomId1, geomId2, simulation, reinterpret_cast<dNearCallback*>(&staticCollisionCallback));
 }
 
 void Simulation::staticCollisionSpaceWithSpaceCallback(Simulation* simulation, dGeomID geomId1, dGeomID geomId2)
 {
   ASSERT(dGeomIsSpace(geomId1));
   ASSERT(dGeomIsSpace(geomId2));
-  dSpaceCollide2(geomId1, geomId2, simulation, (dNearCallback*)&staticCollisionCallback);
+  dSpaceCollide2(geomId1, geomId2, simulation, reinterpret_cast<dNearCallback*>(&staticCollisionCallback));
 }
 
 void Simulation::staticCollisionCallback(Simulation* simulation, dGeomID geomId1, dGeomID geomId2)
@@ -143,32 +141,32 @@ void Simulation::staticCollisionCallback(Simulation* simulation, dGeomID geomId1
     dBodyID bodyId2 = dGeomGetBody(geomId2);
     ASSERT(bodyId1 || bodyId2);
 
-    Body* body1 = bodyId1 ? (Body*)dBodyGetData(bodyId1) : 0;
-    Body* body2 = bodyId2 ? (Body*)dBodyGetData(bodyId2) : 0;
+    Body* body1 = bodyId1 ? static_cast<Body*>(dBodyGetData(bodyId1)) : 0;
+    Body* body2 = bodyId2 ? static_cast<Body*>(dBodyGetData(bodyId2)) : 0;
     ASSERT(!body1 || !body2 || body1->rootBody != body2->rootBody);
   }
 #endif
 
   dContact contact[32];
   int collisions = dCollide(geomId1, geomId2, 32, &contact[0].geom, sizeof(dContact));
-  if(collisions <= 0)
+  if (collisions <= 0)
     return;
 
-  Geometry* geometry1 = (Geometry*)dGeomGetData(geomId1);
-  Geometry* geometry2 = (Geometry*)dGeomGetData(geomId2);
+  Geometry* geometry1 = static_cast<Geometry*>(dGeomGetData(geomId1));
+  Geometry* geometry2 = static_cast<Geometry*>(dGeomGetData(geomId2));
 
-  if(geometry1->collisionCallbacks && !geometry2->immaterial)
+  if (geometry1->collisionCallbacks && !geometry2->immaterial)
   {
-    for(std::list<SimRobotCore2::CollisionCallback*>::iterator i = geometry1->collisionCallbacks->begin(), end = geometry1->collisionCallbacks->end(); i != end; ++i)
+    for (std::list<SimRobotCore2::CollisionCallback*>::iterator i = geometry1->collisionCallbacks->begin(), end = geometry1->collisionCallbacks->end(); i != end; ++i)
       (*i)->collided(*geometry1, *geometry2);
-    if(geometry1->immaterial)
+    if (geometry1->immaterial)
       return;
   }
-  if(geometry2->collisionCallbacks && !geometry1->immaterial)
+  if (geometry2->collisionCallbacks && !geometry1->immaterial)
   {
-    for(std::list<SimRobotCore2::CollisionCallback*>::iterator i = geometry2->collisionCallbacks->begin(), end = geometry2->collisionCallbacks->end(); i != end; ++i)
+    for (std::list<SimRobotCore2::CollisionCallback*>::iterator i = geometry2->collisionCallbacks->begin(), end = geometry2->collisionCallbacks->end(); i != end; ++i)
       (*i)->collided(*geometry2, *geometry1);
-    if(geometry2->immaterial)
+    if (geometry2->immaterial)
       return;
   }
 
@@ -177,47 +175,47 @@ void Simulation::staticCollisionCallback(Simulation* simulation, dGeomID geomId1
   ASSERT(bodyId1 || bodyId2);
 
   float friction = 1.f;
-  if(geometry1->material && geometry2->material)
+  if (geometry1->material && geometry2->material)
   {
-    if(!geometry1->material->getFriction(*geometry2->material, friction))
+    if (!geometry1->material->getFriction(*geometry2->material, friction))
       friction = 1.f;
 
     float rollingFriction;
-    if(bodyId1)
-      switch(dGeomGetClass(geomId1))
+    if (bodyId1)
+      switch (dGeomGetClass(geomId1))
       {
-        case dSphereClass:
-        case dCCylinderClass:
-        case dCylinderClass:
-          if(geometry1->material->getRollingFriction(*geometry2->material, rollingFriction))
-          {
-            dBodySetAngularDamping(bodyId1, 0.2);
-            Vector3<> linearVel;
-            ODETools::convertVector(dBodyGetLinearVel(bodyId1), linearVel);
-            linearVel -= Vector3<>(linearVel).normalize(std::min(linearVel.abs(), rollingFriction * simulation->scene->stepLength));
-            dBodySetLinearVel(bodyId1, linearVel.x, linearVel.y, linearVel.z);
-          }
-          break;
+      case dSphereClass:
+      case dCCylinderClass:
+      case dCylinderClass:
+        if (geometry1->material->getRollingFriction(*geometry2->material, rollingFriction))
+        {
+          dBodySetAngularDamping(bodyId1, 0.2f);
+          Vector3f linearVel;
+          ODETools::convertVector(dBodyGetLinearVel(bodyId1), linearVel);
+          linearVel -= linearVel.normalized(std::min(linearVel.norm(), rollingFriction * simulation->scene->stepLength));
+          dBodySetLinearVel(bodyId1, linearVel.x(), linearVel.y(), linearVel.z());
+        }
+        break;
       }
-    if(bodyId2)
-      switch(dGeomGetClass(geomId2))
+    if (bodyId2)
+      switch (dGeomGetClass(geomId2))
       {
-        case dSphereClass:
-        case dCCylinderClass:
-        case dCylinderClass:
-          if(geometry2->material->getRollingFriction(*geometry1->material, rollingFriction))
-          {
-            dBodySetAngularDamping(bodyId2, 0.2);
-            Vector3<> linearVel;
-            ODETools::convertVector(dBodyGetLinearVel(bodyId2), linearVel);
-            linearVel -= Vector3<>(linearVel).normalize(std::min(linearVel.abs(), rollingFriction * simulation->scene->stepLength));
-            dBodySetLinearVel(bodyId2, linearVel.x, linearVel.y, linearVel.z);
-          }
-          break;
+      case dSphereClass:
+      case dCCylinderClass:
+      case dCylinderClass:
+        if (geometry2->material->getRollingFriction(*geometry1->material, rollingFriction))
+        {
+          dBodySetAngularDamping(bodyId2, 0.2f);
+          Vector3f linearVel;
+          ODETools::convertVector(dBodyGetLinearVel(bodyId2), linearVel);
+          linearVel -= linearVel.normalized(std::min(linearVel.norm(), rollingFriction * simulation->scene->stepLength));
+          dBodySetLinearVel(bodyId2, linearVel.x(), linearVel.y(), linearVel.z());
+        }
+        break;
       }
   }
 
-  for(dContact* cont = contact, * end = contact + collisions; cont < end; ++cont)
+  for (dContact *cont = contact, *end = contact + collisions; cont < end; ++cont)
   {
     cont->surface.mode = simulation->scene->contactMode | dContactApprox1;
     cont->surface.mu = friction;
@@ -245,7 +243,7 @@ void Simulation::updateFrameRate()
   unsigned int currentTime = System::getTime();
   unsigned int timeDiff = currentTime - lastFrameRateComputationTime;
   //Only update frame rate once in two seconds
-  if(timeDiff > 2000)
+  if (timeDiff > 2000)
   {
     float frameRate = float(simulationStep - lastFrameRateComputationStep) / (float(timeDiff) * 0.001f);
     currentFrameRate = int(frameRate + 0.5f);

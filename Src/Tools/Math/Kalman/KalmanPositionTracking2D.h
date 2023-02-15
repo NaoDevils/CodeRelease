@@ -25,8 +25,7 @@
  * The template parameter V defines only the data type of the kalman filter. All
  * input and output (e.g. position and velocity) is done with data type \c float.
  */
-template <class V = double>
-class KalmanPositionTracking2D : public KalmanMultiDimensional<V, 4, 2, 2>
+template <class V = double> class KalmanPositionTracking2D : public KalmanMultiDimensional<V, 4, 2, 2>
 {
 private:
   /** Measurement matrix for the special case of a 4-dimensional measurement.
@@ -64,10 +63,10 @@ public:
   /** Same as position().y
    * \return The y-coordinate of the position extracted from the state (in mm). */
   float positionY() const { return static_cast<float>(this->state(1)); }
-  
+
   /** \return The position part of the covariance matrix (in mm^2). */
   Matrix2f positionCovariance() const { return this->covarianceMatrix.topLeftCorner(2, 2).template cast<float>(); }
-  
+
   /** \return The velocity extracted from the state (in mm/s). */
   Vector2f velocity() const { return Vector2f(static_cast<float>(this->state(2)), static_cast<float>(this->state(3))); }
   /** Same as \c velocity().x
@@ -87,42 +86,31 @@ public:
    * \param covarianceMatrix The initial variance matrix.
    * \param kalmanNoiseMatrices Fix matrices of the kalman filter.
    */
-  void initialize(const Vector2f& position, const Vector2f& velocity, const Eigen::Matrix<V, 4, 4>& covarianceMatrix,
-                  const typename KalmanMultiDimensional<V, 4, 2, 2>::KalmanMatrices::Noise& kalmanNoiseMatrices)
+  void initialize(const Vector2f& position, const Vector2f& velocity, const Eigen::Matrix<V, 4, 4>& covarianceMatrix, const typename KalmanMultiDimensional<V, 4, 2, 2>::KalmanMatrices::Noise& kalmanNoiseMatrices)
   {
-	  // Initialize the base class with given state (x) and covariance matrix (P):
-	  Eigen::Matrix<V, 4, 1> state;
-	  state << position.x(), position.y(), velocity.x(), velocity.y();
-	  KalmanMultiDimensional<V, 4, 2, 2>::initialize(state, covarianceMatrix);
+    // Initialize the base class with given state (x) and covariance matrix (P):
+    Eigen::Matrix<V, 4, 1> state;
+    state << position.x(), position.y(), velocity.x(), velocity.y();
+    KalmanMultiDimensional<V, 4, 2, 2>::initialize(state, covarianceMatrix);
 
 
     // Fill all matrices of the underlying kalman filter.
 
     // The system matrix (A):
     // Add the last velocity (in mm/s) to the new position (in mm).
-    KalmanMultiDimensional<V, 4, 2, 2>::matrices.systemMatrix <<
-      1.0, 0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0, 1.0,
-      0.0, 0.0, 1.0, 0.0,
-      0.0, 0.0, 0.0, 1.0;
+    KalmanMultiDimensional<V, 4, 2, 2>::matrices.systemMatrix << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0;
 
     // The input matrix (B):
-    // Set input as velocity change. Add it to the velocity part of the 
+    // Set input as velocity change. Add it to the velocity part of the
     // state vector.
-    KalmanMultiDimensional<V, 4, 2, 2>::matrices.inputMatrix <<
-      0.0, 0.0,
-      0.0, 0.0,
-      1.0, 0.0,
-      0.0, 1.0;
+    KalmanMultiDimensional<V, 4, 2, 2>::matrices.inputMatrix << 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0;
 
     // The measurement matrix (H):
     // Only the position part of the state vector is measured.
-    KalmanMultiDimensional<V, 4, 2, 2>::matrices.measurementMatrix <<
-      1.0, 0.0, 0.0, 0.0,
-      0.0, 1.0, 0.0, 0.0;
+    KalmanMultiDimensional<V, 4, 2, 2>::matrices.measurementMatrix << 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0;
 
-	  // Set noise matrices of the underlying kalman filter.
-	  KalmanMultiDimensional<V, 4, 2, 2>::matrices.noise = kalmanNoiseMatrices;
+    // Set noise matrices of the underlying kalman filter.
+    KalmanMultiDimensional<V, 4, 2, 2>::matrices.noise = kalmanNoiseMatrices;
 
     initializeMeasurement4D();
   }
@@ -140,15 +128,9 @@ public:
     typename KalmanPositionTracking2D<V>::KalmanMatrices::Noise noise;
 
     // The process noise covariance matrix (Q):
-    noise.processNoiseCovarianceMatrix <<
-      1.0, 0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0, 1.0,
-      1.0, 0.0, 1.0, 0.0,
-      0.0, 1.0, 0.0, 1.0;
+    noise.processNoiseCovarianceMatrix << 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0;
     // The measurement noise matrix (R):
-    noise.measurementNoiseMatrix <<
-      10.0, 0.0,
-      0.0, 10.0;
+    noise.measurementNoiseMatrix << 10.0, 0.0, 0.0, 10.0;
 
     initialize(position, velocity, covarianceMatrix, noise);
   }
@@ -161,9 +143,9 @@ public:
    */
   void predict(const Vector2f& acceleration, float timeOffset)
   {
-    // Run prediction with changed system matrix (A') to take the time since last 
+    // Run prediction with changed system matrix (A') to take the time since last
     // prediction into account.
-    // The velocity is added partial to the position depending on the time since 
+    // The velocity is added partial to the position depending on the time since
     // last prediction.
     // Default: x = Ax  + Bu = x + (velX, velY, 0, 0)     + Bu
     // Here:    x = A'x + Bu = x + (t*velX, t*velY, 0, 0) + Bu
@@ -197,7 +179,7 @@ public:
   {
     ASSERT(measurementNoiseFactor >= 0.f);
 
-    // Run correction with changed system matrix to take the time since last 
+    // Run correction with changed system matrix to take the time since last
     // correction into account.
     KalmanMultiDimensional<V, 4, 2, 2>::matrices.systemMatrix(0, 2) = static_cast<V>(timeOffset);
     KalmanMultiDimensional<V, 4, 2, 2>::matrices.systemMatrix(1, 3) = static_cast<V>(timeOffset);
@@ -205,7 +187,7 @@ public:
     // Run correction.
     KalmanMultiDimensional<V, 4, 2, 2>::correct(position.cast<V>(), static_cast<V>(measurementNoiseFactor));
   }
-  
+
   /**
    * Performs a correction step with measured position and velocity. Therefore
    * the measurement size has to be changed temporarily to 4 dimensions.
@@ -221,19 +203,18 @@ public:
   void correct(const Vector2f& position, const Vector2f& velocity, float measurementNoiseFactor = 1.f)
   {
     ASSERT(measurementNoiseFactor >= 0.f);
-    
+
     // Create measurement vector from position an dvelocity.
     Eigen::Matrix<V, 4, 1> measurement;
     measurement << position.x(), position.y(), velocity.x(), velocity.y();
-    
+
     // Run correction with changed system matrix to make position and velocity
     // independent from eachother because they are both measured.
     KalmanMultiDimensional<V, 4, 2, 2>::matrices.systemMatrix(0, 2) = 0.f;
     KalmanMultiDimensional<V, 4, 2, 2>::matrices.systemMatrix(1, 3) = 0.f;
 
     // Run correction temporarily with 4 dimensional measurement (noise) matrix.
-    KalmanMultiDimensional<V, 4, 2, 2>::template correct<4>(measurement,
-		measurementMatrix4D, measurementNoiseMatrix4D, measurementNoiseFactor);
+    KalmanMultiDimensional<V, 4, 2, 2>::template correct<4>(measurement, measurementMatrix4D, measurementNoiseMatrix4D, measurementNoiseFactor);
   }
 
   /**

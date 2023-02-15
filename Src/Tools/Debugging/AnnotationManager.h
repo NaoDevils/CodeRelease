@@ -6,17 +6,23 @@
 #pragma once
 
 #include "Tools/MessageQueue/MessageQueue.h"
+#include <mutex>
 
-#include <vector>
-#include <unordered_map>
 
 class AnnotationManager
 {
 private:
   MessageQueue outData;
-  unsigned currentFrame = 0;
   unsigned annotationCounter = 0;
   unsigned lastGameState;
+  unsigned lastSetPlay;
+  unsigned lastPenalty;
+  unsigned lastOwnScore;
+  unsigned lastOpponentScore;
+  float lastTransitionToFramework;
+
+  // protect MessageQueue
+  std::mutex mutex;
 
   friend class Process;
 
@@ -27,5 +33,6 @@ public:
   void clear();
 
   void addAnnotation();
+  void endAnnotation();
   MessageQueue& getOut();
 };

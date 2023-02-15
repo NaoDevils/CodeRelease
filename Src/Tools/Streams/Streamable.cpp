@@ -54,7 +54,7 @@ namespace Streaming
     Global::getStreamHandler().registerWithSpecification(name, ti);
   }
 
-  void registerEnum(const std::type_info& ti, const char * (*fp)(int))
+  void registerEnum(const std::type_info& ti, const char* (*fp)(int))
   {
     Global::getStreamHandler().registerEnum(ti, fp);
   }
@@ -62,9 +62,9 @@ namespace Streaming
   std::string demangle(const char* name)
   {
 #ifdef WINDOWS
-    if(!strncmp(name, "struct ", 7))
+    if (!strncmp(name, "struct ", 7))
       return name + 7;
-    else if(!strncmp(name, "class ", 6))
+    else if (!strncmp(name, "class ", 6))
       return name + 6;
     else
       return name;
@@ -73,7 +73,7 @@ namespace Streaming
     int status;
     size_t length = sizeof(realName);
     abi::__cxa_demangle(name, realName, &length, &status);
-    if(!status)
+    if (!status)
       return realName;
     else
       return "UNKNOWN";
@@ -90,4 +90,4 @@ namespace Streaming
     const char* dotPos = strchr(name, '.');
     return dotPos ? dotPos + 1 : name;
   }
-}
+} // namespace Streaming

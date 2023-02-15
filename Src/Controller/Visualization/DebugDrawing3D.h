@@ -67,7 +67,18 @@ public:
   class Element
   {
   public:
-    enum {DOT, LINE, POLYGON, QUAD, SPHERE, ELLIPSOID, CYLINDER, PARTDISC, IMAGE} type;
+    enum
+    {
+      DOT,
+      LINE,
+      POLYGON,
+      QUAD,
+      SPHERE,
+      ELLIPSOID,
+      CYLINDER,
+      PARTDISC,
+      IMAGE
+    } type;
     ColorRGBA color;
     float width;
   };
@@ -147,8 +158,7 @@ public:
   public:
     Vector3f point;
     Vector3f rotation;
-    float width,
-          height;
+    float width, height;
     Image* image;
     Image3D() : image(0) { type = IMAGE; }
     Image3D(const Image3D& other) : image(0) { *this = other; }
@@ -167,9 +177,7 @@ public:
   * @param width Specifies the width of the line.
   * @param color Specifies the color of the line.
   */
-  void line(float xStart, float yStart, float zStart,
-            float xEnd, float yEnd, float zEnd,
-            float width, ColorRGBA color);
+  void line(float xStart, float yStart, float zStart, float xEnd, float yEnd, float zEnd, float width, ColorRGBA color);
 
   /**
   * Adds a line to the debug drawing. The line is a solid black line with width 1.
@@ -266,19 +274,19 @@ public:
   unsigned timeStamp; /**< The time when this drawing was created. */
 
 private:
-  float scaleX,  scaleY,  scaleZ;
+  float scaleX, scaleY, scaleZ;
   float rotateX, rotateY, rotateZ;
-  float transX,  transY,  transZ;
+  float transX, transY, transZ;
 
-  std::vector<Line>      lines;
-  std::vector<Dot>       dots;
-  std::vector<Polygon>   polygons;
-  std::vector<Quad>      quads;
-  std::vector<Sphere>    spheres;
+  std::vector<Line> lines;
+  std::vector<Dot> dots;
+  std::vector<Polygon> polygons;
+  std::vector<Quad> quads;
+  std::vector<Sphere> spheres;
   std::vector<Ellipsoid> ellipsoids;
-  std::vector<Cylinder>  cylinders;
-  std::vector<PartDisc>  partDiscs;
-  std::vector<Image3D>   images;
+  std::vector<Cylinder> cylinders;
+  std::vector<PartDisc> partDiscs;
+  std::vector<Image3D> images;
 
   char* copyImage(const Image& srcImage, int& width, int& height) const;
 };

@@ -8,7 +8,16 @@
 #pragma once
 
 #include <SimRobot.h>
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wfloat-conversion"
+#endif
 #include <QIcon>
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
 #include <QObject>
 #include <QString>
 #include <map>
@@ -47,10 +56,10 @@ public:
   DataView(const QString& fullName, const std::string& repName, RobotConsole& console, StreamHandler& streamHandler);
 
   virtual SimRobot::Widget* createWidget();
-  virtual const QString& getFullName() const {return theFullName;}
-  virtual const QIcon* getIcon() const {return &theIcon;}
+  virtual const QString& getFullName() const { return theFullName; }
+  virtual const QIcon* getIcon() const { return &theIcon; }
 
-  const QString& getFullName() {return theFullName;}
+  const QString& getFullName() { return theFullName; }
 
   /**
    * Disconnects the current widget from the view.
@@ -129,15 +138,13 @@ private:
    */
   PropertiesMapType theProperties;
 
-  unsigned lastUpdated; /**< Time when this view was updated last (in ms). */
+  bool update = false; /**< If the view should be updated. */
 
   /**
    * True if auto-set is enabled.
    * In auto-set mode the view will send a set command directly after the user finished editing one value.
    */
   bool theAutoSetModeIsEnabled;
-
-  int theUpdateTime; /**< time between updates in ms */
 
   //The widget needs to access theConsole to synchronize while drawing.
   friend class DataWidget;

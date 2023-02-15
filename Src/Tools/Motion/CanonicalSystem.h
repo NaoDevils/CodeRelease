@@ -29,8 +29,7 @@ private:
 
 public:
   CanonicalSystem() = default;
-  CanonicalSystem(const float executionTime, const float startingPhase = 1.0f,
-                  const float finalPhaseValue = 0.01f);
+  CanonicalSystem(const float executionTime, const float startingPhase = 1.0f, const float finalPhaseValue = 0.01f);
 
   /**
    * Iterates the dynamical system and returns the next phase value.

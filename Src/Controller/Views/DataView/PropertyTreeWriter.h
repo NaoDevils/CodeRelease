@@ -7,6 +7,7 @@
 #pragma once
 
 #include <vector>
+#include <type_traits>
 #include "PropertyManager.h"
 #include "Platform/BHAssert.h"
 #include "Tools/Streams/InOut.h"
@@ -43,34 +44,34 @@ private:
    * The entry has been selected by select() before.
    * @param value The value that is read.
    */
-  template<class T> void in(T& value)
+  template <class T> void in(T& value)
   {
     Entry& e = stack.back();
-    value = propertyManager.value(e.property).value<T>();
+    if constexpr (std::is_same_v<T, std::string>)
+      value = propertyManager.value(e.property).value<QString>().toStdString();
+    else
+      value = propertyManager.value(e.property).value<T>();
   }
 
 protected:
-  virtual void inBool(bool& value) {in(value);}
+  virtual void inBool(bool& value) { in(value); }
   virtual void inChar(char& value) { in(value); }
   virtual void inSChar(signed char& value) { in(value); }
-  virtual void inUChar(unsigned char& value) {in(value);}
-  virtual void inShort(short& value) {in(value);}
-  virtual void inUShort(unsigned short& value) {in(value);}
-  virtual void inInt(int& value) {in(value);}
+  virtual void inUChar(unsigned char& value) { in(value); }
+  virtual void inShort(short& value) { in(value); }
+  virtual void inUShort(unsigned short& value) { in(value); }
+  virtual void inInt(int& value) { in(value); }
   virtual void inUInt(unsigned int& value);
-  virtual void inFloat(float& value) {in(value);}
-  virtual void inDouble(double& value) {in(value);}
+  virtual void inFloat(float& value) { in(value); }
+  virtual void inDouble(double& value) { in(value); }
+  virtual void inInt64(int64_t& value) { in(value); }
   virtual void inUInt64(uint64_t& value) { in(value); }
-  virtual void inString(std::string& value) {in(value);}
+  virtual void inString(std::string& value) { in(value); }
   virtual void inAngle(Angle& value);
   virtual void inEndL() {}
 
 public:
-  PropertyTreeWriter(const PropertyManager& propertyManager, QtProperty* root) :
-  propertyManager(propertyManager)
-  {
-    stack.push_back(Entry(root, -2));
-  }
+  PropertyTreeWriter(const PropertyManager& propertyManager, QtProperty* root) : propertyManager(propertyManager) { stack.push_back(Entry(root, -2)); }
 
   /**
    * Select an entry for reading.
@@ -81,17 +82,21 @@ public:
    *             >= 0: array element index.
    * @param enumToString A function that translates an enum to a string.
    */
-  virtual void select(const char* name, int type, const char * (*enumToString)(int));
+  virtual void select(const char* name, int type, const char* (*enumToString)(int));
 
   /** Deselects a field for reading. */
-  virtual void deselect() {stack.pop_back();}
+  virtual void deselect() { stack.pop_back(); }
 
   /** Not allowed for this stream! */
-  virtual void read(void* p, size_t size) {ASSERT(false);}
+  virtual void read(void* p, size_t size) { ASSERT(false); }
 
   /** Not allowed for this stream! */
-  virtual void skip(size_t size) {ASSERT(false);}
+  virtual void skip(size_t size) { ASSERT(false); }
 
   /** Not allowed for this stream! */
-  virtual bool eof() const {ASSERT(false); return false;}
+  virtual bool eof() const
+  {
+    ASSERT(false);
+    return false;
+  }
 };

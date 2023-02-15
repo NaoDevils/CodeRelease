@@ -26,7 +26,11 @@ class InMessage;
 class TimeInfo
 {
 private:
-  enum {ringBufferSize = 100};
+  enum
+  {
+    ringBufferSize = 100
+  };
+
 public:
   std::string processName;
   typedef RingBufferWithSum<float, ringBufferSize> Info;
@@ -64,8 +68,9 @@ public:
   * @param outMinTime The shortest measurement is returned to this variable in ms.
   * @param outMaxTime The longest measurement is returned to this variable in ms.
   * @param outAvgTime The average measurement is returned to this variable in ms.
+  * @param outLastTime The last measurement is returned to this variable in ms.
   */
-  void getStatistics(const Info& info, float& outMinTime, float& outMaxTime, float& outAvgTime) const;
+  void getStatistics(const Info& info, float& outMinTime, float& outMaxTime, float& outAvgTime, float& outLastTime) const;
 
   /**Returns the frequency of the process attached to this time info.
    */
@@ -73,6 +78,7 @@ public:
 
   /**returns the name of the stopwatch with id watchId*/
   std::string getName(unsigned short watchId) const;
+
 private:
   std::unordered_map<unsigned short, std::string> names;
   unsigned lastFrameNo; /**< frame number of the last received frame */

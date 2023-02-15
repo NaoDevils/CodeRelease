@@ -10,8 +10,7 @@
 /**
 * @class DynamicRingBuffer
 */
-template <class V>
-class DynamicRingBuffer
+template <class V> class DynamicRingBuffer
 {
 protected:
   int current;
@@ -24,8 +23,7 @@ protected:
 
 public:
   /** Constructor */
-  DynamicRingBuffer(int n)
-    : current(n - 1), numberOfElements(0), cycled(false), capacity(n)
+  DynamicRingBuffer(int n) : current(n - 1), numberOfElements(0), cycled(false), capacity(n)
   {
     buffer.resize(n);
     ASSERT(n > 0);
@@ -44,7 +42,8 @@ public:
     current %= capacity;
     if (cycled)
       sum -= buffer[current];
-    if (++numberOfElements >= capacity) numberOfElements = capacity;
+    if (++numberOfElements >= capacity)
+      numberOfElements = capacity;
     buffer[current] = v;
     sum += v;
   }
@@ -53,10 +52,7 @@ public:
   * returns an element
   * \parameter i index of entry counting from last added (last=0, last-1=1, ...)
   */
-  inline const V& get(int i) const
-  {
-    return buffer[(capacity + current - i) % capacity];
-  }
+  inline const V& get(int i) const { return buffer[(capacity + current - i) % capacity]; }
 
   /**
   * removes the first added element to the buffer
@@ -70,26 +66,17 @@ public:
   /**
   * Returns the number of elements that are currently in the ring buffer
   */
-  inline int size() const
-  {
-    return numberOfElements;
-  }
+  inline int size() const { return numberOfElements; }
 
   /**
   * Returns the maximum element count.
   */
-  inline int getCapacity() const
-  {
-    return capacity;
-  }
+  inline int getCapacity() const { return capacity; }
 
   /**
   * loot at #get
   */
-  inline const V& operator[](int i) const
-  {
-    return buffer[(capacity + current - i) % capacity];
-  }
+  inline const V& operator[](int i) const { return buffer[(capacity + current - i) % capacity]; }
 
   /**
   * returns the average value of all entries
@@ -98,7 +85,8 @@ public:
   V getAverage()
   {
     // Return 0 if buffer is empty
-    if (0 == this->numberOfElements) return 0;
+    if (0 == this->numberOfElements)
+      return 0;
 
     return (sum / this->numberOfElements);
   }

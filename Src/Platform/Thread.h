@@ -27,8 +27,8 @@
 #define THREAD_INCLUDED
 #endif
 
-#ifdef OSX
-#include "Linux/Thread.h"
+#ifdef MACOS
+#include "macOS/Thread.h"
 #define THREAD_INCLUDED
 #endif
 

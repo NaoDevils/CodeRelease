@@ -7,12 +7,7 @@
 #include "BHAssert.h"
 #include "Semaphore.h"
 
-#ifdef OSX
-// Prevent strange recursive include: <semaphore.h> is resolved by header of this file!
-#include </usr/include/semaphore.h>
-#else
 #include <semaphore.h>
-#endif
 #include <cerrno>
 #include <ctime>
 
@@ -35,11 +30,11 @@ void Semaphore::post()
 
 bool Semaphore::wait()
 {
-  if(sem_wait((sem_t*)handle) == -1)
+  if (sem_wait((sem_t*)handle) == -1)
   {
-    while(errno == 516 || errno == EINTR)
+    while (errno == 516 || errno == EINTR)
     {
-      if(sem_wait((sem_t*)handle) != -1)
+      if (sem_wait((sem_t*)handle) != -1)
         return true;
       //ASSERT(false);
     }
@@ -55,13 +50,13 @@ bool Semaphore::wait(unsigned int timeout)
   ts.tv_nsec += (timeout % 1000) * 1000000;
   ts.tv_sec += timeout / 1000 + ts.tv_nsec / 1000000000;
   ts.tv_nsec %= 1000000000;
-  if(sem_timedwait((sem_t*)handle, &ts) == -1)
+  if (sem_timedwait((sem_t*)handle, &ts) == -1)
   {
-    while(errno == 516 || errno == EINTR)
+    while (errno == 516 || errno == EINTR)
     {
-      if(sem_timedwait((sem_t*)handle, &ts) != -1)
+      if (sem_timedwait((sem_t*)handle, &ts) != -1)
         return true;
-      if(errno == ETIMEDOUT)
+      if (errno == ETIMEDOUT)
         break;
       //ASSERT(false);
     }

@@ -18,11 +18,10 @@
 
 PushConfigCmd PushConfigCmd::thePushConfigCmd;
 
-PushConfigCmd::PushConfigTask::PushConfigTask(Context &context, const QString& buildConfig, Team* team, RobotConfigDorsh *robot)
-  : RobotTask(context, robot),
-  buildConfig(buildConfig),
-  team(team)
-{}
+PushConfigCmd::PushConfigTask::PushConfigTask(Context& context, const QString& buildConfig, Team* team, RobotConfigDorsh* robot)
+    : RobotTask(context, robot), buildConfig(buildConfig), team(team)
+{
+}
 
 bool PushConfigCmd::PushConfigTask::execute()
 {
@@ -30,11 +29,10 @@ bool PushConfigCmd::PushConfigTask::execute()
 
   QStringList args = QStringList();
   args.push_back(QString("-d")); //Arne 27.04.17 - delete Logs on every deploy
-  args.push_back(QString("-nc"));
   //args.push_back(QString("-nr")); reachability check on every deploy
   args.push_back(QString("-sn"));
   args.push_back(buildConfig);
-  args.push_back(fromString(robot->getBestIP(context())));
+  args.push_back(QString::fromStdString(robot->getBestIP(context())));
   args.push_back(QString("-r"));
   args.push_back(QString("-n"));
   args.push_back(QString::number(team->number));
@@ -50,109 +48,21 @@ bool PushConfigCmd::PushConfigTask::execute()
   args.push_back(mapColorToConf(team->colorOpp).c_str());
   args.push_back(QString("-p"));
   args.push_back(QString::number(team->getPlayerNumber(*robot)));
-  args.push_back(QString("-l"));
-  args.push_back(team->location.c_str());
+  for (const std::string& overlay : team->overlays)
+  {
+    args.push_back(QString("-eo"));
+    args.push_back(overlay.c_str());
+  }
   args.push_back(QString("-g"));
   args.push_back(team->gameMode.c_str());
   args.push_back(QString("-w"));
-
-  QString wifi = team->wlanConfig.c_str();
-  bool fiveGConfigExists = false;
-  bool configExists = false;
-
-  std::vector<std::string> configs = Filesystem::getWlanConfigs();
-  for (size_t i = 0; i < configs.size(); ++i)
-  {
-    QString tmpConfig = fromString(configs[i]);
-    if (tmpConfig.contains(wifi + "_5GHz"))
-    {
-      fiveGConfigExists = true;
-    }
-    if (tmpConfig.startsWith(wifi) && tmpConfig.endsWith(wifi))
-    {
-      configExists = true;
-    }
-  }
-
-  if (team->wlanFrequency == "auto")
-  {
-    if (robot->naoVersion == RobotConfig::V6)
-    {
-      if (fiveGConfigExists)
-      {
-        args.push_back(wifi + "_5GHz");
-      }
-      else
-      {
-        args.push_back(wifi);
-      }
-    }
-    else
-    {
-      if (configExists)
-      {
-        args.push_back(wifi);
-      }
-      else
-      {
-        context().errorLine("2.4GHz config of network " + team->wlanConfig + " does not exist!");
-        return false;
-      }
-    }
-  }
-  else if (team->wlanFrequency == "2.4 GHz")
-  {
-    if (configExists)
-    {
-      args.push_back(wifi);
-    }
-    else
-    {
-      context().errorLine("2.4GHz config of network " + team->wlanConfig + " does not exist!");
-      return false;
-    }
-  }
-  else
-  {
-    if (fiveGConfigExists)
-    {
-      args.push_back(wifi + "_5GHz");
-    }
-    else
-    {
-      context().errorLine("5GHz config of network " + team->wlanConfig + " does not exist!");
-      return false;
-    }
-  }
+  args.push_back(team->wlanConfig.c_str());
   args.push_back(QString("-v"));
   args.push_back(QString::number(team->volume));
   args.push_back(QString("-mv"));
   args.push_back(QString::number(team->micVolume));
-  args.push_back(QString("-log"));
-  args.push_back(QString(team->logConfig.c_str()));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("MocapData"));
-  args.push_back(QString((team->mocapConfig) ? "MocapDataProvider" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("MocapRobotPose"));
-  args.push_back(QString((team->mocapConfig) ? "MocapRobotPoseProvider" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("MocapBallModel"));
-  args.push_back(QString((team->mocapConfig) ? "MocapRobotPoseProvider" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettings"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "default" : "CameraProvider"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettingsUpper"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "default" : "CameraProvider"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettingsV6"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "CameraProviderV6" : "default"));
-  args.push_back(QString("-sp"));
-  args.push_back(QString("CameraSettingsUpperV6"));
-  args.push_back(QString((robot->naoVersion == RobotConfig::V6) ? "CameraProviderV6" : "default"));
   args.push_back(QString("-nv"));
-  args.push_back(fromString(RobotConfigDorsh::getName(robot->naoVersion)));
+  args.push_back(QString::fromStdString(RobotConfigDorsh::getName(robot->naoVersion)));
 
   ProcessRunner r(context(), command, args);
   r.run();
@@ -181,18 +91,14 @@ std::string PushConfigCmd::mapColorToConf(int color)
   ColorModelConversions::fromRGBToYCbCr(r, g, b, y, cb, cr);
 
   std::stringstream config;
-  config << "y = " << static_cast<int>(y)
-    << "; cb = " << static_cast<int>(cb)
-    << "; cr = " << static_cast<int>(cr) << ";";
+  config << "y = " << static_cast<int>(y) << "; cb = " << static_cast<int>(cb) << "; cr = " << static_cast<int>(cr) << ";";
   std::cout << config.str() << "\n";
-  std::cout << "rgb( " << color << ")"
-    << static_cast<unsigned>(r) << " "
-    << static_cast<unsigned>(g) << " "
-    << static_cast<unsigned>(b) << " " << "\n";
+  std::cout << "rgb( " << color << ")" << static_cast<unsigned>(r) << " " << static_cast<unsigned>(g) << " " << static_cast<unsigned>(b) << " "
+            << "\n";
   return config.str();
 }
 
-bool PushConfigCmd::preExecution(Context &context, const std::vector<std::string> &params)
+bool PushConfigCmd::preExecution(Context& context, const std::vector<std::string>& params)
 {
   team = context.getSelectedTeam();
   if (!team)
@@ -201,9 +107,9 @@ bool PushConfigCmd::preExecution(Context &context, const std::vector<std::string
     return false;
   }
 
-  buildConfig = fromString(team->buildConfig);
+  buildConfig = QString::fromStdString(team->buildConfig);
   if (params.size() > 0)
-    buildConfig = fromString(params[0]);
+    buildConfig = QString::fromStdString(params[0]);
 
   return true;
 }
@@ -233,7 +139,7 @@ std::vector<std::string> PushConfigCmd::complete(const std::string& cmdLine) con
     return getBuildConfigs(commandWithArgs[1]);
 }
 
-Task* PushConfigCmd::perRobotExecution(Context &context, RobotConfigDorsh &robot)
+Task* PushConfigCmd::perRobotExecution(Context& context, RobotConfigDorsh& robot)
 {
   return new PushConfigTask(context, buildConfig, team, &robot);
 }
@@ -241,11 +147,11 @@ Task* PushConfigCmd::perRobotExecution(Context &context, RobotConfigDorsh &robot
 #ifdef WINDOWS
 QString PushConfigCmd::getCommand()
 {
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/copyfiles.cmd");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/copyfiles.cmd");
 }
 #else
 QString PushConfigCmd::getCommand()
 {
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/copyfiles");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/copyfiles");
 }
 #endif

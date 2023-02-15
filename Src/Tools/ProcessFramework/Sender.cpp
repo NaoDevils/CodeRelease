@@ -10,19 +10,22 @@
 #include "ProcessFramework.h"
 #include "PlatformProcess.h"
 
-SenderList::SenderList(PlatformProcess* p, const std::string& senderName) :
-  name(senderName), // copy the sender's name. The name of the process is still missing.
-  process(p)
+SenderList::SenderList(PlatformProcess* p, const std::string& senderName)
+    : name(senderName), // copy the sender's name. The name of the process is still missing.
+      process(p)
 {
-  if(getFirst())
+  if (p != nullptr)
   {
-    SenderList* p = getFirst();
-    while(p->next)
-      p = p->next;
-    p->next = this;
+    if (getFirst())
+    {
+      SenderList* p = getFirst();
+      while (p->next)
+        p = p->next;
+      p->next = this;
+    }
+    else
+      getFirst() = this;
   }
-  else
-    getFirst() = this;
 }
 
 SenderList*& SenderList::getFirst()
@@ -32,14 +35,14 @@ SenderList*& SenderList::getFirst()
 
 void SenderList::sendAllUnsentPackages()
 {
-  for(SenderList* p = getFirst(); p; p = p->getNext())
+  for (SenderList* p = getFirst(); p; p = p->getNext())
     p->sendPackage();
 }
 
 SenderList* SenderList::lookup(const std::string& processName, const std::string& senderName)
 {
-  for(SenderList* p = getFirst(); p; p = p->getNext())
-    if(processName + "." + p->name == senderName)
+  for (SenderList* p = getFirst(); p; p = p->getNext())
+    if (processName + "." + p->name == senderName)
       return p;
   return 0;
 }

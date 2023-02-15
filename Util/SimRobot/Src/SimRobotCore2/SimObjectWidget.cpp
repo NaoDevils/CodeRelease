@@ -1,8 +1,8 @@
 /**
-* @file SimObjectWidget.cpp
-* Implementation of class SimObjectWidget
-* @author Colin Graf
-*/
+ * @file SimObjectWidget.cpp
+ * Implementation of class SimObjectWidget
+ * @author Colin Graf
+ */
 
 #include <QMouseEvent>
 #include <QApplication>
@@ -12,6 +12,7 @@
 #include <QSignalMapper>
 #include <QClipboard>
 #include <QFileDialog>
+#include <QActionGroup>
 
 #include "SimObjectWidget.h"
 #include "CoreModule.h"
@@ -19,9 +20,16 @@
 #include "Simulation/Simulation.h"
 #include "Simulation/Scene.h"
 
-SimObjectWidget::SimObjectWidget(SimObject& simObject) : QGLWidget(QGLFormat(QGL::SampleBuffers | QGL::AccumBuffer), 0, Simulation::simulation->renderer.getWidget()),
-  object(dynamic_cast<SimRobot::Object&>(simObject)), objectRenderer(simObject),
-  wkey(false), akey(false), skey(false), dkey(false)
+// Hide Qt warning about GLEW on Linux
+#undef __GLEW_H__
+#include <QOpenGLContext>
+#define __GLEW_H__
+
+#include <QOffscreenSurface>
+#include <QOpenGLFramebufferObject>
+
+SimObjectWidget::SimObjectWidget(SimObject& simObject)
+    : QOpenGLWidget(), object(dynamic_cast<SimRobot::Object&>(simObject)), objectRenderer(simObject), wkey(false), akey(false), skey(false), dkey(false), midbut(false)
 {
   setFocusPolicy(Qt::StrongFocus);
   grabGesture(Qt::PinchGesture);
@@ -56,6 +64,11 @@ SimObjectWidget::SimObjectWidget(SimObject& simObject) : QGLWidget(QGLFormat(QGL
 
 SimObjectWidget::~SimObjectWidget()
 {
+  //saveLayout();
+}
+
+void SimObjectWidget::saveLayout()
+{
   // save layout settings
   QSettings* settings = &CoreModule::application->getLayoutSettings();
   settings->beginGroup(object.getFullName());
@@ -85,7 +98,17 @@ SimObjectWidget::~SimObjectWidget()
 
 void SimObjectWidget::initializeGL()
 {
-  objectRenderer.init(isSharing());
+  /* debugging: (also enable debug context in Main.cpp)
+  QOpenGLDebugLogger* logger = new QOpenGLDebugLogger(this);
+  VERIFY(logger->initialize());
+  connect(logger, &QOpenGLDebugLogger::messageLogged, [&](const auto& msg)
+    {
+      qDebug() << msg.message();
+    });
+  logger->startLogging(QOpenGLDebugLogger::SynchronousLogging);
+  */
+
+  objectRenderer.init(context()->shareContext() != nullptr);
 }
 
 void SimObjectWidget::paintGL()
@@ -98,16 +121,16 @@ void SimObjectWidget::resizeGL(int width, int height)
   objectRenderer.resize(fovy, width, height);
 }
 
-void SimObjectWidget::paintEvent(QPaintEvent* event)
-{
-  QGLWidget::paintEvent(event);
-}
-
 void SimObjectWidget::mouseMoveEvent(QMouseEvent* event)
 {
-  QGLWidget::mouseMoveEvent(event);
+  QOpenGLWidget::mouseMoveEvent(event);
+  const Qt::KeyboardModifiers m = QApplication::keyboardModifiers();
 
-  if(objectRenderer.moveDrag(event->x(), event->y()))
+  if (objectRenderer.moveDrag(event->position().x(),
+          event->position().y(),
+          (m & Qt::ShiftModifier || midbut)
+              ? (m & Qt::ControlModifier ? SimObjectRenderer::dragRotateWorld : SimObjectRenderer::dragRotate)
+              : (m & Qt::ControlModifier ? SimObjectRenderer::dragNormalObject : SimObjectRenderer::dragNormal)))
   {
     event->accept();
     update();
@@ -116,12 +139,24 @@ void SimObjectWidget::mouseMoveEvent(QMouseEvent* event)
 
 void SimObjectWidget::mousePressEvent(QMouseEvent* event)
 {
-  QGLWidget::mousePressEvent(event);
+  QOpenGLWidget::mousePressEvent(event);
 
-  if(event->button() == Qt::LeftButton || event->button() == Qt::MidButton)
+  const Qt::KeyboardModifiers m = QApplication::keyboardModifiers();
+  if (event->button() == Qt::LeftButton)
   {
-    const Qt::KeyboardModifiers m = QApplication::keyboardModifiers();
-    if(objectRenderer.startDrag(event->x(), event->y(), m & Qt::ShiftModifier ? (m & Qt::ControlModifier ? SimObjectRenderer::dragRotateWorld : SimObjectRenderer::dragRotate) : (m & Qt::ControlModifier ? SimObjectRenderer::dragNormalObject : SimObjectRenderer::dragNormal)))
+    if (objectRenderer.startDrag(event->position().x(),
+            event->position().y(),
+            m & Qt::ShiftModifier ? (m & Qt::ControlModifier ? SimObjectRenderer::dragRotateWorld : SimObjectRenderer::dragRotate)
+                                  : (m & Qt::ControlModifier ? SimObjectRenderer::dragNormalObject : SimObjectRenderer::dragNormal)))
+    {
+      event->accept();
+      update();
+    }
+  }
+  else if (event->button() == Qt::MouseButton::MiddleButton)
+  {
+    midbut = true;
+    if (objectRenderer.startDrag(event->position().x(), event->position().y(), m & Qt::ControlModifier ? SimObjectRenderer::dragRotateWorld : SimObjectRenderer::dragRotate))
     {
       event->accept();
       update();
@@ -131,9 +166,9 @@ void SimObjectWidget::mousePressEvent(QMouseEvent* event)
 
 void SimObjectWidget::mouseReleaseEvent(QMouseEvent* event)
 {
-  QGLWidget::mouseReleaseEvent(event);
-
-  if(objectRenderer.releaseDrag(event->x(), event->y()))
+  QOpenGLWidget::mouseReleaseEvent(event);
+  midbut = false;
+  if (objectRenderer.releaseDrag(event->position().x(), event->position().y()))
   {
     event->accept();
     update();
@@ -142,142 +177,147 @@ void SimObjectWidget::mouseReleaseEvent(QMouseEvent* event)
 
 void SimObjectWidget::mouseDoubleClickEvent(QMouseEvent* event)
 {
-  QGLWidget::mouseDoubleClickEvent(event);
+  QOpenGLWidget::mouseDoubleClickEvent(event);
 
-  if(event->button() == Qt::LeftButton)
+  if (event->button() == Qt::LeftButton)
   {
     SimRobotCore2::Object* selectedObject = objectRenderer.getDragSelection();
-    if(selectedObject)
-        CoreModule::application->selectObject(*selectedObject);
+    if (selectedObject)
+      CoreModule::application->selectObject(*selectedObject);
   }
 }
 
 void SimObjectWidget::keyPressEvent(QKeyEvent* event)
 {
-  if(event->modifiers() != 0)
+  if (event->modifiers() != 0)
   {
-    QGLWidget::keyPressEvent(event);
+    QOpenGLWidget::keyPressEvent(event);
     return;
   }
 
-  switch(event->key())
+  switch (event->key())
   {
-    case Qt::Key_PageUp:
-    case Qt::Key_Plus:
-      event->accept();
-      objectRenderer.zoom(-100.);
-      update();
-      break;
+  case Qt::Key_PageUp:
+  case Qt::Key_Plus:
+    event->accept();
+    objectRenderer.zoom(-100., -1, -1);
+    update();
+    break;
 
-    case Qt::Key_PageDown:
-    case Qt::Key_Minus:
-      event->accept();
-      objectRenderer.zoom(100.);
-      update();
-      break;
+  case Qt::Key_PageDown:
+  case Qt::Key_Minus:
+    event->accept();
+    objectRenderer.zoom(100., -1, -1);
+    update();
+    break;
 
+  case Qt::Key_W:
+  case Qt::Key_A:
+  case Qt::Key_S:
+  case Qt::Key_D:
+    event->accept();
+    switch (event->key())
+    {
     case Qt::Key_W:
+      wkey = true;
+      break;
     case Qt::Key_A:
+      akey = true;
+      break;
     case Qt::Key_S:
+      skey = true;
+      break;
     case Qt::Key_D:
-      event->accept();
-      switch(event->key())
-      {
-        case Qt::Key_W: wkey = true; break;
-        case Qt::Key_A: akey = true; break;
-        case Qt::Key_S: skey = true; break;
-        case Qt::Key_D: dkey = true; break;
-      }
-      objectRenderer.setCameraMove(akey, dkey, wkey, skey);
-      update();
+      dkey = true;
       break;
+    }
+    objectRenderer.setCameraMove(akey, dkey, wkey, skey);
+    update();
+    break;
 
-    default:
-      QGLWidget::keyPressEvent(event);
-      break;
+  default:
+    QOpenGLWidget::keyPressEvent(event);
+    break;
   }
 }
 
 void SimObjectWidget::keyReleaseEvent(QKeyEvent* event)
 {
-  if(event->modifiers() != 0)
+  if (event->modifiers() != 0)
   {
-    QGLWidget::keyReleaseEvent(event);
+    QOpenGLWidget::keyReleaseEvent(event);
     return;
   }
 
-  switch(event->key())
+  switch (event->key())
   {
-    case Qt::Key_W:
-    case Qt::Key_A:
-    case Qt::Key_S:
-    case Qt::Key_D:
-      event->accept();
-      update();
-      if(!event->isAutoRepeat())
+  case Qt::Key_W:
+  case Qt::Key_A:
+  case Qt::Key_S:
+  case Qt::Key_D:
+    event->accept();
+    update();
+    if (!event->isAutoRepeat())
+    {
+      switch (event->key())
       {
-        switch(event->key())
-        {
-          case Qt::Key_W: wkey = false; break;
-          case Qt::Key_A: akey = false; break;
-          case Qt::Key_S: skey = false; break;
-          case Qt::Key_D: dkey = false; break;
-        }
-        objectRenderer.setCameraMove(akey, dkey, wkey, skey);
+      case Qt::Key_W:
+        wkey = false;
+        break;
+      case Qt::Key_A:
+        akey = false;
+        break;
+      case Qt::Key_S:
+        skey = false;
+        break;
+      case Qt::Key_D:
+        dkey = false;
+        break;
       }
-      break;
+      objectRenderer.setCameraMove(akey, dkey, wkey, skey);
+    }
+    break;
 
-    default:
-      QGLWidget::keyReleaseEvent(event);
-      break;
+  default:
+    QOpenGLWidget::keyReleaseEvent(event);
+    break;
   }
 }
 
 bool SimObjectWidget::event(QEvent* event)
 {
-  if(event->type() == QEvent::Gesture)
+  if (event->type() == QEvent::Gesture)
   {
     QPinchGesture* pinch = static_cast<QPinchGesture*>(static_cast<QGestureEvent*>(event)->gesture(Qt::PinchGesture));
-    if(pinch && (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged))
+    if (pinch && (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged))
     {
-      float change = static_cast<float>(pinch->scaleFactor() > pinch->lastScaleFactor()
-                     ? -pinch->scaleFactor() / pinch->lastScaleFactor()
-                     : pinch->lastScaleFactor() / pinch->scaleFactor());
-      objectRenderer.zoom(change * 100.f);
+#ifdef FIX_MACOS_PINCH_SCALE_RELATIVE_BUG
+      pinch->setLastScaleFactor(1.f);
+#endif
+      float change = static_cast<float>(pinch->scaleFactor() > pinch->lastScaleFactor() ? -pinch->scaleFactor() / pinch->lastScaleFactor() : pinch->lastScaleFactor() / pinch->scaleFactor());
+      objectRenderer.zoom(change * 100.f, -1, -1);
       update();
       return true;
     }
   }
-  return QGLWidget::event(event);
+  return QOpenGLWidget::event(event);
 }
 
 void SimObjectWidget::wheelEvent(QWheelEvent* event)
 {
-#ifndef OSX
-  if(event->orientation() == Qt::Vertical)
+  if (event->angleDelta().y() != 0)
   {
-    objectRenderer.zoom(event->delta());
+    objectRenderer.zoom(event->angleDelta().y(), event->position().x(), event->position().y());
     update();
     event->accept();
     return;
   }
-#else
-  if(event->delta())
-  {
-    if(event->orientation() == Qt::Horizontal)
-      objectRenderer.rotateCamera(static_cast<float>(event->delta()) * -0.002f, 0.f);
-    else
-      objectRenderer.rotateCamera(0.f, static_cast<float>(event->delta()) * -0.002f);
-    update();
-    return;
-  }
-#endif
-  QGLWidget::wheelEvent(event);
+  QOpenGLWidget::wheelEvent(event);
 }
 
 void SimObjectWidget::update()
 {
-  QGLWidget::update();
+  QOpenGLWidget::update();
 }
 
 QMenu* SimObjectWidget::createEditMenu() const
@@ -297,7 +337,7 @@ QMenu* SimObjectWidget::createUserMenu() const
   QMenu* menu = new QMenu(tr(&object == Simulation::simulation->scene ? "S&cene" : "&Object"));
 
   QSignalMapper* flagsSignalMapper = new QSignalMapper(menu);
-  connect(flagsSignalMapper, SIGNAL(mapped(int)), SLOT(toggleRenderFlag(int)));
+  connect(flagsSignalMapper, SIGNAL(mappedInt(int)), SLOT(toggleRenderFlag(int)));
 
   {
     QMenu* subMenu = menu->addMenu(tr("&Drag and Drop"));
@@ -306,7 +346,7 @@ QMenu* SimObjectWidget::createUserMenu() const
     action->setStatusTip(tr("Select the drag and drop dynamics mode and plane along which operations are performed"));
     QActionGroup* actionGroup = new QActionGroup(subMenu);
     QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setDragPlane(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setDragPlane(int)));
     action = subMenu->addAction(tr("X/Y Plane"));
     actionGroup->addAction(action);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::xyPlane);
@@ -329,7 +369,7 @@ QMenu* SimObjectWidget::createUserMenu() const
     subMenu->addSeparator();
     actionGroup = new QActionGroup(subMenu);
     signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setDragMode(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setDragMode(int)));
     action = subMenu->addAction(tr("&Keep Dynamics"));
     actionGroup->addAction(action);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::keepDynamics);
@@ -360,39 +400,18 @@ QMenu* SimObjectWidget::createUserMenu() const
   menu->addSeparator();
 
   {
-    QMenu* subMenu = menu->addMenu(tr("&Camera"));
-    QAction* action = subMenu->menuAction();
+    QAction* action = menu->menuAction();
+    action = menu->addAction(tr("&Reset Camera"));
     action->setIcon(QIcon(":/Icons/camera.png"));
-    action->setStatusTip(tr("Select different camera modes for displaying the scene"));
-    QActionGroup* actionGroup = new QActionGroup(subMenu);
-    QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setCameraMode(int)));
-    action = subMenu->addAction(tr("&Target Mode"));
-    action->setCheckable(true);
-    actionGroup->addAction(action);
-    signalMapper->setMapping(action, SimRobotCore2::Renderer::targetCam);
-    connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
-    action = subMenu->addAction(tr("&Free Mode"));
-    action->setCheckable(true);
-    actionGroup->addAction(action);
-    signalMapper->setMapping(action, SimRobotCore2::Renderer::freeCam);
-    connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
-
-    qobject_cast<QAction*>(signalMapper->mapping(objectRenderer.getCameraMode()))->setChecked(true);
-    subMenu->addSeparator();
-    action = subMenu->addAction(tr("&Reset"));
     action->setShortcut(QKeySequence(Qt::Key_R));
     connect(action, SIGNAL(triggered()), this, SLOT(resetCamera()));
-    action = subMenu->addAction(tr("&Toggle"));
-    action->setShortcut(QKeySequence(Qt::Key_T));
-    connect(action, SIGNAL(triggered()), this, SLOT(toggleCameraMode()));
 
     /*
     action = subMenu->addAction(tr("&Fit"));
     action->setShortcut(QKeySequence(Qt::Key_F));
     connect(action, SIGNAL(triggered()), this, SLOT(fitCamera()));
     subMenu->addSeparator();
-    */
+     */
   }
 
   {
@@ -401,7 +420,7 @@ QMenu* SimObjectWidget::createUserMenu() const
     action->setIcon(QIcon(":/Icons/opening_angle.png"));
     QActionGroup* actionGroup = new QActionGroup(subMenu);
     QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setFovY(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setFovY(int)));
     action = subMenu->addAction(tr("&20°"));
     actionGroup->addAction(action);
     signalMapper->setMapping(action, 20);
@@ -447,31 +466,31 @@ QMenu* SimObjectWidget::createUserMenu() const
     QMenu* subMenu = menu->addMenu(tr("&Appearances Rendering"));
     QActionGroup* actionGroup = new QActionGroup(subMenu);
     QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setSurfaceShadeMode(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setSurfaceShadeMode(int)));
     QAction* action = subMenu->menuAction();
     action->setIcon(QIcon(":/Icons/layers.png"));
     action->setStatusTip(tr("Select different shading techniques for displaying the scene"));
     action = subMenu->addAction(tr("&Off"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_W));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::noShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Wire Frame"));
     actionGroup->addAction(action);
-    action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_W));
+    action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::wireframeShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Flat Shading"));
     actionGroup->addAction(action);
-    action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_F));
+    action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_F));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::flatShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Smooth Shading"));
     actionGroup->addAction(action);
-    action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_M));
+    action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_M));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::smoothShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
@@ -482,31 +501,31 @@ QMenu* SimObjectWidget::createUserMenu() const
     QMenu* subMenu = menu->addMenu(tr("&Physics Rendering"));
     QActionGroup* actionGroup = new QActionGroup(subMenu);
     QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setPhysicsShadeMode(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setPhysicsShadeMode(int)));
     QAction* action = subMenu->menuAction();
     //action->setIcon(QIcon(":/Icons/layers.png"));
     action->setStatusTip(tr("Select different shading techniques for displaying the physical representation of objects"));
     action = subMenu->addAction(tr("&Off"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_W));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::noShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Wire Frame"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_W));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::wireframeShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Flat Shading"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_F));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_F));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::flatShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Smooth Shading"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_M));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_M));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::smoothShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
@@ -517,31 +536,31 @@ QMenu* SimObjectWidget::createUserMenu() const
     QMenu* subMenu = menu->addMenu(tr("&Drawings Rendering"));
     QActionGroup* actionGroup = new QActionGroup(subMenu);
     QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setDrawingsShadeMode(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setDrawingsShadeMode(int)));
     QAction* action = subMenu->menuAction();
     action->setIcon(QIcon(":/Icons/chart_line.png"));
     action->setStatusTip(tr("Select different shading techniques for displaying controller drawings"));
     action = subMenu->addAction(tr("&Off"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_W));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::noShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Wire Frame"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_W));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::wireframeShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Flat Shading"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_F));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_F));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::flatShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
     action = subMenu->addAction(tr("&Smooth Shading"));
     actionGroup->addAction(action);
-    //action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_M));
+    //action->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_M));
     action->setCheckable(true);
     signalMapper->setMapping(action, SimRobotCore2::Renderer::smoothShading);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
@@ -552,7 +571,7 @@ QMenu* SimObjectWidget::createUserMenu() const
     subMenu = subMenu->addMenu(tr("&Occlusion"));
     actionGroup = new QActionGroup(subMenu);
     signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(setDrawingsOcclusion(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(setDrawingsOcclusion(int)));
     action = subMenu->menuAction();
     action->setStatusTip(tr("Select different drawings occlusion modes"));
 
@@ -574,7 +593,8 @@ QMenu* SimObjectWidget::createUserMenu() const
     signalMapper->setMapping(action, SimRobotCore2::Renderer::enableDrawingsTransparentOcclusion);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
 
-    qobject_cast<QAction*>(signalMapper->mapping(objectRenderer.getRenderFlags() & (SimRobotCore2::Renderer::enableDrawingsOcclusion | SimRobotCore2::Renderer::enableDrawingsTransparentOcclusion)))->setChecked(true);
+    qobject_cast<QAction*>(signalMapper->mapping(objectRenderer.getRenderFlags() & (SimRobotCore2::Renderer::enableDrawingsOcclusion | SimRobotCore2::Renderer::enableDrawingsTransparentOcclusion)))
+        ->setChecked(true);
   }
 
   menu->addSeparator();
@@ -621,7 +641,7 @@ QMenu* SimObjectWidget::createUserMenu() const
   {
     QMenu* subMenu = menu->addMenu(tr("Export as Image..."));
     QSignalMapper* signalMapper = new QSignalMapper(subMenu);
-    connect(signalMapper, SIGNAL(mapped(int)), SLOT(exportAsImage(int)));
+    connect(signalMapper, SIGNAL(mappedInt(int)), SLOT(exportAsImage(int)));
     action = subMenu->addAction(tr("3840x2160"));
     signalMapper->setMapping(action, (3840 << 16) | 2160);
     connect(action, SIGNAL(triggered()), signalMapper, SLOT(map()));
@@ -641,7 +661,7 @@ QMenu* SimObjectWidget::createUserMenu() const
 void SimObjectWidget::copy()
 {
   QApplication::clipboard()->clear();
-  QApplication::clipboard()->setPixmap(QPixmap::fromImage(grabFrameBuffer()));
+  QApplication::clipboard()->setPixmap(QPixmap::fromImage(grabFramebuffer()));
 }
 
 void SimObjectWidget::exportAsImage(int resolution)
@@ -650,9 +670,8 @@ void SimObjectWidget::exportAsImage(int resolution)
   int height = resolution & 0xffff;
 
   QSettings& settings = CoreModule::application->getSettings();
-  QString fileName = QFileDialog::getSaveFileName(this,
-    tr("Export as Image"), settings.value("ExportDirectory", "").toString(), tr("Portable Network Graphic (*.png)"));
-  if(fileName.isEmpty())
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Export as Image"), settings.value("ExportDirectory", "").toString(), tr("Portable Network Graphic (*.png)"));
+  if (fileName.isEmpty())
     return;
   settings.setValue("ExportDirectory", QFileInfo(fileName).dir().path());
 
@@ -662,20 +681,28 @@ void SimObjectWidget::exportAsImage(int resolution)
     objectRenderer.getSize(winWidth, winHeight);
 
     // render object using a temporary widget
-    QGLFormat format = this->format();
-    format.setDoubleBuffer(false);
-    QGLWidget widget(format, 0, 0, Qt::CustomizeWindowHint);
-#ifdef OSX
-    widget.setWindowOpacity(0.f);
-    widget.show();
-#endif
-    widget.setMaximumSize(width, height);
-    widget.resize(width, height);
-    widget.makeCurrent();
+    QOffscreenSurface surface;
+    surface.create();
+    VERIFY(surface.isValid());
+
+    QOpenGLContext context;
+    context.setShareContext(QOpenGLContext::globalShareContext());
+    context.create();
+    context.makeCurrent(&surface);
+    VERIFY(context.isValid());
+
+    QOpenGLFramebufferObjectFormat format;
+    format.setSamples(8);
+    format.setAttachment(QOpenGLFramebufferObject::Attachment::Depth);
+    QOpenGLFramebufferObject buffer(QSize(width, height), format);
+    buffer.bind();
+
     objectRenderer.resize(fovy, width, height);
-    objectRenderer.init(false);
+    objectRenderer.init(true);
     objectRenderer.draw();
-    image = widget.grabFrameBuffer();
+
+    buffer.release();
+    image = buffer.toImage();
 
     makeCurrent();
     objectRenderer.resize(fovy, winWidth, winHeight);
@@ -756,13 +783,13 @@ void SimObjectWidget::fitCamera()
   /*
   objectRenderer.fitCamera();
   update();
-  */
+   */
 }
 
 void SimObjectWidget::toggleRenderFlag(int flag)
 {
   unsigned int flags = objectRenderer.getRenderFlags();
-  if(flags & flag)
+  if (flags & flag)
     flags &= ~flag;
   else
     flags |= flag;

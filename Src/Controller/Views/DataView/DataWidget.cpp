@@ -8,8 +8,8 @@
 #include "DataWidget.h"
 #include <QSettings>
 
-DataWidget::DataWidget(DataView& view, QtVariantPropertyManager& manager) : theView(view),
-  pTheCurrentProperty(nullptr), theEditorFactory(&view), theManager(manager), theRootPropertyHasChanged(false)
+DataWidget::DataWidget(DataView& view, QtVariantPropertyManager& manager)
+    : theView(view), pTheCurrentProperty(nullptr), theEditorFactory(&view), theManager(manager), theRootPropertyHasChanged(false)
 {
   setFocusPolicy(Qt::StrongFocus);
 
@@ -23,12 +23,12 @@ DataWidget::DataWidget(DataView& view, QtVariantPropertyManager& manager) : theV
   pUnchangedAction->setText("Unchanged");
   pAutoSetAction = new QAction(QIcon(":/Icons/arrow_refresh.png"), tr("&Auto-set"), this);
   pAutoSetAction->setCheckable(true);
-  pAutoSetAction->setChecked(true);
+  pAutoSetAction->setChecked(false);
   pAutoSetAction->setText("Auto-set");
   pAutoSetAction->setToolTip("Continuously overwrite data on robot");
 
-  connect(pSetAction , SIGNAL(triggered()), this, SLOT(setPressed()));
-  connect(pUnchangedAction , SIGNAL(triggered()), this, SLOT(unchangedPressed()));
+  connect(pSetAction, SIGNAL(triggered()), this, SLOT(setPressed()));
+  connect(pUnchangedAction, SIGNAL(triggered()), this, SLOT(unchangedPressed()));
   connect(pAutoSetAction, SIGNAL(toggled(bool)), this, SLOT(autoSetToggled(bool)));
 
   setFactoryForManager(&theManager, &theEditorFactory);
@@ -42,14 +42,19 @@ DataWidget::DataWidget(DataView& view, QtVariantPropertyManager& manager) : theV
 
 DataWidget::~DataWidget()
 {
-  QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
-  settings.beginGroup(theView.getFullName());
-  settings.setValue("HeaderState", splitterPosition());
-  settings.endGroup();
+  //saveLayout();
 
   //Without a view the widget will stop updating the properties.
   theView.removeWidget(); //Remove the Widget from the view.
   clear();
+}
+
+void DataWidget::saveLayout()
+{
+  QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
+  settings.beginGroup(theView.getFullName());
+  settings.setValue("HeaderState", splitterPosition());
+  settings.endGroup();
 }
 
 void DataWidget::update()
@@ -58,14 +63,16 @@ void DataWidget::update()
   //Therefore this is done in the gui thread.
   SYNC_WITH(theView); //without this lock pTheCurrentProperty might be changed while adding it.
 
-  if(theRootPropertyHasChanged && nullptr != pTheCurrentProperty)
+  theView.update = true;
+
+  if (theRootPropertyHasChanged && nullptr != pTheCurrentProperty)
   {
     //If the property has children it is only a container.
     //Discard the container and add the children directly for a more compact view.
     QList<QtProperty*> subProps = pTheCurrentProperty->subProperties();
-    if(subProps.size() > 0)
+    if (subProps.size() > 0)
     {
-      for(int i = 0; i < subProps.size(); i++)
+      for (int i = 0; i < subProps.size(); i++)
       {
         addProperty(subProps[i]);
       }
@@ -89,7 +96,7 @@ QMenu* DataWidget::createUserMenu() const
 
 void DataWidget::setRootProperty(QtProperty* pRootProperty)
 {
-  if(pTheCurrentProperty != pRootProperty)
+  if (pTheCurrentProperty != pRootProperty)
   {
     theRootPropertyHasChanged = true;
     pTheCurrentProperty = pRootProperty;

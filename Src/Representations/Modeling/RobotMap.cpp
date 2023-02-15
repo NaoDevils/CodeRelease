@@ -16,11 +16,9 @@ void RobotMap::draw() const
     {
       ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
       color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:RobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
-        Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+      CIRCLE("representation:RobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
 
-      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
-      DRAWTEXT("representation:RobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
+      DRAWTEXT("representation:RobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, static_cast<int>(robot.validity * 100.f + 0.5f) << "%");
     }
   }
 
@@ -33,10 +31,7 @@ void RobotMap::draw() const
       color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
       float x = robot.pose.translation.x();
       float y = robot.pose.translation.y();
-      CIRCLE3D("representation:RobotMap", Pose3f(x, y, 1),
-        200,
-        5,
-        color);
+      CIRCLE3D("representation:RobotMap", Pose3f(x, y, 1), 200, 5, color);
     }
   }
 }
@@ -49,11 +44,9 @@ void GroundTruthRobotMap::draw() const
     {
       ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
       color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:GroundTruthRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
-        Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+      CIRCLE("representation:GroundTruthRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
 
-      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
-      DRAWTEXT("representation:GroundTruthRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
+      DRAWTEXT("representation:GroundTruthRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, static_cast<int>(robot.validity * 100.f + 0.5f) << "%");
     }
   }
 
@@ -66,10 +59,7 @@ void GroundTruthRobotMap::draw() const
       color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
       float x = (float)i->pose.translation.x();
       float y = (float)i->pose.translation.y();
-      CIRCLE3D("representation:GroundTruthRobotMap", Pose3f(x, y, 1),
-        200,
-        5,
-        color);
+      CIRCLE3D("representation:GroundTruthRobotMap", Pose3f(x, y, 1), 200, 5, color);
     }
   }
 }
@@ -82,11 +72,9 @@ void LocalRobotMap::draw() const
     {
       ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
       color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:LocalRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
-        Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+      CIRCLE("representation:LocalRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
 
-      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
-      DRAWTEXT("representation:LocalRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
+      DRAWTEXT("representation:LocalRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, static_cast<int>(robot.validity * 100.f + 0.5f) << "%");
     }
   }
 
@@ -99,10 +87,7 @@ void LocalRobotMap::draw() const
       color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
       float x = (float)i->pose.translation.x();
       float y = (float)i->pose.translation.y();
-      CIRCLE3D("representation:LocalRobotMap", Pose3f(x, y, 1),
-        200,
-        5,
-        color);
+      CIRCLE3D("representation:LocalRobotMap", Pose3f(x, y, 1), 200, 5, color);
     }
   }
 }
@@ -115,11 +100,9 @@ void RemoteRobotMap::draw() const
     {
       ColorRGBA color = (robot.robotType == RobotEstimate::teammateRobot) ? ColorRGBA(150, 255, 0) : ColorRGBA::black;
       color = (robot.robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
-      CIRCLE("representation:RemoteRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10,
-        Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+      CIRCLE("representation:RemoteRobotMap", robot.pose.translation.x(), robot.pose.translation.y(), 70, 10, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
 
-      std::stringstream ss; ss << "Val: " << roundf(robot.validity * 100.f) / 100.f;
-      DRAWTEXT("representation:RemoteRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, ss.str().c_str());
+      DRAWTEXT("representation:RemoteRobotMap", robot.pose.translation.x() - 30, robot.pose.translation.y() - 170, 75, color, static_cast<int>(robot.validity * 100.f + 0.5f) << "%");
     }
   }
 
@@ -132,10 +115,7 @@ void RemoteRobotMap::draw() const
       color = (i->robotType == RobotEstimate::opponentRobot) ? ColorRGBA::red : color;
       float x = (float)i->pose.translation.x();
       float y = (float)i->pose.translation.y();
-      CIRCLE3D("representation:RemoteRobotMap", Pose3f(x, y, 1),
-        200,
-        5,
-        color);
+      CIRCLE3D("representation:RemoteRobotMap", Pose3f(x, y, 1), 200, 5, color);
     }
   }
 }

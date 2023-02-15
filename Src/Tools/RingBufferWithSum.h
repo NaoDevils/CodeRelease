@@ -28,14 +28,10 @@ public:
    * @param capacity The maximum number of entries the buffer can store. If not specified,
    *                 the second template parameter is used as default capacity.
    */
-  RingBufferWithSum(std::size_t capacity = n) :
-    RingBuffer<T, n>(capacity),
-    zero()
+  RingBufferWithSum(std::size_t capacity = n) : RingBuffer<T, n>(capacity), zero()
   {
-    static_assert(std::is_same<Angle, T>::value ||
-                  std::is_floating_point<T>::value ||
-                  std::is_integral<T>::value,
-                  "The standard constructor is not applicable for non-standard types in the template argument");
+    static_assert(std::is_same<Angle, T>::value || std::is_floating_point<T>::value || std::is_integral<T>::value,
+        "The standard constructor is not applicable for non-standard types in the template argument");
     clear();
   }
 
@@ -46,13 +42,9 @@ public:
    * @param capacity The maximum number of entries the buffer can store. If not specified,
    *                 the second template parameter is used as default capacity.
    */
-  RingBufferWithSum(const T& zero, std::size_t capacity = n) :
-    RingBuffer<T, n>(capacity),
-    zero(zero)
+  RingBufferWithSum(const T& zero, std::size_t capacity = n) : RingBuffer<T, n>(capacity), zero(zero)
   {
-    static_assert(!std::is_same<Angle, T>::value &&
-                  !std::is_floating_point<T>::value &&
-                  !std::is_integral<T>::value, "Use the standard constructor instead!");
+    static_assert(!std::is_same<Angle, T>::value && !std::is_floating_point<T>::value && !std::is_integral<T>::value, "Use the standard constructor instead!");
     clear();
   }
 
@@ -62,11 +54,11 @@ public:
    * sum contains all data.
    * @param other The buffer that is copied.
    */
-  RingBufferWithSum(const RingBufferWithSum& other) :
-    zero(other.zero),
-    currentSum(RingBuffer<T, n>::full() ? other.zero : other.prevSum + other.currentSum),
-    prevSum(RingBuffer<T, n>::full() ? other.prevSum + other.currentSum : other.zero)
-  {}
+  RingBufferWithSum(const RingBufferWithSum& other)
+      : zero(other.zero), currentSum(RingBuffer<T, n>::full() ? other.zero : other.prevSum + other.currentSum),
+        prevSum(RingBuffer<T, n>::full() ? other.prevSum + other.currentSum : other.zero)
+  {
+  }
 
   /**
    * Assignment operator.
@@ -97,7 +89,7 @@ public:
    */
   void reserve(std::size_t capacity)
   {
-    while(RingBuffer<T, n>::size() > capacity)
+    while (RingBuffer<T, n>::size() > capacity)
       pop_back();
     RingBuffer<T, n>::reserve(capacity);
   }
@@ -110,20 +102,20 @@ public:
    */
   void push_front(const T& value)
   {
-    if(RingBuffer<T, n>::full())
+    if (RingBuffer<T, n>::full())
       prevSum -= RingBuffer<T, n>::back();
 
     currentSum += value;
     RingBuffer<T, n>::push_front(value);
 
     // Prevent propagating errors from one round to another
-    if(RingBuffer<T, n>::cycled())
+    if (RingBuffer<T, n>::cycled())
     {
       prevSum = currentSum;
       currentSum = zero;
     }
   }
-  
+
   /**
    * Replaces the entry at the front of the buffer. The new entry is still accessible under
    * index 0, front(), and *begin(). All other entries are unchanged.
@@ -131,11 +123,11 @@ public:
    */
   void set_front(const T& newValue)
   {
-    if(RingBuffer<T, n>::cycled())
-      prevSum += - RingBuffer<T, n>::front() + newValue;
+    if (RingBuffer<T, n>::cycled())
+      prevSum += -RingBuffer<T, n>::front() + newValue;
     else
-      currentSum += - RingBuffer<T, n>::front() + newValue;
-    
+      currentSum += -RingBuffer<T, n>::front() + newValue;
+
     RingBuffer<T, n>::front() = newValue;
   }
 
@@ -147,7 +139,7 @@ public:
   }
 
   /** Returns the sum of all entries in O(1). */
-  T sum() const {return prevSum + currentSum;}
+  T sum() const { return prevSum + currentSum; }
 
   /**
    * Returns the minimum of all entries in O(size()).
@@ -155,13 +147,13 @@ public:
    */
   T minimum() const
   {
-    if(RingBuffer<T, n>::empty())
+    if (RingBuffer<T, n>::empty())
       return zero;
     else
     {
       T min = RingBuffer<T, n>::front();
-      for(const T& t : *this)
-        if(t < min)
+      for (const T& t : *this)
+        if (t < min)
           min = t;
       return min;
     }
@@ -173,13 +165,13 @@ public:
    */
   T maximum() const
   {
-    if(RingBuffer<T, n>::empty())
+    if (RingBuffer<T, n>::empty())
       return zero;
     else
     {
       T max = RingBuffer<T, n>::front();
-      for(const T& t : *this)
-        if(t > max)
+      for (const T& t : *this)
+        if (t > max)
           max = t;
       return max;
     }
@@ -214,13 +206,17 @@ public:
   inline T getVariance()
   {
     // Return 0 if buffer is empty or has just one element
-    if (RingBuffer<T, n>::size() < 2) return T();
+    if (RingBuffer<T, n>::size() < 2)
+      return T();
     T avg = average();
-    T var = 0;
+    T var = zero;
 
     for (const T& t : *this)
     {
-      var += (t - avg) * (t - avg);
+      if constexpr (std::is_same<T, Vector2a>::value || std::is_same<T, Vector2f>::value)
+        var += (t - avg).cwiseProduct(t - avg);
+      else
+        var += (t - avg) * (t - avg);
     }
 
     return (1.f / (RingBuffer<T, n>::size() - 1)) * var;
@@ -229,24 +225,24 @@ public:
 
 #ifdef WINDOWS // The division might force a type conversion that looses precision
 #pragma warning(push)
-#pragma warning(disable: 4244 4267)
+#pragma warning(disable : 4244 4267)
 #elif defined __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wconversion"
 #endif
 
-template<typename T, std::size_t n> T RingBufferWithSum<T, n>::average() const
+template <typename T, std::size_t n> T RingBufferWithSum<T, n>::average() const
 {
-  if(RingBuffer<T, n>::empty())
+  if (RingBuffer<T, n>::empty())
     return zero;
   else
     return static_cast<T>(sum() / RingBuffer<T, n>::size());
 }
 
-template<typename T, std::size_t n> float RingBufferWithSum<T, n>::averagef() const
+template <typename T, std::size_t n> float RingBufferWithSum<T, n>::averagef() const
 {
   static_assert(std::is_integral<T>::value, "Use average() instead");
-  if(RingBuffer<T, n>::empty())
+  if (RingBuffer<T, n>::empty())
     return zero;
   else
     return sum() / static_cast<float>(RingBuffer<T, n>::size());

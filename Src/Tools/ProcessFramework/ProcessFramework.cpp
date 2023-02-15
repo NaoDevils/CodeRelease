@@ -13,6 +13,6 @@ ProcessCreatorBase* ProcessCreatorBase::first = nullptr;
 void PlatformProcess::setPriority(int priority)
 {
   this->priority = priority;
-  if(processBase)
+  if (processBase)
     processBase->setPriority(priority);
 }

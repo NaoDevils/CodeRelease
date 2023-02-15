@@ -27,8 +27,7 @@ template <typename hypothesis_t = RemoteKalmanPositionHypothesis, bool towardsOn
 class RemoteMultiKalmanModel : public GlobalMultiKalmanModel<hypothesis_t, towardsOneModel>
 {
   // Check at compile-time that hypothesis_t is derived from class RemoteKalmanPositionHypothesis.
-  static_assert(std::is_base_of<RemoteKalmanPositionHypothesis, hypothesis_t>::value,
-                "hypothesis_t not derived from class RemoteKalmanPositionHypothesis");
+  static_assert(std::is_base_of<RemoteKalmanPositionHypothesis, hypothesis_t>::value, "hypothesis_t not derived from class RemoteKalmanPositionHypothesis");
 
 public:
   /**
@@ -46,8 +45,8 @@ public:
    * Destructor.
    */
   ~RemoteMultiKalmanModel() {}
-  
-  
+
+
   //MARK: Kalman model related methods
 
   /**
@@ -73,16 +72,15 @@ public:
    * \param [in] teammate Pointer to the teammate to add.
    * \return The updated or new created hypothesis.
    */
-  hypothesis_t* sensorUpdate(
-    const Vector2f& measuredPosition,
-    float measuredDistance,
-    unsigned timestamp,
-    float perceptValidity,
-    float minDistanceForNewHypothesis,
-    float initialValidityForNewHypothesis,
-    const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-    int playerNumber,
-    const typename hypothesis_t::TeammateInfo teammate);
+  hypothesis_t* sensorUpdate(const Vector2f& measuredPosition,
+      float measuredDistance,
+      unsigned timestamp,
+      float perceptValidity,
+      float minDistanceForNewHypothesis,
+      float initialValidityForNewHypothesis,
+      const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
+      int playerNumber,
+      const typename hypothesis_t::TeammateInfo teammate);
 
   /**
    * \brief Correction
@@ -110,18 +108,16 @@ public:
    * \param [in] teammate Pointer to the teammate to add.
    * \return The updated or new created hypothesis.
    */
-  hypothesis_t* sensorUpdate(
-    const Vector2f& measuredPosition,
-    float measuredDistance,
-    const Vector2f* measuredVelocity,
-    unsigned timestamp,
-    float perceptValidity,
-    float minDistanceForNewHypothesis,
-    float initialValidityForNewHypothesis,
-    const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-    int playerNumber,
-    const typename hypothesis_t::TeammateInfo teammate);
-
+  hypothesis_t* sensorUpdate(const Vector2f& measuredPosition,
+      float measuredDistance,
+      const Vector2f* measuredVelocity,
+      unsigned timestamp,
+      float perceptValidity,
+      float minDistanceForNewHypothesis,
+      float initialValidityForNewHypothesis,
+      const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
+      int playerNumber,
+      const typename hypothesis_t::TeammateInfo teammate);
 };
 
 #include "RemoteMultiKalmanModel_impl.h"

@@ -16,7 +16,6 @@
  * @struct TeamBallModel
  */
 STREAMABLE(TeamBallModel,
-{
   void draw() const,
 
   (Vector2f)(Vector2f::Zero()) position, /**< The position of the ball in global field coordinates (in mm) */
@@ -26,6 +25,6 @@ STREAMABLE(TeamBallModel,
   
   //BEGIN Added by Dortmund
   (float)(0.f) validity, /**< The validity of the ball hypothesis used as team ball model in range [0,1]. */
-  (bool)(true) isLocalBallModel, /**< True if the local \c BallModel is used as team ball model. */
+  (bool)(true) isLocalBallModel /**< True if the local \c BallModel is used as team ball model. */
   //END
-});
+);

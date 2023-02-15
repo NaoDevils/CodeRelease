@@ -16,7 +16,6 @@
 #include "Representations/Perception/BodyContour.h"
 
 MODULE(BodyContourProvider,
-{,
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(ImageCoordinateSystem),
@@ -26,8 +25,7 @@ MODULE(BodyContourProvider,
   REQUIRES(RobotModel),
   PROVIDES(BodyContour),
   PROVIDES(BodyContourUpper),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (std::vector<Vector3f>) torso, /**< The contour of the torso. */
     (std::vector<Vector3f>) shoulder, /**< The contour of the left inner shoulder. */
     (std::vector<Vector3f>) upperArm, /**< The contour of the left upper arm. */
@@ -35,16 +33,16 @@ MODULE(BodyContourProvider,
     (std::vector<Vector3f>) lowerArm2, /**< The contour of the left lower arm. */
     (std::vector<Vector3f>) upperLeg1, /**< The contour of the left upper leg (part 1). */
     (std::vector<Vector3f>) upperLeg2, /**< The contour of the left upper leg (part 2). */
-    (std::vector<Vector3f>) foot, /**< The contour of the left foot. */
-  }),
-});
+    (std::vector<Vector3f>) foot /**< The contour of the left foot. */
+  )
+);
 
 /**
  * @class BodyContourProvider
  * A module that provides the contour of the robot's body in the image.
  * The contour can be used to exclude the robot's body from image processing.
  */
-class BodyContourProvider: public BodyContourProviderBase
+class BodyContourProvider : public BodyContourProviderBase
 {
 private:
   Pose3f robotCameraMatrixInverted; /**< The inverse of the current robotCameraMatrix. */
@@ -71,5 +69,5 @@ private:
    *             body parts for right body parts.
    * @param bodyContour The 2-D contour in image coordinates the 3-D contour is added to.
    */
-  void add(const Pose3f& origin, const std::vector<Vector3f >& c, float sign, BodyContour& bodyContour, bool upper = false);
+  void add(const Pose3f& origin, const std::vector<Vector3f>& c, float sign, BodyContour& bodyContour, bool upper = false);
 };

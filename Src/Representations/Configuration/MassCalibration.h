@@ -16,11 +16,10 @@ struct MassCalibration : public Streamable
   /**
    * Information on the mass distribution of a limb of the robot.
    */
-  STREAMABLE(MassInfo,
-  {,
+  STREAMABLE(MassInfo,,
     (float)(0) mass, /**< The mass of this limb. */
-    (Vector3f) offset, /**< The offset of the center of mass of this limb relative to its hinge. */
-  });
+    (Vector3f) offset /**< The offset of the center of mass of this limb relative to its hinge. */
+  );
 
   std::array<MassInfo, Limbs::numOfLimbs> masses; /**< Information on the mass distribution of all joints. */
 
@@ -31,7 +30,7 @@ private:
 inline void MassCalibration::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN
-  for(int i = 0; i < Limbs::numOfLimbs; ++i)
+  for (int i = 0; i < Limbs::numOfLimbs; ++i)
     Streaming::streamIt(in, out, Limbs::getName(static_cast<Limbs::Limb>(i)), masses[i], nullptr);
   STREAM_REGISTER_FINISH
 }

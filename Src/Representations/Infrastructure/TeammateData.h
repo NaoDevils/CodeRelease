@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/Infrastructure/TeamCommEvents.h"
 #include "Representations/MotionControl/WalkRequest.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Modeling/BallModel.h"
@@ -25,22 +26,18 @@
  * Description of all information about/from a teammate
  */
 STREAMABLE(Teammate,
-{
   /**
    * @enum Status
    * Activity status of the teammate.
    */
   ENUM(Status,
-  {,
     INACTIVE,                              /** OK   : I receive packets, but robot is penalized */
     ACTIVE,                                /** GOOD : OK + Teammate is not penalized */
-    FULLY_ACTIVE,                          /** BEST : GOOD + Teammate is standing/walking :-) */
-  }),
+    FULLY_ACTIVE                          /** BEST : GOOD + Teammate is standing/walking :-) */
+  ),
 
   (int)(-1) number,                                   /**< The number of this player */
-  (bool)(false) isGoalkeeper,                         /**< The name says it all */
   (bool)(true) isNDevilsPlayer,                       /**< The name says it all */
-  (bool)(true) isPenalized,                           /**< The name says it all */
   (bool)(true) isUpright,                             /**< The name says it all */
   (unsigned)(0) timeWhenSent,                         /**< Time when the teammate sent the message. */
   (unsigned)(0) timeWhenLastPacketReceived,           /**< Time when this player received the message. */
@@ -58,31 +55,31 @@ STREAMABLE(Teammate,
   (float)(0.f) headPan,                               /**< for field coverage */
   (SideConfidence) sideConfidence,                    /**< The belief about playing in the correct direction */
   (BehaviorData) behaviorData,                        /**< Information about the behavior */
+  (TeamCommEvents) teamCommEvents,                    /**< Message event informations */
   (WhistleDortmund) whistle,                          /**< Output of the WhistleDetector */
-  (bool)(false) whistleCausedPlay,                    /**< Did the robot begin playing due to whistle? */
-  (SimpleRobotsDistributed) simpleRobotsDistributed,  /**< Possible robot map entries. */
-  (float)(0.f) sanity,                                /**< Should not trust insane robots. Atm only used for dropIn. */
-});
+  (SimpleRobotsDistributed) simpleRobotsDistributed  /**< Possible robot map entries. */
+);
 
 /**
  * @struct TeammateData
  * Collection of teammate information
  */
 STREAMABLE(TeammateData,
-{
+  STREAMABLE(TeammateEvent,,
+    ((TeamCommEvents) SendReason)(TeamCommEvents::SendReason::numOfSendReasons) reason,
+    (Teammate) message
+  );
   /** Drawing function for representation */
-  void draw() const,
+  void draw() const;
+  const Teammate* getNewestTeammate() const;
+  Teammate* getNewestEventMessage(TeamCommEvents::SendReason reason);
+  const Teammate* getNewestEventMessage(TeamCommEvents::SendReason reason) const,
 
   (std::vector<Teammate>) teammates,        /**< An unordered(!) list of all teammates that are currently communicating with me */
+  (Teammate) myself,                        /**< My last teammate data */
   (int)(0) numberOfActiveTeammates,         /**< The number of teammates (in the list) that are at not INACTIVE */
-  (bool)(false) sendThisFrame,              /**< The team communication will be sent in this frame. TODO: Find a better place!*/
+  (int)(1200) messageBudget,                /**< The remaining message budget, updated by GC. */
+  (float)(1.f) messageBudgetFactor,
   (bool)(true) wlanOK,                      /**< Is the wireless ok (if not, use behavior w/o wireless) */
-});
-
-/**
- * @struct TeamDataSenderOutput
- * An empty dummy representation for the TeamDataSender module
- */
-STREAMABLE(TeamDataSenderOutput,
-{,
-});
+  (std::vector<TeammateEvent>) newestEventMessages
+);

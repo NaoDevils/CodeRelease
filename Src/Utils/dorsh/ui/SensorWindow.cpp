@@ -1,5 +1,6 @@
 #include <map>
-#include <QDesktopWidget>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QLabel>
@@ -8,63 +9,61 @@
 #include "Utils/dorsh/ui/SensorWindow.h"
 
 #include "Platform/File.h"
+#include <nlohmann/json.hpp>
 
-SensorWindow::SensorWindow(std::map<std::string, std::string> map, std::string robotName)
+SensorWindow::SensorWindow(const nlohmann::json& json, std::string robotName)
 {
-  std::string buf("Sensorview of ");
-  buf.append(robotName);
-  setWindowTitle(buf.c_str());
+  setWindowTitle(QString::fromStdString("Sensorview of " + robotName));
 
   QScrollArea* scrollArea = new QScrollArea();
   scrollArea->setWidgetResizable(true);
 
-  int width = 420;
-  int height = 320;
+  static constexpr int width = 420;
+  static constexpr int height = 320;
 
   scrollArea->setMinimumSize(width, height);
-  scrollArea->setMaximumSize(width, height);
 
-  QWidget* gridWidget = new QWidget();
+  QWidget* gridWidget = new QWidget(this);
 
   QGridLayout* gridLayout = new QGridLayout(gridWidget);
-  auto it = map.cbegin(), end = map.cend();
-  for (int i = 0, j = 0; it != end; ++it, i ++)
+
+  int i = 0;
+  const std::function<void(const nlohmann::json&, const std::string&)> displayJson = [&](const nlohmann::json& j, const std::string& prefix)
   {
-    QLabel* nameLabel = new QLabel(it->first.c_str(), gridWidget);
-    QLabel* valueLabel = new QLabel(it->second.c_str(), gridWidget);
+    if (j.is_object())
+    {
+      for (const auto& [key, val] : j.items())
+        displayJson(val, prefix + (prefix.empty() ? "" : ".") + key);
+    }
+    else if (j.is_array())
+    {
+      for (const auto& [key, val] : j.items())
+        displayJson(val, prefix + "[" + key + "]");
+    }
+    else
+    {
+      QLabel* nameLabel = new QLabel(QString::fromStdString(prefix), gridWidget);
+      QLabel* valueLabel = new QLabel(QString::fromStdString(j.dump()), gridWidget);
 
-    if (i % 2 == 0)
-    {
-      nameLabel->setStyleSheet("QLabel {color : Black; }");
-      valueLabel->setStyleSheet("QLabel {color : Black; }");
-    }
-    if (i % 2 == 1)
-    {
-      nameLabel->setStyleSheet("QLabel {color : Navy; }");
-      valueLabel->setStyleSheet("QLabel {color : Navy; }");
-    }
+      gridLayout->addWidget(nameLabel, i, 0, Qt::AlignLeft);
+      gridLayout->addWidget(valueLabel, i, 1, Qt::AlignRight);
 
-    gridLayout->addWidget(nameLabel, i, j, Qt::AlignLeft);
-    gridLayout->addWidget(valueLabel, i, j + 1, Qt::AlignRight);
-    
-    if (i >= 200)
-    {
-      i = -1;
-      j += 2;
+      ++i;
     }
-  }
+  };
+
+  displayJson(json, "");
+
 
   scrollArea->setWidget(gridWidget);
   gridWidget->setLayout(gridLayout);
 
-  QDesktopWidget desktop;
-  QPoint position((desktop.screenGeometry().width() - frameGeometry().width()) / 2 + 200, (desktop.screenGeometry().height() - frameGeometry().height()) / 2);
+  QRect geometry = QGuiApplication::screens().first()->geometry();
+  QPoint position((geometry.width() - frameGeometry().width()) / 2 + 200, (geometry.height() - frameGeometry().height()) / 2);
 
-  QWidget::setLayout(new QVBoxLayout);
-  QWidget::layout()->addWidget(scrollArea);
+  setCentralWidget(scrollArea);
 
-  QWidget::setMinimumSize(width, height);
-  QWidget::setMaximumSize(width, height);
+  setMinimumSize(width, height);
 
-  QWidget::move(position);
+  move(position);
 }

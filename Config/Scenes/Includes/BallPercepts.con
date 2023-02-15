@@ -1,0 +1,32 @@
+vi BallPerceptPatch 
+vid BallPerceptPatch representation:BallPercept:ballPatch
+
+vi MultipleBallPerceptPatch 
+vid MultipleBallPerceptPatch representation:MultipleBallPercept:multipleBallPatch
+
+mr ProcessedBallPatches CLIPBallPerceptor
+
+vi BallPatches 
+vid BallPatches representation:BallPatches
+
+vp BallSpotsUpper 100 0 100
+vpd BallSpotsUpper module:CLIPBallPerceptor:ballSpots:upper:sum red
+vpd BallSpotsUpper module:CLIPBallPerceptor:ballSpots:upper:processed green
+
+vp BallSpotsLower 100 0 100
+vpd BallSpotsLower module:CLIPBallPerceptor:ballSpots:lower:sum red
+vpd BallSpotsLower module:CLIPBallPerceptor:ballSpots:lower:processed green
+
+echo
+echo =============== Ball Spots ====================
+echo vid upper module:CLIPBallPerceptor:ballSpots:upper 
+echo vid lower module:CLIPBallPerceptor:ballSpots:lower 
+echo
+echo ============= CNN Ball Position ===============
+echo vid upper module:CLIPBallPerceptor:ballPosition:Upper
+echo vid lower module:CLIPBallPerceptor:ballPosition:Lower
+echo vd parameters:CLIPBallPerceptor 
+echo
+echo ============== Ball Provider ==================
+echo mr BallPercept default
+echo mr MultipleBallPercept CLIPBallPerceptor

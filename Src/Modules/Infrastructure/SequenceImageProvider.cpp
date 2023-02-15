@@ -21,12 +21,10 @@ void SequenceImageProvider::update(SequenceImageUpper& lowFrameRateImage)
 
 void SequenceImageProvider::logCurrentImage(SequenceImage& lowFrameRateImage, bool upper)
 {
-  if (theGameInfo.state == STATE_PLAYING && theCameraMatrix.isValid && theCameraMatrixUpper.isValid) {
-    if (theBallSymbols.ballWasSeen 
-      && currentCounterOfConsecutiveFrames == 0 
-      && currentCounterOfPausedFrames > 60 
-      && currentCounterOfPausedFrames < modifiedPausedFrames
-      && modifiedPausedFrames < (3 * pausedFrames))
+  if (theGameInfo.state == STATE_PLAYING && theCameraMatrix.isValid && theCameraMatrixUpper.isValid)
+  {
+    if (theBallSymbols.ballWasSeen && currentCounterOfConsecutiveFrames == 0 && currentCounterOfPausedFrames > 60 && currentCounterOfPausedFrames < modifiedPausedFrames
+        && modifiedPausedFrames < (3 * pausedFrames))
     { //start logging again when ball was seen
       modifiedPausedFrames += std::max(0, static_cast<int>(pausedFrames) - static_cast<int>(currentCounterOfPausedFrames)); // add the missing paused frames to the next waiting time
       currentCounterOfPausedFrames = modifiedPausedFrames;
@@ -59,7 +57,8 @@ void SequenceImageProvider::logCurrentImage(SequenceImage& lowFrameRateImage, bo
       }
     }
   }
-  else {
+  else
+  {
     currentCounterOfPausedFrames++;
   }
 }

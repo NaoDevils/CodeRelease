@@ -3,7 +3,6 @@
 #include "Utils/dorsh/cmdlib/Commands.h"
 #include "Utils/dorsh/cmdlib/ProcessRunner.h"
 #include "Utils/dorsh/tools/ShellTools.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include <cstdlib>
 
 ShutdownCmd ShutdownCmd::theShutdownCmd;
@@ -20,12 +19,12 @@ std::string ShutdownCmd::getName() const
 
 std::string ShutdownCmd::getDescription() const
 {
-  return "bhumand stop && naoqid stop && halt";
+  return "shutdown robot";
 }
 
 bool ShutdownCmd::preExecution(Context& context, const std::vector<std::string>& params)
 {
-  if(!params.empty() && params[0] != "-s")
+  if (!params.empty() && params[0] != "-s" && params[0] != "all")
   {
     context.errorLine("Unrecognized parameters.");
     return false;
@@ -38,26 +37,17 @@ Task* ShutdownCmd::perRobotExecution(Context& context, RobotConfigDorsh& robot)
   return new ShutdownTask(context, &robot);
 }
 
-ShutdownCmd::ShutdownTask::ShutdownTask(Context& context, RobotConfigDorsh* robot)
-  : RobotTask(context, robot)
-{}
+ShutdownCmd::ShutdownTask::ShutdownTask(Context& context, RobotConfigDorsh* robot) : RobotTask(context, robot) {}
 
 bool ShutdownCmd::ShutdownTask::execute()
 {
   std::string ip = robot->getBestIP(context());
-  QString naoVersion = fromString(RobotConfigDorsh::getName(robot->naoVersion));
 
   context().printLine(robot->name + ": Shutting down...");
-  std::string command = "";
-  if (naoVersion == "V6") {
-    command = remoteCommand("systemctl --user stop bhumand; sleep 5s; sudo halt", ip);
-  } else {
-    command = remoteCommand("halt", ip);
-  }
-  ProcessRunner r(context(), fromString(command));
-  r = ProcessRunner(context(), fromString(command));
+  const auto [cmd, params] = remoteCommand("sudo poweroff", ip);
+  ProcessRunner r(context(), cmd, params);
   r.run();
-  if(r.error())
+  if (r.error())
   {
     context().errorLine(robot->name + ": Shutdown failed.");
     return false;

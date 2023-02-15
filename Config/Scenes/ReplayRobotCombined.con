@@ -1,0 +1,14 @@
+# replay a log file.
+# you have to adjust the name of the log file.
+sl LOG ${Logfile:,../Logs/*Combined.log}
+
+call ReplayRobot
+
+dr representation:JointRequest
+dr representation:JointSensorData 
+dr representation:InertialSensorData 
+dr representation:SystemSensorData 
+dr representation:FsrSensorData 
+dr representation:KeyStates 
+
+dt 113

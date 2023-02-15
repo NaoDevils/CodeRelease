@@ -26,14 +26,12 @@
  */
 
 STREAMABLE(LiveConfigurationState,
-{
   ENUM(ConfigurationState,
-  {,
     firstState,
     noConfiguration = firstState,
     lastState,
-    singleRoleConfiguration = lastState,
-  });
+    singleRoleConfiguration = lastState
+  );
   typedef std::vector<ConfigurationState> ConfigurationStateVector;
   ,
   (bool)(false) liveConfigurationActive,
@@ -44,5 +42,5 @@ STREAMABLE(LiveConfigurationState,
   (bool)(false) headRearPressed,
   (bool)(false) headFrontPressedThisFrame,
   (bool)(false) headMiddlePressedThisFrame,
-  (bool)(false) headRearPressedThisFrame,
-});
+  (bool)(false) headRearPressedThisFrame
+);

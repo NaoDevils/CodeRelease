@@ -19,12 +19,14 @@
 //  (unsigned)(2) channels,
 //  (unsigned)(48000) sampleRate,
 //  (std::vector<short>) samples, /**< Samples are interleaved. */
-//});
+//);
 
-STREAMABLE(AudioData,
-{ ,
+STREAMABLE(AudioData,,
   (unsigned)(0) channels, /**< will be overwritten by AudioProviderDortmund*/
   (unsigned)(0) sampleRate, /**< will be overwritten by AudioProviderDortmund*/
-  (std::vector<float>) samples, /**< Samples are interleaved. */
+  (std::string)("") device, /** Selected audio device name */
+  (std::string)("") api, /** Selected audio device API */
+  (double)(0.0) latency, /** Chosen suggested stream latency */
   (bool)(false) isValid, /** set by AudioProviderDortmund to indicate the record state*/
-});
+  (std::vector<float>) samples /**< Samples are interleaved. */
+);

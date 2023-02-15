@@ -13,15 +13,11 @@
 #include "Tools/Math/Eigen.h"
 #include <algorithm>
 
-struct DangerMap : public Streamable
-{
-  enum
-  {
-    numOfCellsX = 24,
-    numOfCellsY = 16,
-    numOfCells = numOfCellsX*numOfCellsY,
-    stepSize = 375
-  };
+STREAMABLE(DangerMap,
+  static constexpr int numOfCellsX = 24;
+  static constexpr int numOfCellsY = 16;
+  static constexpr int numOfCells = numOfCellsX * numOfCellsY;
+  static constexpr int stepSize = 375;
 
   DangerMap()
   {
@@ -83,14 +79,6 @@ struct DangerMap : public Streamable
     return Vector2f(((cellNo / numOfCellsY)*stepSize - fieldDimensions.xPosOpponentGroundline + stepSize / 2),
       (float)((cellNo%numOfCellsY)*stepSize - fieldDimensions.yPosLeftSideline + stepSize / 2));
   }
-
-  float danger[numOfCells]; /**< indicating possible pressure of opponent on area [0..1] */
-
-private:
-  void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-    STREAM(danger);
-    STREAM_REGISTER_FINISH;
-  }
-};
+  ,
+  (float[numOfCells]) danger /**< indicating possible pressure of opponent on area [0..1] */
+);

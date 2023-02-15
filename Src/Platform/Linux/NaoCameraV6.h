@@ -27,7 +27,10 @@ protected:
   unsigned int updateRegisterIndex = 0;
   uint8_t updateRegisterIndexByte = 0;
 
-  enum { frameBufferCount = 3 }; /**< Amount of available frame buffers. */
+  enum
+  {
+    frameBufferCount = 3
+  }; /**< Amount of available frame buffers. */
 
   unsigned int WIDTH; /**< The width of the yuv 422 image */
   unsigned int HEIGHT; /**< The height of the yuv 422 image */
@@ -108,7 +111,10 @@ public:
    * Requests the current camera control settings of the camera.
    * @return The settings.
    */
-  const CameraSettingsV6& getSettings() const { return appliedSettings; };
+  const CameraSettingsV6& getSettings() const
+  {
+    return appliedSettings;
+  };
 
   /**
    * Sets the camera control settings to the camera.

@@ -5,7 +5,6 @@
 namespace Limbs
 {
   ENUM(Limb,
-  {,
     neck,
     head,
     shoulderLeft,
@@ -30,6 +29,6 @@ namespace Limbs
     tibiaRight,
     ankleRight,
     footRight,
-    torso,
-  });
+    torso
+  );
 }

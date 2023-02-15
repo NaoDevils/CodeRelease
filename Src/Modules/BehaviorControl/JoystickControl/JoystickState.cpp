@@ -7,20 +7,15 @@
 
 #include "JoystickState.h"
 
-#include "Tools/Module/Logger.h"
 #include <sstream>
 #include <iostream>
 
 
 // Implementation of methods for class JoystickState:
 
-JoystickState::JoystickState() :
-    pressedButtons(std::vector<bool>(0)),
-    axes(std::vector<float>(0)) {}
+JoystickState::JoystickState() : pressedButtons(std::vector<bool>(0)), axes(std::vector<float>(0)) {}
 
-JoystickState::JoystickState(unsigned int buttonsCount, unsigned int axesCount) :
-    pressedButtons(std::vector<bool>(buttonsCount)),
-    axes(std::vector<float>(axesCount))
+JoystickState::JoystickState(unsigned int buttonsCount, unsigned int axesCount) : pressedButtons(std::vector<bool>(buttonsCount)), axes(std::vector<float>(axesCount))
 {
   // Initialize empty arrays.
   for (unsigned int i = 0; i < pressedButtons.size(); i++)
@@ -33,12 +28,13 @@ bool JoystickState::pressedButtonAvailable()
 {
   for (size_t b = 0; b < pressedButtons.size(); b++)
   {
-    if (pressedButtons[b]) return true;
+    if (pressedButtons[b])
+      return true;
   }
   return false;
 }
 
-void JoystickState::deleteEvents(const JoystickControlParameters &parameters)
+void JoystickState::deleteEvents(const JoystickControlParameters& parameters)
 {
   // Reinitialize all buttons with false.
   for (size_t b = 0; b < pressedButtons.size(); b++)

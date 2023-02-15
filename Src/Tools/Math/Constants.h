@@ -2,8 +2,8 @@
 
 namespace Constants
 {
-  constexpr float g = 9806.65f; ///< Gravity of the earth in mm/s²
-  constexpr float g_1000 = g / 1000.f; ///< Gravity of earth in m/s²
+  constexpr float g = 9806.65f; ///< Gravity of the earth in mm/sÂ²
+  constexpr float g_1000 = g / 1000.f; ///< Gravity of earth in m/sÂ²
 
   constexpr float e = 2.71828182845902353602874713527f; ///< Euler's number
 
@@ -24,7 +24,7 @@ namespace Constants
   /** constant for a 3/8 circle*/
   constexpr float pi3_4 = pi * 0.75f;
   ///@}
-};
+}; // namespace Constants
 
 using Constants::pi;
 using Constants::pi2;

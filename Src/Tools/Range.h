@@ -14,7 +14,6 @@
  * A template class to represent ranges. It also defines the 13 Allen relations
  */
 template<typename T> STREAMABLE(Range,
-{
   /**
    * Constructor.
    * Defines an empty range.
@@ -124,22 +123,20 @@ template<typename T> STREAMABLE(Range,
   T intersectionSizeWith(const Range<T>& r) const {return std::max(0.f, std::min(max, r.max) - std::max(min, r.min));},
 
   (T) min,
-  (T) max, /**< The limits of the range. */
-});
+  (T) max /**< The limits of the range. */
+);
 
-template<typename T> Range<T>::Range() : min(T()), max(T()) {}
-template<typename T> Range<T>::Range(T minmax) : min(minmax), max(minmax) {}
-template<typename T> Range<T>::Range(T min, T max) : min(min), max(max) {}
+template <typename T> Range<T>::Range() : min(T()), max(T()) {}
+template <typename T> Range<T>::Range(T minmax) : min(minmax), max(minmax) {}
+template <typename T> Range<T>::Range(T min, T max) : min(min), max(max) {}
 
-template<typename T>
-const Range<T>& Range<T>::ZeroOneRange()
+template <typename T> const Range<T>& Range<T>::ZeroOneRange()
 {
   static Range<T> range(0, 1);
   return range;
 }
 
-template<typename T>
-const Range<T>& Range<T>::OneRange()
+template <typename T> const Range<T>& Range<T>::OneRange()
 {
   static Range<T> range(-1, 1);
   return range;

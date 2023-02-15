@@ -28,4 +28,4 @@ namespace RoboCup
 #define MIXEDTEAM_SUGGESTION_DEFENSIVE 2
 #define MIXEDTEAM_SUGGESTION_OFFENSIVE 3
 #define MIXEDTEAM_SUGGESTION_KICK 4
-}
+} // namespace RoboCup

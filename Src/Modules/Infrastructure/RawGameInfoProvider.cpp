@@ -5,90 +5,110 @@
 
 #include "RawGameInfoProvider.h"
 #include "Tools/Settings.h"
+#include "Tools/Build.h"
 
 MAKE_MODULE(RawGameInfoProvider, cognitionInfrastructure)
 
-#ifdef TARGET_ROBOT
-static const int ALIVE_DELAY = 1000; /**< Send an alive signal every 1000 ms. */
-
 void RawGameInfoProvider::update(OpponentTeamInfo& opponentTeamInfo)
 {
-  if (lastExecutedTimeStamp != theFrameInfo.time)
-  {
-    lastExecutedTimeStamp = theFrameInfo.time;
-    execute();
-  }
-  (RoboCup::TeamInfo&) opponentTeamInfo = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber != Global::getSettings().teamNumber ? 0 : 1];
+  static_cast<RoboCup::TeamInfo&>(opponentTeamInfo) = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber != this->teamNumber ? 0 : 1];
 }
 
 void RawGameInfoProvider::update(OwnTeamInfo& ownTeamInfo)
 {
-  if (lastExecutedTimeStamp != theFrameInfo.time)
+  static_cast<RoboCup::TeamInfo&>(ownTeamInfo) = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1];
+
+  if (theUSBSettings.teamNumber > 0)
+    ownTeamInfo.teamNumber = static_cast<uint8_t>(theUSBSettings.teamNumber);
+  else
+    ownTeamInfo.teamNumber = static_cast<uint8_t>(Global::getSettings().teamNumber);
+  this->teamNumber = ownTeamInfo.teamNumber;
+
+  if (theUSBSettings.teamPort > 0)
+    ownTeamInfo.teamPort = theUSBSettings.teamPort;
+  else
+    ownTeamInfo.teamPort = Global::getSettings().teamPort;
+
+  if (lastTeamNumberUpdate != theUSBSettings.updateTimestamp)
   {
-    lastExecutedTimeStamp = theFrameInfo.time;
-    execute();
+    lastTeamNumberUpdate = theUSBSettings.updateTimestamp;
+    OUTPUT_TEXT("RawGameInfoProvider: Set team number " << ownTeamInfo.teamNumber << " and team port " << ownTeamInfo.teamPort << "!");
   }
-  (RoboCup::TeamInfo&) ownTeamInfo = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1];
 }
 
 void RawGameInfoProvider::update(RawGameInfo& rawGameInfo)
 {
-  if (lastExecutedTimeStamp != theFrameInfo.time)
-  {
-    lastExecutedTimeStamp = theFrameInfo.time;
-    execute();
-  }
-  memcpy(&(RoboCup::RoboCupGameControlData&) rawGameInfo, &gameCtrlData, (char*) gameCtrlData.teams - (char*) &gameCtrlData);
+  memcpy(&static_cast<RoboCup::RoboCupGameControlData&>(rawGameInfo), &gameCtrlData, (char*)gameCtrlData.teams - (char*)&gameCtrlData);
 
   // set team number for Logger
-  rawGameInfo.oppTeamNumber = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 1 : 0].teamNumber;
+  rawGameInfo.oppTeamNumber = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 1 : 0].teamNumber;
+
+  rawGameInfo.timeLastPackageReceived = lastReceivedTimeStamp;
+  if (lastGameState != rawGameInfo.state)
+  {
+    if (lastGameState == STATE_INITIAL && rawGameInfo.state == STATE_READY)
+      rawGameInfo.timeFirstReadyState = lastReceivedTimeStamp;
+    lastGameState = rawGameInfo.state;
+  }
 }
 
 void RawGameInfoProvider::update(RobotInfo& robotInfo)
 {
-  if (lastExecutedTimeStamp != theFrameInfo.time)
-  {
-    lastExecutedTimeStamp = theFrameInfo.time;
-    execute();
-  }
-  RoboCup::TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1];
-  (RoboCup::RobotInfo&) robotInfo = team.players[Global::getSettings().playerNumber - 1];
+  if (theUSBSettings.robotNumber > 0)
+    robotInfo.number = theUSBSettings.robotNumber;
+  else
+    robotInfo.number = Global::getSettings().playerNumber;
+
+  robotInfo.transitionToFramework = transitionToFramework;
+
+  RoboCup::TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1];
+  static_cast<RoboCup::RobotInfo&>(robotInfo) = team.players[robotInfo.number - 1];
   robotInfo.naoBodyType = naoBodyType;
   robotInfo.naoHeadType = naoHeadType;
-  robotInfo.number = Global::getSettings().playerNumber;
-  if (Global::getSettings().naoVersion == RobotConfig::V6)
-    robotInfo.transitionToBhuman = naoBodyV6.getTransitionToBhuman();
-  else
-    robotInfo.transitionToBhuman = naoBody.getTransitionToBhuman();
-  transitionToBhuman = robotInfo.transitionToBhuman;
+
+  if (lastPlayerNumberUpdate != theUSBSettings.updateTimestamp)
+  {
+    lastPlayerNumberUpdate = theUSBSettings.updateTimestamp;
+    OUTPUT_TEXT("RawGameInfoProvider: Set player number " << robotInfo.number << "!");
+  }
 }
 
-void RawGameInfoProvider::execute()
+void RawGameInfoProvider::execute(tf::Subflow&)
 {
-  if (!initialized)
+  bool enable = Build::targetRobot();
+  MODIFY("module:RawGameInfoProvider:enable", enable);
+
+  if (enable && !initialized)
     initialize();
-  uint8_t lastPenalty = 
-    gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1].players[Global::getSettings().playerNumber - 1].penalty;
-  if (receive())
+
+#ifdef TARGET_ROBOT
+  ASSERT(Global::getSettings().naoVersion == RobotConfig::V6);
+  transitionToFramework = naoBodyV6.getTransitionToFramework();
+#else
+  transitionToFramework = 1.f;
+#endif
+
+  uint8_t lastPenalty = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1].players[theRobotInfo.number - 1].penalty;
+  if (enable && receive())
   {
     lastReceivedTimeStamp = theFrameInfo.time;
-    RoboCup::TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1];
-    lastSecsTillUnpenalized = team.players[Global::getSettings().playerNumber - 1].secsTillUnpenalised; 
+    RoboCup::TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1];
+    lastSecsTillUnpenalized = team.players[theRobotInfo.number - 1].secsTillUnpenalised;
   }
-  else if (theFrameInfo.getTimeSince(lastReceivedTimeStamp) > GAMECONTROLLER_TIMEOUT)
+  else if (theFrameInfo.getTimeSince(lastReceivedTimeStamp) > gameControllerTimeout)
   {
     if (gameCtrlData.teams[0].teamNumber == 0 && gameCtrlData.teams[1].teamNumber == 0)
     {
-      gameCtrlData.teams[0].teamNumber = (uint8_t)Global::getSettings().teamNumber;
-      gameCtrlData.teams[0].teamColour = TEAM_YELLOW;
+      gameCtrlData.teams[0].teamNumber = static_cast<uint8_t>(this->teamNumber);
+      gameCtrlData.teams[0].teamColour = static_cast<uint8_t>(ownColor);
+      gameCtrlData.teams[1].teamColour = static_cast<uint8_t>(oppColor);
     }
     else // already received packages; reset game and robot infos
     {
       // TODO: try to guess better infos here, depending on visual or other cues!
-      RoboCup::TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1];
-      if (theFrameInfo.getTimeSince(lastReceivedTimeStamp) / 1000 > lastSecsTillUnpenalized 
-        && team.players[Global::getSettings().playerNumber].penalty != PENALTY_MANUAL)
-        team.players[Global::getSettings().playerNumber].penalty = PENALTY_NONE;
+      RoboCup::TeamInfo& team = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1];
+      if (theFrameInfo.getTimeSince(lastReceivedTimeStamp) / 1000 > lastSecsTillUnpenalized && team.players[theRobotInfo.number - 1].penalty != PENALTY_MANUAL)
+        team.players[theRobotInfo.number - 1].penalty = PENALTY_NONE;
     }
   }
   if (lastGameState != gameCtrlData.state)
@@ -97,78 +117,67 @@ void RawGameInfoProvider::execute()
     timeStampGameStateChanged = theFrameInfo.time;
   }
   updateGameState();
-  if (lastPenalty !=
-    gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1].players[Global::getSettings().playerNumber - 1].penalty)
+  if (lastPenalty != gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1].players[theRobotInfo.number - 1].penalty)
   {
-    lastPenalty = 
-      gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1].players[Global::getSettings().playerNumber - 1].penalty;
+    lastPenalty = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1].players[theRobotInfo.number - 1].penalty;
     timeStampPenaltyChanged = theFrameInfo.time;
   }
 
-  float transitionToBhuman;
-  if (Global::getSettings().naoVersion == RobotConfig::V6)
-    transitionToBhuman = naoBodyV6.getTransitionToBhuman();
-  else
-    transitionToBhuman = naoBody.getTransitionToBhuman();
-
-  if (theFrameInfo.getTimeSince(lastSentTimeStamp) > ALIVE_DELAY && transitionToBhuman >= 1.f)
+  if (enable && theFrameInfo.getTimeSince(lastSentTimeStamp) > aliveDelay && transitionToFramework >= 1.f)
   {
-    if (!send())
-    {
-      // output?
-    }
-    lastSentTimeStamp = theFrameInfo.time;
+    if (send())
+      lastSentTimeStamp = theFrameInfo.time;
   }
 }
 
 bool RawGameInfoProvider::receive()
 {
-	bool received = false;
-	int size;
-	RoboCup::RoboCupGameControlData buffer;
-	struct sockaddr_in from;
-	while (udp && (size = udp->read((char*)&buffer, sizeof(buffer), from)) > 0)
-	{
-		if (size == sizeof(buffer) &&
-			!std::memcmp(&buffer, GAMECONTROLLER_STRUCT_HEADER, 4) &&
-			buffer.version == GAMECONTROLLER_STRUCT_VERSION &&
-			(buffer.teams[0].teamNumber == Global::getSettings().teamNumber ||
-				buffer.teams[1].teamNumber == Global::getSettings().teamNumber))
-		{
-			gameCtrlData = buffer;
-			if (memcmp(&gameControllerAddress, &from.sin_addr, sizeof(in_addr)))
-			{
-				memcpy(&gameControllerAddress, &from.sin_addr, sizeof(in_addr));
-				udp->setTarget(inet_ntoa(gameControllerAddress), GAMECONTROLLER_RETURN_PORT);
-			}
+  bool received = false;
+  int size;
+  RoboCup::RoboCupGameControlData buffer;
+  struct sockaddr_in from;
+  while (udp && (size = udp->read((char*)&buffer, sizeof(buffer), from)) > 0)
+  {
+    if (size == sizeof(buffer) && !std::memcmp(&buffer, GAMECONTROLLER_STRUCT_HEADER, 4) && buffer.version == GAMECONTROLLER_STRUCT_VERSION
+        && (buffer.teams[0].teamNumber == this->teamNumber || buffer.teams[1].teamNumber == this->teamNumber))
+    {
+      gameCtrlData = buffer;
+      if (memcmp(&gameControllerAddress, &from.sin_addr, sizeof(in_addr)))
+      {
+        memcpy(&gameControllerAddress, &from.sin_addr, sizeof(in_addr));
+        udp->setTarget(inet_ntoa(gameControllerAddress), GAMECONTROLLER_RETURN_PORT);
+      }
 
-			received = true;
-		}
-	}
-	return received;
+      received = true;
+    }
+  }
+  return received;
 }
 
 bool RawGameInfoProvider::send()
 {
   RoboCup::RoboCupGameControlReturnData returnPacket;
-	returnPacket.team = (uint8_t)Global::getSettings().teamNumber;
-	returnPacket.player = (uint8_t)Global::getSettings().playerNumber;
-	returnPacket.message = GAMECONTROLLER_RETURN_MSG_ALIVE;
-	return !udp || udp->write((const char*)&returnPacket, sizeof(returnPacket));
+  returnPacket.playerNum = (uint8_t)theRobotInfo.number;
+  returnPacket.teamNum = (uint8_t)this->teamNumber;
+  returnPacket.fallen = theFallDownState.state != FallDownState::State::upright;
+
+  returnPacket.pose[0] = theRobotPose.translation.x();
+  returnPacket.pose[1] = theRobotPose.translation.y();
+  returnPacket.pose[2] = theRobotPose.rotation;
+
+  returnPacket.ballAge = (theBallModel.timeWhenLastSeen == 0) ? -1.f : theFrameInfo.getTimeSince(theBallModel.timeWhenLastSeen);
+  returnPacket.ball[0] = theBallModel.estimate.position.x();
+  returnPacket.ball[1] = theBallModel.estimate.position.y();
+  return !udp || udp->write((const char*)&returnPacket, sizeof(returnPacket));
 }
 
 void RawGameInfoProvider::initialize()
 {
-  if (udp) delete udp;
-  udp = new UdpComm();
-  if (!udp->setBlocking(false) ||
-    !udp->setBroadcast(true) ||
-    !udp->bind("0.0.0.0", GAMECONTROLLER_DATA_PORT) ||
-    !udp->setLoopback(false))
+  udp = std::make_unique<UdpComm>();
+  if (!udp->setBlocking(false) || !udp->setBroadcast(true) || !udp->bind("0.0.0.0", GAMECONTROLLER_DATA_PORT) || !udp->setLoopback(false))
   {
     fprintf(stderr, "libgamectrl: Could not open UDP port\n");
-    delete udp;
-    udp = 0;
+    udp.reset();
     // continue, because button interface will still work
     initialized = false;
   }
@@ -182,52 +191,58 @@ void RawGameInfoProvider::initialize()
     timeStampGameStateChanged = theFrameInfo.time;
   }
 }
-#endif
 
 void RawGameInfoProvider::updateGameState()
 {
-  bool timeOut = theFrameInfo.getTimeSince(lastReceivedTimeStamp) > GAMECONTROLLER_TIMEOUT;
+  bool timeOut = theFrameInfo.getTimeSince(lastReceivedTimeStamp) > gameControllerTimeout;
   int timeInGameState = theFrameInfo.getTimeSince(timeStampGameStateChanged);
   int timeSincePenaltyChange = theFrameInfo.getTimeSince(timeStampPenaltyChanged);
-#ifdef TARGET_ROBOT  
-  ownPenalty = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1].players[Global::getSettings().playerNumber - 1].penalty;
-#endif
-  if (transitionToBhuman != 1.f)
+  ownPenalty = gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1].players[theRobotInfo.number - 1].penalty;
+
+  if (transitionToFramework < 1.f)
   {
     memset(&gameCtrlData, 0, sizeof(gameCtrlData));
   }
-  else if (timeOut && timeInGameState > 1000 &&  timeSincePenaltyChange > 1000)
+  else if (timeOut && timeInGameState > 1000 && timeSincePenaltyChange > 1000)
   {
-    switch (gameCtrlData.state)
-    {
-    case STATE_INITIAL:
-    {
-      if (theKeyStates.pressed[KeyStates::chest])
-      {
-        gameCtrlData.state = STATE_PLAYING;
-        ownPenalty = PENALTY_MANUAL;
-      }
-      break;
-    }
-    case STATE_SET:
-    case STATE_FINISHED:
+    if (theBehaviorData.behaviorState >= BehaviorData::BehaviorState::firstCalibrationState)
     {
       gameCtrlData.state = STATE_INITIAL;
       ownPenalty = PENALTY_NONE;
-      break;
     }
-    case STATE_READY:
-      gameCtrlData.state = STATE_PLAYING;
-    case STATE_PLAYING:
+    else
     {
-      if (theKeyStates.pressed[KeyStates::chest])
-        ownPenalty = (ownPenalty != PENALTY_NONE) ? PENALTY_NONE : PENALTY_MANUAL;
-    }
-    default:
-      break;
+      switch (gameCtrlData.state)
+      {
+      case STATE_INITIAL:
+      {
+        if (chestButtonPressed && !theKeyStates.pressed[KeyStates::chest])
+        {
+          gameCtrlData.state = STATE_PLAYING;
+          ownPenalty = PENALTY_MANUAL;
+        }
+        break;
+      }
+      case STATE_SET:
+      case STATE_FINISHED:
+      {
+        gameCtrlData.state = STATE_INITIAL;
+        ownPenalty = PENALTY_NONE;
+        break;
+      }
+      case STATE_READY:
+        gameCtrlData.state = STATE_PLAYING;
+      case STATE_PLAYING:
+      {
+        if (theKeyStates.pressed[KeyStates::chest])
+          ownPenalty = (ownPenalty != PENALTY_NONE) ? PENALTY_NONE : PENALTY_MANUAL;
+      }
+      default:
+        break;
+      }
     }
   }
-#ifdef TARGET_ROBOT  
-  gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == Global::getSettings().teamNumber ? 0 : 1].players[Global::getSettings().playerNumber - 1].penalty = ownPenalty;
-#endif
+  chestButtonPressed = theKeyStates.pressed[KeyStates::chest] && !theKeyStates.pressed[KeyStates::headFront] && !theKeyStates.pressed[KeyStates::headMiddle]
+      && !theKeyStates.pressed[KeyStates::headRear];
+  gameCtrlData.teams[gameCtrlData.teams[0].teamNumber == this->teamNumber ? 0 : 1].players[theRobotInfo.number - 1].penalty = ownPenalty;
 }

@@ -32,57 +32,58 @@
 #else
 #define LOG(titel, name, data) CSVLogger::log(titel, name, data)
 #define MARK(titel, name) CSVLogger::mark(titel, name)
-#define FLUSH	CSVLogger::flush();
+#define FLUSH CSVLogger::flush();
 #endif
 
-#define DEBUG_LOG(module, info) \
-LOG("DebugLog", "Time", theFrameInfo.time); \
-LOG("DebugLog", "Module", module); \
-LOG("DebugLog", "Info", info)
+#define DEBUG_LOG(module, info)               \
+  LOG("DebugLog", "Time", theFrameInfo.time); \
+  LOG("DebugLog", "Module", module);          \
+  LOG("DebugLog", "Info", info)
 
 class CSVLogger
 {
 public:
-	CSVLogger(void);
-	~CSVLogger(void);
+  CSVLogger(void);
+  ~CSVLogger(void);
 
   static void log(std::string titel, std::string name, std::string data);
-	static void log(std::string titel, std::string name, unsigned int data);
-	static void log(std::string titel, std::string name, double data);
-	static void log(std::string titel, std::string name, unsigned long data);
-	static void log(std::string titel, std::string name, long data);
-	static void log(std::string titel, std::string name, int data);
-	static void mark(std::string titel, std::string name);
-	static void flush();
+  static void log(std::string titel, std::string name, unsigned int data);
+  static void log(std::string titel, std::string name, double data);
+  static void log(std::string titel, std::string name, unsigned long data);
+  static void log(std::string titel, std::string name, long data);
+  static void log(std::string titel, std::string name, int data);
+  static void mark(std::string titel, std::string name);
+  static void flush();
+
 private:
-	struct Column
-	{
-		std::string name;
-		std::string data;
-		bool filled;
-	};
+  struct Column
+  {
+    std::string name;
+    std::string data;
+    bool filled;
+  };
 
-	typedef std::list<Column *> ColumnList;
+  typedef std::list<Column*> ColumnList;
 
-	struct Logfile
-	{
-		std::ofstream s;
-		std::string name;
-		ColumnList columns;
-		bool headerWritten;
-		ColumnList::iterator lastFound;
-	};
+  struct Logfile
+  {
+    std::ofstream s;
+    std::string name;
+    ColumnList columns;
+    bool headerWritten;
+    ColumnList::iterator lastFound;
+  };
 
-	typedef std::list<Logfile *> LogfileList;
+  typedef std::list<Logfile*> LogfileList;
 
-	static LogfileList logs;
+  static LogfileList logs;
 
-	static bool add(std::string titel, std::string name, std::string data);
+  static bool add(std::string titel, std::string name, std::string data);
 
-	static Logfile *getFile(std::string name);
-	static Column *getColumn(Logfile *f, std::string name);
-	static Logfile *addFile(std::string name);
-	static Column *addColumn(Logfile *f, std::string name);
-	static void flush(Logfile *f);
-	static bool disabled;
+  static Logfile* getFile(std::string name);
+  static Column* getColumn(Logfile* f, std::string name);
+  static Logfile* addFile(std::string name);
+  static Column* addColumn(Logfile* f, std::string name);
+  static void flush(Logfile* f);
+  static bool disabled;
 };

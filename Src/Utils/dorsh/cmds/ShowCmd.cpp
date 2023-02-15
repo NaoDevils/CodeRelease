@@ -32,21 +32,21 @@ std::vector<std::string> ShowCmd::complete(const std::string& cmdLine) const
   std::string dir = std::string(File::getBHDir()) + "/Config/" + prefix;
 
   std::vector<std::string> files = Filesystem::getEntries(dir,
-                                   true,   // files
-                                   false,  // dirs
-                                   ".cfg");
+      true, // files
+      false, // dirs
+      ".cfg");
   std::vector<std::string> dirs = Filesystem::getEntries(dir,
-                                  false,   // files
-                                  true);   // dirs
+      false, // files
+      true); // dirs
 
-  for(size_t i = 0; i < dirs.size(); ++i)
+  for (size_t i = 0; i < dirs.size(); ++i)
     files.push_back(dirs[i] + "/");
   return files;
 }
 
-bool ShowCmd::preExecution(Context &context, const std::vector<std::string> &params)
+bool ShowCmd::preExecution(Context& context, const std::vector<std::string>& params)
 {
-  if(params.empty())
+  if (params.empty())
   {
     context.errorLine("No config file specified.");
     return false;
@@ -56,22 +56,21 @@ bool ShowCmd::preExecution(Context &context, const std::vector<std::string> &par
   return true;
 }
 
-Task* ShowCmd::perRobotExecution(Context &context, RobotConfigDorsh &robot)
+Task* ShowCmd::perRobotExecution(Context& context, RobotConfigDorsh& robot)
 {
   context.printLine("--------------");
   context.printLine(robot.name + ":");
   context.printLine("--------------");
 
-  for(size_t i = 0; i < files.size(); ++i)
+  for (size_t i = 0; i < files.size(); ++i)
   {
     context.printLine("-- " + files[i] + ":");
-    std::string cmd = remoteCommandForQProcess(
-                        "cat /home/nao/Config/" + files[i], robot.getBestIP(context));
+    const auto [cmd, params] = remoteCommandForQProcess("cat /home/nao/Config/" + files[i], robot.getBestIP(context));
 
-    ProcessRunner r(context, cmd);
+    ProcessRunner r(context, cmd, params);
     r.run();
     //TODO: maybe we want a separator here
-    if(r.error())
+    if (r.error())
       context.errorLine("show \"" + files[i] + "\" on \"" + robot.name + "\" failed!");
     context.printLine("");
   }

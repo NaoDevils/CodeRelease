@@ -43,7 +43,7 @@ void HeaderedWidget::setHeaderLabels(const QStringList& headerLabels, const char
   int headerHeight = headerView->sizeHint().height();
   headerView->setFixedHeight(headerHeight);
   setViewportMargins(0, headerHeight, 0, 0);
-  for(int i = headerLabels.count() - 1; i >= 0; i--)
+  for (int i = headerLabels.count() - 1; i >= 0; i--)
     headerItemModel->horizontalHeaderItem(i)->setTextAlignment((aligns == 0 || aligns[i] == 'l') ? Qt::AlignLeft : (aligns[i] == 'r' ? Qt::AlignRight : Qt::AlignCenter));
 }
 
@@ -60,7 +60,7 @@ QSize HeaderedWidget::sizeHint() const
 {
   QWidget* widget = this->widget();
   QSize size;
-  if(widget)
+  if (widget)
     size = widget->sizeHint();
   size.rheight() += headerView->sizeHint().height();
   return size;

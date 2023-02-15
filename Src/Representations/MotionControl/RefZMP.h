@@ -15,15 +15,15 @@
 #endif
 
 STREAMABLE(RefZMP2018,
-{
-  RefZMP2018() { zmpWCS.reserve(100); zmpRCS.reserve(100); },
+  RefZMP2018() { zmpWCS.reserve(101); zmpRCS.reserve(101); },
   (bool)(false) running,
+	(bool)(false) reset,
   (std::vector<Vector2f>) zmpWCS,
-  (std::vector<Vector2f>) zmpRCS,
-});
+  (std::vector<Vector2f>) zmpRCS
+);
 
 /** Maximum number of possible foot positions in buffer */
-#define MAX_ZMP	300
+#define MAX_ZMP 300
 
 /**
  * @class RefZMP
@@ -31,54 +31,55 @@ STREAMABLE(RefZMP2018,
  */
 class RefZMP : public Streamable
 {
-public :
-	int numOfZMP;	    /**< Number of ZMP point stored in the buffer */
-  int numOfZMP_RCS;  /**< Number of ZMP point in RCS stored in the buffer */
-	bool running;	    /**< Is the controller running? */
-  
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-		STREAM(numOfZMP)
+public:
+  int numOfZMP; /**< Number of ZMP point stored in the buffer */
+  int numOfZMP_RCS; /**< Number of ZMP point in RCS stored in the buffer */
+  bool running; /**< Is the controller running? */
+
+  void serialize(In* in, Out* out)
+  {
+    STREAM_REGISTER_BEGIN;
+    STREAM(numOfZMP)
     STREAM(numOfZMP_RCS)
-		STREAM(running)
-		STREAM(zmp[0].x())
-		STREAM(zmp[0].y())
+    STREAM(running)
+    STREAM(zmp[0].x())
+    STREAM(zmp[0].y())
     STREAM(zmp_RCS[0].x())
     STREAM(zmp_RCS[0].y())
-		STREAM_REGISTER_FINISH;
-	};
+    STREAM_REGISTER_FINISH;
+  };
 
-	/** Constructor */
-  RefZMP(): running(false) { 
-    numOfZMP=0; 
+  /** Constructor */
+  RefZMP() : running(false)
+  {
+    numOfZMP = 0;
     numOfZMP_RCS = 0;
-  } ;
+  };
 
-	/** Desctructor */
-	~RefZMP(){};
+  /** Desctructor */
+  ~RefZMP(){};
 
-	/** Initialize the data. */
-	void init()
-	{
-		numOfZMP = 0;
+  /** Initialize the data. */
+  void init()
+  {
+    numOfZMP = 0;
     numOfZMP_RCS = 0;
-	}
-	
-	/**
+  }
+
+  /**
 	 * Adds a reference ZMP to the buffer.
 	 * \param newzmp Reference ZMP to add.
 	 */
-	void addZMP(ZMP newzmp)
-	{
-		if (numOfZMP>MAX_ZMP)
-		{
-			printf("addZMP(): Overflow");
-			return;
-		}
-		zmp[numOfZMP]=newzmp;
-		numOfZMP++;
-	}
+  void addZMP(ZMP newzmp)
+  {
+    if (numOfZMP > MAX_ZMP)
+    {
+      printf("addZMP(): Overflow");
+      return;
+    }
+    zmp[numOfZMP] = newzmp;
+    numOfZMP++;
+  }
 
   /**
   * Adds a reference ZMP in RCS to the buffer.
@@ -86,7 +87,7 @@ public :
   */
   void addZMP_RCS(ZMP newzmp_RCS)
   {
-    if (numOfZMP_RCS>MAX_ZMP)
+    if (numOfZMP_RCS > MAX_ZMP)
     {
       printf("addZMP(): Overflow");
       return;
@@ -95,19 +96,19 @@ public :
     numOfZMP_RCS++;
   }
 
-	ZMP getZMP(int i) const
-	{
-		if (i>MAX_ZMP)
-		{
-			printf("getZMP(): Index out of range");
-			return zmp[0];
-		}
-		return zmp[i];
-	}
+  ZMP getZMP(int i) const
+  {
+    if (i > MAX_ZMP)
+    {
+      printf("getZMP(): Index out of range");
+      return zmp[0];
+    }
+    return zmp[i];
+  }
 
   ZMP getZMP_RCS(int i) const
   {
-    if (i>MAX_ZMP)
+    if (i > MAX_ZMP)
     {
       printf("getZMP(): Index out of range");
       return zmp_RCS[0];
@@ -116,6 +117,6 @@ public :
   }
 
 private:
-	ZMP zmp[MAX_ZMP];     /**< Buffer with reference ZMPs. */
-  ZMP zmp_RCS[MAX_ZMP];  /**< Buffer with reference ZMPs in RCS. */
+  ZMP zmp[MAX_ZMP]; /**< Buffer with reference ZMPs. */
+  ZMP zmp_RCS[MAX_ZMP]; /**< Buffer with reference ZMPs in RCS. */
 };

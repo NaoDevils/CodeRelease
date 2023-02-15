@@ -26,7 +26,6 @@
 class TeamBallModelProvider
 {
 public:
-
   /** 
    * Constructor.
    */
@@ -36,8 +35,8 @@ public:
    * Destructor.
    */
   ~TeamBallModelProvider() {}
-  
-  
+
+
   // TeamBallModelProvider methods.
 
   /**
@@ -65,10 +64,7 @@ public:
    * \see BallModel, TeamBallModel, MultipleBallModel, BallModelProvider
    */
   void generateTeamBallModel(
-    TeamBallModel& teamBallModel,
-    LocalMultipleBallModel& localMultipleBallModel,
-    RemoteMultipleBallModel& remoteMultipleBallModel,
-    const RobotPose& theRobotPose, const FrameInfo& theFrameInfo);
+      TeamBallModel& teamBallModel, LocalMultipleBallModel& localMultipleBallModel, RemoteMultipleBallModel& remoteMultipleBallModel, const RobotPose& theRobotPose, const FrameInfo& theFrameInfo);
 
 private:
   /**
@@ -82,19 +78,16 @@ private:
    *                          If \c nullptr the ball hypothesis is not transformed.
    * \see generateTeamBallModel
    */
-  static void generateTeamBallModelFromBallHypothesis(
-    TeamBallModel& teamBallModel,
-    const KalmanPositionHypothesis* hypothesis,
-    const RobotPose* theRobotPose = nullptr);
-  
+  static void generateTeamBallModelFromBallHypothesis(TeamBallModel& teamBallModel, const KalmanPositionHypothesis* hypothesis, const RobotPose* theRobotPose = nullptr);
+
 
   // Debug methods.
-  
+
   /**
    * Allows modification of some parameters in SimRobot.
    */
   void m_initModify();
-  
+
   /**
    * Draw debug plots from local and remote validity to visualise the decision 
    * for a team ball model.
@@ -105,11 +98,8 @@ private:
    * \param [in] bestLocalHypothesis Best local hypothesis.
    * \param [in] bestRemoteHypothesis Best remote hypothesis.
    */
-  void m_plot(float localValidity, float remoteValidity,
-              size_t localHypothesesCount, size_t remoteHypothesesCount,
-              const KalmanPositionHypothesis* bestLocalHypothesis,
-              const KalmanPositionHypothesis* bestRemoteHypothesis) const;
-  
+  void m_plot(float localValidity, float remoteValidity, size_t localHypothesesCount, size_t remoteHypothesesCount, const KalmanPositionHypothesis* bestLocalHypothesis, const KalmanPositionHypothesis* bestRemoteHypothesis) const;
+
 private:
   /**
    * The \c TeamBallModel which is provided by this module.

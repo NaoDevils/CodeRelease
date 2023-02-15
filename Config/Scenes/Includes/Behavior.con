@@ -3,7 +3,12 @@ dr representation:ActivationGraph
 
 # relative drawings
 vfd worldState origin:RobotPose
+vfd worldState representation:BallSymbols:FieldRelative
 
 # back to global coordinates
 vfd worldState origin:Reset
+vfd worldState representation:BallSymbols:FieldAbsolute
+vfd worldState representation:RoleSymbols
+vfd worldState representation:PositioningSymbols
+vfd worldState representation:Ballchaser
 vfd worldState representation:Path

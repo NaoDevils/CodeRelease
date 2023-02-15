@@ -46,5 +46,9 @@ inline In& operator>>(In& stream, ModulePackage& modulePackage)
   return stream;
 }
 
-class CognitionToMotion : public ModulePackage {};
-class MotionToCognition : public ModulePackage {};
+class CognitionToMotion : public ModulePackage
+{
+};
+class MotionToCognition : public ModulePackage
+{
+};

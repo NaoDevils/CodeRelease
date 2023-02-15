@@ -8,12 +8,12 @@
 
 #include "Simulation/Appearances/BoxAppearance.h"
 
-void BoxAppearance::assembleAppearances() const
+void BoxAppearance::assembleAppearances(SurfaceColor color) const
 {
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  surface->set();
+  surface->set(color);
 
   float lx = depth * 0.5f;
   float ly = width * 0.5f;
@@ -21,60 +21,60 @@ void BoxAppearance::assembleAppearances() const
 
   // -y-side
   glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0, -1, 0);
-    glVertex3f(lx, -ly, -lz);
-    glVertex3f(lx, -ly, lz);
-    glVertex3f(-lx, -ly, lz);
-    glVertex3f(-lx, -ly, -lz);
+  glNormal3f(0, -1, 0);
+  glVertex3f(lx, -ly, -lz);
+  glVertex3f(lx, -ly, lz);
+  glVertex3f(-lx, -ly, lz);
+  glVertex3f(-lx, -ly, -lz);
   glEnd();
 
   // y-side
   glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0, 1, 0);
-    glVertex3f(-lx, ly, lz);
-    glVertex3f(lx, ly, lz);
-    glVertex3f(lx, ly, -lz);
-    glVertex3f(-lx, ly, -lz);
+  glNormal3f(0, 1, 0);
+  glVertex3f(-lx, ly, lz);
+  glVertex3f(lx, ly, lz);
+  glVertex3f(lx, ly, -lz);
+  glVertex3f(-lx, ly, -lz);
   glEnd();
 
   // -x-side
   glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(-1, 0, 0);
-    glVertex3f(-lx, -ly, -lz);
-    glVertex3f(-lx, -ly, lz);
-    glVertex3f(-lx, ly, lz);
-    glVertex3f(-lx, ly, -lz);
+  glNormal3f(-1, 0, 0);
+  glVertex3f(-lx, -ly, -lz);
+  glVertex3f(-lx, -ly, lz);
+  glVertex3f(-lx, ly, lz);
+  glVertex3f(-lx, ly, -lz);
   glEnd();
 
   // x-side
   glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(1, 0, 0);
-    glVertex3f(lx, -ly, -lz);
-    glVertex3f(lx, ly, -lz);
-    glVertex3f(lx, ly, lz);
-    glVertex3f(lx, -ly, lz);
+  glNormal3f(1, 0, 0);
+  glVertex3f(lx, -ly, -lz);
+  glVertex3f(lx, ly, -lz);
+  glVertex3f(lx, ly, lz);
+  glVertex3f(lx, -ly, lz);
   glEnd();
 
   // bottom
   glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0, 0, -1);
-    glVertex3f(-lx, -ly, -lz);
-    glVertex3f(-lx, ly, -lz);
-    glVertex3f(lx, ly, -lz);
-    glVertex3f(lx, -ly, -lz);
+  glNormal3f(0, 0, -1);
+  glVertex3f(-lx, -ly, -lz);
+  glVertex3f(-lx, ly, -lz);
+  glVertex3f(lx, ly, -lz);
+  glVertex3f(lx, -ly, -lz);
   glEnd();
 
   // top
   glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0, 0, 1);
-    glVertex3f(-lx, -ly, lz);
-    glVertex3f(lx, -ly, lz);
-    glVertex3f(lx, ly, lz);
-    glVertex3f(-lx, ly, lz);
+  glNormal3f(0, 0, 1);
+  glVertex3f(-lx, -ly, lz);
+  glVertex3f(lx, -ly, lz);
+  glVertex3f(lx, ly, lz);
+  glVertex3f(-lx, ly, lz);
   glEnd();
 
   surface->unset();
 
-  GraphicalObject::assembleAppearances();
+  GraphicalObject::assembleAppearances(color);
   glPopMatrix();
 }

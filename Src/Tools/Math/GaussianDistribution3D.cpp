@@ -20,7 +20,7 @@ double GaussianDistribution3D::distanceTo(const GaussianDistribution3D& other) c
 double GaussianDistribution3D::probabilityAt(const Vector3d& pos) const
 {
   Vector3d diff(pos - mean);
-  double exponent(diff.dot((covariance.inverse()*diff)));
+  double exponent(diff.dot((covariance.inverse() * diff)));
   double probability(1.0f / (pi2 * sqrt(covariance.determinant())));
   probability *= exp(-0.5f * exponent);
   return std::max<double>(probability, (double)0.000001);
@@ -29,24 +29,23 @@ double GaussianDistribution3D::probabilityAt(const Vector3d& pos) const
 double GaussianDistribution3D::normalizedProbabilityAt(const Vector3d& pos) const
 {
   Vector3d diff(pos - mean);
-  double exponent(diff.dot(covariance.inverse()*diff));
+  double exponent(diff.dot(covariance.inverse() * diff));
   if (exponent < 0)
     return 0.0;
-  double probability = exp(-0.5*exponent);
+  double probability = exp(-0.5 * exponent);
   return probability;
 }
 
-void GaussianDistribution3D::generateDistributionFromMeasurements(
-  double* x, int numOfX, double* y, int numOfY, double* z, int numOfZ)
+void GaussianDistribution3D::generateDistributionFromMeasurements(double* x, int numOfX, double* y, int numOfY, double* z, int numOfZ)
 {
-  if(numOfX < 2 || numOfY < 2 || numOfZ < 2)
+  if (numOfX < 2 || numOfY < 2 || numOfZ < 2)
     return;
   mean.x() = mean.y() = mean.z() = 0.0f;
-  for(int i = 0; i < numOfX; i++)
+  for (int i = 0; i < numOfX; i++)
     mean.x() += x[i];
-  for(int i = 0; i < numOfY; i++)
+  for (int i = 0; i < numOfY; i++)
     mean.y() += y[i];
-  for(int i = 0; i < numOfZ; i++)
+  for (int i = 0; i < numOfZ; i++)
     mean.z() += z[i];
   mean.x() /= numOfX;
   mean.y() /= numOfY;
@@ -54,36 +53,36 @@ void GaussianDistribution3D::generateDistributionFromMeasurements(
   double varianceX(0.0f);
   double varianceY(0.0f);
   double varianceZ(0.0f);
-  for(int i = 0; i < numOfX; i++)
+  for (int i = 0; i < numOfX; i++)
     varianceX += (x[i] - mean.x()) * (x[i] - mean.x());
   varianceX *= 1.0f / (numOfX - 1);
-  for(int i = 0; i < numOfY; i++)
+  for (int i = 0; i < numOfY; i++)
     varianceY += (y[i] - mean.y()) * (y[i] - mean.y());
   varianceY *= 1.0f / (numOfY - 1);
-  for(int i = 0; i < numOfZ; i++)
+  for (int i = 0; i < numOfZ; i++)
     varianceZ += (z[i] - mean.z()) * (z[i] - mean.z());
   varianceZ *= 1.0f / (numOfZ - 1);
-  covariance(0,0) = varianceX;
-  covariance(1,1) = varianceY;
-  covariance(2,2) = varianceZ;
+  covariance(0, 0) = varianceX;
+  covariance(1, 1) = varianceY;
+  covariance(2, 2) = varianceZ;
   double cov_xy(0.0f);
   int maxXY = numOfX > numOfY ? numOfY : numOfX;
-  for(int i = 0; i < maxXY; i++)
+  for (int i = 0; i < maxXY; i++)
     cov_xy += (x[i] - mean.x()) * (y[i] - mean.y());
   cov_xy *= 1.0f / (maxXY - 1);
-  covariance(0,1) = covariance(1,0) = cov_xy;
+  covariance(0, 1) = covariance(1, 0) = cov_xy;
   double cov_xz(0.0f);
   int maxXZ = numOfX > numOfZ ? numOfZ : numOfX;
-  for(int i = 0; i < maxXZ; i++)
+  for (int i = 0; i < maxXZ; i++)
     cov_xz += (x[i] - mean.x()) * (z[i] - mean.z());
   cov_xz *= 1.0f / (maxXZ - 1);
-  covariance(0,2) = covariance(2,0) = cov_xz;
+  covariance(0, 2) = covariance(2, 0) = cov_xz;
   double cov_yz(0.0f);
   int maxYZ = numOfY > numOfZ ? numOfZ : numOfY;
-  for(int i = 0; i < maxYZ; i++)
+  for (int i = 0; i < maxYZ; i++)
     cov_yz += (y[i] - mean.y()) * (z[i] - mean.z());
   cov_yz *= 1.0f / (maxYZ - 1);
-  covariance(1,2) = covariance(2,1) = cov_yz;
+  covariance(1, 2) = covariance(2, 1) = cov_yz;
 }
 
 GaussianDistribution3D& GaussianDistribution3D::fuse(const GaussianDistribution3D& other)

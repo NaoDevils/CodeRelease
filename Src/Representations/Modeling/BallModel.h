@@ -21,7 +21,6 @@
  * Base struct for ball position and velocity.
  */
 STREAMABLE(BallState,
-{
   /**
   * Converts the \c velocity of the ball which is given relative to the robot
   * pose \c rp into global field coordinates.
@@ -44,7 +43,7 @@ STREAMABLE(BallState,
   *                        coordinate system (in mm/s).
   * \param rp The ball position is updated relative to this robot pose.
   */
-  void setPositionAndVelocityInFieldCoordinates(const Vector2f& positionOnField,
+  void setPositionAndVelocityFromFieldCoordinates(const Vector2f& positionOnField,
     const Vector2f& velocityOnField,
     const RobotPose& rp)
   {
@@ -55,10 +54,10 @@ STREAMABLE(BallState,
       -velocityOnField.x()*s + velocityOnField.y()*c);
   },
 
-  (Vector2f)(Vector2f::Zero()) position, /**< The position of the ball relative to the robot (in mm)*/
+  (Vector2f)(Vector2f(1000,0)) position, /**< The position of the ball relative to the robot (in mm)*/
   (Vector2f)(Vector2f::Zero()) velocity, /**< The velocity of the ball relative to the robot (in mm/s)*/
-  (float)(35) radius,                    /**< The assumed radius of the ball (in mm)*/
-});
+  (float)(50) radius                    /**< The assumed radius of the ball (in mm)*/
+);
 
 /**
  * \struct BallModel
@@ -71,12 +70,11 @@ STREAMABLE(BallState,
  * seen by the robot but only those which fits to the best hypothesis.
  */
 STREAMABLE(BallModel,
-{
   /** Draws the estimate on the field */
   void draw() const,
 
   /** The unfiltered last ball percept which was used to update the \c estimate. */
-  (Vector2f)(Vector2f::Zero()) lastPerception,
+  (Vector2f)(Vector2f(1000,0)) lastPerception,
   /** The filtered ball state (including position and velocity) estimated from percepts;
    *  it is propagated even if the ball is currently not seen. */
   (BallState) estimate,
@@ -88,8 +86,10 @@ STREAMABLE(BallModel,
   
   //BEGIN Added by Dortmund
   (float)(0.f) validity, /**< Validity of the current ball estimate in range [0,1]. */
+  (float)(-0.30f) friction, /**< Used ball friction in 1/s */
+  (unsigned)(0) timeWhenBallInGoalBox
   //END
-});
+);
 
 /**
  * \struct GroundTruthBallModel
@@ -111,7 +111,6 @@ struct BallModelAfterPreview : public BallModel
  * A compressed version of BallModel used in team communication
  */
 STREAMABLE(BallModelCompressed,
-{
   BallModelCompressed() = default;
   BallModelCompressed(const BallModel & ballModel);
   operator BallModel() const,
@@ -120,9 +119,26 @@ STREAMABLE(BallModelCompressed,
   //(Vector2s) lastPerception, /**< The last seen position of the ball */
   (Vector2s) position,
   (Vector2s) velocity,
-  (unsigned) timeWhenLastSeen, /**< Time stamp, indicating what its name says */
+  (unsigned)(0) timeWhenLastSeen, /**< Time stamp, indicating what its name says */
   //timeWhenDisappeared not sent, see above
   //(unsigned) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there */
   
-  (std::uint8_t) validity, /**< Validity of the current ball estimate in range [0,255]. */
-});
+  (std::uint8_t)(0) validity /**< Validity of the current ball estimate in range [0,255]. */
+);
+
+STREAMABLE(MultipleBallModel,
+  /** Draws the estimate on the field */
+  void draw() const,
+
+  (std::vector<BallModel>) ballModels
+);
+
+struct MultipleBallModelAfterPreview : public MultipleBallModel
+{
+};
+
+struct GroundTruthMultipleBallModel : public MultipleBallModel
+{
+  /** Draws something*/
+  void draw() const;
+};

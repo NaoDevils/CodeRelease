@@ -21,7 +21,8 @@ extern "C" DLL_EXPORT SimRobot::Module* createModule(SimRobot::Application& simR
 EditorModule* EditorModule::module;
 SimRobot::Application* EditorModule::application;
 
-EditorModule::EditorModule(SimRobot::Application& application) : EditorObject("Editor", 0), fileIcon(":/Icons/page_white_text.png"), folderIcon(":/Icons/folder.png"), editorIcon(":/Icons/page_white_stack.png")
+EditorModule::EditorModule(SimRobot::Application& application)
+    : EditorObject("Editor", 0), fileIcon(":/Icons/page_white_text.png"), folderIcon(":/Icons/folder.png"), editorIcon(":/Icons/page_white_stack.png")
 {
   this->module = this;
   this->application = &application;
@@ -46,7 +47,7 @@ FileEditorObject* EditorModule::findEditor(const QString& filePath)
 void EditorModule::openEditor(const QString& filePath)
 {
   EditorObject* editor = editorsByPath.value(filePath);
-  if(!editor)
+  if (!editor)
     return;
   application->openObject(*editor);
 }

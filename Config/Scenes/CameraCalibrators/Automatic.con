@@ -1,37 +1,47 @@
 vi image jpeg lower gain 1.0
 vi imageUpper jpeg upper gain 1.0
 
-mr HeadControlRequest CMCorrector2017
-mr CameraCalibration CMCorrector2017
-mr MotionRequest CMCorrector2017
-mr RobotPose CMCorrector2017
-
-
 get representation:RobotPose
 echo 
-echo mv 0 0 400 0 0 -90
-echo set representation:MotionRequest motion = specialAction; specialActionRequest = { specialAction = stand; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
-echo set representation:HeadControlRequest unchanged
-echo dr module:CMCorrector2017:start
-echo dr module:CMCorrector2017:stop
-echo dr module:CMCorrector2017:load_config 
-echo dr module:CMCorrector2017:save_config 
-echo set representation:HeadControlRequest controlType = direct; pan = 90deg; tilt = 20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = 40deg; tilt = 20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = 0deg; tilt = 20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = -40deg; tilt = 20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = -90deg; tilt = 20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = 90deg; tilt = -20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = 40deg; tilt = -20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = 0deg; tilt = -20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = -40deg; tilt = -20deg;
-echo set representation:HeadControlRequest controlType = direct; pan = -90deg; tilt = -20deg;
-vid lower module:CameraMatrixProvider:calibrationHelper
-vid upper module:CameraMatrixProvider:calibrationHelperUpper
+echo set representation:HeadAngleRequest unchanged
+echo gc playing
+echo dr module:CMCorrector:start
+echo dr module:CMCorrector:stop
+echo dr module:CMCorrector:load_config 
+echo dr module:CMCorrector:save_config 
+echo dr module:CMCorrector:reset 
+echo dr module:CMCorrector:captureUpper on
+echo dr module:CMCorrector:captureUpper off
+echo dr module:CMCorrector:captureLower on
+echo dr module:CMCorrector:captureLower off
+echo dr module:CMCorrector:optimizeUpper
+echo dr module:CMCorrector:optimizeLower 
+
+echo dr module:CMCorrector:print 
+echo 
+echo mr RobotPose OracledWorldModelProvider
+echo 
+echo set representation:HeadAngleRequest pan = 115deg; tilt = 15deg; speed = 40deg;
+echo set representation:HeadAngleRequest pan = 90deg; tilt = 15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = 40deg; tilt = 15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = 0deg; tilt = 15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = -40deg; tilt = 15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = -90deg; tilt = 15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = -115deg; tilt = 15deg; speed = 40deg;
+echo set representation:HeadAngleRequest pan = 115deg; tilt = -15deg; speed = 40deg;
+echo set representation:HeadAngleRequest pan = 90deg; tilt = -15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = 40deg; tilt = -15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = 0deg; tilt = -15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = -40deg; tilt = -15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = -90deg; tilt = -15deg; speed = 80deg;
+echo set representation:HeadAngleRequest pan = -115deg; tilt = -15deg; speed = 40deg;
 vid lower representation:CLIPFieldLinesPercept:Image:Lower 
 vid upper representation:CLIPFieldLinesPercept:Image:Upper 
-vid lower representation:BallPercept:Image:Lower
-vid upper representation:BallPercept:Image:Upper
-vid lower module:CMCorrector2017:lower 
-vid upper module:CMCorrector2017:upper 
+vid lower representation:CameraMatrix:calibrationHelper
+vid upper representation:CameraMatrixUpper:calibrationHelper
 
+vp dist 180 0 600
+vpd dist module:CMCorrector:distribution black
+
+vfd worldState origin:RobotPose 
+vfd worldState module:CMCorrector:field

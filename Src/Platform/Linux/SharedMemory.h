@@ -55,32 +55,29 @@ public:
   bool memoryInitialized() { return initialized; }
 
   /** Initializes the shared memory. */
-  template<class T>
-  void initializeMemory(const T& initialValue)
+  template <class T> void initializeMemory(const T& initialValue)
   {
-    T* pointer = (T*) sharedMemory;
+    T* pointer = (T*)sharedMemory;
     *pointer = initialValue;
     sem_post(semaphore);
     initialized = true;
   }
 
   /** Writes to the shared memory. */
-  template<class T>
-  SharedMemory& operator<<(const T& value)
+  template <class T> SharedMemory& operator<<(const T& value)
   {
     sem_wait(semaphore);
-    T* pointer = (T*) sharedMemory;
+    T* pointer = (T*)sharedMemory;
     *pointer = value;
     sem_post(semaphore);
     return *this;
   }
 
   /** Reads from the shared memory. */
-  template<class T>
-  SharedMemory& operator>>(T& value)
+  template <class T> SharedMemory& operator>>(T& value)
   {
     sem_wait(semaphore);
-    value = *((T*) sharedMemory);
+    value = *((T*)sharedMemory);
     sem_post(semaphore);
     return *this;
   }
@@ -89,16 +86,15 @@ public:
    * Reads from the shared memory with a timed wait.
    * @return Success?
    */
-  template<class T>
-  bool nonBlockingRead(T& value, long nanoseconds)
+  template <class T> bool nonBlockingRead(T& value, long nanoseconds)
   {
     timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts); // error ignored
     ts.tv_nsec += nanoseconds;
     bool success = sem_timedwait(semaphore, &ts) == 0;
-    if(success)
+    if (success)
     {
-      value = *((T*) sharedMemory);
+      value = *((T*)sharedMemory);
       sem_post(semaphore);
     }
     return success;

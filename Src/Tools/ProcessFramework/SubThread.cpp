@@ -1,0 +1,264 @@
+/**
+ * @file SubThread.cpp
+ *
+ * Implementation of classes SubThread and SuperThread.
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
+ */
+
+#include "SubThread.h"
+#include "Tools/Debugging/Modify.h"
+
+SubThread::SubThread(SuperThread& superThread) : timingManager(&superThread.timingManager), superThread(&superThread)
+{
+  sender.setSize(5200000, 100000);
+  threadName = superThread.getThreadName() + "Worker";
+
+  // copy debug requests from super to sub threads
+  for (int i = 0; i < this->superThread->debugRequestTable.currentNumberOfDebugRequests; i++)
+    debugRequestTable.addRequest(this->superThread->debugRequestTable.debugRequests[i]);
+
+  // copy streamHandler data?
+
+  Thread<ProcessBase>::setName(threadName);
+  BH_TRACE_INIT(threadName.c_str());
+
+  this->superThread->setGlobals();
+
+  // overwrite own instances
+  Global::theDebugOut = &sender.out;
+  Global::theTimingManager = &timingManager;
+  Global::theDebugRequestTable = &debugRequestTable;
+  Global::theStreamHandler = &streamHandler;
+}
+
+SubThread::~SubThread()
+{
+  BH_TRACE_TERM;
+}
+
+
+bool SubThread::handleMessage(InMessage& message)
+{
+  switch (message.getMessageID())
+  {
+  case idDebugRequest:
+  {
+    DebugRequest debugRequest;
+    message.bin >> debugRequest;
+    this->debugRequestTable.addRequest(debugRequest);
+    return true;
+  }
+  default:
+    return false;
+  }
+}
+
+void SubThread::moveMessages(MessageQueue& processSender)
+{
+  sender.moveAllMessages(processSender);
+
+  if (debugRequestTable.poll && debugRequestTable.notYetPolled("automated requests:StreamSpecification"))
+    OUTPUT(idDebugResponse, text, "automated requests:StreamSpecification" << debugRequestTable.isActive("automated requests:StreamSpecification"));
+  const bool active = debugRequestTable.isActive("automated requests:StreamSpecification");
+  if (active && (debugRequestTable.disable("automated requests:StreamSpecification"), true))
+  {
+    this->superThread->streamHandler << streamHandler;
+  }
+
+  // super thread => sub threads
+  this->superThread->debugRequestTable.propagateDisabledRequests(debugRequestTable);
+  debugRequestTable.clearDisabledRequests();
+}
+
+void SubThread::beforeRun()
+{
+  // is set in Process::processMain() usually
+  debugRequestTable.poll = this->superThread->debugRequestTable.poll;
+}
+
+void SubThread::afterRun()
+{
+  // sub threads => super thread
+  debugRequestTable.propagateDisabledRequests(this->superThread->debugRequestTable);
+}
+
+SuperThread::SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, std::string configFile) : Process(debugIn, debugOut), configFile(std::move(configFile))
+{
+  InMapFile stream(this->configFile);
+  ASSERT(stream.exists());
+  stream >> config;
+}
+
+SuperThread::~SuperThread()
+{
+  each(
+      [](std::unique_ptr<SubThread>& subthread)
+      {
+        subthread.reset();
+      });
+}
+
+void SuperThread::setNumOfSubthreads(unsigned n)
+{
+  // destroy SubThread
+  each(
+      [](std::unique_ptr<SubThread>& subthread)
+      {
+        subthread.reset();
+      });
+
+  executor = std::make_unique<tf::Executor>(n);
+  subthreads.resize(n);
+
+  // create SubThread, init globals
+  each(
+      [this](std::unique_ptr<SubThread>& subthread)
+      {
+        subthread = std::make_unique<SubThread>(*this);
+      });
+}
+
+void SuperThread::run(tf::Taskflow& tf)
+{
+  if (configFile == "cognition.cfg")
+    MODIFY_ONCE("threads:cognition:config", config);
+  else
+    MODIFY_ONCE("threads:motion:config", config);
+
+  if (!executor || config.numWorkers != static_cast<unsigned int>(executor->num_workers()))
+    setNumOfSubthreads(config.numWorkers);
+
+  DEBUG_RESPONSE_ONCE("threads:restart") setNumOfSubthreads(threads);
+  DEBUG_RESPONSE_ONCE("threads:dumpTaskflowGraph") OUTPUT_TEXT(tf.dump());
+
+  DEBUG_RESPONSE("threads:observeTaskflow")
+  {
+    if (!observer)
+      observer = executor->make_observer<ExecutorObserver>(getThreadName());
+  }
+  DEBUG_RESPONSE_ONCE("threads::observeTaskflowOnce") observer = executor->make_observer<ExecutorObserver>(getThreadName());
+
+  observeFunction("run",
+      [&]
+      {
+        executor->run(tf).wait();
+      });
+
+  DEBUG_RESPONSE_NOT("threads:observeTaskflow")
+  {
+    if (observer)
+    {
+      // convert observer data to json in separate thread
+      observerMsgpackFuture = std::async(std::launch::async,
+          [observer = this->observer]()
+          {
+            return nlohmann::json::to_msgpack(observer->dumpJson());
+          });
+
+      executor->remove_observer(observer);
+      observer.reset();
+    }
+
+    if (observerMsgpackFuture.valid() && observerMsgpackFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+    {
+      observerMsgpack = observerMsgpackFuture.get();
+      observerMsgpackIt = observerMsgpack.begin();
+    }
+
+    // send data in chunks
+    static constexpr ptrdiff_t maxMessageSize{100000};
+    if (observerMsgpack.size() > 0)
+    {
+      sendMsgpackFinished = false;
+
+      auto begin = observerMsgpackIt;
+      auto end = (std::distance(begin, observerMsgpack.end()) > maxMessageSize) ? std::next(begin, maxMessageSize) : observerMsgpack.end();
+
+      std::vector<uint8_t> sendData{std::make_move_iterator(begin), std::make_move_iterator(end)};
+      STREAM_EXT(Global::getDebugOut().bin, sendData);
+      Global::getDebugOut().finishMessage(idExecutorObservings);
+
+      if (end == observerMsgpack.end())
+      {
+        observerMsgpack.clear();
+        observerMsgpack.shrink_to_fit();
+      }
+
+      observerMsgpackIt = end;
+    }
+    else if (!sendMsgpackFinished)
+    {
+      // send empty message to acknowledge complete transmission
+      STREAM_EXT(Global::getDebugOut().bin, observerMsgpack);
+      Global::getDebugOut().finishMessage(idExecutorObservings);
+      sendMsgpackFinished = true;
+    }
+  }
+}
+
+bool SuperThread::handleMessage(InMessage& message)
+{
+  for (auto& subthread : subthreads)
+  {
+    subthread->handleMessage(message);
+    message.resetReadPosition();
+  }
+  return Process::handleMessage(message);
+}
+
+void SuperThread::moveMessages(MessageQueue& processSender)
+{
+  for (auto& subthread : subthreads)
+    subthread->moveMessages(processSender);
+
+  debugRequestTable.clearDisabledRequests();
+}
+
+void SuperThread::beforeRun()
+{
+  for (auto& subthread : subthreads)
+    subthread->beforeRun();
+}
+
+void SuperThread::afterRun()
+{
+  for (auto& subthread : subthreads)
+    subthread->afterRun();
+
+  observeFunction("copyUsedRepresentations",
+      [&]
+      {
+        blackboard.copyUsedRepresentations();
+      });
+}
+
+void SuperThread::each(std::function<void(std::unique_ptr<SubThread>&)> f)
+{
+  if (!executor)
+    return;
+
+  tf::Taskflow tf;
+  char counter = static_cast<char>(executor->num_workers());
+  std::mutex m;
+  std::condition_variable cv;
+
+  tf.for_each(subthreads.begin(),
+      subthreads.end(),
+      [&](std::unique_ptr<SubThread>& subthread)
+      {
+        f(subthread);
+
+        // ensure function gets called in separate threads
+        std::unique_lock<std::mutex> lock(m);
+        if (--counter == 0)
+          cv.notify_all();
+        else
+          cv.wait(lock,
+              [&counter]()
+              {
+                return counter == 0;
+              });
+      });
+
+  executor->run(tf).wait();
+}

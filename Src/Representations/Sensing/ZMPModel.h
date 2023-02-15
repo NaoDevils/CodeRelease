@@ -8,7 +8,7 @@
 
 #pragma once
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Debugging/Watch.h"
 #endif
 #include "Tools/Math/Eigen.h"
@@ -18,21 +18,7 @@
  *
  * Contains information about ZMP.
  */
-class ZMPModel : public Streamable
-{
-  /** Streaming */
-  virtual void serialize(In *in, Out *out)
-  {
-    STREAM_REGISTER_BEGIN;
-	  STREAM(zmp_acc);
-    STREAM(ZMP_WCS);
-    STREAM_REGISTER_FINISH;
-  }
-
-public:
-  Vector3f zmp_acc; //ZMP
-  Vector3f ZMP_WCS; // ZMP in Walking Engine World Coordinate System
-
-  /** Constructor */
-  ZMPModel() : zmp_acc(Vector3f::Zero()),ZMP_WCS(Vector3f::Zero()) {}
-};
+STREAMABLE(ZMPModel,,
+  (Vector3f)(Vector3f::Zero()) zmp_acc, //ZMP
+  (Vector3f)(Vector3f::Zero()) ZMP_WCS // ZMP in Walking Engine World Coordinate System
+);

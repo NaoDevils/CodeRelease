@@ -14,47 +14,13 @@
 #include "PoseHypothesis2017.h"
 #include "Tools/Modeling/PoseGenerator.h"
 
-tls_type PoseHypothesis2017::KalmanStateUpdate* PoseHypothesis2017::stateUpdate = 0;
-tls_type PoseHypothesis2017::KalmanInfiniteLineStateUpdate* PoseHypothesis2017::stateUpdateInfiniteLine = 0;
+CycleLocal<std::unique_ptr<PoseHypothesis2017::KalmanStateUpdate>> PoseHypothesis2017::stateUpdate{nullptr};
+CycleLocal<std::unique_ptr<PoseHypothesis2017::KalmanInfiniteLineStateUpdate>> PoseHypothesis2017::stateUpdateInfiniteLine{nullptr};
+CycleLocal<uint64_t> PoseHypothesis2017::lastUniqueId(0);
 
-tls_type uint64_t PoseHypothesis2017::lastUniqueId = 0;
-
-namespace
-{
-  /** HELPER FUNCTIONS **/
-  void extractTeammateNumbers(std::string str, std::vector<int> &teammates)
-  {
-    std::string::size_type idx = 0;
-    while (idx < str.size())
-    {
-      str = str.substr(idx);
-      int i = std::stoi(str, &idx);
-      teammates.push_back(i);
-      // skip ','
-      idx++;
-    }
-  }
-
-  const Teammate *getTeammateByNumber(const TeammateData &theTeammateData, const int &number)
-  {
-    for (const auto &tm : theTeammateData.teammates)
-    {
-      if (tm.number == number)
-      {
-        return &tm;
-      }
-    }
-    return 0;
-  }
-}
-
-PoseHypothesis2017::PoseHypothesis2017(const Pose2f & newPose, float _positionConfidence, float _symmetryConfidence, const unsigned &timeStamp, const SelfLocator2017Parameters& parameters) :
-  positionConfidence(_positionConfidence),
-  normalizedPositionConfidence(_positionConfidence),
-  symmetryConfidence(_symmetryConfidence),
-  mirrored(nullptr),
-  initialized(false),
-  sensorUpdated(false)
+PoseHypothesis2017::PoseHypothesis2017(
+    const Pose2f& newPose, float _positionConfidence, SideConfidence::ConfidenceState _confidenceState, const unsigned& timeStamp, const SelfLocator2017Parameters& parameters)
+    : positionConfidence(_positionConfidence), normalizedPositionConfidence(_positionConfidence), confidenceState(_confidenceState), initialized(false), sensorUpdated(false)
 {
   covariance = Eigen::Matrix<double, totalDimension, totalDimension>::Identity();
   covariance *= 100000.0;
@@ -62,15 +28,9 @@ PoseHypothesis2017::PoseHypothesis2017(const Pose2f & newPose, float _positionCo
   creationTime = timeStamp;
   init(newPose, parameters);
 }
-PoseHypothesis2017::PoseHypothesis2017(const PoseHypothesis2017& other, const unsigned &timeStamp)
-  : _uniqueId(0)
-  , positionConfidence(0.f)
-  , normalizedPositionConfidence(0.)
-  , symmetryConfidence(0.f)
-  , mirrored(nullptr)
-  , initialized(false)
-  , sensorUpdated(false)
-  , creationTime(timeStamp)
+PoseHypothesis2017::PoseHypothesis2017(const PoseHypothesis2017& other, const unsigned& timeStamp)
+    : _uniqueId(0), positionConfidence(0.f), normalizedPositionConfidence(0.), confidenceState(SideConfidence::ConfidenceState::CONFIDENT), initialized(false),
+      sensorUpdated(false), creationTime(timeStamp)
 {
   *this = other;
 }
@@ -90,32 +50,19 @@ PoseHypothesis2017& PoseHypothesis2017::operator=(const PoseHypothesis2017& othe
   positionConfidence = other.positionConfidence;
   singleMeasurementCovariance_2x2 = other.singleMeasurementCovariance_2x2;
   state = other.state;
-  symmetryConfidence = other.symmetryConfidence;
+  confidenceState = other.confidenceState;
   creationTime = other.creationTime;
   sensorUpdated = other.sensorUpdated;
-  mirrored = other.mirrored;
   return *this;
 }
 
-PoseHypothesis2017::~PoseHypothesis2017()
-{
-  // Remove reference of mirrored hypothesis to this one
-  if (mirrored && (mirrored->mirroredHypothesis() == this))
-    mirrored->mirroredHypothesis() = nullptr;
-}
+PoseHypothesis2017::~PoseHypothesis2017() {}
 
-void PoseHypothesis2017::cleanup()
+void PoseHypothesis2017::reset()
 {
-  if (stateUpdate != 0)
-  {
-    delete stateUpdate;
-    stateUpdate = 0;
-  }
-  if (stateUpdateInfiniteLine != 0)
-  {
-    delete stateUpdateInfiniteLine;
-    stateUpdateInfiniteLine = 0;
-  }
+  stateUpdate.reset();
+  stateUpdateInfiniteLine.reset();
+  lastUniqueId.reset();
 }
 
 void PoseHypothesis2017::init(const Pose2f& newPose, const SelfLocator2017Parameters& parameters)
@@ -141,29 +88,29 @@ void PoseHypothesis2017::init(const Pose2f& newPose, const SelfLocator2017Parame
   poseCovarianceForLineMatching(1, 1) = parameters.matching.positionVarianceForLines;
   poseCovarianceForLineMatching(2, 2) = parameters.matching.orientationVarianceForLines;
 
-  if (!stateUpdate)
+  if (!*stateUpdate)
   {
     Matrix2d singleMeasurementCovariance = Matrix2d::Zero();
     singleMeasurementCovariance(0, 0) = parameters.sensorUpdate.verticalAngleVariance;
     singleMeasurementCovariance(1, 1) = parameters.sensorUpdate.horizontalAngleVariance;
 
-    stateUpdate = new PoseHypothesis2017::KalmanStateUpdate();
-    stateUpdate->initMeasurementCovariance(singleMeasurementCovariance, parameters.sensorUpdate.correlationFactorBetweenMeasurements);
+    stateUpdate = std::make_unique<PoseHypothesis2017::KalmanStateUpdate>();
+    (*stateUpdate)->initMeasurementCovariance(singleMeasurementCovariance, parameters.sensorUpdate.correlationFactorBetweenMeasurements);
   }
 
-  if (!stateUpdateInfiniteLine)
+  if (!*stateUpdateInfiniteLine)
   {
     Matrix3d singleInfiniteLineMeasurementCovariance = Matrix3d::Zero();
     singleInfiniteLineMeasurementCovariance(0, 0) = parameters.sensorUpdate.projectiveNormalVariance;
     singleInfiniteLineMeasurementCovariance(1, 1) = parameters.sensorUpdate.projectiveNormalVariance;
     singleInfiniteLineMeasurementCovariance(2, 2) = parameters.sensorUpdate.projectiveNormalVariance;
 
-    stateUpdateInfiniteLine = new PoseHypothesis2017::KalmanInfiniteLineStateUpdate();
-    stateUpdateInfiniteLine->initMeasurementCovarianceInfiniteLine(singleInfiniteLineMeasurementCovariance, parameters.sensorUpdate.correlationFactorBetweenMeasurements);
+    stateUpdateInfiniteLine = std::make_unique<PoseHypothesis2017::KalmanInfiniteLineStateUpdate>();
+    (*stateUpdateInfiniteLine)->initMeasurementCovarianceInfiniteLine(singleInfiniteLineMeasurementCovariance, parameters.sensorUpdate.correlationFactorBetweenMeasurements);
   }
 }
 
-void PoseHypothesis2017::predict(const Pose2f & odometryDelta, const SelfLocator2017Parameters& parameters)
+void PoseHypothesis2017::predict(const Pose2f& odometryDelta, const SelfLocator2017Parameters& parameters)
 {
   Pose2f tempPose;
   getRobotPose(tempPose);
@@ -187,17 +134,16 @@ void PoseHypothesis2017::predict(const Pose2f & odometryDelta, const SelfLocator
   sensorUpdated = false;
 }
 
-void PoseHypothesis2017::fillCorrectionMatrices(
-  const LineMatchingResult & theLineMatchingResult,
-  const CLIPCenterCirclePercept &theCenterCirclePercept,
-  const CLIPGoalPercept &theGoalPercept,
-  const PenaltyCrossPercept &thePenaltyCrossPercept,
-  const FieldDimensions & theFieldDimensions,
-  const CameraMatrix & theCameraMatrix,
-  const CameraMatrixUpper & theCameraMatrixUpper,
-  const SelfLocator2017Parameters &parameters)
+void PoseHypothesis2017::fillCorrectionMatrices(const LineMatchingResult& theLineMatchingResult,
+    const CLIPCenterCirclePercept& theCenterCirclePercept,
+    const CLIPGoalPercept& theGoalPercept,
+    const PenaltyCrossPercept& thePenaltyCrossPercept,
+    const FieldDimensions& theFieldDimensions,
+    const CameraMatrix& theCameraMatrix,
+    const CameraMatrixUpper& theCameraMatrixUpper,
+    const SelfLocator2017Parameters& parameters)
 {
-  Pose2f  robotPose;
+  Pose2f robotPose;
   getRobotPose(robotPose);
 
   MySphericalObservationVector& sphericalObservations = observationAnglesWithLocalFeaturePerceptionsSpherical;
@@ -211,12 +157,11 @@ void PoseHypothesis2017::fillCorrectionMatrices(
 
   // Update with feature percepts (angles)
   // update with center circle
-  if (theCenterCirclePercept.centerCircleWasSeen
-    && theCenterCirclePercept.centerCircle.locationOnField.cast<float>().norm() > 50)
-    // the center might also be under or even behind the robot;
-    // don't use this, too much trouble with periodicities and singularities etc.
+  if (theCenterCirclePercept.centerCircleWasSeen && theCenterCirclePercept.centerCircle.locationOnField.cast<float>().norm() > 50)
+  // the center might also be under or even behind the robot;
+  // don't use this, too much trouble with periodicities and singularities etc.
   {
-    const float &cameraHeight = theCenterCirclePercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
+    const float& cameraHeight = theCenterCirclePercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
 
     SphericalObservation<totalDimension> observation;
     calculateSphericalObservation(observation, theCenterCirclePercept.centerCircle.locationOnField, Vector2d(0, 0), cameraHeight, parameters);
@@ -226,30 +171,25 @@ void PoseHypothesis2017::fillCorrectionMatrices(
       sphericalObservations.push_back(observation);
 
       Vector2f obsInFieldCoords = robotPose * Vector2f(theCenterCirclePercept.centerCircle.locationOnField.cast<float>());
-      LINE("module:SelfLocator2017:correspondences",
-        robotPose.translation.x(), robotPose.translation.y(), obsInFieldCoords.x(), obsInFieldCoords.y(), 30, Drawings::dashedPen, ColorRGBA(200, 200, 200));
-      ARROW("module:SelfLocator2017:correspondences",
-        obsInFieldCoords.x(), obsInFieldCoords.y(), 0, 0, 30, Drawings::solidPen, ColorRGBA(200, 200, 200));
+      LINE("module:SelfLocator2017:correspondences", robotPose.translation.x(), robotPose.translation.y(), obsInFieldCoords.x(), obsInFieldCoords.y(), 30, Drawings::dashedPen, ColorRGBA(200, 200, 200));
+      ARROW("module:SelfLocator2017:correspondences", obsInFieldCoords.x(), obsInFieldCoords.y(), 0, 0, 30, Drawings::solidPen, ColorRGBA(200, 200, 200));
     }
   }
 
   // update with penalty cross
-  if (thePenaltyCrossPercept.penaltyCrossWasSeen
-    && thePenaltyCrossPercept.pointOnField.x() > 50)
-    // don't update with too close percept
-    // too much trouble with periodicities and singularities etc.
+  if (thePenaltyCrossPercept.penaltyCrossWasSeen && thePenaltyCrossPercept.pointOnField.x() > 50)
+  // don't update with too close percept
+  // too much trouble with periodicities and singularities etc.
   {
-    const float &cameraHeight = thePenaltyCrossPercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
+    const float& cameraHeight = thePenaltyCrossPercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
     Vector2d penaltyMarkOpp(theFieldDimensions.xPosOpponentPenaltyMark, 0);
     Vector2d penaltyMarkOwn(theFieldDimensions.xPosOwnPenaltyMark, 0);
     Vector2f relativePosition(thePenaltyCrossPercept.pointOnField.x(), thePenaltyCrossPercept.pointOnField.y());
 
     Vector2d obsInFieldCoords = (robotPose * relativePosition).cast<double>();
-    bool useOwnMark =
-      (obsInFieldCoords - penaltyMarkOwn).norm()
-      < (obsInFieldCoords - penaltyMarkOpp).norm();
+    bool useOwnMark = (obsInFieldCoords - penaltyMarkOwn).norm() < (obsInFieldCoords - penaltyMarkOpp).norm();
 
-    const Vector2d &penaltyMark = useOwnMark ? penaltyMarkOwn : penaltyMarkOpp;
+    const Vector2d& penaltyMark = useOwnMark ? penaltyMarkOwn : penaltyMarkOpp;
     SphericalObservation<totalDimension> observation;
     calculateSphericalObservation(observation, relativePosition, penaltyMark, cameraHeight, parameters);
 
@@ -257,18 +197,15 @@ void PoseHypothesis2017::fillCorrectionMatrices(
     {
       sphericalObservations.push_back(observation);
 
-      LINE("module:SelfLocator2017:correspondences",
-        robotPose.translation.x(), robotPose.translation.y(), obsInFieldCoords.x(), obsInFieldCoords.y(), 30, Drawings::dashedPen, ColorRGBA(200, 200, 200));
-      ARROW("module:SelfLocator2017:correspondences",
-        obsInFieldCoords.x(), obsInFieldCoords.y(), penaltyMark.x(), penaltyMark.y(), 30, Drawings::solidPen, ColorRGBA(200, 200, 200));
+      LINE("module:SelfLocator2017:correspondences", robotPose.translation.x(), robotPose.translation.y(), obsInFieldCoords.x(), obsInFieldCoords.y(), 30, Drawings::dashedPen, ColorRGBA(200, 200, 200));
+      ARROW("module:SelfLocator2017:correspondences", obsInFieldCoords.x(), obsInFieldCoords.y(), penaltyMark.x(), penaltyMark.y(), 30, Drawings::solidPen, ColorRGBA(200, 200, 200));
     }
   }
 
   // update with goal posts
-  if (theGoalPercept.numberOfGoalPosts > 0
-    && theGoalPercept.numberOfGoalPosts < 3) // one of them is a false positive anyway and using any of them is risky
+  if (theGoalPercept.numberOfGoalPosts > 0 && theGoalPercept.numberOfGoalPosts < 3) // one of them is a false positive anyway and using any of them is risky
   {
-    for (auto &goalPost : theGoalPercept.goalPosts)
+    for (auto& goalPost : theGoalPercept.goalPosts)
     {
       SphericalObservation<totalDimension> observation;
       if (findGoalPostMatch(goalPost, theCameraMatrix, theCameraMatrixUpper, theFieldDimensions, parameters, observation))
@@ -276,12 +213,8 @@ void PoseHypothesis2017::fillCorrectionMatrices(
         sphericalObservations.push_back(observation);
 
         Vector2f obsInFieldCoords = robotPose * Vector2f(goalPost.locationOnField.cast<float>());
-        LINE("module:SelfLocator2017:correspondences",
-          robotPose.translation.x(), robotPose.translation.y(), obsInFieldCoords.x(), obsInFieldCoords.y(), 30, Drawings::dashedPen, ColorRGBA(200, 200, 0));
-        ARROW("module:SelfLocator2017:correspondences",
-          obsInFieldCoords.x(), obsInFieldCoords.y(),
-          observation.nominalAngles.x(), observation.nominalAngles.y(),
-          30, Drawings::solidPen, ColorRGBA(200, 200, 0));
+        LINE("module:SelfLocator2017:correspondences", robotPose.translation.x(), robotPose.translation.y(), obsInFieldCoords.x(), obsInFieldCoords.y(), 30, Drawings::dashedPen, ColorRGBA(200, 200, 0));
+        ARROW("module:SelfLocator2017:correspondences", obsInFieldCoords.x(), obsInFieldCoords.y(), observation.nominalAngles.x(), observation.nominalAngles.y(), 30, Drawings::solidPen, ColorRGBA(200, 200, 0));
       }
     }
   }
@@ -294,26 +227,20 @@ void PoseHypothesis2017::fillCorrectionMatrices(
   if (theLineMatchingResult.containsUniqueMatches())
   {
     foundCorrespondenceInLineMatch = theLineMatchingResult.getCorrespondencesForLocalizationHypothesis(
-      robotPose,
-      poseCovarianceForLineMatching,
-      likelihoodThreshold,
-      singleMeasurementCovariance_2x2,
-      correspondencesForObservations,
-      parameters.debugging.displayWarnings);
+        robotPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2, correspondencesForObservations, parameters.debugging.displayWarnings);
 
     if (foundCorrespondenceInLineMatch)
     {
       for (unsigned int i = 0; i < theLineMatchingResult.observations.size(); i++)
       {
-        const LineMatchingResult::FieldLine & observedLine = theLineMatchingResult.observations[i];
-        const LineMatchingResult::FieldLine & correspondingFieldLineSegment = correspondencesForObservations[i];
+        const LineMatchingResult::FieldLine& observedLine = theLineMatchingResult.observations[i];
+        const LineMatchingResult::FieldLine& correspondingFieldLineSegment = correspondencesForObservations[i];
 
         // check for false positives on center circle
         // Filter critical correspondences on center circle
         // (Center line and perpendicular part of center circle)
-        if (!theCenterCirclePercept.centerCircleWasSeen
-          && correspondingFieldLineSegment.start.norm() < theFieldDimensions.centerCircleRadius * 1.2
-          && correspondingFieldLineSegment.end.norm() < theFieldDimensions.centerCircleRadius * 1.2)
+        if (!theCenterCirclePercept.centerCircleWasSeen && correspondingFieldLineSegment.start.norm() < theFieldDimensions.centerCircleRadius * 1.2
+            && correspondingFieldLineSegment.end.norm() < theFieldDimensions.centerCircleRadius * 1.2)
         {
           continue; // this is likely a fragment of the center circle
         }
@@ -343,12 +270,7 @@ void PoseHypothesis2017::fillCorrectionMatrices(
   else if (theLineMatchingResult.containsNonUniqueMatches())
   {
     foundCorrespondenceInLineMatch = theLineMatchingResult.getCorrespondencesForLocalizationHypothesis(
-      robotPose,
-      poseCovarianceForLineMatching,
-      likelihoodThreshold,
-      singleMeasurementCovariance_2x2,
-      correspondencesForObservations,
-      parameters.debugging.displayWarnings);
+        robotPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2, correspondencesForObservations, parameters.debugging.displayWarnings);
 
     // filter "critical" correspondences in combination with onlyObservedOneFieldLine:
     // * looking out of the field and only seeing something corresponding to the own penalty line
@@ -356,23 +278,21 @@ void PoseHypothesis2017::fillCorrectionMatrices(
     // * a single segment of the center circle generated a line observation
     if (foundCorrespondenceInLineMatch && theLineMatchingResult.onlyObservedOneFieldLine)
     {
-      const LineMatchingResult::FieldLine & firstObservation = theLineMatchingResult.observations[0];
-      const LineMatchingResult::FieldLine & firstCorrespondence = correspondencesForObservations[0];
-      double observationDirection = robotPose.rotation + (firstObservation.start + firstObservation.end).angle();// angle of pose to middle of observed line in abs coords
+      const LineMatchingResult::FieldLine& firstObservation = theLineMatchingResult.observations[0];
+      const LineMatchingResult::FieldLine& firstCorrespondence = correspondencesForObservations[0];
+      double observationDirection = robotPose.rotation + (firstObservation.start + firstObservation.end).angle(); // angle of pose to middle of observed line in abs coords
 
       // penalty area situation
       bool isPenaltyAreaSituation = false;
       if (fabs(observationDirection) < pi_2)
       {
         // looking to opponent goal direction
-        isPenaltyAreaSituation = (firstCorrespondence.end.x() == theFieldDimensions.xPosOpponentPenaltyArea
-          &&firstCorrespondence.start.x() == theFieldDimensions.xPosOpponentPenaltyArea);
+        isPenaltyAreaSituation = (firstCorrespondence.end.x() == theFieldDimensions.xPosOpponentPenaltyArea && firstCorrespondence.start.x() == theFieldDimensions.xPosOpponentPenaltyArea);
       }
       else
       {
         // looking to own goal direction
-        isPenaltyAreaSituation = (firstCorrespondence.end.x() == theFieldDimensions.xPosOwnPenaltyArea
-          &&firstCorrespondence.start.x() == theFieldDimensions.xPosOwnPenaltyArea);
+        isPenaltyAreaSituation = (firstCorrespondence.end.x() == theFieldDimensions.xPosOwnPenaltyArea && firstCorrespondence.start.x() == theFieldDimensions.xPosOwnPenaltyArea);
       }
 
       // center circle situation
@@ -381,9 +301,8 @@ void PoseHypothesis2017::fillCorrectionMatrices(
       {
         for (unsigned int i = 0; i < theLineMatchingResult.observations.size(); i++)
         {
-          const LineMatchingResult::FieldLine & correspondingFieldLineSegment = correspondencesForObservations[i];
-          if (correspondingFieldLineSegment.start.norm() < theFieldDimensions.centerCircleRadius * 2.0
-            && correspondingFieldLineSegment.end.norm() < theFieldDimensions.centerCircleRadius * 2.0)
+          const LineMatchingResult::FieldLine& correspondingFieldLineSegment = correspondencesForObservations[i];
+          if (correspondingFieldLineSegment.start.norm() < theFieldDimensions.centerCircleRadius * 2.0 && correspondingFieldLineSegment.end.norm() < theFieldDimensions.centerCircleRadius * 2.0)
           {
             lineFragmentNearCenterCircle = true;
           }
@@ -408,8 +327,8 @@ void PoseHypothesis2017::fillCorrectionMatrices(
     {
       for (unsigned int i = 0; i < theLineMatchingResult.observations.size(); i++)
       {
-        const LineMatchingResult::FieldLine & observedLine = theLineMatchingResult.observations[i];
-        const LineMatchingResult::FieldLine & correspondingFieldLineSegment = correspondencesForObservations[i];
+        const LineMatchingResult::FieldLine& observedLine = theLineMatchingResult.observations[i];
+        const LineMatchingResult::FieldLine& correspondingFieldLineSegment = correspondencesForObservations[i];
 
         if (correspondingFieldLineSegment.start == correspondingFieldLineSegment.end)
         {
@@ -433,9 +352,7 @@ void PoseHypothesis2017::fillCorrectionMatrices(
   MODIFY("module:SelfLocator2017:requestLineCorrespondencesForThisPose", requestCorrespondencesForThisPose);
   MODIFY("module:SelfLocator2017:lineCorrespondenceLikelihoodThreshold", likelihoodThreshold);
 
-  bool debugSpecificPose = requestCorrespondencesForThisPose.translation.x() != 0
-    || requestCorrespondencesForThisPose.translation.y() != 0
-    || requestCorrespondencesForThisPose.rotation != 0;
+  bool debugSpecificPose = requestCorrespondencesForThisPose.translation.x() != 0 || requestCorrespondencesForThisPose.translation.y() != 0 || requestCorrespondencesForThisPose.rotation != 0;
   if (debugSpecificPose)
   {
     theLineMatchingResult.drawRequestedCorrespondences(requestCorrespondencesForThisPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2);
@@ -446,9 +363,7 @@ void PoseHypothesis2017::fillCorrectionMatrices(
   }
 }
 
-void PoseHypothesis2017::updateStateRotationWithLocalFieldLines(
-  const CLIPFieldLinesPercept &theFieldLinesPercept,
-  const SelfLocator2017Parameters &parameters)
+void PoseHypothesis2017::updateStateRotationWithLocalFieldLines(const CLIPFieldLinesPercept& theFieldLinesPercept, const SelfLocator2017Parameters& parameters)
 {
   if (containsInvalidValues())
     return;
@@ -462,7 +377,7 @@ void PoseHypothesis2017::updateStateRotationWithLocalFieldLines(
       tempRotation = Angle::normalize(tempRotation + pi_2);
     //if (theSensorCalibration.gyroZGain == 0) // NaoV4 should use this fully
     //  newPositionConfidence = 1;
-    const float &weight = parameters.processUpdate.adjustRotationToBestFittingAngle;
+    const float& weight = parameters.processUpdate.adjustRotationToBestFittingAngle;
     double diff = Angle::normalize(tempRotation - state[2]);
     state[2] = Angle::normalize(state[2] + weight * diff);
 
@@ -470,47 +385,41 @@ void PoseHypothesis2017::updateStateRotationWithLocalFieldLines(
   }
 }
 
-bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsWeighted(
-  const CLIPFieldLinesPercept &theFieldLinesPercept,
-  const CLIPCenterCirclePercept &theCenterCirclePercept,
-  const CLIPGoalPercept &theGoalPercept,
-  const PenaltyCrossPercept &thePenaltyCrossPercept,
-  const FieldDimensions & theFieldDimensions,
-  const SelfLocator2017Parameters & parameters)
+bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsWeighted(const CLIPFieldLinesPercept& theFieldLinesPercept,
+    const CLIPCenterCirclePercept& theCenterCirclePercept,
+    const CLIPGoalPercept& theGoalPercept,
+    const PenaltyCrossPercept& thePenaltyCrossPercept,
+    const FieldDimensions& theFieldDimensions,
+    const SelfLocator2017Parameters& parameters)
 {
   bool update = false;
-  Pose2f  robotPose;
+  Pose2f robotPose;
   getRobotPose(robotPose);
-  static int lh[5] = { 0, 2, 4, 6, 9 };
-  static int lv[6] = { 1, 3, 5, 7, 8, 10 };
+  static int lh[7] = {0, 2, 4, 6, 9, 12, 15};
+  static int lv[10] = {1, 3, 5, 7, 8, 10, 11, 13, 14, 16};
   static std::vector<int> linesHorizontal(&lh[0], &lh[0] + 5);
   static std::vector<int> linesVertical(&lv[0], &lv[0] + 6);
   // LEVEL 1
   if (parameters.sensorUpdate.use1stLevelUpdate)
-    update |= updatePositionConfidenceWithSingleLines(theFieldLinesPercept, theFieldDimensions, parameters,
-      robotPose, linesHorizontal, linesVertical);
+    update |= updatePositionConfidenceWithSingleLines(theFieldLinesPercept, theFieldDimensions, parameters, robotPose, linesHorizontal, linesVertical);
   // LEVEL 2
   if (parameters.sensorUpdate.use2ndLevelUpdate)
-    update |= updatePositionConfidenceWithLineCrossings(theFieldLinesPercept, theFieldDimensions, parameters,
-      robotPose, linesHorizontal, linesVertical);
+    update |= updatePositionConfidenceWithLineCrossings(theFieldLinesPercept, theFieldDimensions, parameters, robotPose, linesHorizontal, linesVertical);
   // LEVEL 3
   if (parameters.sensorUpdate.use3rdLevelUpdate)
     update |= updatePositionConfidenceWithLineAndLandmark(
-      theFieldLinesPercept, theCenterCirclePercept, theGoalPercept,
-      thePenaltyCrossPercept, theFieldDimensions, parameters,
-      robotPose, linesHorizontal, linesVertical);
+        theFieldLinesPercept, theCenterCirclePercept, theGoalPercept, thePenaltyCrossPercept, theFieldDimensions, parameters, robotPose, linesHorizontal, linesVertical);
 
   return update;
 }
 
 // LEVEL 1
-bool PoseHypothesis2017::updatePositionConfidenceWithSingleLines(
-  const CLIPFieldLinesPercept & theFieldLinesPercept,
-  const FieldDimensions & theFieldDimensions,
-  const SelfLocator2017Parameters & parameters,
-  const Pose2f &robotPose,
-  const std::vector<int> &linesHorizontal,
-  const std::vector<int> &linesVertical)
+bool PoseHypothesis2017::updatePositionConfidenceWithSingleLines(const CLIPFieldLinesPercept& theFieldLinesPercept,
+    const FieldDimensions& theFieldDimensions,
+    const SelfLocator2017Parameters& parameters,
+    const Pose2f& robotPose,
+    const std::vector<int>& linesHorizontal,
+    const std::vector<int>& linesVertical)
 {
   float correspondence = 0.f;
 
@@ -518,6 +427,7 @@ bool PoseHypothesis2017::updatePositionConfidenceWithSingleLines(
   std::vector<CLIPFieldLinesPercept::FieldLine>::const_iterator perceptEnd = theFieldLinesPercept.lines.end();
   bool foundMatch = false;
   bool update = false;
+  int numOfFailedMatches = 0;
   for (; percept != perceptEnd; ++percept)
   {
     foundMatch = false;
@@ -527,34 +437,27 @@ bool PoseHypothesis2017::updatePositionConfidenceWithSingleLines(
     //double perceptDistanceRelative = (((*percept).startOnField + (*percept).endOnField)*0.5).abs();
     float angle = (perceptFieldEnd - perceptFieldStart).angle();
     float length = (perceptFieldEnd - perceptFieldStart).norm();
-    float horizontalAngle = std::min<float>(std::abs(Angle::normalize(angle + pi_2)),
-      std::abs(Angle::normalize(angle - pi_2)));
-    float verticalAngle = std::min<float>(std::abs(angle),
-      std::abs(Angle::normalize(angle + pi)));
+    float horizontalAngle = std::min<float>(std::abs(Angle::normalize(angle + pi_2)), std::abs(Angle::normalize(angle - pi_2)));
+    float verticalAngle = std::min<float>(std::abs(angle), std::abs(Angle::normalize(angle + pi)));
     bool isHorizontal = horizontalAngle < parameters.sensorUpdate.worstAngleDifference; // TODO
     bool isVertical = verticalAngle < parameters.sensorUpdate.worstAngleDifference; // TODO
     int minDistanceID = -1;
 
-    if (percept->isPlausible
-      && length > parameters.sensorUpdate.minLineLengthOnField)
+    if (percept->isPlausible && length > parameters.sensorUpdate.minLineLengthOnField)
     {
       float minDistance = 100000.f;
-      Vector2f perceptCenterField = ((perceptFieldEnd + perceptFieldStart)*0.5f);
+      Vector2f perceptCenterField = ((perceptFieldEnd + perceptFieldStart) * 0.5f);
 
       if (isHorizontal)
       {
         for (std::vector<int>::const_iterator line = linesHorizontal.begin(); line != linesHorizontal.end(); ++line)
         {
-          const FieldDimensions::LinesTable::Line &fieldLine = theFieldDimensions.fieldLines.lines[(*line)];
+          const FieldDimensions::LinesTable::Line& fieldLine = theFieldDimensions.fieldLines.lines[(*line)];
           float allowedOffset = fieldLine.length / 10;
           float minY = std::min(fieldLine.from.y(), fieldLine.to.y()) - allowedOffset;
           float maxY = std::max(fieldLine.from.y(), fieldLine.to.y()) + allowedOffset;
           float perceptDistance = std::abs(fieldLine.from.x() - perceptCenterField.x());
-          if (perceptDistance < minDistance
-            && perceptFieldEnd.y() > minY
-            && perceptFieldEnd.y() < maxY
-            && perceptFieldStart.y() > minY
-            && perceptFieldStart.y() < maxY)
+          if (perceptDistance < minDistance && perceptFieldEnd.y() > minY && perceptFieldEnd.y() < maxY && perceptFieldStart.y() > minY && perceptFieldStart.y() < maxY)
           {
             minDistance = perceptDistance;
             minDistanceID = *line;
@@ -565,70 +468,64 @@ bool PoseHypothesis2017::updatePositionConfidenceWithSingleLines(
       {
         for (std::vector<int>::const_iterator line = linesVertical.begin(); line != linesVertical.end(); ++line)
         {
-          const FieldDimensions::LinesTable::Line &fieldLine = theFieldDimensions.fieldLines.lines[(*line)];
+          const FieldDimensions::LinesTable::Line& fieldLine = theFieldDimensions.fieldLines.lines[(*line)];
           float allowedOffset = fieldLine.length / 10;
           float minX = std::min(fieldLine.from.x(), fieldLine.to.x()) - allowedOffset;
           float maxX = std::max(fieldLine.from.x(), fieldLine.to.x()) + allowedOffset;
           float perceptDistance = std::abs(fieldLine.from.y() - perceptCenterField.y());
-          if (perceptDistance < minDistance
-            && perceptFieldEnd.x() > minX
-            && perceptFieldEnd.x() < maxX
-            && perceptFieldStart.x() > minX
-            && perceptFieldStart.x() < maxX)
+          if (perceptDistance < minDistance && perceptFieldEnd.x() > minX && perceptFieldEnd.x() < maxX && perceptFieldStart.x() > minX && perceptFieldStart.x() < maxX)
           {
             minDistance = perceptDistance;
             minDistanceID = *line;
           }
         }
       }
-      if (minDistanceID >= 0 &&
-        length / theFieldDimensions.fieldLines.lines[minDistanceID].length < parameters.sensorUpdate.lineLengthMatchFactorMax)
+      if (minDistanceID >= 0 && length / theFieldDimensions.fieldLines.lines[minDistanceID].length < parameters.sensorUpdate.lineLengthMatchFactorMax)
       {
         // TODO: use field dimensions methods?
-        float distanceToFieldLine = isHorizontal ? std::abs(theFieldDimensions.fieldLines.lines[minDistanceID].from.x() - robotPose.translation.x())
-          : std::abs(theFieldDimensions.fieldLines.lines[minDistanceID].from.y() - robotPose.translation.y());
+        float distanceToFieldLine = isHorizontal
+            ? std::abs(theFieldDimensions.fieldLines.lines[minDistanceID].from.x() - robotPose.translation.x())
+            : std::abs(theFieldDimensions.fieldLines.lines[minDistanceID].from.y() - robotPose.translation.y());
         angle = isHorizontal ? horizontalAngle : verticalAngle;
         // x percent distance error ok
         float distanceErrorPercent = std::max((minDistance / (distanceToFieldLine + 1) - parameters.sensorUpdate.maxDistanceError), 0.f);
-        correspondence = (1.f - std::min<float>(1.f, (distanceToFieldLine / 1000.f) * distanceErrorPercent))
-          * (1.f - angle / parameters.sensorUpdate.worstAngleDifference);
+        correspondence = (1.f - std::min<float>(1.f, (distanceToFieldLine / 1000.f) * distanceErrorPercent)) * (1.f - angle / parameters.sensorUpdate.worstAngleDifference);
         foundMatch = (correspondence > 0.01f);
       }
 
       if (foundMatch)
-        updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewLineMeasurementOnPositionConfidence, percept->validity*correspondence);
+        updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewLineMeasurementOnPositionConfidence, percept->validity * correspondence, 0.f);
       else
-        updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewLineMeasurementOnPositionConfidence, percept->validity);
+        updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewLineMeasurementOnPositionConfidence, percept->validity, numOfFailedMatches * parameters.sensorUpdate.confidencePenaltyPerFailedMatch);
 
       update |= foundMatch;
+      numOfFailedMatches += !foundMatch;
     }
   }
   return update;
 }
 
 // LEVEL 2
-bool PoseHypothesis2017::updatePositionConfidenceWithLineCrossings(
-  const CLIPFieldLinesPercept & theFieldLinesPercept,
-  const FieldDimensions & theFieldDimensions,
-  const SelfLocator2017Parameters & parameters,
-  const Pose2f &robotPose,
-  const std::vector<int> &linesHorizontal,
-  const std::vector<int> &linesVertical)
+bool PoseHypothesis2017::updatePositionConfidenceWithLineCrossings(const CLIPFieldLinesPercept& theFieldLinesPercept,
+    const FieldDimensions& theFieldDimensions,
+    const SelfLocator2017Parameters& parameters,
+    const Pose2f& robotPose,
+    const std::vector<int>& linesHorizontal,
+    const std::vector<int>& linesVertical)
 {
   return false;
 }
 
 // LEVEL 3
-bool PoseHypothesis2017::updatePositionConfidenceWithLineAndLandmark(
-  const CLIPFieldLinesPercept & theFieldLinesPercept,
-  const CLIPCenterCirclePercept &theCenterCirclePercept,
-  const CLIPGoalPercept &theGoalPercept,
-  const PenaltyCrossPercept &thePenaltyCrossPercept,
-  const FieldDimensions & theFieldDimensions,
-  const SelfLocator2017Parameters & parameters,
-  const Pose2f &robotPose,
-  const std::vector<int> &linesHorizontal,
-  const std::vector<int> &linesVertical)
+bool PoseHypothesis2017::updatePositionConfidenceWithLineAndLandmark(const CLIPFieldLinesPercept& theFieldLinesPercept,
+    const CLIPCenterCirclePercept& theCenterCirclePercept,
+    const CLIPGoalPercept& theGoalPercept,
+    const PenaltyCrossPercept& thePenaltyCrossPercept,
+    const FieldDimensions& theFieldDimensions,
+    const SelfLocator2017Parameters& parameters,
+    const Pose2f& robotPose,
+    const std::vector<int>& linesHorizontal,
+    const std::vector<int>& linesVertical)
 {
   if (containsInvalidValues())
     return false;
@@ -644,42 +541,54 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLineAndLandmark(
   {
     Pose2f symmetricPose(Angle::normalize(pose.rotation + pi), pose.translation * -1);
     //Pose2f &closestPose = robotPose.translation.x() < 0 ? pose : symmetricPose;
-    const Pose2f &closestPose = getClosestPose(robotPose, pose, symmetricPose);
+    const Pose2f& closestPose = getClosestPose(robotPose, pose, symmetricPose);
     weight = perceptWeight * calcWeightForPoseDifference(closestPose - robotPose, parameters);
     update |= (foundMatch = weight > 0.f);
-    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewCenterCircleMeasurementOnPositionConfidence, weight);
+    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewCenterCircleMeasurementOnPositionConfidence, weight, 0);
     DRAW_ROBOT_POSE("module:SelfLocator2017:poseFromCenterCircle", closestPose, ColorRGBA(255 - (unsigned char)(perceptWeight * 255.f), (unsigned char)(perceptWeight * 255.f), 0));
   }
 
-  // Update from Penalty Cross and Line
+  // Update from Penalty Cross and Goal Area Line
   foundMatch = false;
-  if (PoseGenerator::getPoseFromPenaltyCrossAndLine(theFieldDimensions, theFieldLinesPercept, thePenaltyCrossPercept, pose, perceptWeight))
+  if (PoseGenerator::getPoseFromPenaltyCrossAndGoalLine(theFieldDimensions, theFieldLinesPercept, thePenaltyCrossPercept, pose, perceptWeight))
   {
     Pose2f symmetricPose(Angle::normalize(pose.rotation + pi), pose.translation * -1);
     //Pose2f &closestPose = robotPose.translation.x() > 0 ? pose : symmetricPose;
-    const Pose2f &closestPose = getClosestPose(robotPose, pose, symmetricPose);
+    const Pose2f& closestPose = getClosestPose(robotPose, pose, symmetricPose);
     weight = perceptWeight * calcWeightForPoseDifference(closestPose - robotPose, parameters);
     update |= (foundMatch = weight > 0.f);
-    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, weight);
+    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, weight, 0);
+    DRAW_ROBOT_POSE("module:SelfLocator2017:poseFromPenaltyCross", closestPose, ColorRGBA(0, 0, 255));
+  }
+
+  // Update from Penalty Cross and Penalty Area Line, added 08.03.2020
+  foundMatch = false;
+  if (PoseGenerator::getPoseFromPenaltyCrossAndPenaltyLine(theFieldDimensions, theFieldLinesPercept, thePenaltyCrossPercept, pose, perceptWeight))
+  {
+    Pose2f symmetricPose(Angle::normalize(pose.rotation + pi), pose.translation * -1);
+    //Pose2f &closestPose = robotPose.translation.x() > 0 ? pose : symmetricPose;
+    const Pose2f& closestPose = getClosestPose(robotPose, pose, symmetricPose);
+    weight = perceptWeight * calcWeightForPoseDifference(closestPose - robotPose, parameters);
+    update |= (foundMatch = weight > 0.f);
+    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, weight, 0);
     DRAW_ROBOT_POSE("module:SelfLocator2017:poseFromPenaltyCross", closestPose, ColorRGBA(0, 0, 255));
   }
   return update;
 }
 
-bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSpherical(
-  const LineMatchingResult &theLineMatchingResult,
-  const CLIPCenterCirclePercept &theCenterCirclePercept,
-  const CLIPGoalPercept &theGoalPercept,
-  const PenaltyCrossPercept &thePenaltyCrossPercept,
-  const FieldDimensions & theFieldDimensions,
-  const CameraMatrix & theCameraMatrix,
-  const CameraMatrixUpper & theCameraMatrixUpper,
-  const SelfLocator2017Parameters & parameters)
+bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSpherical(const LineMatchingResult& theLineMatchingResult,
+    const CLIPCenterCirclePercept& theCenterCirclePercept,
+    const CLIPGoalPercept& theGoalPercept,
+    const PenaltyCrossPercept& thePenaltyCrossPercept,
+    const FieldDimensions& theFieldDimensions,
+    const CameraMatrix& theCameraMatrix,
+    const CameraMatrixUpper& theCameraMatrixUpper,
+    const SelfLocator2017Parameters& parameters)
 {
   if (containsInvalidValues())
     return false;
 
-  Pose2f  robotPose;
+  Pose2f robotPose;
   getRobotPose(robotPose);
 
   std::vector<LineMatchingResult::FieldLine> correspondencesForObservations;
@@ -690,18 +599,18 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSphe
   // update with field lines
   if (theLineMatchingResult.containsUniqueMatches())
   {
-    bool foundCorrespondenceInLineMatch = theLineMatchingResult.getCorrespondencesForLocalizationHypothesis(robotPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2, correspondencesForObservations);
-    updatePositionConfidence(foundCorrespondenceInLineMatch, parameters.sensorUpdate.influenceOfNewLineMeasurementOnPositionConfidence, 1.f);
+    bool foundCorrespondenceInLineMatch = theLineMatchingResult.getCorrespondencesForLocalizationHypothesis(
+        robotPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2, correspondencesForObservations);
+    updatePositionConfidence(foundCorrespondenceInLineMatch, parameters.sensorUpdate.influenceOfNewLineMeasurementOnPositionConfidence, 1.f, 0.f);
     update |= foundCorrespondenceInLineMatch;
   }
 
   // update with center circle
-  if (theCenterCirclePercept.centerCircleWasSeen
-    && theCenterCirclePercept.centerCircle.locationOnField.cast<float>().norm() > 50)
-    // the center might also be under or even behind the robot;
-    // don't use this, too much trouble with periodicities and singularities etc.
+  if (theCenterCirclePercept.centerCircleWasSeen && theCenterCirclePercept.centerCircle.locationOnField.cast<float>().norm() > 50)
+  // the center might also be under or even behind the robot;
+  // don't use this, too much trouble with periodicities and singularities etc.
   {
-    const float &cameraHeight = theCenterCirclePercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
+    const float& cameraHeight = theCenterCirclePercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
     SphericalObservation<totalDimension> observation;
     calculateSphericalObservation(observation, theCenterCirclePercept.centerCircle.locationOnField, Vector2d(0, 0), cameraHeight, parameters);
 
@@ -710,32 +619,29 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSphe
       Vector2d relativePosition(theCenterCirclePercept.centerCircle.locationOnField.cast<double>());
       Vector2d expectedMeasurementCartesian = Transformation::fieldToRobot(robotPose, Vector2f::Zero()).cast<double>();
       float distanceErrorFactor = 1.f - std::min(1.f, static_cast<float>((expectedMeasurementCartesian - relativePosition).norm()) / 2000);
-      updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewCenterCircleMeasurementOnPositionConfidence, distanceErrorFactor);
+      updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewCenterCircleMeasurementOnPositionConfidence, distanceErrorFactor, 0.f);
     }
     else
     {
-      updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewCenterCircleMeasurementOnPositionConfidence, 1.f);
+      updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewCenterCircleMeasurementOnPositionConfidence, 1.f, 0.f);
     }
     update = true;
   }
 
   // update with penalty cross
-  if (thePenaltyCrossPercept.penaltyCrossWasSeen
-    && thePenaltyCrossPercept.pointOnField.x() > 50)
-    // dont update with too close percept
-    // too much trouble with periodicities and singularities etc.
+  if (thePenaltyCrossPercept.penaltyCrossWasSeen && thePenaltyCrossPercept.pointOnField.x() > 50)
+  // dont update with too close percept
+  // too much trouble with periodicities and singularities etc.
   {
-    const float &cameraHeight = thePenaltyCrossPercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
+    const float& cameraHeight = thePenaltyCrossPercept.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z();
     Vector2d penaltyMarkOpp(theFieldDimensions.xPosOpponentPenaltyMark, 0);
     Vector2d penaltyMarkOwn(theFieldDimensions.xPosOwnPenaltyMark, 0);
     Vector2d relativePosition = thePenaltyCrossPercept.pointOnField.cast<double>();
 
     Vector2d obsInFieldCoords = Transformation::robotToField(robotPose, relativePosition.cast<float>()).cast<double>();
-    bool useOwnMark =
-      (obsInFieldCoords - penaltyMarkOwn).norm()
-      < (obsInFieldCoords - penaltyMarkOpp).norm();
+    bool useOwnMark = (obsInFieldCoords - penaltyMarkOwn).norm() < (obsInFieldCoords - penaltyMarkOpp).norm();
 
-    const Vector2d &penaltyMark = useOwnMark ? penaltyMarkOwn : penaltyMarkOpp;
+    const Vector2d& penaltyMark = useOwnMark ? penaltyMarkOwn : penaltyMarkOpp;
 
     SphericalObservation<totalDimension> observation;
     calculateSphericalObservation(observation, relativePosition, penaltyMark, cameraHeight, parameters);
@@ -743,39 +649,37 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSphe
     if (calculateMeasurementLikelihoodSpherical(observation.realAngles, observation.nominalAngles, parameters) > 0)
     {
       Vector2d expectedMeasurementCartesian = Transformation::fieldToRobot(robotPose, penaltyMark.cast<float>()).cast<double>();
-      float distanceErrorFactor = parameters.sensorUpdate.maxInfluenceOnPositionConfidencePenaltyCrossOnly -
-        std::min(parameters.sensorUpdate.maxInfluenceOnPositionConfidencePenaltyCrossOnly,
-          static_cast<float>((expectedMeasurementCartesian - relativePosition).norm() / 2000));
-      updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, distanceErrorFactor);
+      float distanceErrorFactor = parameters.sensorUpdate.maxInfluenceOnPositionConfidencePenaltyCrossOnly
+          - std::min(parameters.sensorUpdate.maxInfluenceOnPositionConfidencePenaltyCrossOnly, static_cast<float>((expectedMeasurementCartesian - relativePosition).norm() / 2000));
+      updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, distanceErrorFactor, 0.f);
     }
     else
     {
-      updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, 1.f);
+      updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, 1.f, 0.f);
     }
     update = true;
   }
 
   // update with goal posts
-  if (theGoalPercept.numberOfGoalPosts > 0
-    && theGoalPercept.numberOfGoalPosts < 3) // one of them is a false positive anyway and using any of them is risky
+  if (theGoalPercept.numberOfGoalPosts > 0 && theGoalPercept.numberOfGoalPosts < 3) // one of them is a false positive anyway and using any of them is risky
   {
     for (int i = 0; i < theGoalPercept.numberOfGoalPosts; i++)
     {
       SphericalObservation<totalDimension> observation;
       if (findGoalPostMatch(theGoalPercept.goalPosts[i], theCameraMatrix, theCameraMatrixUpper, theFieldDimensions, parameters, observation))
       {
-        updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewGoalMeasurementOnPositionConfidence, 1.f);
+        updatePositionConfidence(true, parameters.sensorUpdate.influenceOfNewGoalMeasurementOnPositionConfidence, 1.f, 0.f);
       }
       else
       {
-        updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewGoalMeasurementOnPositionConfidence, 1.f);
+        updatePositionConfidence(false, parameters.sensorUpdate.influenceOfNewGoalMeasurementOnPositionConfidence, 1.f, 0.f);
       }
       update = true;
     }
   }
   return update;
 }
-void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsSpherical(const SelfLocator2017Parameters & parameters)
+void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsSpherical(const SelfLocator2017Parameters& parameters)
 {
   if (containsInvalidValues())
     return;
@@ -783,7 +687,8 @@ void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsSpherical(const S
   //will be filled in fillCorrectionMatrices
   MySphericalObservationVector& sphericalObservations = observationAnglesWithLocalFeaturePerceptionsSpherical;
 
-  if (sphericalObservations.empty()) return;
+  if (sphericalObservations.empty())
+    return;
 
   MySphericalObservationVector::size_type dimensionOfMeasurementVector = sphericalObservations.size();
 
@@ -797,13 +702,13 @@ void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsSpherical(const S
     dimensionOfMeasurementVector = sphericalObservations.size();
   }
 
-  if (!stateUpdate)
+  if (!*stateUpdate)
   {
     OUTPUT_ERROR("Cannot update hypothesis state because no kalman filter for spherical observations is present. This should've been done in init method.");
     return;
   }
 
-  Eigen::Matrix<double, totalDimension, 1> correction = stateUpdate->updateWithLocalObservations(sphericalObservations, covariance);
+  Eigen::Matrix<double, totalDimension, 1> correction = (*stateUpdate)->updateWithLocalObservations(sphericalObservations, covariance);
   if (correction.isMuchSmallerThan(0.1))
     OUTPUT_TEXT("Minimal state correction neglected");
   else
@@ -814,15 +719,12 @@ void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsSpherical(const S
 }
 
 bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsInfiniteLines(
-  const LineMatchingResult & theLineMatchingResult,
-  const CLIPCenterCirclePercept &theCenterCirclePercept,
-  const FieldDimensions & theFieldDimensions,
-  const SelfLocator2017Parameters & parameters)
+    const LineMatchingResult& theLineMatchingResult, const CLIPCenterCirclePercept& theCenterCirclePercept, const FieldDimensions& theFieldDimensions, const SelfLocator2017Parameters& parameters)
 {
   if (containsInvalidValues())
     return false;
 
-  Pose2f  robotPose;
+  Pose2f robotPose;
   getRobotPose(robotPose);
 
   double likelihoodThreshold = 0.1;
@@ -833,21 +735,23 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsInfi
   if (theLineMatchingResult.containsNonUniqueMatches())
   {
     std::vector<LineMatchingResult::FieldLine> correspondencesForObservations;
-    foundCorrespondenceInLineMatch = theLineMatchingResult.getCorrespondencesForLocalizationHypothesis(robotPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2, correspondencesForObservations);
+    foundCorrespondenceInLineMatch = theLineMatchingResult.getCorrespondencesForLocalizationHypothesis(
+        robotPose, poseCovarianceForLineMatching, likelihoodThreshold, singleMeasurementCovariance_2x2, correspondencesForObservations);
 
-    updatePositionConfidence(foundCorrespondenceInLineMatch, parameters.sensorUpdate.influenceOfNewInfiniteLineMeasurementOnPositionConfidence, 1.f);
+    updatePositionConfidence(foundCorrespondenceInLineMatch, parameters.sensorUpdate.influenceOfNewInfiniteLineMeasurementOnPositionConfidence, 1.f, 0.f);
     update = true;
   }
   return update;
 }
-void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsInfiniteLines(const SelfLocator2017Parameters & parameters)
+void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsInfiniteLines(const SelfLocator2017Parameters& parameters)
 {
   if (containsInvalidValues())
     return;
 
   MyInfiniteLineObservationVector& infiniteLineObservations = observationsAsNormalsWithLocalFeaturePerceptionsInfiniteLines;
 
-  if (infiniteLineObservations.empty()) return;
+  if (infiniteLineObservations.empty())
+    return;
 
   MyInfiniteLineObservationVector::size_type dimensionOfMeasurementVector = infiniteLineObservations.size();
 
@@ -861,13 +765,13 @@ void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsInfiniteLines(con
     dimensionOfMeasurementVector = infiniteLineObservations.size();
   }
 
-  if (!stateUpdateInfiniteLine)
+  if (!*stateUpdateInfiniteLine)
   {
     OUTPUT_ERROR("Cannot update hypothesis state because no kalman filter for infinite lines is present. This should've been done in init method.");
     return;
   }
 
-  Eigen::Matrix<double, totalDimension, 1> correction = stateUpdateInfiniteLine->updateWithLocalInfiniteLineObservations(infiniteLineObservations, covariance);
+  Eigen::Matrix<double, totalDimension, 1> correction = (*stateUpdateInfiniteLine)->updateWithLocalInfiniteLineObservations(infiniteLineObservations, covariance);
   if (correction.isMuchSmallerThan(0.1))
     OUTPUT_TEXT("Minimal state correction neglected");
   else
@@ -878,19 +782,17 @@ void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsInfiniteLines(con
 }
 
 void PoseHypothesis2017::updateWithLocalFeaturePerceptionsCartesian(
-  const CLIPCenterCirclePercept &theCenterCirclePercept,
-  const PenaltyCrossPercept &thPenaltyCrossPercept,
-  const SelfLocator2017Parameters & parameters)
+    const CLIPCenterCirclePercept& theCenterCirclePercept, const PenaltyCrossPercept& thPenaltyCrossPercept, const SelfLocator2017Parameters& parameters)
 {
   OUTPUT_ERROR("Not implemented yet");
 }
 
-bool PoseHypothesis2017::findGoalPostMatch(const CLIPGoalPercept::GoalPost & goalPost,
-  const CameraMatrix & theCameraMatrix,
-  const CameraMatrixUpper & theCameraMatrixUpper,
-  const FieldDimensions & theFieldDimensions,
-  const SelfLocator2017Parameters& parameters,
-  SphericalObservation<totalDimension> &bestObservation)
+bool PoseHypothesis2017::findGoalPostMatch(const CLIPGoalPercept::GoalPost& goalPost,
+    const CameraMatrix& theCameraMatrix,
+    const CameraMatrixUpper& theCameraMatrixUpper,
+    const FieldDimensions& theFieldDimensions,
+    const SelfLocator2017Parameters& parameters,
+    SphericalObservation<totalDimension>& bestObservation)
 {
   double likelihood;
   Vector2d correspondenceInGlobalCoords;
@@ -953,8 +855,8 @@ bool PoseHypothesis2017::findGoalPostMatch(const CLIPGoalPercept::GoalPost & goa
   return bestLikelihood > 0;
 }
 
-void PoseHypothesis2017::calculateSphericalObservation(SphericalObservation<totalDimension> &observation,
-  const Vector2d &relativePosition, const Vector2d &globalCoordinates, const float &cameraHeight, const SelfLocator2017Parameters &parameters)
+void PoseHypothesis2017::calculateSphericalObservation(
+    SphericalObservation<totalDimension>& observation, const Vector2d& relativePosition, const Vector2d& globalCoordinates, const float& cameraHeight, const SelfLocator2017Parameters& parameters)
 {
   // some helpful variables
   const double p2l_x = globalCoordinates.x() - state[0]; // pose to landmark, x
@@ -972,8 +874,8 @@ void PoseHypothesis2017::calculateSphericalObservation(SphericalObservation<tota
   observation.nominalAngles.y() = Angle::normalize(atan2(p2l_y, p2l_x) - state[2]); // horizontal angle
 
   // calculate angleObservationMeasurementModelJacobian_H
-  observation.measurementModelJacobian(0, 0) = cameraHeight * p2l_x / (d*(cameraHeight2 + d2));
-  observation.measurementModelJacobian(0, 1) = cameraHeight * p2l_y / (d*(cameraHeight2 + d2));
+  observation.measurementModelJacobian(0, 0) = cameraHeight * p2l_x / (d * (cameraHeight2 + d2));
+  observation.measurementModelJacobian(0, 1) = cameraHeight * p2l_y / (d * (cameraHeight2 + d2));
   observation.measurementModelJacobian(0, 2) = 0;
   observation.measurementModelJacobian(1, 0) = p2l_y / d2;
   observation.measurementModelJacobian(1, 1) = -p2l_x / d2;
@@ -985,8 +887,10 @@ void PoseHypothesis2017::calculateSphericalObservation(SphericalObservation<tota
   observation.weight = std::min(observation.weight, 1.);
 }
 
-void PoseHypothesis2017::calculateInfiniteLineObservation(InfiniteLineObservation<totalDimension> &observation, const LineMatchingResult::FieldLine &observedLine,
-  const LineMatchingResult::FieldLine &correspondingFieldLineSegment, const SelfLocator2017Parameters &parameters)
+void PoseHypothesis2017::calculateInfiniteLineObservation(InfiniteLineObservation<totalDimension>& observation,
+    const LineMatchingResult::FieldLine& observedLine,
+    const LineMatchingResult::FieldLine& correspondingFieldLineSegment,
+    const SelfLocator2017Parameters& parameters)
 {
   Pose2f pose;
   getRobotPose(pose);
@@ -994,9 +898,9 @@ void PoseHypothesis2017::calculateInfiniteLineObservation(InfiniteLineObservatio
   Vector2f localEnd = Transformation::fieldToRobot(pose, correspondingFieldLineSegment.end.cast<float>());
   Vector3d toStart(localStart.x(), localStart.y(), -observedLine.cameraHeight), toEnd(localEnd.x(), localEnd.y(), -observedLine.cameraHeight);
 
-  // Calculate measurement 
-  observation.realNormals = Vector3d(observedLine.start.x(), observedLine.start.y(), -observedLine.cameraHeight).cross(
-    Vector3d(observedLine.end.x(), observedLine.end.y(), -observedLine.cameraHeight));
+  // Calculate measurement
+  observation.realNormals =
+      Vector3d(observedLine.start.x(), observedLine.start.y(), -observedLine.cameraHeight).cross(Vector3d(observedLine.end.x(), observedLine.end.y(), -observedLine.cameraHeight));
 
   // calculate expected measurement
   observation.nominalNormals = toStart.cross(toEnd);
@@ -1007,8 +911,9 @@ void PoseHypothesis2017::calculateInfiniteLineObservation(InfiniteLineObservatio
     // Helpers
     Vector2d wcsDiff = correspondingFieldLineSegment.end - correspondingFieldLineSegment.start;
 
-    Vector3d wcsNormal = Vector3d(correspondingFieldLineSegment.start.x(), correspondingFieldLineSegment.start.y(), -observedLine.cameraHeight).cross(
-      Vector3d(correspondingFieldLineSegment.end.x(), correspondingFieldLineSegment.end.y(), -observedLine.cameraHeight));
+    Vector3d wcsNormal =
+        Vector3d(correspondingFieldLineSegment.start.x(), correspondingFieldLineSegment.start.y(), -observedLine.cameraHeight)
+            .cross(Vector3d(correspondingFieldLineSegment.end.x(), correspondingFieldLineSegment.end.y(), -observedLine.cameraHeight));
 
     double lengthRatio = 1 / (wcsNormal.norm() + wcsDiff.norm());
     double lengthRatio3 = lengthRatio * lengthRatio * lengthRatio;
@@ -1047,20 +952,20 @@ void PoseHypothesis2017::calculateInfiniteLineObservation(InfiniteLineObservatio
     const double t1 = l_x_1 * l_y_2 - l_x_2 * l_y_1 - l_x_1 * p_y + l_y_1 * p_x + l_x_2 * p_y - l_y_2 * p_x; // Z-Value Start X End in RCS (robot coord) (not normalized)
     const double t2 = cameraHeight2 * (sqr(l_x_1 - l_x_2) + sqr(l_y_1 - l_y_2)) + t1 * t1; // Start X End (WCS) and Z-Value of Start X End (RCS) -> SquaredNorm
     const double t3 = 1 / sqrt(t2); // 1 / Length; For normalization
-    const double t4 = t3 * t3*t3;
+    const double t4 = t3 * t3 * t3;
 
     // d_nx / d_px:
-    observation.measurementModelJacobian(0, 0) = observedLine.cameraHeight * (l_y_1 - l_y_2) *(cos_p*(l_y_1 - l_y_2) - sin_p * (l_x_1 - l_x_2)) *t1 *t4;
+    observation.measurementModelJacobian(0, 0) = observedLine.cameraHeight * (l_y_1 - l_y_2) * (cos_p * (l_y_1 - l_y_2) - sin_p * (l_x_1 - l_x_2)) * t1 * t4;
     // d_nx / d_py:
-    observation.measurementModelJacobian(0, 1) = -observedLine.cameraHeight * (l_x_1 - l_x_2) *(cos_p*(l_y_1 - l_y_2) - sin_p * (l_x_1 - l_x_2)) *t1 *t4;
+    observation.measurementModelJacobian(0, 1) = -observedLine.cameraHeight * (l_x_1 - l_x_2) * (cos_p * (l_y_1 - l_y_2) - sin_p * (l_x_1 - l_x_2)) * t1 * t4;
     // d_nx / d_ptheta:
-    observation.measurementModelJacobian(0, 2) = observedLine.cameraHeight * (cos_p*(l_x_1 - l_x_2) + sin_p * (l_y_1 - l_y_2)) * t3;
+    observation.measurementModelJacobian(0, 2) = observedLine.cameraHeight * (cos_p * (l_x_1 - l_x_2) + sin_p * (l_y_1 - l_y_2)) * t3;
     // d_ny / d_px:
-    observation.measurementModelJacobian(1, 0) = -observedLine.cameraHeight * (l_y_1 - l_y_2) *(cos_p*(l_x_1 - l_x_2) + sin_p * (l_y_1 - l_y_2)) *t1 *t4;
+    observation.measurementModelJacobian(1, 0) = -observedLine.cameraHeight * (l_y_1 - l_y_2) * (cos_p * (l_x_1 - l_x_2) + sin_p * (l_y_1 - l_y_2)) * t1 * t4;
     // d_ny / d_py:
-    observation.measurementModelJacobian(1, 1) = observedLine.cameraHeight * (l_x_1 - l_x_2) *(cos_p*(l_x_1 - l_x_2) + sin_p * (l_y_1 - l_y_2)) *t1 *t4;
+    observation.measurementModelJacobian(1, 1) = observedLine.cameraHeight * (l_x_1 - l_x_2) * (cos_p * (l_x_1 - l_x_2) + sin_p * (l_y_1 - l_y_2)) * t1 * t4;
     // d_ny / d_ptheta:
-    observation.measurementModelJacobian(1, 2) = observedLine.cameraHeight * (cos_p*(l_y_1 - l_y_2) - sin_p * (l_x_1 - l_x_2)) * t3;
+    observation.measurementModelJacobian(1, 2) = observedLine.cameraHeight * (cos_p * (l_y_1 - l_y_2) - sin_p * (l_x_1 - l_x_2)) * t3;
     // d_nz / d_px:
     observation.measurementModelJacobian(2, 0) = cameraHeight2 * (l_y_1 - l_y_2) * (sqr(l_x_1 - l_x_2) + sqr(l_y_1 - l_y_2)) * t4;
     // d_nz / d_py:
@@ -1089,63 +994,61 @@ void PoseHypothesis2017::calculateInfiniteLineObservation(InfiniteLineObservatio
   observation.weight = ((weightStart + weightEnd) / 2);
 }
 
-void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(
-  const BallModel & theBallModel,
-  const RemoteBallModel & theRemoteBallModel,
-  const LocalRobotMap & theLocalRobotMap,
-  const RemoteRobotMap & theRemoteRobotMap,
-  const TeammateData & theTeammateData,
-  const FrameInfo & frameInfo,
-  const SelfLocator2017Parameters & parameters)
+void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(const BallModel& theBallModel,
+    const RemoteBallModel& theRemoteBallModel,
+    const LocalRobotMap& theLocalRobotMap,
+    const RemoteRobotMap& theRemoteRobotMap,
+    const TeammateData& theTeammateData,
+    const FrameInfo& frameInfo,
+    const SelfLocator2017Parameters& parameters,
+    bool inReadyState)
 {
   // the maps and models only contain the means, not the covariances
   // so we can only compare the differences, not the likelihoods (which would make more sense)
-  float difference = 0;
-  float differenceOfMirrored = 0;
-
   const float minDiffToMatter = 500.f;
 
   Vector2f localModelInGlobalCoords, localModelInGlobalCoordsMirrored;
   Pose2f pose;
   getRobotPose(pose);
+  localModelInGlobalCoords = pose * theBallModel.estimate.position;
+  localModelInGlobalCoordsMirrored = localModelInGlobalCoords * -1;
 
-  // Check ball
-  if (frameInfo.getTimeSince(theBallModel.timeWhenLastSeen) < 1000
-    && frameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 1500
-    && theBallModel.validity > 0.7f && theRemoteBallModel.validity > 0.8f
-    && theBallModel.estimate.velocity.norm() < 100 && theRemoteBallModel.velocity.norm() < 100)
+  // Check ball, only in playing state
+  if (!inReadyState && frameInfo.getTimeSince(theBallModel.timeWhenLastSeen) < 1000 && frameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 1500 && theBallModel.validity > 0.7f
+      && theRemoteBallModel.validity > 0.8f && theBallModel.estimate.velocity.norm() < 100 && theRemoteBallModel.velocity.norm() < 100 && localModelInGlobalCoords.norm() > minDiffToMatter)
   {
-    localModelInGlobalCoords = pose * theBallModel.estimate.position;
-    difference = (theRemoteBallModel.position - localModelInGlobalCoords).norm();
-    localModelInGlobalCoordsMirrored = localModelInGlobalCoords * -1;
-    differenceOfMirrored = (theRemoteBallModel.position - localModelInGlobalCoordsMirrored).norm();
 
-    const bool isThisPositionMoreLikely = difference < differenceOfMirrored;
-    const float& closestDifference = isThisPositionMoreLikely ? difference : differenceOfMirrored;
+    // if mirrored ball is better, update confidence with local ball models of all players
 
-    if (std::abs(difference - differenceOfMirrored) > minDiffToMatter
-      && closestDifference < parameters.symmetryUpdate.maxDistanceToClosestRemoteModel)
+    int numberOfTeammatesWithMirroredBall = 0;
+    int numberOfTeammatesWithSameBall = 0;
+    for (const auto& mate : theTeammateData.teammates)
     {
-      std::vector<int> teammates;
-      extractTeammateNumbers(theRemoteBallModel.teammates, teammates);
-
-      for (const auto &tmNumber : teammates)
+      if (mate.sideConfidence.confidenceState != SideConfidence::ConfidenceState::CONFUSED && frameInfo.getTimeSince(mate.ball.timeWhenLastSeen) < 1500 && mate.ball.validity > 0.8f
+          && mate.behaviorData.ballPositionField.norm() > minDiffToMatter)
       {
-        const Teammate *teammate = getTeammateByNumber(theTeammateData, tmNumber);
-        if (teammate)
-        {
-          const float &baseConfidence = teammate->isGoalkeeper ? parameters.symmetryUpdate.influenceOfNewBallMeasurementByGoalie : parameters.symmetryUpdate.influenceOfNewBallMeasurement;
-          const float stateValue = 1.f - static_cast<float>(teammate->sideConfidence.confidenceState) / SideConfidence::numOfConfidenceStates;
-          updateSymmetryConfidence(isThisPositionMoreLikely, baseConfidence * stateValue * teammate->sideConfidence.sideConfidence);
-        }
+        float distanceTeammate = (mate.behaviorData.ballPositionField - localModelInGlobalCoords).norm();
+        float distanceTeammateMirrored = (mate.behaviorData.ballPositionField - localModelInGlobalCoordsMirrored).norm();
+
+        if (distanceTeammateMirrored < distanceTeammate && distanceTeammateMirrored < 500.f)
+          numberOfTeammatesWithMirroredBall++;
+        else if (distanceTeammateMirrored > distanceTeammate && distanceTeammate < 500.f)
+          numberOfTeammatesWithSameBall++;
       }
     }
+    if (numberOfTeammatesWithMirroredBall >= 2)
+      confidenceState = SideConfidence::ConfidenceState::CONFUSED;
+    else if (numberOfTeammatesWithSameBall > 1)
+      confidenceState = SideConfidence::ConfidenceState::CONFIDENT;
+    else if (numberOfTeammatesWithMirroredBall == 1)
+      confidenceState = SideConfidence::ConfidenceState::UNSURE;
   }
 
   // Use only ball for symmetry
   // Works better for now
   return;
 
+  /*
   // Update based on robot map
   difference = 0;
   differenceOfMirrored = 0;
@@ -1227,6 +1130,7 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(
     float influence = (diff / (difference + differenceOfMirrored));
     updateSymmetryConfidence(difference < differenceOfMirrored, influence);
   }
+  */
 }
 
 void PoseHypothesis2017::draw(ColorRGBA myselfColor) const
@@ -1242,10 +1146,10 @@ void PoseHypothesis2017::draw(ColorRGBA myselfColor) const
   POSE_2D_SAMPLE("module:SelfLocator2017:hypotheses", pose, myselfColor);
 
   DRAWTEXT("module:SelfLocator2017:hypotheses", pose.translation.x(), pose.translation.y() - 180, 50, myselfColor, "pc: " << positionConfidence);
-  DRAWTEXT("hypotheses", pose.translation.x(), pose.translation.y() - 300, 50, myselfColor, "sc: " << symmetryConfidence);
+  DRAWTEXT("hypotheses", pose.translation.x(), pose.translation.y() - 300, 50, myselfColor, "sc: " << confidenceState);
 }
 
-void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const ColorRGBA &color, int penSize, bool drawCenter) const
+void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D& gd, const ColorRGBA& color, int penSize, bool drawCenter) const
 {
   // TODO: clean up this method
   Pose2f mean = Pose2f(gd.mean.cast<float>());
@@ -1255,8 +1159,7 @@ void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const Co
 
   if (drawCenter)
   {
-    CIRCLE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
-      averageX, averageY, 60, 20, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
+    CIRCLE("module:SelfLocator2017:GaussianTools:covarianceEllipse", averageX, averageY, 60, 20, Drawings::solidPen, ColorRGBA::black, Drawings::solidBrush, color);
   }
 
   if (gd.mean.norm() > 20000 || gd.covariance.col(0).norm() > 10000. * 10000. || gd.covariance.col(1).norm() > 10000. * 10000.)
@@ -1264,7 +1167,7 @@ void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const Co
     return;
   }
 
-  // Vector2<double> eigenVec0 = getEigenVectors(gaussian.covariance).c[0]; 
+  // Vector2<double> eigenVec0 = getEigenVectors(gaussian.covariance).c[0];
   Eigen::EigenSolver<Matrix2d> es(gd.covariance); //constructor calls compute() and calculates eigenvectors and values
   Vector2d eigenVec0 = es.eigenvectors().col(0).real();
   //Vector2d eigenVec1 = es.eigenvectors().col(1).real();
@@ -1274,8 +1177,8 @@ void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const Co
   //double temp = toDegrees(eigenVec0.angle());
 
   Matrix2d eigenVals = es.eigenvalues().real().asDiagonal();
-  double eigenVal0 = sgn(eigenVals.col(0).x())*sqrt(std::abs(eigenVals.col(0).x()));   // std-deviation to make it drawable on the field
-  double eigenVal1 = sgn(eigenVals.col(1).y())*sqrt(std::abs(eigenVals.col(1).y()));
+  double eigenVal0 = sgn(eigenVals.col(0).x()) * sqrt(std::abs(eigenVals.col(0).x())); // std-deviation to make it drawable on the field
+  double eigenVal1 = sgn(eigenVals.col(1).y()) * sqrt(std::abs(eigenVals.col(1).y()));
 
 
   // comment out to watch eigenvectors
@@ -1305,64 +1208,80 @@ void PoseHypothesis2017::drawGaussian(const GaussianDistribution2D &gd, const Co
     for (int xc = 0; (static_cast<double>(xc) + step) < a; xc += step)
     {
       x1 = xc;
-      y1 = (sqrt(1 - sqr(x1 / a))* b);
+      y1 = (sqrt(1 - sqr(x1 / a)) * b);
       x2 = static_cast<double>(xc) + step;
-      y2 = (sqrt(1 - sqr(x2 / a))* b);
+      y2 = (sqrt(1 - sqr(x2 / a)) * b);
 
 
-      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(x1)+averageX - sin(alpha)*(y1),
-        sin(alpha)*(x1)+cos(alpha)*(y1)+averageY,
-        cos(alpha)*(x2)+averageX - sin(alpha)*(y2),
-        sin(alpha)*(x2)+cos(alpha)*(y2)+averageY,
-        penSize, Drawings::solidPen,
-        color);
-      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(x1)+averageX - sin(alpha)*(-y1),
-        sin(alpha)*(x1)+cos(alpha)*(-y1) + averageY,
-        cos(alpha)*(x2)+averageX - sin(alpha)*(-y2),
-        sin(alpha)*(x2)+cos(alpha)*(-y2) + averageY,
-        penSize, Drawings::solidPen,
-        color);
-      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(-x1) + averageX - sin(alpha)*(y1),
-        sin(alpha)*(-x1) + cos(alpha)*(y1)+averageY,
-        cos(alpha)*(-x2) + averageX - sin(alpha)*(y2),
-        sin(alpha)*(-x2) + cos(alpha)*(y2)+averageY,
-        penSize, Drawings::solidPen,
-        color);
-      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(-x1) + averageX - sin(alpha)*(-y1),
-        sin(alpha)*(-x1) + cos(alpha)*(-y1) + averageY,
-        cos(alpha)*(-x2) + averageX - sin(alpha)*(-y2),
-        sin(alpha)*(-x2) + cos(alpha)*(-y2) + averageY,
-        penSize, Drawings::solidPen,
-        color);
+      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+          cos(alpha) * (x1) + averageX - sin(alpha) * (y1),
+          sin(alpha) * (x1) + cos(alpha) * (y1) + averageY,
+          cos(alpha) * (x2) + averageX - sin(alpha) * (y2),
+          sin(alpha) * (x2) + cos(alpha) * (y2) + averageY,
+          penSize,
+          Drawings::solidPen,
+          color);
+      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+          cos(alpha) * (x1) + averageX - sin(alpha) * (-y1),
+          sin(alpha) * (x1) + cos(alpha) * (-y1) + averageY,
+          cos(alpha) * (x2) + averageX - sin(alpha) * (-y2),
+          sin(alpha) * (x2) + cos(alpha) * (-y2) + averageY,
+          penSize,
+          Drawings::solidPen,
+          color);
+      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+          cos(alpha) * (-x1) + averageX - sin(alpha) * (y1),
+          sin(alpha) * (-x1) + cos(alpha) * (y1) + averageY,
+          cos(alpha) * (-x2) + averageX - sin(alpha) * (y2),
+          sin(alpha) * (-x2) + cos(alpha) * (y2) + averageY,
+          penSize,
+          Drawings::solidPen,
+          color);
+      LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+          cos(alpha) * (-x1) + averageX - sin(alpha) * (-y1),
+          sin(alpha) * (-x1) + cos(alpha) * (-y1) + averageY,
+          cos(alpha) * (-x2) + averageX - sin(alpha) * (-y2),
+          sin(alpha) * (-x2) + cos(alpha) * (-y2) + averageY,
+          penSize,
+          Drawings::solidPen,
+          color);
     }
 
     x1 = a;
     y1 = 0;
 
-    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(x1)+averageX - sin(alpha)*(y1),
-      sin(alpha)*(x1)+cos(alpha)*(y1)+averageY,
-      cos(alpha)*(x2)+averageX - sin(alpha)*(y2),
-      sin(alpha)*(x2)+cos(alpha)*(y2)+averageY,
-      penSize, Drawings::solidPen,
-      color);
-    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(x1)+averageX - sin(alpha)*(-y1),
-      sin(alpha)*(x1)+cos(alpha)*(-y1) + averageY,
-      cos(alpha)*(x2)+averageX - sin(alpha)*(-y2),
-      sin(alpha)*(x2)+cos(alpha)*(-y2) + averageY,
-      penSize, Drawings::solidPen,
-      color);
-    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(-x1) + averageX - sin(alpha)*(y1),
-      sin(alpha)*(-x1) + cos(alpha)*(y1)+averageY,
-      cos(alpha)*(-x2) + averageX - sin(alpha)*(y2),
-      sin(alpha)*(-x2) + cos(alpha)*(y2)+averageY,
-      penSize, Drawings::solidPen,
-      color);
-    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse", cos(alpha)*(-x1) + averageX - sin(alpha)*(-y1),
-      sin(alpha)*(-x1) + cos(alpha)*(-y1) + averageY,
-      cos(alpha)*(-x2) + averageX - sin(alpha)*(-y2),
-      sin(alpha)*(-x2) + cos(alpha)*(-y2) + averageY,
-      penSize, Drawings::solidPen,
-      color);
+    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+        cos(alpha) * (x1) + averageX - sin(alpha) * (y1),
+        sin(alpha) * (x1) + cos(alpha) * (y1) + averageY,
+        cos(alpha) * (x2) + averageX - sin(alpha) * (y2),
+        sin(alpha) * (x2) + cos(alpha) * (y2) + averageY,
+        penSize,
+        Drawings::solidPen,
+        color);
+    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+        cos(alpha) * (x1) + averageX - sin(alpha) * (-y1),
+        sin(alpha) * (x1) + cos(alpha) * (-y1) + averageY,
+        cos(alpha) * (x2) + averageX - sin(alpha) * (-y2),
+        sin(alpha) * (x2) + cos(alpha) * (-y2) + averageY,
+        penSize,
+        Drawings::solidPen,
+        color);
+    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+        cos(alpha) * (-x1) + averageX - sin(alpha) * (y1),
+        sin(alpha) * (-x1) + cos(alpha) * (y1) + averageY,
+        cos(alpha) * (-x2) + averageX - sin(alpha) * (y2),
+        sin(alpha) * (-x2) + cos(alpha) * (y2) + averageY,
+        penSize,
+        Drawings::solidPen,
+        color);
+    LINE("module:SelfLocator2017:GaussianTools:covarianceEllipse",
+        cos(alpha) * (-x1) + averageX - sin(alpha) * (-y1),
+        sin(alpha) * (-x1) + cos(alpha) * (-y1) + averageY,
+        cos(alpha) * (-x2) + averageX - sin(alpha) * (-y2),
+        sin(alpha) * (-x2) + cos(alpha) * (-y2) + averageY,
+        penSize,
+        Drawings::solidPen,
+        color);
   }
 }
 
@@ -1525,8 +1444,6 @@ bool PoseHypothesis2017::test()
 
   return result;
 }
-
-
 
 
 #endif

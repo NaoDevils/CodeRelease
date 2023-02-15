@@ -11,14 +11,14 @@
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/JointAngles.h"
 #include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
+#include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/HeadJointRequest.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
 #include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/MotionControl/SpecialActionsOutput.h"
@@ -28,24 +28,24 @@
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/Sensing/InertialData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Configuration/MassCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Tools/Module/Module.h"
 
+
 MODULE(MotionCombinator,
-{ ,
   REQUIRES(OdometryCorrectionTables),
   REQUIRES(FallDownState),
+  REQUIRES(Footpositions),
   REQUIRES(FrameInfo),
   REQUIRES(HeadJointRequest),
-  REQUIRES(InertialData),
-  REQUIRES(InertialSensorData),
+  REQUIRES(JoinedIMUData),
   REQUIRES(JointSensorData),
   REQUIRES(RobotModel),
-  REQUIRES(JointAngles),
   REQUIRES(KickEngineOutput),
+  REQUIRES(MotionRequest),
   REQUIRES(MotionSelection),
   REQUIRES(SpecialActionsOutput),
   REQUIRES(StandEngineOutput),
@@ -53,7 +53,6 @@ MODULE(MotionCombinator,
   REQUIRES(StiffnessSettings),
   REQUIRES(MotionSettings),
   REQUIRES(JointCalibration),
-  REQUIRES(LegJointSensorControlParameters),
   REQUIRES(WalkingEngineOutput),
   REQUIRES(WalkingInfo),
   REQUIRES(SpeedInfo),
@@ -63,17 +62,19 @@ MODULE(MotionCombinator,
   REQUIRES(RobotDimensions),
   PROVIDES(MotionInfo),
   PROVIDES(OdometryData),
-  LOADS_PARAMETERS(
-  { ,
-    (bool) emergencyOffEnabled,
-    (unsigned) recoveryTime, /**< The number of frames to interpolate after emergency-stop. */
-    (bool) useBalancing, // use yOffset and balanceParams for balancing upper body
-    (float) yOffset, // upper body y offset (for asymmetry)
+  LOADS_PARAMETERS(,
+    (bool)(true) emergencyOffEnabled,
+    (bool)(false) freezeJointRequestOnError, /**< If true, the last valid jointRequest will be used if an invalid is encountered. */
+    (unsigned)(70) recoveryTime, /**< The number of frames to interpolate after emergency-stop. */
     (bool)(true) useJointAccLimit, // use below acc limit for joints?
     (Angle)(180_deg) maxJointAcceleration, // Used to counter the softbank issue with the V6. Angle/(s^2)
-  }),
-});
-
+    (Angle)(35_deg) JointDiffArmsStuck, // Angle Diff to check if arms are stuck 
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
+    (unsigned)(20) durationCenterArmFirstPhase,
+    (unsigned)(20) durationCenterArmSecondPhase,
+    (unsigned)(20) durationCenterArmThirdPhase
+  )
+);
 
 
 class MotionCombinator : public MotionCombinatorBase
@@ -93,25 +94,13 @@ private:
   bool isFallingStarted;
   unsigned fallingFrame;
 
-  // for balancing
-  SpecialActionRequest::SpecialActionID lastBalancedSpecialAction = SpecialActionRequest::stand;
-  unsigned timeWhenSpecialActionStarted = 0;
-  bool wasInBalance = false;
-  float lastComX = 0;
-
+#ifndef NDEBUG
   SpecialActionRequest::SpecialActionID lastSpecialAction = SpecialActionRequest::playDead;
   SpecialActionRequest::SpecialActionID currentSpecialAction = SpecialActionRequest::playDead;
+#endif
   OdometryData lastOdometryData;
   JointRequest lastJointRequest;
   JointAngles lastJointDiff = JointAngles();
-  float pidGyroX_sum = 0;
-  float pidGyroY_sum = 0;
-  float pidGyroX_last = 0;
-  float pidGyroY_last = 0;
-  float pidAngleX_sum = 0;
-  float pidAngleY_sum = 0;
-  float pidAngleX_last = 0;
-  float pidAngleY_last = 0;
 
 public:
   /**
@@ -122,13 +111,21 @@ public:
 private:
   void update(OdometryData& odometryData);
   void update(JointRequest& jointRequest);
-  void update(MotionInfo& motionInfo) { motionInfo = this->motionInfo; }
+  void update(MotionInfo& motionInfo)
+  {
+    motionInfo = this->motionInfo;
+  }
 
   void saveFall(JointRequest& JointRequest);
   void centerHead(JointRequest& JointRequest);
+  void sitFront(JointRequest& jointRequest);
+  void sit(JointRequest& jointRequest);
   void centerArms(JointRequest& jointRequest);
+  void saveArms(JointRequest& jointRequest);
+  void armsFront(JointRequest& jointRequest);
+  void armsBehind(JointRequest& jointRequest);
+  void armsStand(JointRequest& jointRequest);
   void centerArm(JointRequest& jointRequest, bool left);
-  void balanceUpperBody(JointRequest& jointRequest);
 
   /**
   * The method copies all joint angles from one joint request to another,
@@ -136,9 +133,10 @@ private:
   * @param source The source joint request. All angles != JointAngles::ignore will be copied.
   * @param target The target joint request.
   */
-  void copy(const JointRequest& source, JointRequest& target,
-    const Joints::Joint startJoint = static_cast<Joints::Joint>(0),
-    const Joints::Joint endJoint = static_cast<Joints::Joint>(Joints::numOfJoints - 1)) const;
+  void copy(const JointRequest& source,
+      JointRequest& target,
+      const Joints::Joint startJoint = static_cast<Joints::Joint>(0),
+      const Joints::Joint endJoint = static_cast<Joints::Joint>(Joints::numOfJoints - 1)) const;
 
   /**
   * The method interpolates between two joint requests.
@@ -148,7 +146,11 @@ private:
   * @param target The target joint request.
   * @param interpolateStiffness Whether to interpolate stiffness.
   */
-  void interpolate(const JointRequest& from, const JointRequest& to, float fromRatio, JointRequest& target, bool interpolateStiffness,
-    const Joints::Joint startJoint = static_cast<Joints::Joint>(0),
-    const Joints::Joint endJoint = static_cast<Joints::Joint>(Joints::numOfJoints - 1)) const;
+  void interpolate(const JointRequest& from,
+      const JointRequest& to,
+      float fromRatio,
+      JointRequest& target,
+      bool interpolateStiffness,
+      const Joints::Joint startJoint = static_cast<Joints::Joint>(0),
+      const Joints::Joint endJoint = static_cast<Joints::Joint>(Joints::numOfJoints - 1)) const;
 };

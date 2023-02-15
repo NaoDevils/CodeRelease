@@ -5,7 +5,6 @@
 namespace Joints
 {
   ENUM(Joint,
-  {,
     headYaw,
     headPitch,
     firstArmJoint,
@@ -34,6 +33,6 @@ namespace Joints
     rHipPitch,
     rKneePitch,
     rAnklePitch,
-    rAnkleRoll,
-  });
+    rAnkleRoll
+  );
 }

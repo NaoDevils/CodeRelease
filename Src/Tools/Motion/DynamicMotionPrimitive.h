@@ -27,8 +27,7 @@
  *
  * @param DIM number of dimensions
  */
-template <int DIM>
-class DynamicMotionPrimitive
+template <int DIM> class DynamicMotionPrimitive
 {
 public:
   using Vectorf = Eigen::Matrix<float, DIM, 1>;
@@ -70,19 +69,23 @@ public:
    *                         E.g. if integrationSteps is 2 and dt is 0.01 the dmp will do
    *                         two steps with a dt of 0.005 each.
    */
-  void initialize(const float executionTime, const Vectorf& startPos,
-                  const Vectorf& startVel, const Vectorf& startAcc,
-                  const Vectorf& endPos, const Vectorf& endVel,
-                  const Vectorf& endAcc, const unsigned numWeights,
-                  const float overlap = 0.3f, const float finalPhaseValue = 0.01f,
-                  const unsigned integrationSteps = 3);
+  void initialize(const float executionTime,
+      const Vectorf& startPos,
+      const Vectorf& startVel,
+      const Vectorf& startAcc,
+      const Vectorf& endPos,
+      const Vectorf& endVel,
+      const Vectorf& endAcc,
+      const unsigned numWeights,
+      const float overlap = 0.3f,
+      const float finalPhaseValue = 0.01f,
+      const unsigned integrationSteps = 3);
 
   /**Run one dmp iteration
    * @return the next position on the trajectory */
   Vectorf step(const float dt);
   /**Resets the dmp to the beginning of the motion*/
-  void reset(const Vectorf& newStart, const Vectorf& newStartVel,
-             const Vectorf& newStartAcc);
+  void reset(const Vectorf& newStart, const Vectorf& newStartVel, const Vectorf& newStartAcc);
 
   /**Changes the goal location and velocity of the currently running dmp.
    * Reinitializes the fifth order polynomial. This takes some time. Do NOT call this method every frame.*/
@@ -96,8 +99,7 @@ public:
    * @see eq. (9) and (12) in [Mülling et al.]
    * @note This will reset the dmp.
    * @return the new weights  */
-  Matrixf imitate(const Matrixf& positions, const Matrixf& velocities,
-                  const Matrixf& accelerations);
+  Matrixf imitate(const Matrixf& positions, const Matrixf& velocities, const Matrixf& accelerations);
 
   /** Changes the chape of the trajectory according to the weights. */
   void setWeights(const Matrixf& weights);
@@ -108,30 +110,34 @@ public:
   const Vectorf& getEndVelocity() const;
 
 private:
-
   void stepInternal(const float dt);
   /**Places the centers evenly in time domain and converts them to phase domain afterwards.
      This way we get a more even rbf activation over time.
    */
   VectorXf calculateCenters(const float executionTime, const unsigned noCenters) const;
   /**Calculate forces for the given dimension. The forces are used to imitate a trajectory*/
-  VectorXf calculateForces(const int dim, const Matrixf& positions, const Matrixf& velocities,
-                           const Matrixf& accelerations) const;
+  VectorXf calculateForces(const int dim, const Matrixf& positions, const Matrixf& velocities, const Matrixf& accelerations) const;
   /**Calculates a diagonal matrix of psis over time.
    * I.e. evaluates a single radial basis function over the whole phase.
    */
   VectorXf calculatePsi(const int dim, const int weightIdx, const VectorXf& phases) const;
 };
 
-template <int DIM>
-const float DynamicMotionPrimitive<DIM>::alpha = 25.0f;
-template <int DIM>
-const float DynamicMotionPrimitive<DIM>::beta = 6.25f;
+template <int DIM> const float DynamicMotionPrimitive<DIM>::alpha = 25.0f;
+template <int DIM> const float DynamicMotionPrimitive<DIM>::beta = 6.25f;
 
 template <int DIM>
-void DynamicMotionPrimitive<DIM>::initialize(const float executionTime, const Vectorf& startPos, const Vectorf& startVel, const Vectorf& startAcc,
-                                             const Vectorf& endPos, const Vectorf& endVel, const Vectorf& endAcc, const unsigned numWeights,
-                                             const float overlap, const float finalPhaseValue, const unsigned integrationSteps)
+void DynamicMotionPrimitive<DIM>::initialize(const float executionTime,
+    const Vectorf& startPos,
+    const Vectorf& startVel,
+    const Vectorf& startAcc,
+    const Vectorf& endPos,
+    const Vectorf& endVel,
+    const Vectorf& endAcc,
+    const unsigned numWeights,
+    const float overlap,
+    const float finalPhaseValue,
+    const unsigned integrationSteps)
 {
   cs = CanonicalSystem(executionTime, 1.0f, finalPhaseValue);
   T = executionTime;
@@ -150,7 +156,7 @@ void DynamicMotionPrimitive<DIM>::initialize(const float executionTime, const Ve
   this->originalVelocityAmplitude = endVel - startVel;
 
   VectorXf centers = calculateCenters(executionTime, numWeights);
-  for(int i = 0; i < DIM; ++i)
+  for (int i = 0; i < DIM; ++i)
   {
     fop[i] = FifthOrderPolynomial(0, startPos(i), startVel(i), startAcc(i), executionTime, endPos(i), endVel(i), endAcc(i));
     rbf[i] = RadialBasisFunctionApproximator(centers, overlap);
@@ -164,12 +170,11 @@ void DynamicMotionPrimitive<DIM>::initialize(const float executionTime, const Ve
   initialized = true;
 }
 
-template <int DIM>
-Eigen::Matrix<float, DIM, 1> DynamicMotionPrimitive<DIM>::step(const float dt)
+template <int DIM> Eigen::Matrix<float, DIM, 1> DynamicMotionPrimitive<DIM>::step(const float dt)
 {
   ASSERT(initialized);
   const float realDt = dt / integrationSteps;
-  for(unsigned i = 0; i < integrationSteps; ++i)
+  for (unsigned i = 0; i < integrationSteps; ++i)
   {
     stepInternal(realDt);
   }
@@ -177,20 +182,17 @@ Eigen::Matrix<float, DIM, 1> DynamicMotionPrimitive<DIM>::step(const float dt)
   return currentPos;
 }
 
-template <int DIM>
-void DynamicMotionPrimitive<DIM>::changeGoal(const Vectorf& newGoal, const Vectorf& newGoalVel)
+template <int DIM> void DynamicMotionPrimitive<DIM>::changeGoal(const Vectorf& newGoal, const Vectorf& newGoalVel)
 {
   endPos = newGoal;
   endVel = newGoalVel;
-  for(int i = 0; i < DIM; ++i)
+  for (int i = 0; i < DIM; ++i)
   {
-    fop[i] = FifthOrderPolynomial(0, startPos(i), startVel(i), startAcc(i),
-                                  T, endPos(i), endVel(i), endAcc(i));
+    fop[i] = FifthOrderPolynomial(0, startPos(i), startVel(i), startAcc(i), T, endPos(i), endVel(i), endAcc(i));
   }
 }
 
-template <int DIM>
-void DynamicMotionPrimitive<DIM>::stepInternal(const float dt)
+template <int DIM> void DynamicMotionPrimitive<DIM>::stepInternal(const float dt)
 {
   const float t = cs.currentTime;
   //evaluate the polynomial at the next point in time to get the next
@@ -198,7 +200,7 @@ void DynamicMotionPrimitive<DIM>::stepInternal(const float dt)
   Vectorf targetPos;
   Vectorf targetVel;
   Vectorf targetAcc;
-  for(int i = 0; i < DIM; ++i)
+  for (int i = 0; i < DIM; ++i)
   {
     const Vectorf fopResult = fop[i].evaluate(t);
     targetPos(i) = fopResult(0);
@@ -208,7 +210,7 @@ void DynamicMotionPrimitive<DIM>::stepInternal(const float dt)
 
   //calculate forcing term
   Vectorf f;
-  for(int i = 0; i < DIM; ++i)
+  for (int i = 0; i < DIM; ++i)
   {
     f[i] = rbf[i].evaluate(cs.z);
   }
@@ -217,10 +219,10 @@ void DynamicMotionPrimitive<DIM>::stepInternal(const float dt)
   //calculate scaling term
   Arrayf eta = (endVel - startVel).array() / originalVelocityAmplitude.array();
   //sanitize eta
-  for(int i = 0; i < eta.size(); ++i)
+  for (int i = 0; i < eta.size(); ++i)
   {
-    if(eta(i) == 0.0 || std::isnan(eta(i)) || std::isinf(eta(i)))
-    {//this happens when start and goal velocity are identical.
+    if (eta(i) == 0.0 || std::isnan(eta(i)) || std::isinf(eta(i)))
+    { //this happens when start and goal velocity are identical.
       eta(i) = 1.0;
     }
   }
@@ -228,15 +230,13 @@ void DynamicMotionPrimitive<DIM>::stepInternal(const float dt)
   cs.step(dt);
 
   //iterate the dynamical system
-  const Vectorf vd = (alpha * (beta * (targetPos - currentPos) + targetVel * T - v) +
-                     targetAcc * T * T + f) / T;
+  const Vectorf vd = (alpha * (beta * (targetPos - currentPos) + targetVel * T - v) + targetAcc * T * T + f) / T;
   const Vectorf yd = v / T;
   v += vd * dt;
   currentPos += yd * dt;
 }
 
-template <int DIM>
-void DynamicMotionPrimitive<DIM>::reset(const Vectorf& newStart, const Vectorf& newStartVel, const Vectorf& newStartAcc)
+template <int DIM> void DynamicMotionPrimitive<DIM>::reset(const Vectorf& newStart, const Vectorf& newStartVel, const Vectorf& newStartAcc)
 {
   vStart = newStart;
   startPos = newStart;
@@ -247,56 +247,50 @@ void DynamicMotionPrimitive<DIM>::reset(const Vectorf& newStart, const Vectorf& 
   currentPos = startPos;
   currentVel = startVel;
 
-  for(int i = 0; i < DIM; ++i)
+  for (int i = 0; i < DIM; ++i)
   {
-    fop[i] = FifthOrderPolynomial(0, startPos(i), startVel(i), startAcc(i),
-                                  T, endPos(i), endVel(i), endAcc(i));
+    fop[i] = FifthOrderPolynomial(0, startPos(i), startVel(i), startAcc(i), T, endPos(i), endVel(i), endAcc(i));
   }
 }
 
-template <int DIM>
-bool DynamicMotionPrimitive<DIM>::stepPossible() const
+template <int DIM> bool DynamicMotionPrimitive<DIM>::stepPossible() const
 {
   //add 0.0001 to avoid accumulation errors
   return (cs.currentTime + 0.0001) < T;
 }
 
-template <int DIM>
-VectorXf DynamicMotionPrimitive<DIM>::calculateCenters(const float executionTime,
-                                                       const unsigned noCenters) const
+template <int DIM> VectorXf DynamicMotionPrimitive<DIM>::calculateCenters(const float executionTime, const unsigned noCenters) const
 {
   VectorXf centers(noCenters);
   VectorXf times = VectorXf::LinSpaced(noCenters, 0.0f, executionTime);
-  for(unsigned i = 0; i < noCenters; ++i)
+  for (unsigned i = 0; i < noCenters; ++i)
   {
     centers[i] = cs.getPhaseAt(times[i]);
   }
   return centers;
 }
 
-template <int DIM>
-Eigen::Matrix<float, DIM, Eigen::Dynamic> DynamicMotionPrimitive<DIM>::imitate(const Matrixf& positions, const Matrixf& velocities, const Matrixf& accelerations)
+template <int DIM> Eigen::Matrix<float, DIM, Eigen::Dynamic> DynamicMotionPrimitive<DIM>::imitate(const Matrixf& positions, const Matrixf& velocities, const Matrixf& accelerations)
 {
   ASSERT(accelerations.col(accelerations.cols() - 1).isZero());
   const float dt = T / (positions.cols() - 1);
   //pre calculate phase vector
   VectorXf z(positions.cols());
   float t = 0.0f;
-  for(int c = 0; c < positions.cols(); ++c)
+  for (int c = 0; c < positions.cols(); ++c)
   {
     z(c) = cs.getPhaseAt(t);
     t += dt;
   }
   Matrixf weights(DIM, numWeights);
-  for(int d = 0; d < DIM; ++d)//for each dimension (each row)
+  for (int d = 0; d < DIM; ++d) //for each dimension (each row)
   {
     const VectorXf forces = calculateForces(d, positions, velocities, accelerations);
     //calculate weights
-    for(unsigned w = 0; w < numWeights; ++w)
+    for (unsigned w = 0; w < numWeights; ++w)
     {
       const VectorXf psi = calculatePsi(d, w, z);
-      weights(d, w) = (z.transpose() * psi.asDiagonal() * z).inverse() *
-              z.transpose() * psi.asDiagonal() * forces;
+      weights(d, w) = (z.transpose() * psi.asDiagonal() * z).inverse() * z.transpose() * psi.asDiagonal() * forces;
     }
   }
 
@@ -307,19 +301,17 @@ Eigen::Matrix<float, DIM, Eigen::Dynamic> DynamicMotionPrimitive<DIM>::imitate(c
 
   return weights;
 }
-template <int DIM>
-void DynamicMotionPrimitive<DIM>::setWeights(const Matrixf& weights)
+template <int DIM> void DynamicMotionPrimitive<DIM>::setWeights(const Matrixf& weights)
 {
   ASSERT(weights.cols() == static_cast<int>(numWeights));
 
-  for(int i = 0; i < DIM; ++i)
+  for (int i = 0; i < DIM; ++i)
   {
     rbf[i].setWeights(weights.row(i));
   }
 }
 
-template <int DIM>
-VectorXf DynamicMotionPrimitive<DIM>::calculateForces(const int dim, const Matrixf& positions, const Matrixf& velocities, const Matrixf& accelerations) const
+template <int DIM> VectorXf DynamicMotionPrimitive<DIM>::calculateForces(const int dim, const Matrixf& positions, const Matrixf& velocities, const Matrixf& accelerations) const
 {
   //note: eta doesn't have any effect as long as the the motion target does not change.
   //      During imitation learning the motion target
@@ -333,7 +325,7 @@ VectorXf DynamicMotionPrimitive<DIM>::calculateForces(const int dim, const Matri
   const float T2 = T * T;
   float t = 0.0f;
   const float dt = T / (positions.cols() - 1);
-  for(int c = 0; c < positions.cols(); ++c) //for each column
+  for (int c = 0; c < positions.cols(); ++c) //for each column
   {
     const Vector3f fopVal = fop[dim].evaluate(t);
     const float g = fopVal(0);
@@ -343,45 +335,39 @@ VectorXf DynamicMotionPrimitive<DIM>::calculateForces(const int dim, const Matri
     const float thetad = velocities(dim, c);
     const float thetadd = accelerations(dim, c);
     t += dt;
-    forces(c) = T2 * thetadd - alpha * (beta * (g - theta) + T *  gd -
-                T * thetad) - gdd * T2;
+    forces(c) = T2 * thetadd - alpha * (beta * (g - theta) + T * gd - T * thetad) - gdd * T2;
   }
   return forces;
 }
 
-template <int DIM>
-VectorXf DynamicMotionPrimitive<DIM>::calculatePsi(const int dim, const int weightIdx, const VectorXf& phases) const
+template <int DIM> VectorXf DynamicMotionPrimitive<DIM>::calculatePsi(const int dim, const int weightIdx, const VectorXf& phases) const
 {
-  VectorXf psi(phases.rows());//a vector is used to store the diagonal values
+  VectorXf psi(phases.rows()); //a vector is used to store the diagonal values
   const float c = rbf[dim].getCenters()[weightIdx];
   const float pn = rbf[dim].getWidths()[weightIdx];
-  for(int p = 0; p < phases.rows(); ++p) //for each phase
+  for (int p = 0; p < phases.rows(); ++p) //for each phase
   {
     psi(p) = expf(-pn * powf(phases[p] - c, 2.0f));
   }
   return psi;
 }
 
-template <int DIM>
-const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getCurrentVelocity() const
+template <int DIM> const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getCurrentVelocity() const
 {
   return currentVel;
 }
 
-template <int DIM>
-const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getCurrentPosition() const
+template <int DIM> const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getCurrentPosition() const
 {
   return currentPos;
 }
 
-template <int DIM>
-const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getEndPosition() const
+template <int DIM> const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getEndPosition() const
 {
   return endPos;
 }
 
-template <int DIM>
-const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getEndVelocity() const
+template <int DIM> const Eigen::Matrix<float, DIM, 1>& DynamicMotionPrimitive<DIM>::getEndVelocity() const
 {
   return endVel;
 }

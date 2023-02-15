@@ -27,7 +27,7 @@
 #define BHASSERT_INCLUDED
 #endif
 
-#ifdef OSX
+#ifdef MACOS
 #include "Linux/BHAssert.h"
 #define BHASSERT_INCLUDED
 #endif

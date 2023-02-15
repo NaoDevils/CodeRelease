@@ -13,7 +13,7 @@ public:
   RegisteredDockWidget(const QString& fullName, QWidget* parent);
 
   void setWidget(SimRobot::Widget* widget, const SimRobot::Module* module, SimRobot::Object* object, int flags);
-  bool hasWidget() {return widget != 0;}
+  bool hasWidget() { return widget != 0; }
 
   bool canClose();
   QMenu* createFileMenu() const;
@@ -22,12 +22,14 @@ public:
 
   void update();
 
-  bool isReallyVisible() const {return reallyVisible;}
-  const SimRobot::Module* getModule() const {return module;}
-  const SimRobot::Object* getObject() const {return object;}
-  const QString& getFullName() const {return fullName;}
+  bool isReallyVisible() const { return reallyVisible; }
+  const SimRobot::Module* getModule() const { return module; }
+  const SimRobot::Object* getObject() const { return object; }
+  const QString& getFullName() const { return fullName; }
 
   QAction* toggleViewAction() const;
+
+  void saveLayout();
 
 signals:
   void closedObject(const QString& object);

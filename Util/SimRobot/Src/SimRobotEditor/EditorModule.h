@@ -34,5 +34,5 @@ private:
 
   virtual bool compile();
 
-  virtual const QIcon* getIcon() const {return &editorIcon;}
+  virtual const QIcon* getIcon() const { return &editorIcon; }
 };

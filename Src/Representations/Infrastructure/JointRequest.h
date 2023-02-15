@@ -6,7 +6,7 @@
 #include <cmath>
 
 STREAMABLE_WITH_BASE(JointRequest, JointAngles,
-{
+
   JointRequest();
 
   /** Initializes this instance with the mirrored data of other. */
@@ -17,15 +17,20 @@ STREAMABLE_WITH_BASE(JointRequest, JointAngles,
 
   /** Checkes if the JointRequest is valide. */
   bool isValid() const;
+
+  void draw() const;
   ,
-  (StiffnessData) stiffnessData, /**< the stiffness for all joints */
-});
+  (StiffnessData) stiffnessData /**< the stiffness for all joints */
+);
 
-struct StandOutput : public JointRequest {};
-struct NonArmeMotionEngineOutput : public JointRequest {};
+struct StandOutput : public JointRequest
+{
+};
+struct NonArmeMotionEngineOutput : public JointRequest
+{
+};
 
-inline JointRequest::JointRequest() :
-  JointAngles()
+inline JointRequest::JointRequest() : JointAngles()
 {
   angles.fill(off);
 }
@@ -43,8 +48,8 @@ inline Angle JointRequest::mirror(const Joints::Joint joint) const
 
 inline bool JointRequest::isValid() const
 {
-  for(const Angle& angle : angles)
-    if(std::isnan(static_cast<float>(angle)))
+  for (const Angle& angle : angles)
+    if (std::isnan(static_cast<float>(angle)))
       return false;
   return stiffnessData.isValide();
 }

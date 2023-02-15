@@ -15,16 +15,13 @@
 #include "stdint.h"
 
 STREAMABLE(CLIPGoalPercept,
-{
   STREAMABLE(GoalPost,
-  {
     /** Defines the different goal posts */
     ENUM(GoalPostSide,
-    {,
       leftPost,
       rightPost,
-      unknownPost,
-    }),
+      unknownPost
+    ),
 
     (Vector2f) locationOnField,
     (Vector2i) bottomInImage, // bottom middle point of post
@@ -35,8 +32,8 @@ STREAMABLE(CLIPGoalPercept,
     (bool) bottomFound, // field found below goal post
     (bool) foundLineAtBottom, // field line found at goal post bottom
     (bool) fromUpper, // found in upper cam ?
-    (float) validity,
-  });
+    (float) validity
+  );
 
   /** Constructor */
   CLIPGoalPercept() { goalPosts.reserve(8); }
@@ -46,6 +43,5 @@ STREAMABLE(CLIPGoalPercept,
 
   (std::vector<GoalPost>) goalPosts,
   (int)(0) numberOfGoalPosts,
-  (unsigned)(0) timeWhenLastSeen,
-});
-
+  (unsigned)(0) timeWhenLastSeen
+);

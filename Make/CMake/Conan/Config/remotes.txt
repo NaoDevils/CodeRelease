@@ -1,0 +1,2 @@
+naodevils https://artifactory.robotik.irf.tu-dortmund.de/artifactory/api/conan/naodevils true
+conancenter https://center.conan.io true

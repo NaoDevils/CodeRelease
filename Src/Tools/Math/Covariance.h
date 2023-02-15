@@ -29,8 +29,7 @@ namespace Covariance
   {
     const float sinRotation = std::sin(angle);
     const float cosRotation = std::cos(angle);
-    const Matrix2f r = (Matrix2f() << cosRotation, -sinRotation,
-                                      sinRotation, cosRotation).finished();
+    const Matrix2f r = (Matrix2f() << cosRotation, -sinRotation, sinRotation, cosRotation).finished();
     return r * create(dev) * r.transpose();
   }
 
@@ -44,11 +43,10 @@ namespace Covariance
   {
     const float sinRotation = std::sin(angle);
     const float cosRotation = std::cos(angle);
-    const Matrix2f r = (Matrix2f() << cosRotation, -sinRotation,
-                                      sinRotation, cosRotation).finished();
+    const Matrix2f r = (Matrix2f() << cosRotation, -sinRotation, sinRotation, cosRotation).finished();
     return r * (Matrix2f() << xDev * xDev, 0.0f, 0.0f, yDev * yDev).finished() * r.transpose();
   }
-  
+
   /**
    * Creates a covariance of 2 dependend random variables with known eigenvalues 
    * and eigenvectors. The eigenvectors must be linearly independent.
@@ -57,16 +55,13 @@ namespace Covariance
    * @param eigenValue2 The second eigenvalue of the covariance matrix.
    * @param eigenVector2 The second eigenvector of the covariance matrix.
    */
-  inline const Matrix2f create(const float eigenValue1, const Vector2f& eigenVector1,
-    const float eigenValue2, const Vector2f& eigenVector2)
+  inline const Matrix2f create(const float eigenValue1, const Vector2f& eigenVector1, const float eigenValue2, const Vector2f& eigenVector2)
   {
     // D: Diagonal matrix with eigenvalues as diagonal elements.
-    const Matrix2f diagEigenValues = (Matrix2f() << eigenValue1, 0,
-                                                    0, eigenValue2).finished();
+    const Matrix2f diagEigenValues = (Matrix2f() << eigenValue1, 0, 0, eigenValue2).finished();
     // V: Matrix with eigenvectors as columns.
-    const Matrix2f matEigenVectors = (Matrix2f() << eigenVector1(0), eigenVector2(0),
-                                                    eigenVector1(1), eigenVector2(1)).finished();
-    
+    const Matrix2f matEigenVectors = (Matrix2f() << eigenVector1(0), eigenVector2(0), eigenVector1(1), eigenVector2(1)).finished();
+
     // The resulting covariance matrix can be computed by M = VDV^-1
     return matEigenVectors * diagEigenValues * matEigenVectors.inverse();
   }
@@ -80,8 +75,7 @@ namespace Covariance
    * @param [out] angle The rotation of the ellipse.
    * @param [in] factor A scaling factor for the axes.
    */
-  inline void errorEllipse(const Matrix2f& covariance, float& axis1, float& axis2,
-                           float& angle, const float factor = 1.0f)
+  inline void errorEllipse(const Matrix2f& covariance, float& axis1, float& axis2, float& angle, const float factor = 1.0f)
   {
     const float cov012 = covariance(1, 0) * covariance(1, 0);
     const float varianceDiff = covariance(0, 0) - covariance(1, 1);
@@ -116,4 +110,4 @@ namespace Covariance
     const Vector2f diff = a - b;
     return diff.dot(c.inverse() * diff);
   }
-};
+}; // namespace Covariance

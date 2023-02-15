@@ -24,7 +24,8 @@
  * This class stores pressed buttons until they are processed and 
  * the current state of all axes.
  */
-class JoystickState {
+class JoystickState
+{
 public:
   /**
    * Creates a new \c JoystickState object with no buttons and no axes.
@@ -45,7 +46,7 @@ public:
   /**
    * Delete all pressed button events and resets all axis values to 0.
    */
-  void deleteEvents(const JoystickControlParameters &parameters);
+  void deleteEvents(const JoystickControlParameters& parameters);
 
 public:
   /// Contains a bool value for each button.

@@ -18,4 +18,4 @@ namespace ForwardKinematic
   void calculateArmChain(Arms::Arm arm, const JointAngles& joints, const RobotDimensions& robotDimensions, Pose3f limbs[Limbs::numOfLimbs]);
   void calculateLegChain(bool left, const JointAngles& joints, const RobotDimensions& robotDimensions, Pose3f limbs[Limbs::numOfLimbs]);
   void calculateHeadChain(const JointAngles& joints, const RobotDimensions& robotDimensions, Pose3f limbs[Limbs::numOfLimbs]);
-};
+}; // namespace ForwardKinematic

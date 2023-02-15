@@ -16,8 +16,7 @@
 #include "EditorModule.h"
 #include "EditorWidget.h"
 
-EditorObject::EditorObject(const QString& name, EditorObject* parent) :
-  parent(parent), name(name), fullName(parent ? parent->fullName + "." + name : name) {}
+EditorObject::EditorObject(const QString& name, EditorObject* parent) : parent(parent), name(name), fullName(parent ? parent->fullName + "." + name : name) {}
 
 const QIcon* EditorObject::getIcon() const
 {
@@ -32,9 +31,9 @@ SimRobotEditor::Editor* EditorObject::addFile(const QString& filePath, const QSt
 SimRobotEditor::Editor* EditorObject::addEditor(const QString& filePath, const QString& subFileRegExpPattern, bool persistent)
 {
   FileEditorObject* editor = EditorModule::module->findEditor(filePath);
-  if(editor)
+  if (editor)
   {
-    if(persistent)
+    if (persistent)
       editor->persistent = true;
     return editor;
   }
@@ -48,7 +47,7 @@ SimRobotEditor::Editor* EditorObject::addEditor(const QString& filePath, const Q
 SimRobotEditor::Editor* EditorObject::addFolder(const QString& name)
 {
   EditorObject* folder = foldersByName.value(name);
-  if(folder)
+  if (folder)
     return folder;
   folder = new EditorObject(name, this);
   foldersByName.insert(name, folder);
@@ -59,10 +58,10 @@ SimRobotEditor::Editor* EditorObject::addFolder(const QString& name)
 
 void EditorObject::removeEditor(FileEditorObject* editor)
 {
-  if(editor->persistent)
+  if (editor->persistent)
     return;
 
-  if(!editors.removeOne(editor))
+  if (!editors.removeOne(editor))
     return;
 
   EditorModule::application->unregisterObject(*editor);
@@ -74,17 +73,17 @@ void EditorObject::loadFromSettings()
 {
   QSettings& settings = EditorModule::application->getLayoutSettings();
   int count = 1;
-  for(int i = 0; i < count; ++i)
+  for (int i = 0; i < count; ++i)
   {
     count = settings.beginReadArray(fullName);
-    if(i >= count)
+    if (i >= count)
     {
       settings.endArray();
       break;
     }
     settings.setArrayIndex(i);
     QString filePath = settings.value("filePath").toString();
-    if(filePath.isEmpty())
+    if (filePath.isEmpty())
     {
       QString name = settings.value("name").toString();
       settings.endArray();
@@ -104,11 +103,11 @@ EditorObject::~EditorObject()
   QSettings& settings = EditorModule::application->getLayoutSettings();
   settings.beginWriteArray(fullName, editors.size());
   int i = 0;
-  foreach(EditorObject* editor, editors)
+  foreach (EditorObject* editor, editors)
   {
     settings.setArrayIndex(i++);
     FileEditorObject* fileEditorObject = dynamic_cast<FileEditorObject*>(editor);
-    if(!fileEditorObject)
+    if (!fileEditorObject)
     {
       settings.setValue("filePath", QString());
       settings.setValue("name", editor->name);
@@ -123,8 +122,10 @@ EditorObject::~EditorObject()
   qDeleteAll(editors);
 }
 
-FileEditorObject::FileEditorObject(const QString& filePath, const QString& subFileRegExpPattern, bool persistent, EditorObject* parent) :
-  EditorObject(QFileInfo(filePath).fileName(), parent), filePath(filePath), subFileRegExpPattern(subFileRegExpPattern), persistent(persistent) {}
+FileEditorObject::FileEditorObject(const QString& filePath, const QString& subFileRegExpPattern, bool persistent, EditorObject* parent)
+    : EditorObject(QFileInfo(filePath).fileName(), parent), filePath(filePath), subFileRegExpPattern(subFileRegExpPattern), persistent(persistent)
+{
+}
 
 const QIcon* FileEditorObject::getIcon() const
 {
@@ -134,7 +135,7 @@ const QIcon* FileEditorObject::getIcon() const
 SimRobot::Widget* FileEditorObject::createWidget()
 {
   QFile file(filePath);
-  if(!file.open(QFile::ReadOnly | QFile::Text))
+  if (!file.open(QFile::ReadOnly | QFile::Text))
   {
     EditorModule::application->showWarning(QObject::tr("SimRobotEditor"), QObject::tr("Cannot read file %1:\n%2.").arg(filePath).arg(file.errorString()));
     return 0;
@@ -143,19 +144,15 @@ SimRobot::Widget* FileEditorObject::createWidget()
   return new EditorWidget(this, in.readAll());
 }
 
-EditorWidget::EditorWidget(FileEditorObject* editorObject, const QString& fileContent) :
-  editorObject(editorObject),
-  canCopy(false), canUndo(false), canRedo(false),
-  highlighter(0)
+EditorWidget::EditorWidget(FileEditorObject* editorObject, const QString& fileContent) : editorObject(editorObject), canCopy(false), canUndo(false), canRedo(false), highlighter(0)
 {
-  if(editorObject->filePath.endsWith(".ros") || editorObject->filePath.endsWith(".rsi") ||
-    editorObject->filePath.endsWith(".ros2") || editorObject->filePath.endsWith(".rsi2"))
+  if (editorObject->filePath.endsWith(".ros") || editorObject->filePath.endsWith(".rsi") || editorObject->filePath.endsWith(".ros2") || editorObject->filePath.endsWith(".rsi2"))
     highlighter = new SyntaxHighlighter(document());
   setFrameStyle(QFrame::NoFrame);
 
 #ifdef WINDOWS
   QFont font("Courier New", 10);
-#elif defined(OSX)
+#elif defined(MACOS)
   QFont font("Monaco", 11);
 #else
   QFont font("Bitstream Vera Sans Mono", 9);
@@ -170,7 +167,7 @@ EditorWidget::EditorWidget(FileEditorObject* editorObject, const QString& fileCo
   settings.beginGroup(editorObject->fullName);
   int selectionStart = settings.value("selectionStart").toInt();
   int selectionEnd = settings.value("selectionEnd").toInt();
-  if(selectionStart || selectionEnd)
+  if (selectionStart || selectionEnd)
   {
     QTextCursor cursor = textCursor();
     cursor.setPosition(selectionStart);
@@ -184,10 +181,21 @@ EditorWidget::EditorWidget(FileEditorObject* editorObject, const QString& fileCo
   connect(this, SIGNAL(copyAvailable(bool)), this, SLOT(copyAvailable(bool)));
   connect(this, SIGNAL(undoAvailable(bool)), this, SLOT(undoAvailable(bool)));
   connect(this, SIGNAL(redoAvailable(bool)), this, SLOT(redoAvailable(bool)));
-  connect(&openFileMapper, SIGNAL(mapped(const QString&)), this, SLOT(openFile(const QString&)));
+  connect(&openFileMapper, SIGNAL(mappedString(const QString&)), this, SLOT(openFile(const QString&)));
 }
 
 EditorWidget::~EditorWidget()
+{
+  //saveLayout();
+
+  if (!EditorModule::module->application->getFilePath().isEmpty()) // !closingDocument
+    editorObject->parent->removeEditor(editorObject);
+
+  if (highlighter)
+    delete highlighter;
+}
+
+void EditorWidget::saveLayout()
 {
   QSettings& settings = EditorModule::application->getLayoutSettings();
   settings.beginGroup(editorObject->fullName);
@@ -197,27 +205,21 @@ EditorWidget::~EditorWidget()
   settings.setValue("verticalScrollPosition", verticalScrollBar()->value());
   settings.setValue("horizontalScrollPosition", horizontalScrollBar()->value());
   settings.endGroup();
-
-  if(!EditorModule::module->application->getFilePath().isEmpty()) // !closingDocument
-    editorObject->parent->removeEditor(editorObject);
-
-  if(highlighter)
-    delete highlighter;
 }
 
 bool EditorWidget::canClose()
 {
-  if(!document()->isModified())
+  if (!document()->isModified())
     return true;
-  switch(QMessageBox::warning(this, tr("SimRobotEditor"), tr("Do you want to save changes to %1?").arg(editorObject->name), QMessageBox::Save  | QMessageBox::Discard | QMessageBox::Cancel))
+  switch (QMessageBox::warning(this, tr("SimRobotEditor"), tr("Do you want to save changes to %1?").arg(editorObject->name), QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel))
   {
-    case QMessageBox::Save:
-      save();
-      break;
-    case QMessageBox::Discard:
-      break;
-    default:
-      return false;
+  case QMessageBox::Save:
+    save();
+    break;
+  case QMessageBox::Discard:
+    break;
+  default:
+    return false;
   }
   return true;
 }
@@ -248,30 +250,28 @@ void EditorWidget::updateEditMenu(QMenu* menu, bool aboutToShow) const
 {
   menu->clear();
 
-  if(aboutToShow && !editorObject->subFileRegExpPattern.isEmpty())
+  if (aboutToShow && !editorObject->subFileRegExpPattern.isEmpty())
   {
-    QRegExp rx(editorObject->subFileRegExpPattern, Qt::CaseInsensitive);
+    QRegularExpression rx(editorObject->subFileRegExpPattern, QRegularExpression::CaseInsensitiveOption);
     QString fileContent = toPlainText();
     QStringList includeFiles;
     QSet<QString> inculdeFilesSet;
     QString suffix = QFileInfo(editorObject->name).suffix();
-    int pos = 0;
-    while((pos = rx.indexIn(fileContent, pos)) != -1)
+    for (const auto& match : rx.globalMatch(fileContent))
     {
-      QString file = rx.cap(1).remove('\"');
-      if(QFileInfo(file).suffix().isEmpty())
+      QString file = match.captured(1).remove('\"');
+      if (QFileInfo(file).suffix().isEmpty())
         (file += '.') += suffix;
-      if(!inculdeFilesSet.contains(file))
+      if (!inculdeFilesSet.contains(file))
       {
         includeFiles.append(file);
         inculdeFilesSet.insert(file);
       }
-      pos += rx.matchedLength();
     }
 
-    if(includeFiles.count() > 0)
+    if (includeFiles.count() > 0)
     {
-      foreach(QString str, includeFiles)
+      foreach (QString str, includeFiles)
       {
         QAction* action = menu->addAction(tr("Open \"%1\"").arg(str));
         const_cast<EditorWidget*>(this)->openFileMapper.setMapping(action, str);
@@ -333,7 +333,7 @@ void EditorWidget::updateEditMenu(QMenu* menu, bool aboutToShow) const
   connect(action, SIGNAL(triggered()), this, SLOT(selectAll()));
 }
 
-void EditorWidget::focusInEvent(QFocusEvent * event)
+void EditorWidget::focusInEvent(QFocusEvent* event)
 {
   QTextEdit::focusInEvent(event);
   emit pasteAvailable(canPaste());
@@ -342,7 +342,7 @@ void EditorWidget::focusInEvent(QFocusEvent * event)
 void EditorWidget::keyPressEvent(QKeyEvent* event)
 {
   QTextEdit::keyPressEvent(event);
-  if(event->matches(QKeySequence::Copy) || event->matches(QKeySequence::Cut))
+  if (event->matches(QKeySequence::Copy) || event->matches(QKeySequence::Cut))
     emit pasteAvailable(canPaste());
 }
 
@@ -375,7 +375,7 @@ void EditorWidget::undoAvailable(bool available)
 void EditorWidget::save()
 {
   QFile file(editorObject->filePath);
-  if(!file.open(QFile::WriteOnly | QFile::Text))
+  if (!file.open(QFile::WriteOnly | QFile::Text))
   {
     EditorModule::application->showWarning(QObject::tr("SimRobotEditor"), QObject::tr("Cannot write file %1:\n%2.").arg(editorObject->filePath).arg(file.errorString()));
     return;

@@ -7,19 +7,16 @@
 #include "Representations/MotionControl/MotionSelection.h"
 
 MODULE(CoMRCSProvider,
-{ ,
   REQUIRES(RobotModel),
   REQUIRES(MotionSelection),
   PROVIDES(ActualCoMRCS),
-  LOADS_PARAMETERS(
-  {,
-    (bool)(true) walkFixedCoM,
-  }),
-});
+  LOADS_PARAMETERS(,
+    (bool)(true) walkFixedCoM
+  )
+);
 
 class CoMRCSProvider : public CoMRCSProviderBase
 {
 public:
-  void update(ActualCoMRCS &actualCoMRCS);
-  
+  void update(ActualCoMRCS& actualCoMRCS);
 };

@@ -10,21 +10,21 @@
 
 #include <algorithm>
 #include <fstream>
+#include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/JPEGImage.h"
 #include "Representations/Infrastructure/Thumbnail.h"
 #include "Representations/Infrastructure/YoloInput.h"
+#include "Representations/Infrastructure/TeamCommSenderOutput.h"
 #include "Tools/Settings.h"
 #include "Tools/Debugging/DebugDataStreamer.h"
 #include "Tools/Debugging/QueueFillRequest.h"
-#include "Tools/Motion/MofCompiler.h"
+#include "Tools/Module/Module.h"
+#include "Modules/MotionControl/KeyFrameEngine/KeyFrameEngine.h"
 
 #include "ConsoleRoboCupCtrl.h"
 #include "Platform/File.h"
-#include "TeamRobot.h"
 #include "Views/AnnotationView/AnnotationView.h"
-#include "Views/ColorCalibrationView/ColorCalibrationView.h"
 #include "Views/ColorSpaceView.h"
-#include "Views/ColorTableView.h"
 #include "Views/FieldView.h"
 #include "Views/ImageView.h"
 #include "Views/JointView.h"
@@ -34,16 +34,25 @@
 #include "Views/SensorView.h"
 #include "Views/CABSLBehaviorView.h"
 #include "Views/TimeView/TimeView.h"
+#include <nlohmann/json.hpp>
+
+#include <chrono>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+#include <filesystem>
 
 using namespace std;
 
-#define PREREQUISITE(p) pollingFor = #p; if(!poll(p)) return false;
+#define PREREQUISITE(p) \
+  pollingFor = #p;      \
+  if (!poll(p))         \
+    return false;
 
 bool RobotConsole::MapWriter::handleMessage(InMessage& message)
 {
   ASSERT(message.getMessageID() == idDebugDataResponse);
-  std::string name,
-    type;
+  std::string name, type;
   message.bin >> name >> type;
   DebugDataStreamer streamer(streamHandler, message.bin, type);
   stream << streamer;
@@ -57,30 +66,23 @@ bool RobotConsole::Printer::handleMessage(InMessage& message)
   return true;
 }
 
-RobotConsole::RobotConsole(MessageQueue& in, MessageQueue& out) :
-  Process(in, out),
-  logPlayer(out),
-  debugOut(out),
-  repViewWriter(&representationViews),
-  cameraCalibratorHandler(this),
-  automaticCameraCalibratorHandlerInsertion(this),
-  automaticCameraCalibratorHandlerDeletion(this)
+RobotConsole::RobotConsole(MessageQueue& in, MessageQueue& out) : Process(in, out), logPlayer(out), debugOut(out), repViewWriter(&representationViews)
 {
   // this is a hack: call global functions to get parameters
-  ctrl = (ConsoleRoboCupCtrl*) RoboCupCtrl::controller;
+  ctrl = (ConsoleRoboCupCtrl*)RoboCupCtrl::controller;
   robotFullName = RoboCupCtrl::getRobotFullName();
   robotName = robotFullName.mid(robotFullName.lastIndexOf('.') + 1);
-  for(int i = 0; i < numOfMessageIDs; ++i)
+  for (int i = 0; i < numOfMessageIDs; ++i)
   {
     waitingFor[i] = 0;
     polled[i] = false;
   }
-  for(int i = 0; i < Joystick::numOfAxes; ++i)
+  for (int i = 0; i < Joystick::numOfAxes; ++i)
   {
     joystickAxisMaxSpeeds[i] = joystickAxisThresholds[i] = joystickAxisCenters[i] = 0.f;
     joystickAxisMappings[i] = 0;
   }
-  logPlayer.setSize(std::numeric_limits<unsigned>::max()); // max. 4 GB
+  logPlayer.setSize(size_t{64} * 1024 * 1024 * 1024); // max. 64 GB
 
   currentImageDrawings = &camImageDrawings;
   currentFieldDrawings = &camFieldDrawings;
@@ -95,43 +97,35 @@ RobotConsole::~RobotConsole()
 {
   SYNC;
   streamHandler.clear();
-  if(logMessages)
+  if (logMessages)
     delete[] logMessages;
-  for(DebugDataInfos::iterator i = debugDataInfos.begin(); i != debugDataInfos.end(); ++i)
+  for (DebugDataInfos::iterator i = debugDataInfos.begin(); i != debugDataInfos.end(); ++i)
     delete i->second.second;
   destructed = true;
 }
 
 void RobotConsole::init()
 {
-  if(mode == SystemCall::remoteRobot)
+  if (mode == SystemCall::remoteRobot)
     poll(idRobotname);
-  if(mode != SystemCall::teamRobot)
+  if (mode != SystemCall::teamRobot)
   {
     joystick.init();
-    poll(idColorCalibration);
   }
 }
 
 void RobotConsole::addViews()
 {
   SimRobot::Object* category = ctrl->addCategory(robotName, 0, ":/Icons/SimRobot.png");
-  if(mode != SystemCall::teamRobot)
+  if (mode != SystemCall::teamRobot)
   {
     SimRobot::Object* annotationCategory = ctrl->addCategory("annotations", category);
     ctrl->addView(new AnnotationView(robotName + ".annotations.cognition", annotationInfos['c'], logPlayer, ctrl->application), annotationCategory);
     ctrl->addView(new AnnotationView(robotName + ".annotations.motion", annotationInfos['m'], logPlayer, ctrl->application), annotationCategory);
 
     ctrl->addView(new CABSLBehaviorView(robotName + ".behavior", *this, activationGraph, activationGraphReceived), category);
-    colorCalibrationView = new ColorCalibrationView(robotName + ".colorCalibration", *this);
-    ctrl->addView(colorCalibrationView, category);
 
-    SimRobot::Object* colorSpaceCategory = ctrl->addCategory("colorSpace", ctrl->application->resolveObject(robotName));
-    SimRobot::Object* colorTableCategory = ctrl->addCategory("colorTable", colorSpaceCategory);
-    const QString& colorTableCategoryName = colorTableCategory->getFullName();
-    for(int i = 0; i < ColorClasses::numOfColors; ++i)
-      ctrl->addView(new ColorTableView(colorTableCategoryName + "." + ColorClasses::getName((ColorClasses::Color) i),
-                                       *this, (ColorClasses::Color) i, background), colorTableCategory);
+    ctrl->addCategory("colorSpace", ctrl->application->resolveObject(robotName));
     ctrl->addCategory("data", ctrl->application->resolveObject(robotName));
     ctrl->addCategory("field", ctrl->application->resolveObject(robotName));
     ctrl->addCategory("image", ctrl->application->resolveObject(robotName));
@@ -155,7 +149,7 @@ void RobotConsole::addViews()
 
   ctrl->addView(new SensorView(robotName + ".sensorData", *this, fsrSensorData, inertialSensorData, keyStates, systemSensorData), category);
 
-  if(mode != SystemCall::teamRobot)
+  if (mode != SystemCall::teamRobot)
   {
     SimRobot::Object* timingCategory = ctrl->addCategory("timing", category);
     ctrl->addView(new TimeView(robotName + ".timing.cognition", *this, timeInfos.at('c')), timingCategory);
@@ -168,27 +162,33 @@ void RobotConsole::addColorSpaceViews(const std::string& id, const std::string& 
   SimRobot::Object* colorSpaceCategory = ctrl->application->resolveObject(robotName + ".colorSpace");
   SimRobot::Object* nameCategory = ctrl->addCategory(name.c_str(), colorSpaceCategory);
 
-  for(int cm = 0; cm < ColorSpaceView::numOfColorModels - (user ? 0 : 1); ++cm)
+  for (int cm = 0; cm < ColorSpaceView::numOfColorModels - (user ? 0 : 1); ++cm)
   {
     SimRobot::Object* modelCategory = ctrl->addCategory(ColorSpaceView::getName(ColorSpaceView::ColorModel(cm)), nameCategory);
     const QString& modelCategoryName = modelCategory->getFullName();
 
-    if(ColorSpaceView::ColorModel(cm) == ColorSpaceView::user)
+    if (ColorSpaceView::ColorModel(cm) == ColorSpaceView::user)
     {
-      for(int channel = 1; channel < 4; ++channel)
+      for (int channel = 1; channel < 4; ++channel)
       {
-        ctrl->addView(new ColorSpaceView(
-          modelCategoryName + "." + ColorSpaceView::getChannelNameForColorModel(ColorSpaceView::ColorModel(cm), channel),
-          *this, id, ColorSpaceView::YCbCr, channel + 3, background, upperCam), modelCategory);
+        ctrl->addView(
+            new ColorSpaceView(modelCategoryName + "." + ColorSpaceView::getChannelNameForColorModel(ColorSpaceView::ColorModel(cm), channel), *this, id, ColorSpaceView::YCbCr, channel + 3, background, upperCam),
+            modelCategory);
       }
     }
     else
     {
-      for(int channel = 0; channel < 4; ++channel)
+      for (int channel = 0; channel < 4; ++channel)
       {
-        ctrl->addView(new ColorSpaceView(
-          modelCategoryName + "." + ColorSpaceView::getChannelNameForColorModel(ColorSpaceView::ColorModel(cm), channel),
-          *this, id, ColorSpaceView::ColorModel(cm), channel + (cm == ColorSpaceView::YCbCr && channel ? 1 : 0), background, upperCam), modelCategory);
+        ctrl->addView(
+            new ColorSpaceView(modelCategoryName + "." + ColorSpaceView::getChannelNameForColorModel(ColorSpaceView::ColorModel(cm), channel),
+                *this,
+                id,
+                ColorSpaceView::ColorModel(cm),
+                channel + (cm == ColorSpaceView::YCbCr && channel ? 1 : 0),
+                background,
+                upperCam),
+            modelCategory);
       }
     }
   }
@@ -196,21 +196,21 @@ void RobotConsole::addColorSpaceViews(const std::string& id, const std::string& 
 
 void RobotConsole::handleAllMessages(MessageQueue& messageQueue)
 {
-  SYNC;  // Only one thread can access *this now.
+  SYNC; // Only one thread can access *this now.
   messageQueue.handleAllMessages(*this);
 }
 
 bool RobotConsole::handleMessage(InMessage& message)
 {
-  if(!handleMessages)
+  if (!handleMessages)
     return true;
 
-  if(destructed) // if object is already destroyed, abort here
+  if (destructed) // if object is already destroyed, abort here
     return true; // avoid further processing of this message
 
-  if(message.getMessageID() < numOfDataMessageIDs)
+  if (message.getMessageID() < numOfDataMessageIDs)
   {
-    if(logImagesAsJPEGs && message.getMessageID() == idImage)
+    if (logImagesAsJPEGs && message.getMessageID() == idImage)
     {
       Image image;
       message.bin >> image;
@@ -233,485 +233,513 @@ bool RobotConsole::handleMessage(InMessage& message)
     message.resetReadPosition();
   }
 
-  switch(message.getMessageID())
+  switch (message.getMessageID())
   {
-    case idText:
+  case idText:
+  {
+    std::string buffer(message.text.readAll());
+    if (printMessages)
+      ctrl->printLn(buffer);
+    if (logMessages)
+      *logMessages << buffer << std::endl;
+    return true;
+  }
+  case idConsole:
+    commands.push_back(message.text.readAll());
+    return true;
+  case idImage:
+    if (!incompleteImages["raw image"].image)
+      incompleteImages["raw image"].image = new Image(false);
+    message.bin >> *incompleteImages["raw image"].image;
+    return true;
+  case idImageUpper:
+    if (!incompleteImages["raw imageUpper"].image)
+      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    message.bin >> *incompleteImages["raw imageUpper"].image;
+    return true;
+  case idJPEGImage:
+  {
+    if (!incompleteImages["raw image"].image)
+      incompleteImages["raw image"].image = new Image(false);
+    JPEGImage jpi;
+    message.bin >> jpi;
+    jpi.toImage(*incompleteImages["raw image"].image);
+    return true;
+  }
+  case idJPEGImageUpper:
+  {
+    if (!incompleteImages["raw imageUpper"].image)
+      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    JPEGImage jpi;
+    message.bin >> jpi;
+    jpi.toImage(*incompleteImages["raw imageUpper"].image);
+    return true;
+  }
+  case idThumbnail:
+  {
+    if (!incompleteImages["raw image"].image)
+      incompleteImages["raw image"].image = new Image(false);
+    Thumbnail thumbnail;
+    message.bin >> thumbnail;
+    thumbnail.toImage(*incompleteImages["raw image"].image);
+    incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  case idThumbnailUpper:
+  {
+    if (!incompleteImages["raw imageUpper"].image)
+      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    ThumbnailUpper thumbnail;
+    message.bin >> thumbnail;
+    thumbnail.toImage(*incompleteImages["raw imageUpper"].image);
+    incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  case idYoloInput:
+  {
+    if (!incompleteImages["raw image"].image)
+      incompleteImages["raw image"].image = new Image(false);
+    YoloInput yoloInput;
+    message.bin >> yoloInput;
+    yoloInput.toImage(*incompleteImages["raw image"].image);
+    incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  case idYoloInputUpper:
+  {
+    if (!incompleteImages["raw imageUpper"].image)
+      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    YoloInputUpper yoloInputUpper;
+    message.bin >> yoloInputUpper;
+    yoloInputUpper.toImage(*incompleteImages["raw imageUpper"].image);
+    incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  case idDebugImage:
+  {
+    std::string id;
+    message.bin >> id;
+    if (!incompleteImages[id].image)
+      incompleteImages[id].image = new Image(false);
+    message.bin >> *incompleteImages[id].image;
+    incompleteImages[id].image->timeStamp = SystemCall::getCurrentSystemTime();
+    break;
+  }
+  case idDebugJPEGImage:
+  {
+    std::string id;
+    message.bin >> id;
+    if (!incompleteImages[id].image)
+      incompleteImages[id].image = new Image(false);
+    JPEGImage jpi;
+    message.bin >> jpi;
+    jpi.toImage(*incompleteImages[id].image);
+    incompleteImages[id].image->timeStamp = SystemCall::getCurrentSystemTime();
+    break;
+  }
+  case idFsrSensorData:
+  {
+    message.bin >> fsrSensorData;
+    return true;
+  }
+  case idInertialSensorData:
+  {
+    message.bin >> inertialSensorData;
+    return true;
+  }
+  case idJointRequest:
+  {
+    message.bin >> jointRequest;
+    jointRequest.angles[Joints::rHipYawPitch] = jointRequest.angles[Joints::lHipYawPitch];
+    return true;
+  }
+  case idJointSensorData:
+  {
+    message.bin >> jointSensorData;
+    return true;
+  }
+  case idKeyStates:
+  {
+    message.bin >> keyStates;
+    return true;
+  }
+  case idSystemSensorData:
+  {
+    message.bin >> systemSensorData;
+    return true;
+  }
+  case idUsSensorData:
+  {
+    message.bin >> usSensorData;
+    return true;
+  }
+  case idAudioData:
+  {
+    AudioData audioData;
+    message.bin >> audioData;
+    audioPlayer.play(audioData);
+    return true;
+  }
+  case idDebugDrawing:
+  {
+    if (polled[idDrawingManager] && !waitingFor[idDrawingManager]) // drawing manager not up-to-date
     {
-      std::string buffer(message.text.readAll());
-      if(printMessages)
-        ctrl->printLn(buffer);
-      if(logMessages)
-        *logMessages << buffer << std::endl;
-      return true;
-    }
-    case idConsole:
-      commands.push_back(message.text.readAll());
-      return true;
-    case idImage:
-      if(!incompleteImages["raw image"].image)
-        incompleteImages["raw image"].image = new Image(false);
-      message.bin >> *incompleteImages["raw image"].image;
-      return true;
-    case idImageUpper:
-      if (!incompleteImages["raw imageUpper"].image)
-        incompleteImages["raw imageUpper"].image = new ImageUpper(false);
-      message.bin >> *incompleteImages["raw imageUpper"].image;
-      return true;
-    case idJPEGImage:
-    {
-      if(!incompleteImages["raw image"].image)
-        incompleteImages["raw image"].image = new Image(false);
-      JPEGImage jpi;
-      message.bin >> jpi;
-      jpi.toImage(*incompleteImages["raw image"].image);
-      return true;
-    }
-    case idJPEGImageUpper:
-    {
-      if (!incompleteImages["raw imageUpper"].image)
-        incompleteImages["raw imageUpper"].image = new ImageUpper(false);
-      JPEGImage jpi;
-      message.bin >> jpi;
-      jpi.toImage(*incompleteImages["raw imageUpper"].image);
-      return true;
-    }
-    case idThumbnail:
-    {
-      if(!incompleteImages["raw image"].image)
-        incompleteImages["raw image"].image = new Image(false);
-      Thumbnail thumbnail;
-      message.bin >> thumbnail;
-      thumbnail.toImage(*incompleteImages["raw image"].image);
-      incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idThumbnailUpper:
-    {
-      if (!incompleteImages["raw imageUpper"].image)
-        incompleteImages["raw imageUpper"].image = new ImageUpper(false);
-      ThumbnailUpper thumbnail;
-      message.bin >> thumbnail;
-      thumbnail.toImage(*incompleteImages["raw imageUpper"].image);
-      incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idYoloInput:
-    {
-      if(!incompleteImages["raw image"].image)
-        incompleteImages["raw image"].image = new Image(false);
-      YoloInput yoloInput;
-      message.bin >> yoloInput;
-      yoloInput.toImage(*incompleteImages["raw image"].image);
-      incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idYoloInputUpper:
-    {
-      if (!incompleteImages["raw imageUpper"].image)
-        incompleteImages["raw imageUpper"].image = new ImageUpper(false);
-      YoloInputUpper yoloInputUpper;
-      message.bin >> yoloInputUpper;
-      yoloInputUpper.toImage(*incompleteImages["raw imageUpper"].image);
-      incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idDebugImage:
-    {
-      std::string id;
-      message.bin >> id;
-      if(!incompleteImages[id].image)
-        incompleteImages[id].image = new Image(false);
-      message.bin >> *incompleteImages[id].image;
-      incompleteImages[id].image->timeStamp = SystemCall::getCurrentSystemTime();
-      break;
-    }
-    case idDebugJPEGImage:
-    {
-      std::string id;
-      message.bin >> id;
-      if(!incompleteImages[id].image)
-        incompleteImages[id].image = new Image(false);
-      JPEGImage jpi;
-      message.bin >> jpi;
-      jpi.toImage(*incompleteImages[id].image);
-      incompleteImages[id].image->timeStamp = SystemCall::getCurrentSystemTime();
-      break;
-    }
-    case idFsrSensorData:
-    {
-      message.bin >> fsrSensorData;
-      return true;
-    }
-    case idInertialSensorData:
-    {
-      message.bin >> inertialSensorData;
-      return true;
-    }
-    case idJointRequest:
-    {
-      message.bin >> jointRequest;
-      jointRequest.angles[Joints::rHipYawPitch] = jointRequest.angles[Joints::lHipYawPitch];
-      return true;
-    }
-    case idJointSensorData:
-    {
-      message.bin >> jointSensorData;
-      return true;
-    }
-    case idKeyStates:
-    {
-      message.bin >> keyStates;
-      return true;
-    }
-    case idSystemSensorData:
-    {
-      message.bin >> systemSensorData;
-      return true;
-    }
-    case idUsSensorData:
-    {
-      message.bin >> usSensorData;
-      return true;
-    }
-    case idDebugDrawing:
-    {
-      if(polled[idDrawingManager] && !waitingFor[idDrawingManager]) // drawing manager not up-to-date
-      {
-        char shapeType,
-          id;
-        message.bin >> shapeType >> id;
-        const char* name = drawingManager.getDrawingName(id); // const char* is required here
-        std::string type = drawingManager.getDrawingType(name);
+      char shapeType, id;
+      message.bin >> shapeType >> id;
+      const char* name = drawingManager.getDrawingName(id); // const char* is required here
+      std::string type = drawingManager.getDrawingType(name);
 
-        if(type == "drawingOnImage")
-          incompleteImageDrawings[name].addShapeFromQueue(message, (::Drawings::ShapeType)shapeType);
-        else if(type == "drawingOnField")
-          incompleteFieldDrawings[name].addShapeFromQueue(message, (::Drawings::ShapeType)shapeType);
-      }
-      return true;
+      if (type == "drawingOnImage")
+        incompleteImageDrawings[name].addShapeFromQueue(message, (::Drawings::ShapeType)shapeType);
+      else if (type == "drawingOnField")
+        incompleteFieldDrawings[name].addShapeFromQueue(message, (::Drawings::ShapeType)shapeType);
     }
-    case idDebugDrawing3D:
+    return true;
+  }
+  case idDebugDrawing3D:
+  {
+    if (polled[idDrawingManager3D] && !waitingFor[idDrawingManager3D])
     {
-      if(polled[idDrawingManager3D] && !waitingFor[idDrawingManager3D])
-      {
-        char shapeType,
-          id;
-        message.bin >> shapeType >> id;
-        incompleteDrawings3D[drawingManager3D.getDrawingName(id)].addShapeFromQueue(message, (::Drawings3D::ShapeType)shapeType, processIdentifier);
-      }
-      return true;
+      char shapeType, id;
+      message.bin >> shapeType >> id;
+      incompleteDrawings3D[drawingManager3D.getDrawingName(id)].addShapeFromQueue(message, (::Drawings3D::ShapeType)shapeType, processIdentifier);
     }
-    case idPlot:
-    {
-      std::string id;
-      float value;
-      message.bin >> id >> value;
-      Plot& plot = plots[ctrl->translate(id)];
-      plot.points.push_back(value);
-      while(plot.points.size() > maxPlotSize)
-        plot.points.pop_front();
-      plot.timeStamp = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idProcessBegin:
-    {
-      message.bin >> processIdentifier;
-      drawingManager.setProcess(processIdentifier == 'd' ? 'c' : processIdentifier);
-      drawingManager3D.setProcess(processIdentifier == 'd' ? 'c' : processIdentifier);
-      return true;
-    }
-    case idProcessFinished:
-    {
-      char c;
-      message.bin >> c;
-      ASSERT(processIdentifier == c);
+    return true;
+  }
+  case idPlot:
+  {
+    std::string id;
+    float value;
+    message.bin >> id >> value;
+    Plot& plot = plots[ctrl->translate(id)];
+    plot.points.push_back(value);
+    while (plot.points.size() > maxPlotSize)
+      plot.points.pop_front();
+    plot.timeStamp = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  case idProcessBegin:
+  {
+    message.bin >> processIdentifier;
+    drawingManager.setProcess(processIdentifier == 'd' ? 'c' : processIdentifier);
+    drawingManager3D.setProcess(processIdentifier == 'd' ? 'c' : processIdentifier);
+    return true;
+  }
+  case idProcessFinished:
+  {
+    char c;
+    message.bin >> c;
+    ++frame;
+    ASSERT(processIdentifier == c);
 
-      if(processIdentifier != 'm')
+    if (processIdentifier != 'm')
+    {
+      currentImageDrawings = &camImageDrawings;
+      currentFieldDrawings = &camFieldDrawings;
+      currentDrawings3D = &camDrawings3D;
+      camImages.clear();
+      for (Images::iterator i = incompleteImages.begin(); i != incompleteImages.end(); ++i)
       {
-        currentImageDrawings = &camImageDrawings;
-        currentFieldDrawings = &camFieldDrawings;
-        currentDrawings3D = &camDrawings3D;
-        camImages.clear();
-        for(Images::iterator i = incompleteImages.begin(); i != incompleteImages.end(); ++i)
-        {
-          ImagePtr& imagePtr = (camImages)[i->first];
-          imagePtr.image = i->second.image;
-          imagePtr.processIdentifier = processIdentifier;
-          i->second.image = nullptr;
-        }
+        ImagePtr& imagePtr = (camImages)[i->first];
+        imagePtr.image = i->second.image;
+        imagePtr.processIdentifier = processIdentifier;
+        i->second.image = nullptr;
       }
-      else //processIdentifier == 'm'
-      {
-        currentImageDrawings = &motionImageDrawings;
-        currentFieldDrawings = &motionFieldDrawings;
-        currentDrawings3D = &motionDrawings3D;
-      }
+    }
+    else //processIdentifier == 'm'
+    {
+      currentImageDrawings = &motionImageDrawings;
+      currentFieldDrawings = &motionFieldDrawings;
+      currentDrawings3D = &motionDrawings3D;
+    }
 
-      // Add new Field and Image drawings
-      currentImageDrawings->clear();
-      currentFieldDrawings->clear();
-      if(processIdentifier == 'm' || drawingsViaProcess == 'b' || drawingsViaProcess == processIdentifier)
+    // Add new Field and Image drawings
+    currentImageDrawings->clear();
+    currentFieldDrawings->clear();
+    if (processIdentifier == 'm' || drawingsViaProcess == 'b' || drawingsViaProcess == processIdentifier)
+    {
+      for (Drawings::const_iterator i = incompleteImageDrawings.begin(); i != incompleteImageDrawings.end(); ++i)
       {
-        for(Drawings::const_iterator i = incompleteImageDrawings.begin(); i != incompleteImageDrawings.end(); ++i)
-        {
-          DebugDrawing& debugDrawing = (*currentImageDrawings)[i->first];
-          debugDrawing = i->second;
-          debugDrawing.processIdentifier = processIdentifier;
-        }
-
-        for(Drawings::const_iterator i = incompleteFieldDrawings.begin(); i != incompleteFieldDrawings.end(); ++i)
-        {
-          DebugDrawing& debugDrawing = (*currentFieldDrawings)[i->first];
-          debugDrawing = i->second;
-          debugDrawing.processIdentifier = processIdentifier;
-        }
+        DebugDrawing& debugDrawing = (*currentImageDrawings)[i->first];
+        debugDrawing = i->second;
+        debugDrawing.processIdentifier = processIdentifier;
       }
 
-      // 3D Drawings
-      if(polled[idDrawingManager3D] && !waitingFor[idDrawingManager3D])
+      for (Drawings::const_iterator i = incompleteFieldDrawings.begin(); i != incompleteFieldDrawings.end(); ++i)
       {
-        // reset all 3d drawings originated from current process
-        for(Drawings3D::iterator i = currentDrawings3D->begin(), end = currentDrawings3D->end(); i != end; ++i)
-        {
-          ASSERT(i->second.processIdentifier == processIdentifier);
-          DebugDrawing3D& debugDrawing3D = i->second;
-          debugDrawing3D.reset();
-        }
+        DebugDrawing& debugDrawing = (*currentFieldDrawings)[i->first];
+        debugDrawing = i->second;
+        debugDrawing.processIdentifier = processIdentifier;
+      }
+    }
 
-        // copy and register newly received 3d debug drawings
-        if(processIdentifier == 'm' || drawingsViaProcess == 'b' || drawingsViaProcess == processIdentifier)
+    // 3D Drawings
+    if (polled[idDrawingManager3D] && !waitingFor[idDrawingManager3D])
+    {
+      // reset all 3d drawings originated from current process
+      for (Drawings3D::iterator i = currentDrawings3D->begin(), end = currentDrawings3D->end(); i != end; ++i)
+      {
+        ASSERT(i->second.processIdentifier == processIdentifier);
+        DebugDrawing3D& debugDrawing3D = i->second;
+        debugDrawing3D.reset();
+      }
+
+      // copy and register newly received 3d debug drawings
+      if (processIdentifier == 'm' || drawingsViaProcess == 'b' || drawingsViaProcess == processIdentifier)
+      {
+        for (Drawings3D::iterator i = incompleteDrawings3D.begin(); i != incompleteDrawings3D.end(); ++i)
         {
-          for(Drawings3D::iterator i = incompleteDrawings3D.begin(); i != incompleteDrawings3D.end(); ++i)
+          std::string type = drawingManager3D.getDrawingType(drawingManager3D.getString(i->first));
+          std::string name = type == "camera" ? i->first + processIdentifier : i->first;
+          DebugDrawing3D& debugDrawing3D = (*currentDrawings3D)[name];
+          bool drawn = debugDrawing3D.drawn;
+          bool flip = debugDrawing3D.flip;
+          i->second.robotConsole = this;
+          debugDrawing3D = i->second;
+          debugDrawing3D.drawn = drawn;
+          debugDrawing3D.flip = flip;
+          if (!drawn)
           {
-            std::string type = drawingManager3D.getDrawingType(drawingManager3D.getString(i->first));
-            std::string name = type == "camera" ? i->first + processIdentifier : i->first;
-            DebugDrawing3D& debugDrawing3D = (*currentDrawings3D)[name];
-            bool drawn = debugDrawing3D.drawn;
-            bool flip = debugDrawing3D.flip;
-            i->second.robotConsole = this;
-            debugDrawing3D = i->second;
-            debugDrawing3D.drawn = drawn;
-            debugDrawing3D.flip = flip;
-            if(!drawn)
+            if (type != "unknown")
             {
-              if(type != "unknown")
+              QVector<QString> parts;
+              parts.append(robotName);
+              if (type == "field")
               {
-                QVector<QString> parts;
-                parts.append(robotName);
-                if(type == "field")
-                {
-                  QString robotNumberString(robotName);
-                  robotNumberString.remove(0, 5);
-                  debugDrawing3D.flip = robotNumberString.toInt() < 6;
-                  parts[0] = "RoboCup";
-                }
-                else if(type == "robot")
-                  parts.append("origin");
-                else if(type == "camera")
-                  parts.append(processIdentifier == 'c' ? "CameraTop" : "CameraBottom");
-                else
-                  parts.append(type.c_str());
-                SYNC_WITH(*ctrl);
-                SimRobotCore2::PhysicalObject* object = (SimRobotCore2::PhysicalObject*)ctrl->application->resolveObject(parts);
-                object->registerDrawing(debugDrawing3D);
-                debugDrawing3D.drawn = true;
+                QString robotNumberString(robotName);
+                robotNumberString.remove(0, 5);
+                debugDrawing3D.flip = robotNumberString.toInt() <= MAX_NUM_PLAYERS;
+                parts[0] = "RoboCup";
               }
+              else if (type == "robot")
+                parts.append("origin");
+              else if (type == "camera")
+                parts.append(processIdentifier == 'c' ? "CameraTop" : "CameraBottom");
+              else
+                parts.append(type.c_str());
+              SYNC_WITH(*ctrl);
+              SimRobotCore2::PhysicalObject* object = (SimRobotCore2::PhysicalObject*)ctrl->application->resolveObject(parts);
+              object->registerDrawing(debugDrawing3D);
+              debugDrawing3D.drawn = true;
             }
           }
         }
       }
+    }
 
-      incompleteImages.clear();
-      incompleteImageDrawings.clear();
-      incompleteFieldDrawings.clear();
-      incompleteDrawings3D.clear();
+    incompleteImages.clear();
+    incompleteImageDrawings.clear();
+    incompleteFieldDrawings.clear();
+    incompleteDrawings3D.clear();
 
-      return true;
-    }
-    case idActivationGraph:
-      message.bin >> activationGraph;
-      activationGraphReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idAnnotation:
-      ASSERT(annotationInfos.find(processIdentifier == 'd' ? 'c' : processIdentifier) != annotationInfos.end());
-      annotationInfos[processIdentifier == 'd' ? 'c' : processIdentifier].handleMessage(message);
-      return true;
-    case idStopwatch:
-      ASSERT(timeInfos.find(processIdentifier == 'd' ? 'c' : processIdentifier) != timeInfos.end());
-      timeInfos.at(processIdentifier == 'd' ? 'c' : processIdentifier).handleMessage(message);
-      return true;
-    case idDebugResponse:
+    return true;
+  }
+  case idActivationGraph:
+    message.bin >> activationGraph;
+    activationGraphReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  case idAnnotation:
+    ASSERT(annotationInfos.find(processIdentifier == 'd' ? 'c' : processIdentifier) != annotationInfos.end());
+    annotationInfos[processIdentifier == 'd' ? 'c' : processIdentifier].handleMessage(message, frame);
+    return true;
+  case idStopwatch:
+    ASSERT(timeInfos.find(processIdentifier == 'd' ? 'c' : processIdentifier) != timeInfos.end());
+    timeInfos.at(processIdentifier == 'd' ? 'c' : processIdentifier).handleMessage(message);
+    return true;
+  case idDebugResponse:
+  {
+    SYNC_WITH(*ctrl);
+    std::string description;
+    bool enable;
+    message.text >> description >> enable;
+    if (description != "pollingFinished")
+      debugRequestTable.addRequest(DebugRequest(description, enable), true);
+    else if (--waitingFor[idDebugResponse] <= 0)
     {
-      SYNC_WITH(*ctrl);
-      std::string description;
-      bool enable;
-      message.text >> description >> enable;
-      if(description != "pollingFinished")
-        debugRequestTable.addRequest(DebugRequest(description, enable), true);
-      else if(--waitingFor[idDebugResponse] <= 0)
-      {
-        ctrl->setDebugRequestTable(debugRequestTable);
-        updateCompletion = true;
-      }
-      return true;
+      ctrl->setDebugRequestTable(debugRequestTable);
+      updateCompletion = true;
     }
-    case idModuleTable:
-    {
-      SYNC_WITH(*ctrl);
-      moduleInfo.handleMessage(message, processIdentifier == 'd' ? 'c' : processIdentifier);
-      if(--waitingFor[idModuleTable] <= 0)
-      {
-        ctrl->setModuleInfo(moduleInfo);
-        updateCompletion = true;
-      }
-      return true;
-    }
-    case idDrawingManager:
-    {
-      SYNC_WITH(*ctrl);
-      message.bin >> drawingManager;
-      if(--waitingFor[idDrawingManager] <= 0)
-      {
-        ctrl->setDrawingManager(drawingManager);
-        updateCompletion = true;
-      }
-      return true;
-    }
-    case idDrawingManager3D:
-    {
-      SYNC_WITH(*ctrl);
-      message.bin >> drawingManager3D;
-      if(--waitingFor[idDrawingManager3D] <= 0)
-      {
-        ctrl->setDrawingManager3D(drawingManager3D);
-        updateCompletion = true;
-      }
-      return true;
-    }
-    case idColorCalibration:
-      message.bin >> colorCalibration;
-      colorCalibrationChanged = true;
-      if(colorCalibrationView && colorCalibrationView->widget)
-        colorCalibrationView->widget->currentCalibrationChanged();
-      return true;
-    case idStreamSpecification:
-    {
-      message.bin >> streamHandler;
-      --waitingFor[idStreamSpecification];
-      return true;
-    }
-    case idDebugDataResponse:
-    {
-      std::string name,
-        type;
-      message.bin >> name >> type;
-      if(debugDataInfos.find(name) == debugDataInfos.end())
-        debugDataInfos[name] = DebugDataInfoPair(type, new MessageQueue);
-      debugDataInfos[name].second->clear();
-      message >> *debugDataInfos[name].second;
-      const char* t = streamHandler.getString(type);
-      if(streamHandler.basicTypeSpecification.find(t) != streamHandler.basicTypeSpecification.end() ||
-         streamHandler.specification.find(t) != streamHandler.specification.end() ||
-         streamHandler.enumSpecification.find(t) != streamHandler.enumSpecification.end())
-      {
-        repViewWriter.handleMessage(message, type, name);
-      }
-      else if(polled[idStreamSpecification] || !waitingFor[idStreamSpecification])
-      {
-        polled[idStreamSpecification] = false;
-        if(getOrSetWaitsFor != name)
-          commands.push_back("_vd");
-      }
+    return true;
+  }
+  case idModuleTable:
+  {
+    SYNC_WITH(*ctrl);
 
-      if(getOrSetWaitsFor == name) // console command requested this one?
-        waitingFor[idDebugDataResponse] = 0;
-      else
-      {
-        // no, representation view requested it
-        for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-          if("debug data:" + name == debugRequestTable.debugRequests[i].description)
-          {
-            if(debugRequestTable.debugRequests[i].enable) // still enabled?
-            {
-              // then request it again for the next update
-              debugOut.out.bin << DebugRequest("debug data:" + name, true);
-              debugOut.out.finishMessage(idDebugRequest);
-            }
-            break;
-          }
-      }
+    moduleInfo.handleMessage(message, processIdentifier == 'd' ? 'c' : processIdentifier);
+    if (--waitingFor[idModuleTable] <= 0)
+    {
+      ctrl->setModuleInfo(moduleInfo);
+      updateCompletion = true;
+      polled[idDebugResponse] = polled[idDrawingManager] = polled[idDrawingManager3D] = false;
+    }
+    return true;
+  }
+  case idDrawingManager:
+  {
+    SYNC_WITH(*ctrl);
+    message.bin >> drawingManager;
+    if (--waitingFor[idDrawingManager] <= 0)
+    {
+      ctrl->setDrawingManager(drawingManager);
+      updateCompletion = true;
+    }
+    return true;
+  }
+  case idDrawingManager3D:
+  {
+    SYNC_WITH(*ctrl);
+    message.bin >> drawingManager3D;
+    if (--waitingFor[idDrawingManager3D] <= 0)
+    {
+      ctrl->setDrawingManager3D(drawingManager3D);
+      updateCompletion = true;
+    }
+    return true;
+  }
+  case idStreamSpecification:
+  {
+    message.bin >> streamHandler;
+    --waitingFor[idStreamSpecification];
+    return true;
+  }
+  case idDebugDataResponse:
+  {
+    std::string name, type;
+    message.bin >> name >> type;
+    if (debugDataInfos.find(name) == debugDataInfos.end())
+      debugDataInfos[name] = DebugDataInfoPair(type, new MessageQueue);
+    debugDataInfos[name].second->clear();
+    message >> *debugDataInfos[name].second;
+    const char* t = streamHandler.getString(type);
+    if (streamHandler.basicTypeSpecification.find(t) != streamHandler.basicTypeSpecification.end() || streamHandler.specification.find(t) != streamHandler.specification.end()
+        || streamHandler.enumSpecification.find(t) != streamHandler.enumSpecification.end())
+    {
+      repViewWriter.handleMessage(message, type, name);
+    }
+    else if (polled[idStreamSpecification] || !waitingFor[idStreamSpecification])
+    {
+      polled[idStreamSpecification] = false;
+      if (getOrSetWaitsFor != name)
+        commands.push_back("_vd");
+    }
 
-      return true;
-    }
-    case idLogResponse:
-      logAcknowledged = true;
-      return true;
-    case idRobotPose:
-    {
-      RobotPoseCompressed robotPoseCompressed;
-      message.bin >> robotPoseCompressed;
-      robotPose = robotPoseCompressed;
-      robotPoseReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idBallModel:
-    {
-      BallModelCompressed ballModelCompressed;
-      message.bin >> ballModelCompressed;
-      ballModel = ballModelCompressed;
-      if(ballModel.timeWhenLastSeen)
-        // ballModel.timeWhenLastSeen = ctrl->ntp.getRemoteTimeInLocalTime(ballModel.timeWhenLastSeen);
+    if (getOrSetWaitsFor == name) // console command requested this one?
+      waitingFor[idDebugDataResponse] = 0;
+
+    return true;
+  }
+  case idLogResponse:
+    logAcknowledged = true;
+    return true;
+  case idRobotPose:
+  {
+    RobotPoseCompressed robotPoseCompressed;
+    message.bin >> robotPoseCompressed;
+    robotPose = robotPoseCompressed;
+    robotPoseReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  }
+  case idBallModel:
+  {
+    BallModelCompressed ballModelCompressed;
+    message.bin >> ballModelCompressed;
+    ballModel = ballModelCompressed;
+    if (ballModel.timeWhenLastSeen)
+      // ballModel.timeWhenLastSeen = ctrl->ntp.getRemoteTimeInLocalTime(ballModel.timeWhenLastSeen);
       ballModelReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    }
-    case idTeamBallModel:
-      message.bin >> teamBallModel;
-      teamBallModelReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idTeammateHasGroundContact:
-      message.bin >> hasGroundContact;
-      hasGroundContactReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idTeammateIsPenalized:
-      message.bin >> isPenalized;
-      isPenalizedReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idTeammateIsUpright:
-      message.bin >> isUpright;
-      isUprightReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idBehaviorData:
-      message.bin >> behaviorData;
-      return true;
-    case idRobotHealth:
-      message.bin >> robotHealth;
-      robotHealthReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idMotionRequest:
-      message.bin >> motionRequest;
-      motionRequestReceived = SystemCall::getCurrentSystemTime();
-      return true;
-    case idRobotname:
+    return true;
+  }
+  case idTeamBallModel:
+    message.bin >> teamBallModel;
+    teamBallModelReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  case idTeammateHasGroundContact:
+    message.bin >> hasGroundContact;
+    hasGroundContactReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  case idTeammateIsUpright:
+    message.bin >> isUpright;
+    isUprightReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  case idBehaviorData:
+    message.bin >> behaviorData;
+    return true;
+  case idRobotHealth:
+    message.bin >> robotHealth;
+    robotHealthReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  case idMotionRequest:
+    message.bin >> motionRequest;
+    motionRequestReceived = SystemCall::getCurrentSystemTime();
+    return true;
+  case idRobotname:
+  {
+    message.bin >> Global::getSettings().robotName >> Global::getSettings().bodyName;
+    STREAM_EXT(message.bin, Global::getSettings().overlays);
+    message.bin >> Global::getSettings().naoVersion;
+    --waitingFor[idRobotname];
+    return true;
+  }
+  case idRobotDimensions:
+    message.bin >> robotDimensions;
+    return true;
+  case idJointCalibration:
+    message.bin >> jointCalibration;
+    return true;
+  case idExecutorObservings:
+  {
+    SYNC_WITH(*ctrl);
+
+    std::vector<uint8_t> data;
+    STREAM_EXT(message.bin, data);
+
+    if (data.size() == 0)
     {
-      message.bin >> Global::getSettings().robotName
-        >> Global::getSettings().bodyName
-        >> Global::getSettings().location
-        >> Global::getSettings().naoVersion;
-      --waitingFor[idRobotname];
-      return true;
+      observerDataFinished[processIdentifier] = true;
     }
-    case idRobotDimensions:
-      message.bin >> robotDimensions;
-      return true;
-    case idJointCalibration:
-      message.bin >> jointCalibration;
-      return true;
-    case idUSRequest:
-      message.bin >> usRequest;
-      return true;
-    default:
-      return mode == SystemCall::teamRobot
-        ? Process::handleMessage(message) : false;
+    else
+    {
+      observerDataFinished[processIdentifier] = false;
+      std::move(data.begin(), data.end(), std::back_inserter(observerMsgpackData[processIdentifier]));
+    }
+
+    if (observerDataFinished['m'] && observerDataFinished['c'])
+    {
+      using json = nlohmann::json;
+
+      json j = json::array();
+      json motion = json::from_msgpack(observerMsgpackData['m']);
+      j.insert(j.begin(), motion.begin(), motion.end());
+      json cognition = json::from_msgpack(observerMsgpackData['c']);
+      j.insert(j.begin(), cognition.begin(), cognition.end());
+
+      auto now = std::chrono::system_clock::now();
+      auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+      std::stringstream ss;
+      ss << "Logs/executorObservings_" << Global::getSettings().robotName << std::put_time(std::localtime(&in_time_t), "_%Y%m%d_%H%M%S") << ".json";
+      OutTextRawFile file(ss.str());
+      file << j.dump() << "\n";
+
+      observerMsgpackData.clear();
+      observerDataFinished.clear();
+    }
+    return true;
+  }
+  case idTeamCommSenderOutput:
+  {
+    TeamCommSenderOutput teamCommSenderOutput;
+    message.bin >> teamCommSenderOutput;
+    if (teamCommSenderOutput.dataSent)
+    {
+      QString robotNumberString(robotName);
+      robotNumberString.remove(0, 5);
+      ctrl->gameController.decreaseMessageBudget(robotNumberString.toInt());
+    }
+    return true;
+  }
+  default:
+    return mode == SystemCall::teamRobot ? Process::handleMessage(message) : false;
   }
 
   return false;
@@ -722,21 +750,11 @@ void RobotConsole::update()
   setGlobals(); // this is called in GUI thread -> set globals for this process
   handleJoystick();
 
-  if(colorCalibrationChanged && SystemCall::getTimeSince(colorTableTimeStamp) > 200)
-  {
-    SYNC;
-    colorCalibrationChanged = false;
-    colorTableTimeStamp = SystemCall::getCurrentSystemTime();
-    colorTable.fromColorCalibration(colorCalibration, prevColorCalibration);
-    debugOut.out.bin << colorCalibration;
-    debugOut.out.finishMessage(idColorCalibration);
-  }
-
-  while(!lines.empty())
+  while (!lines.empty())
   {
     std::list<std::string> temp = lines;
     lines.clear();
-    if(handleConsoleLine(temp.front()))
+    if (handleConsoleLine(temp.front()))
     {
       temp.pop_front();
       lines.splice(lines.end(), temp);
@@ -748,20 +766,20 @@ void RobotConsole::update()
     }
   }
 
-  if(!commands.empty())
+  if (!commands.empty())
   {
     std::list<std::string> commands;
     {
       SYNC;
       commands.swap(this->commands);
     }
-    for(std::list<std::string>::const_iterator iter = commands.begin(), end = commands.end(); iter != end; ++iter)
+    for (std::list<std::string>::const_iterator iter = commands.begin(), end = commands.end(); iter != end; ++iter)
       ctrl->executeConsoleCommand(*iter, this);
   }
 
   pollForDirectMode();
 
-  if(updateCompletion)
+  if (updateCompletion)
   {
     SYNC;
     ctrl->updateCommandCompletion();
@@ -769,15 +787,15 @@ void RobotConsole::update()
   }
 }
 
-void RobotConsole::handleConsole(const std::string& line)
+void RobotConsole::handleConsole(const std::string& line, bool fromCall)
 {
   setGlobals(); // this is called in GUI thread -> set globals for this process
   lines.push_back(line);
-  while(!lines.empty())
+  while (!lines.empty())
   {
     std::list<std::string> temp = lines;
     lines.clear();
-    if(handleConsoleLine(temp.front()))
+    if (handleConsoleLine(temp.front(), fromCall))
     {
       temp.pop_front();
       lines.splice(lines.end(), temp);
@@ -794,7 +812,7 @@ void RobotConsole::handleConsole(const std::string& line)
 
 void RobotConsole::triggerProcesses()
 {
-  if(mode == SystemCall::logfileReplay)
+  if (mode == SystemCall::logfileReplay)
   {
     SYNC;
     debugOut.out.bin << 'c';
@@ -810,93 +828,85 @@ void RobotConsole::triggerProcesses()
 
 bool RobotConsole::poll(MessageID id)
 {
-  if(waitingFor[id] > 0)
+  if (waitingFor[id] > 0)
   {
     // When in replay log file mode, force replay while polling to keep Cognition running
     triggerProcesses();
     return false;
   }
-  else if(polled[id])
+  else if (polled[id])
     return true;
   else
   {
     polled[id] = true;
-    switch(id)
+    switch (id)
     {
-      case idDebugResponse:
-      {
-        SYNC;
-        debugRequestTable.removeAllRequests();
-        debugOut.out.bin << DebugRequest("poll");
-        debugOut.out.finishMessage(idDebugRequest);
-        if(mode == SystemCall::teamRobot)
-          waitingFor[id] = 1; // team robot module should answer
-        else
-          waitingFor[id] = 3; // Cognition + Motion + Debug will answer
-        break;
-      }
-      case idModuleTable:
-      {
-        SYNC;
-        moduleInfo.clear();
-        debugOut.out.bin << DebugRequest("automated requests:ModuleTable", true);
-        debugOut.out.finishMessage(idDebugRequest);
-        waitingFor[id] = 2;  // Cognition + Motion will answer
-        break;
-      }
-      case idStreamSpecification:
-      {
-        SYNC;
-        debugOut.out.bin << DebugRequest("automated requests:StreamSpecification", true);
-        debugOut.out.finishMessage(idDebugRequest);
-        if(mode == SystemCall::teamRobot)
-          waitingFor[id] = 1; // team robot module should answer
-        else
-          waitingFor[id] = 2;  // Cognition + Motion will answer
-        break;
-      }
-      case idDrawingManager:
-      {
-        SYNC;
-        drawingManager.clear();
-        debugOut.out.bin << DebugRequest("automated requests:DrawingManager", true);
-        debugOut.out.finishMessage(idDebugRequest);
-        if(mode == SystemCall::teamRobot)
-          waitingFor[id] = 1; // team robot module should answer
-        else
-          waitingFor[id] = 2; // Cognition + Motion will answer
-        break;
-      }
-      case idDrawingManager3D:
-      {
-        SYNC;
-        drawingManager3D.clear();
-        debugOut.out.bin << DebugRequest("automated requests:DrawingManager3D", true);
-        debugOut.out.finishMessage(idDebugRequest);
-        if(mode == SystemCall::teamRobot)
-          waitingFor[id] = 1; // team robot module should answer
-        else
-          waitingFor[id] = 2;  // Cognition + Motion will answer
-        break;
-      }
-      case idColorCalibration:
-      {
-        SYNC;
-        debugOut.out.bin << DebugRequest("representation:ColorCalibration:once", true);
-        debugOut.out.finishMessage(idDebugRequest);
-        waitingFor[id] = 1;  // Cognition will answer
-        break;
-      }
-      case idRobotname:
-      {
-        SYNC;
-        debugOut.out.bin << DebugRequest("module:NaoProvider:robotName", true);
-        debugOut.out.finishMessage(idDebugRequest);
-        waitingFor[id] = 1;  // Motion will answer
-        break;
-      }
-      default:
-        ASSERT(false);
+    case idDebugResponse:
+    {
+      SYNC;
+      debugRequestTable.removeAllRequests();
+      debugOut.out.bin << DebugRequest("poll");
+      debugOut.out.finishMessage(idDebugRequest);
+      if (mode == SystemCall::teamRobot)
+        waitingFor[id] = 1; // team robot module should answer
+      else
+        waitingFor[id] = 3; // Cognition + Motion + Debug will answer
+      break;
+    }
+    case idModuleTable:
+    {
+      SYNC;
+      moduleInfo.clear();
+      debugOut.out.bin << DebugRequest("automated requests:ModuleTable", true);
+      debugOut.out.finishMessage(idDebugRequest);
+      waitingFor[id] = 2; // Cognition + Motion will answer
+      break;
+    }
+    case idStreamSpecification:
+    {
+      SYNC;
+      debugOut.out.bin << DebugRequest("automated requests:StreamSpecification", true);
+      debugOut.out.finishMessage(idDebugRequest);
+      if (mode == SystemCall::teamRobot)
+        waitingFor[id] = 1; // team robot module should answer
+      else
+        waitingFor[id] = 2; // Cognition + Motion will answer
+      break;
+    }
+    case idDrawingManager:
+    {
+      SYNC;
+      drawingManager.clear();
+      debugOut.out.bin << DebugRequest("automated requests:DrawingManager", true);
+      debugOut.out.finishMessage(idDebugRequest);
+      if (mode == SystemCall::teamRobot)
+        waitingFor[id] = 1; // team robot module should answer
+      else
+        waitingFor[id] = 2; // Cognition + Motion will answer
+      break;
+    }
+    case idDrawingManager3D:
+    {
+      SYNC;
+      drawingManager3D.clear();
+      debugOut.out.bin << DebugRequest("automated requests:DrawingManager3D", true);
+      debugOut.out.finishMessage(idDebugRequest);
+      if (mode == SystemCall::teamRobot)
+        waitingFor[id] = 1; // team robot module should answer
+      else
+        waitingFor[id] = 2; // Cognition + Motion will answer
+      break;
+    }
+    case idRobotname:
+    {
+      SYNC;
+      debugOut.out.bin << DebugRequest("module:NaoProvider:robotName", true);
+      debugOut.out.finishMessage(idDebugRequest);
+      waitingFor[id] = 1; // Motion will answer
+      break;
+    }
+    default:
+      ASSERT(false);
     }
     return false;
   }
@@ -904,7 +914,7 @@ bool RobotConsole::poll(MessageID id)
 
 void RobotConsole::pollForDirectMode()
 {
-  if(directMode)
+  if (directMode)
   {
     poll(idDebugResponse);
     poll(idDrawingManager);
@@ -913,253 +923,196 @@ void RobotConsole::pollForDirectMode()
   }
 }
 
-bool RobotConsole::handleConsoleLine(const std::string& line)
+bool RobotConsole::handleConsoleLine(const std::string& line, bool fromCall)
 {
   InConfigMemory stream(line.c_str(), line.size());
   std::string command;
   stream >> command;
   bool result = false;
-  if(command == "") // comment
+  if (command == "") // comment
     result = true;
-  else if(command == "automaticCameraCalibratorInsertion")
-  {
-    std::string view,
-      choice;
-    stream >> view >> choice;
-    result = true;
-    if(choice == "on")
-    {
-      automaticCameraCalibratorHandlerInsertion.setActive(view);
-    }
-    else if(choice == "off")
-    {
-      automaticCameraCalibratorHandlerInsertion.setInactive(view);
-    }
-    else
-    {
-      result = false;
-    }
-  }
-  else if(command == "automaticCameraCalibratorDeletion")
-  {
-    std::string view,
-      choice;
-    stream >> view >> choice;
-    result = true;
-    if(choice == "on")
-    {
-      automaticCameraCalibratorHandlerDeletion.setActive(view);
-    }
-    else if(choice == "off")
-    {
-      automaticCameraCalibratorHandlerDeletion.setInactive(view);
-    }
-    else
-    {
-      result = false;
-    }
-  }
-  else if(command == "endOfStartScript")
+  else if (command == "endOfStartScript")
   {
     directMode = true;
     result = true;
   }
-  else if(command == "ac")
+  else if (command == "ac")
     result = acceptCamera(stream);
-  else if(command == "bc")
+  else if (command == "bc")
     result = backgroundColor(stream);
-  else if(command == "kick")
+  else if (command == "kick")
   {
     result = kickView();
   }
-  else if(command == "cameraCalibrator")
-  {
-    std::string view,
-      choice;
-    stream >> view >> choice;
-    result = true;
-    if(choice == "on")
-    {
-      cameraCalibratorHandler.setActive(view);
-    }
-    else if(choice == "off")
-    {
-      cameraCalibratorHandler.setInactive(view);
-    }
-    else
-    {
-      result = false;
-    }
-  }
-  else if(command == "cls")
+  else if (command == "cls")
   {
     ctrl->printLn("_cls");
     result = true;
   }
-  else if(command == "dr")
+  else if (command == "dr")
   {
     PREREQUISITE(idDebugResponse);
     PREREQUISITE(idDrawingManager3D);
     result = debugRequest(stream);
   }
-  else if(command == "echo")
+  else if (command == "echo")
   {
     ctrl->echo(stream);
     result = true;
   }
-  else if(command == "get")
+  else if (command == "get")
   {
     PREREQUISITE(idDebugResponse);
     result = get(stream, true, true);
   }
-  else if(command == "_get") // get, part 2
+  else if (command == "_get") // get, part 2
   {
     PREREQUISITE(idDebugDataResponse);
     PREREQUISITE(idStreamSpecification);
     result = get(stream, false, true);
   }
-  else if(command == "_get2") // get, part 1 without printing
+  else if (command == "_get2") // get, part 1 without printing
   {
     PREREQUISITE(idDebugResponse);
     result = get(stream, true, false);
   }
-  else if(command == "_get3") // get, part 2 without printing
+  else if (command == "_get3") // get, part 2 without printing
   {
     PREREQUISITE(idDebugDataResponse);
     PREREQUISITE(idStreamSpecification);
     result = get(stream, false, false);
   }
-  else if(command == "jc")
+  else if (command == "jc")
     result = joystickCommand(stream);
-  else if(command == "js")
+  else if (command == "js")
     result = joystickSpeeds(stream);
-  else if(command == "jm")
+  else if (command == "jm")
     result = joystickMaps(stream);
-  else if(command == "log")
+  else if (command == "kfm")
+    result = sendKfm(stream);
+  else if (command == "log")
   {
     PREREQUISITE(idModuleTable);
     result = log(stream);
   }
-  else if(command == "_log")
+  else if (command == "_log")
   {
     PREREQUISITE(idStreamSpecification);
     result = log(stream, false);
   }
-  else if(command == "mof")
-    result = sendMof(stream);
-  else if(command == "mr")
+  else if (command == "mr")
   {
     PREREQUISITE(idModuleTable);
     result = moduleRequest(stream);
   }
-  else if(command == "msg")
+  else if (command == "msg")
   {
     result = msg(stream);
   }
-  else if(command == "mv")
+  else if (command == "mv")
   {
-    if(moveOp != noMove)
+    if (moveOp != noMove)
       return false;
     result = moveRobot(stream);
   }
-  else if(command == "mvb")
+  else if (command == "mvb")
   {
-    if(moveOp != noMove)
+    if (moveOp != noMove)
       return false;
     result = moveBall(stream);
   }
-  else if(command == "poll")
+  else if (command == "poll")
     result = repoll(stream);
-  else if(command == "pr" && mode == SystemCall::simulatedRobot)
+  else if (command == "pr" && mode == SystemCall::simulatedRobot)
     result = ctrl->gameController.handleRobotConsole(robotName.mid(5).toInt() - 1, stream);
-  else if(command == "qfr")
+  else if (command == "qfr")
     result = queueFillRequest(stream);
-  else if(command == "save")
+  else if (command == "save")
   {
     PREREQUISITE(idDebugResponse);
     result = saveRequest(stream, true);
   }
-  else if(command == "_save")
+  else if (command == "_save")
   {
     PREREQUISITE(idDebugDataResponse);
     PREREQUISITE(idStreamSpecification);
     result = saveRequest(stream, false);
   }
-  else if(command == "set")
+  else if (command == "set")
   {
     PREREQUISITE(idDebugResponse);
     result = set(stream);
   }
-  else if(command == "_set") // set, part 2
+  else if (command == "_set") // set, part 2
   {
     PREREQUISITE(idDebugDataResponse);
     PREREQUISITE(idStreamSpecification);
     result = set(stream);
   }
-  else if(command == "si")
+  else if (command == "si")
   {
     result = saveImage(stream);
   }
-  else if(command == "vf")
+  else if (command == "vf")
   {
     PREREQUISITE(idDebugResponse);
     PREREQUISITE(idDrawingManager);
     result = viewField(stream);
   }
-  else if(command == "vfd")
+  else if (command == "vfd")
   {
     PREREQUISITE(idDebugResponse);
     PREREQUISITE(idDrawingManager);
     result = viewDrawing(stream, fieldViews, "drawingOnField");
   }
-  else if(command == "vd") //view data part 1
+  else if (command == "vd") //view data part 1
   {
     PREREQUISITE(idDebugResponse);
     result = viewData(stream);
   }
-  else if(command == "_vd") //view data part 2
+  else if (command == "_vd") //view data part 2
   {
     // This dummy command polls the stream specification if necessary
     PREREQUISITE(idStreamSpecification);
     result = true;
   }
-  else if(command == "vp")
+  else if (command == "vp")
   {
     PREREQUISITE(idDebugResponse);
     result = viewPlot(stream);
   }
-  else if(command == "vpd")
+  else if (command == "vpd")
   {
     PREREQUISITE(idDebugResponse);
     result = viewPlotDrawing(stream);
   }
-  else if(mode == SystemCall::teamRobot) // stop
+  else if (mode == SystemCall::teamRobot) // stop
     result = false;
-  else if(command == "vid")
+  else if (command == "vid")
   {
     PREREQUISITE(idDebugResponse);
     PREREQUISITE(idDrawingManager);
     result = viewDrawing(stream, imageViews, "drawingOnImage");
   }
-  else if(command == "vi")
+  else if (command == "vi")
   {
     PREREQUISITE(idDebugResponse);
     PREREQUISITE(idDrawingManager);
     result = viewImage(stream);
   }
-  else if(command == "v3")
+  else if (command == "v3")
   {
     PREREQUISITE(idDebugResponse);
     PREREQUISITE(idDrawingManager);
     result = view3D(stream);
   }
-  else if(command == "wek")
+  else if (command == "wek")
     result = sendWek(stream);
 
   pollingFor = 0;
-  if(!result)
+  if (!result)
   {
-    if(directMode)
+    if (directMode && !fromCall)
     {
       ctrl->printLn("Syntax Error");
     }
@@ -1175,30 +1128,30 @@ bool RobotConsole::msg(In& stream)
 {
   std::string state;
   stream >> state;
-  if(state == "off")
+  if (state == "off")
   {
     printMessages = false;
     return true;
   }
-  else if(state == "on")
+  else if (state == "on")
   {
     printMessages = true;
     return true;
   }
-  else if(state == "log")
+  else if (state == "log")
   {
-    if(logMessages)
+    if (logMessages)
       delete logMessages;
     stream >> state;
     std::string name(state);
-    if(name.size() == 0)
+    if (name.size() == 0)
       return false;
     else
     {
-      if((int) name.rfind('.') <= (int) name.find_last_of("\\/"))
+      if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
         name = name + ".txt";
       char buf[FILENAME_MAX];
-      if(name[0] != '/' && name[0] != '\\' && name[0] != '.' && (name[0] == 0 || name[1] != ':'))
+      if (name[0] != '/' && name[0] != '\\' && name[0] != '.' && (name[0] == 0 || name[1] != ':'))
         sprintf(buf, "%s/Config/Logs/", File::getBHDir());
       else
         buf[0] = 0;
@@ -1208,12 +1161,12 @@ bool RobotConsole::msg(In& stream)
       return true;
     }
   }
-  else if(state == "disable")
+  else if (state == "disable")
   {
     handleMessages = false;
     return true;
   }
-  else if(state == "enable")
+  else if (state == "enable")
   {
     handleMessages = true;
     return true;
@@ -1230,20 +1183,19 @@ bool RobotConsole::backgroundColor(In& stream)
 
 bool RobotConsole::debugRequest(In& stream)
 {
-  std::string debugRequestString,
-    state;
+  std::string debugRequestString, state;
   stream >> debugRequestString >> state;
 
-  if(debugRequestString == "?")
+  if (debugRequestString == "?")
   {
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
       ctrl->list(ctrl->translate(debugRequestTable.debugRequests[i].description).c_str(), state);
     ctrl->printLn("");
     return true;
   }
   else
   {
-    if(debugRequestString == "off")
+    if (debugRequestString == "off")
     {
       SYNC;
       debugOut.out.bin << DebugRequest("disableAll");
@@ -1251,13 +1203,13 @@ bool RobotConsole::debugRequest(In& stream)
       return true;
     }
     else
-      for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-        if(ctrl->translate(debugRequestTable.debugRequests[i].description) == debugRequestString)
+      for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+        if (ctrl->translate(debugRequestTable.debugRequests[i].description) == debugRequestString)
         {
           DebugRequest& d = debugRequestTable.debugRequests[i];
-          if(state == "off")
+          if (state == "off")
             d.enable = false;
-          else if(state == "on" || state == "")
+          else if (state == "on" || state == "")
             d.enable = true;
           else
             return false;
@@ -1275,37 +1227,37 @@ bool RobotConsole::log(In& stream, bool first)
 {
   std::string command;
   stream >> command;
-  if(command == "start")
+  if (command == "start")
   {
     SYNC;
-    if(logFile != "")
+    if (logFile != "")
       logPlayer.play();
-    else if(logPlayer.state != LogPlayer::recording)
+    else if (logPlayer.state != LogPlayer::recording)
       logPlayer.recordStart();
     return true;
   }
-  else if(command == "stop")
+  else if (command == "stop")
   {
     SYNC;
-    if(logPlayer.state == LogPlayer::recording)
+    if (logPlayer.state == LogPlayer::recording)
       logPlayer.recordStop();
     else
       logPlayer.stop();
     return true;
   }
-  else if(command == "clear")
+  else if (command == "clear")
   {
     SYNC;
     logPlayer.init();
     return true;
   }
-  else if(command == "save")
+  else if (command == "save")
   {
     std::string name;
     stream >> name;
-    if(name.size() == 0)
+    if (name.size() == 0)
       return false;
-    else if(first && logFile == "") // poll specification if created new log file
+    else if (first && logFile == "") // poll specification if created new log file
     {
       polled[idStreamSpecification] = false;
       handleConsole("_log save " + name);
@@ -1313,100 +1265,112 @@ bool RobotConsole::log(In& stream, bool first)
     }
     else
     {
-      if((int) name.rfind('.') <= (int) name.find_last_of("\\/"))
+      if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
         name = name + ".log";
-      if(name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+      if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
         name = std::string("Logs\\") + name;
       SYNC;
       return logPlayer.save(name.c_str(), logFile == "" ? &streamHandler : nullptr);
     }
   }
-  else if(command == "saveAudio")
+  else if (command == "saveAudio")
   {
     SYNC;
     std::string name;
     stream >> name;
-    if(name.size() == 0)
+    if (name.size() == 0)
       return false;
     else
     {
-      if((int) name.rfind('.') <= (int) name.find_last_of("\\/"))
+      if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
         name = name + ".wav";
-      if(name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+      if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
         name = std::string("Sounds\\") + name;
       return logPlayer.saveAudioFile(name.c_str());
     }
   }
-  else if(command == "saveImages")
+  else if (command == "saveImages")
   {
     SYNC;
     stream >> command;
     std::string name(command);
     bool raw = false;
-    if(name == "raw")
+    if (name == "raw")
     {
       raw = true;
       stream >> name;
     }
-    if(name.size() == 0)
+    if (name.size() == 0)
       name = "Images\\image";
     return logPlayer.saveImages(raw, name.c_str());
   }
-  else if(command == "saveTiming")
+  else if (command == "saveTiming")
   {
     SYNC;
     std::string name;
     stream >> name;
-    if(name.size() == 0)
+    if (name.size() == 0)
       return false;
     else
     {
-      if((int) name.rfind('.') <= (int) name.find_last_of("\\/"))
+      if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
         name = name + ".csv";
       return logPlayer.writeTimingData(name);
     }
   }
-  else if(command == "keep" || command == "remove")
+  else if (command == "keep" || command == "remove")
   {
     SYNC;
     std::string buf;
     stream >> buf;
     std::vector<MessageID> messageIDs;
-    while(buf != "")
+    while (buf != "")
     {
       int i;
-      for(i = 1; i < numOfMessageIDs; ++i)
-        if(buf == ::getName(MessageID(i)))
+      for (i = 1; i < numOfMessageIDs; ++i)
+        if (buf == ::getName(MessageID(i)))
         {
           messageIDs.push_back(MessageID(i));
           break;
         }
 
-      if(i == numOfMessageIDs)
+      if (i == numOfMessageIDs)
         return false;
       stream >> buf;
     }
-    if(messageIDs.size())
+    if (messageIDs.size())
     {
       messageIDs.push_back(undefined);
-      if(command == "keep")
+      if (command == "keep")
         logPlayer.keep(&messageIDs[0]);
       else
         logPlayer.remove(&messageIDs[0]);
       return true;
     }
   }
-  else if(command == "full")
+  else if (command == "keepFrames" || command == "removeFrames")
+  {
+    SYNC;
+    int startFrame = -1, endFrame = -1;
+    stream >> startFrame >> endFrame;
+    if (command == "keepFrames")
+      logPlayer.keep(startFrame - 1, endFrame - 1);
+    else
+      logPlayer.remove(startFrame - 1, endFrame - 1);
+
+    return true;
+  }
+  else if (command == "full")
   {
     logImagesAsJPEGs = false;
     return true;
   }
-  else if(command == "jpeg")
+  else if (command == "jpeg")
   {
     logImagesAsJPEGs = true;
     return true;
   }
-  else if(command == "?")
+  else if (command == "?")
   {
     SYNC;
     std::string option;
@@ -1416,12 +1380,12 @@ bool RobotConsole::log(In& stream, bool first)
     logPlayer.statistics(frequencies, sizes);
 
     float size = 0;
-    for(int i = 0; i < numOfDataMessageIDs; ++i)
+    for (int i = 0; i < numOfDataMessageIDs; ++i)
       size += static_cast<float>(sizes[i]);
 
     char buf[100];
-    for(int i = 0; i < numOfDataMessageIDs; ++i)
-      if(frequencies[i])
+    for (int i = 0; i < numOfDataMessageIDs; ++i)
+      if (frequencies[i])
       {
         sprintf(buf, "%u\t%.2f%%", frequencies[i], static_cast<float>(sizes[i]) * 100.f / size);
         ctrl->list(std::string(buf) + "\t" + ::getName(MessageID(i)), option, true);
@@ -1430,7 +1394,7 @@ bool RobotConsole::log(In& stream, bool first)
     ctrl->printLn(std::string(buf) + "\ttotal");
     return true;
   }
-  else if(command == "mr") //log mr
+  else if (command == "mr") //log mr
   {
     SYNC;
     std::string param;
@@ -1446,35 +1410,31 @@ bool RobotConsole::log(In& stream, bool first)
     std::list<std::string> commands;
     const auto cLog = std::find(moduleInfo.modules.begin(), moduleInfo.modules.end(), "CognitionLogDataProvider");
     const auto mLog = std::find(moduleInfo.modules.begin(), moduleInfo.modules.end(), "MotionLogDataProvider");
-    for(int i = idProcessFinished + 1; i < numOfDataMessageIDs; ++i)
+    for (int i = idProcessFinished + 1; i < numOfDataMessageIDs; ++i)
     {
-      if(upperFrequencies[i] || lowerFrequencies[i] || motionFrequencies[i])
+      if (upperFrequencies[i] || lowerFrequencies[i] || motionFrequencies[i])
       {
         std::string representation = std::string(::getName(MessageID(i))).substr(2);
-        if(representation == "JPEGImage" ||   
-          representation == "LowFrameRateImage" || representation == "Thumbnail" || representation == "YoloInput") // || representation == "SequenceImage"
+        if (representation == "JPEGImage" || representation == "LowFrameRateImage" || representation == "Thumbnail" || representation == "YoloInput") // || representation == "SequenceImage"
           representation = "Image";
-        if (representation == "JPEGImageUpper" ||
-          representation == "LowFrameRateImageUpper" || representation == "ThumbnailUpper" || representation == "YoloInputUpper") // || representation == "SequenceImageUpper"
+        if (representation == "JPEGImageUpper" || representation == "LowFrameRateImageUpper" || representation == "ThumbnailUpper" || representation == "YoloInputUpper") // || representation == "SequenceImageUpper"
           representation = "ImageUpper";
-        bool inCognition = cLog != moduleInfo.modules.end() &&
-          std::find(cLog->representations.begin(), cLog->representations.end(), representation) != cLog->representations.end() &&
-          (upperFrequencies[i] || lowerFrequencies[i]);
-        bool inMotion = mLog != moduleInfo.modules.end() &&
-          std::find(mLog->representations.begin(), mLog->representations.end(), representation) != mLog->representations.end() &&
-          motionFrequencies[i];
-        if(inCognition || inMotion)
+        bool inCognition = cLog != moduleInfo.modules.end() && std::find(cLog->representations.begin(), cLog->representations.end(), representation) != cLog->representations.end()
+            && (upperFrequencies[i] || lowerFrequencies[i]);
+        bool inMotion = mLog != moduleInfo.modules.end() && std::find(mLog->representations.begin(), mLog->representations.end(), representation) != mLog->representations.end()
+            && motionFrequencies[i];
+        if (inCognition || inMotion)
           commands.push_back(representation + " default");
-        if(inCognition)
+        if (inCognition)
           commands.push_back(representation + " " + cLog->name);
-        if(inMotion)
+        if (inMotion)
           commands.push_back(representation + " " + mLog->name);
       }
     }
 
     bool success = true;
-    for(std::list<std::string>::const_iterator i = commands.begin(); i != commands.end(); ++i)
-      if(param == "list")
+    for (std::list<std::string>::const_iterator i = commands.begin(); i != commands.end(); ++i)
+      if (param == "list")
         ctrl->printLn("mr " + *i);
       else
       {
@@ -1483,104 +1443,104 @@ bool RobotConsole::log(In& stream, bool first)
       }
     return success;
   }
-  else if(logFile != "")
+  else if (logFile != "")
   {
     SYNC;
-    if(command == "load")
+    if (command == "load")
     {
       std::string name;
       stream >> name;
-      if(name.size() == 0)
+      if (name.size() == 0)
         return false;
       else
       {
-        if((int) name.rfind('.') <= (int) name.find_last_of("\\/"))
+        if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
           name = name + ".log";
-        if(name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+        if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
           name = std::string("Logs\\") + name;
         logFile = name;
         LogPlayer::LogPlayerState state = logPlayer.state;
         bool result = logPlayer.open(name.c_str());
-        if(result)
+        if (result)
           logPlayer.handleAllMessages(annotationInfos['c']);
-        if(result && state == LogPlayer::playing)
+        if (result && state == LogPlayer::playing)
           logPlayer.play();
         return result;
       }
     }
-    else if(command == "cycle")
+    else if (command == "cycle")
     {
       logPlayer.setLoop(true);
       return true;
     }
-    else if(command == "once")
+    else if (command == "once")
     {
       logPlayer.setLoop(false);
       return true;
     }
-    else if(command == "pause")
+    else if (command == "pause")
     {
       logPlayer.pause();
       return true;
     }
-    else if(command == "forward")
+    else if (command == "forward")
     {
       std::string opt;
       stream >> opt;
-      if(opt == "image")
+      if (opt == "image")
         logPlayer.stepImageForward();
       else
         logPlayer.stepForward();
       return true;
     }
-    else if(command == "backward")
+    else if (command == "backward")
     {
       std::string opt;
       stream >> opt;
-      if(opt == "image")
+      if (opt == "image")
         logPlayer.stepImageBackward();
       else
         logPlayer.stepBackward();
       return true;
     }
-    else if(command == "repeat")
+    else if (command == "repeat")
     {
       logPlayer.stepRepeat();
       return true;
     }
-    else if(command == "goto")
+    else if (command == "goto")
     {
       LogPlayer::LogPlayerState state = logPlayer.state;
 
       int frame;
       stream >> frame;
       logPlayer.gotoFrame(std::max<>(std::min<>(frame - 1, logPlayer.numberOfFrames - 1), 0));
-      if(state == LogPlayer::playing)
+      if (state == LogPlayer::playing)
         logPlayer.play();
       return true;
     }
-    else if(command == "fast_forward")
+    else if (command == "fast_forward")
     {
       //backup state, gotoFrame will change the state.
       LogPlayer::LogPlayerState state = logPlayer.state;
       int frame = logPlayer.currentFrameNumber + 100;
 
-      logPlayer.gotoFrame(std::max<>(std::min<>(frame - 1, logPlayer.numberOfFrames - 1), 0));
-      if(state == LogPlayer::playing)
+      logPlayer.gotoFrame(std::max<>(std::min<>(frame, logPlayer.numberOfFrames - 1), 0));
+      if (state == LogPlayer::playing)
       {
         //if the state was playing before, continue playing
         logPlayer.play();
       }
       return true;
     }
-    else if(command == "fast_rewind")
+    else if (command == "fast_rewind")
     {
       //backup state, gotoFrame will change the state.
       LogPlayer::LogPlayerState state = logPlayer.state;
       int frame = logPlayer.currentFrameNumber - 100;
 
-      logPlayer.gotoFrame(std::max<>(std::min<>(frame - 1, logPlayer.numberOfFrames - 1), 0));
-      if(state == LogPlayer::playing)
+      logPlayer.gotoFrame(std::max<>(std::min<>(frame, logPlayer.numberOfFrames - 1), 0));
+      if (state == LogPlayer::playing)
       {
         //if the state was playing before, continue playing
         logPlayer.play();
@@ -1593,25 +1553,24 @@ bool RobotConsole::log(In& stream, bool first)
 
 bool RobotConsole::get(In& stream, bool first, bool print)
 {
-  std::string request,
-    option;
+  std::string request, option;
   stream >> request >> option;
-  if(request == "?")
+  if (request == "?")
   {
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(debugRequestTable.debugRequests[i].description.substr(0, 11) == "debug data:")
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (debugRequestTable.debugRequests[i].description.substr(0, 11) == "debug data:")
         ctrl->list(ctrl->translate(debugRequestTable.debugRequests[i].description.substr(11)), option);
     ctrl->printLn("");
     return true;
   }
   else
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(std::string("debugData:") + request == ctrl->translate(debugRequestTable.debugRequests[i].description))
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (std::string("debugData:") + request == ctrl->translate(debugRequestTable.debugRequests[i].description))
       {
-        if(first)
+        if (first)
         {
           // request up-to-date data
-          if(!debugRequestTable.debugRequests[i].enable)
+          if (!debugRequestTable.debugRequests[i].enable)
           {
             SYNC;
             debugOut.out.bin << DebugRequest(debugRequestTable.debugRequests[i].description, true);
@@ -1628,13 +1587,13 @@ bool RobotConsole::get(In& stream, bool first, bool print)
           getOrSetWaitsFor = "";
           DebugDataInfos::const_iterator j = debugDataInfos.find(debugRequestTable.debugRequests[i].description.substr(11));
           ASSERT(j != debugDataInfos.end());
-          if(option == "?")
+          if (option == "?")
           {
             printType(j->second.first.c_str());
             ctrl->printLn("");
             return true;
           }
-          else if(option == "")
+          else if (option == "")
           {
             SYNC;
             OutMapSize size(true);
@@ -1647,7 +1606,7 @@ bool RobotConsole::get(In& stream, bool first, bool print)
             buf[size.getSize() - 1] = 0; // overwrite final space
             std::string buffer = "set " + request + " " + buf;
             delete[] buf;
-            if(print)
+            if (print)
               ctrl->printLn(buffer);
             else
               printBuffer = buffer;
@@ -1661,8 +1620,7 @@ bool RobotConsole::get(In& stream, bool first, bool print)
 
 bool RobotConsole::RepViewWriter::handleMessage(InMessage& message)
 {
-  std::string name,
-    type;
+  std::string name, type;
   message.bin >> name >> type;
 
   return handleMessage(message, type, name);
@@ -1677,22 +1635,21 @@ bool RobotConsole::RepViewWriter::handleMessage(InMessage& message, const std::s
 
 bool RobotConsole::set(In& stream)
 {
-  std::string request,
-    option;
+  std::string request, option;
   stream >> request >> option;
-  if(request == "?")
+  if (request == "?")
   {
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(debugRequestTable.debugRequests[i].description.substr(0, 11) == "debug data:")
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (debugRequestTable.debugRequests[i].description.substr(0, 11) == "debug data:")
         ctrl->list(ctrl->translate(debugRequestTable.debugRequests[i].description.substr(11)), option);
     ctrl->printLn("");
     return true;
   }
   else
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(std::string("debugData:") + request == ctrl->translate(debugRequestTable.debugRequests[i].description))
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (std::string("debugData:") + request == ctrl->translate(debugRequestTable.debugRequests[i].description))
       {
-        if(option == "unchanged")
+        if (option == "unchanged")
         {
           SYNC;
           debugOut.out.bin << debugRequestTable.debugRequests[i].description.substr(11) << char(0);
@@ -1705,18 +1662,18 @@ bool RobotConsole::set(In& stream)
           OutTextMemory temp(buf);
           temp << option;
           bool singleValue = true;
-          while(!stream.eof())
+          while (!stream.eof())
           {
             singleValue = false;
             std::string text;
             stream >> text;
             temp << text;
           }
-          ASSERT(temp.getLength() < (int) sizeof(buf) - 1);
+          ASSERT(temp.getLength() < (int)sizeof(buf) - 1);
           buf[temp.getLength()] = 0;
           std::string line(buf);
           DebugDataInfos::const_iterator j = debugDataInfos.find(debugRequestTable.debugRequests[i].description.substr(11)); //the substr(11) removes "debug data:" from the descrption string
-          if(j == debugDataInfos.end())
+          if (j == debugDataInfos.end())
           {
             // request type specification
             {
@@ -1733,7 +1690,7 @@ bool RobotConsole::set(In& stream)
           else
           {
             getOrSetWaitsFor = "";
-            if(option == "?")
+            if (option == "?")
             {
               printType(j->second.first.c_str());
               ctrl->printLn("");
@@ -1742,17 +1699,17 @@ bool RobotConsole::set(In& stream)
             else
             {
               SYNC;
-              if(singleValue)
+              if (singleValue)
                 line = "value = " + line + ";";
               MessageQueue errors;
               Global::theDebugOut = &errors.out;
               InMapMemory stream(line.c_str(), line.size());
-              if(!stream.eof())
+              if (!stream.eof())
               {
                 debugOut.out.bin << debugRequestTable.debugRequests[i].description.substr(11) << char(1);
                 DebugDataStreamer streamer(streamHandler, debugOut.out.bin, j->second.first, singleValue ? "value" : 0);
                 stream >> streamer;
-                if(errors.isEmpty())
+                if (errors.isEmpty())
                 {
                   debugOut.out.finishMessage(idDebugDataChangeRequest);
                   setGlobals();
@@ -1775,85 +1732,66 @@ bool RobotConsole::set(In& stream)
 
 void RobotConsole::printType(std::string type, const char* field)
 {
-  if(type.size() > 8 && type.substr(type.size() - 8) == " __ptr64")
+  if (type.size() > 8 && type.substr(type.size() - 8) == " __ptr64")
     type = type.substr(0, type.size() - 8);
 
-  if(type[type.size() - 1] == ']')
+  if (type[type.size() - 1] == ']')
   {
     size_t index = type.size();
-    while(type[index - 1] != '[')
+    while (type[index - 1] != '[')
       --index;
     size_t index2 = type[index - 2] == ' ' ? index - 2 : index - 1;
-    if(type[index2 - 1] == ')')
+    if (type[index2 - 1] == ')')
     {
       index2 -= type[index2 - 2] == '4' ? 8 : 0; // " __ptr64"
       index2 -= type[index2 - 4] == ' ' ? 4 : 3;
     }
     printType(type.substr(0, index2), (std::string(field) + type.substr(index - 1)).c_str());
   }
-  else if(type[type.size() - 1] == '*')
-    printType(std::string(type).substr(0, type.size() - (type.size() > 1 && type[type.size() - 2] == ' ' ? 2 : 1)).c_str(),
-              (std::string(field) + "[]").c_str());
+  else if (type[type.size() - 1] == '*')
+    printType(std::string(type).substr(0, type.size() - (type.size() > 1 && type[type.size() - 2] == ' ' ? 2 : 1)).c_str(), (std::string(field) + "[]").c_str());
   else
   {
-    if(type.size() > 6 && type.substr(type.size() - 6) == " const")
+    if (type.size() > 6 && type.substr(type.size() - 6) == " const")
       type = type.substr(0, type.size() - 6);
     const char* t = streamHandler.getString(type.c_str());
     StreamHandler::Specification::const_iterator i = streamHandler.specification.find(t);
     StreamHandler::BasicTypeSpecification::const_iterator b = streamHandler.basicTypeSpecification.find(t);
     StreamHandler::EnumSpecification::const_iterator e = streamHandler.enumSpecification.find(t);
-    if(i != streamHandler.specification.end())
+    if (i != streamHandler.specification.end())
     {
-      if(*field)
+      if (*field)
         ctrl->print(std::string(field) + " : {");
-      for(std::vector<StreamHandler::TypeNamePair>::const_iterator j = i->second.begin(); j != i->second.end();)
+      for (std::vector<StreamHandler::TypeNamePair>::const_iterator j = i->second.begin(); j != i->second.end();)
       {
         printType(j->second, j->first.c_str());
-        if(++j != i->second.end())
+        if (++j != i->second.end())
           ctrl->print("; ");
         else
           ctrl->print(";");
       }
-      if(*field)
+      if (*field)
         ctrl->print("}");
     }
-    else if(b != streamHandler.basicTypeSpecification.end() || e != streamHandler.enumSpecification.end())
+    else if (b != streamHandler.basicTypeSpecification.end() || e != streamHandler.enumSpecification.end())
       ctrl->print((*field ? std::string(field) + " : " : "") + t);
     else
       ctrl->print((*field ? std::string(field) + " : " : "") + "UNKNOWN");
   }
 }
 
-bool RobotConsole::sendMof(In& stream)
+bool RobotConsole::sendKfm(In& stream)
 {
   std::string parameter;
   stream >> parameter;
-  if(parameter != "")
+  if (parameter != "")
     return false;
 
-  std::vector<float> motionData;
-  char buffer[10000];
-  MofCompiler* mofCompiler = new MofCompiler;
-  const bool success = mofCompiler->compileMofs(buffer, sizeof(buffer), motionData);
-  delete mofCompiler;
+  std::vector<KeyFrameMotion> kfms = KeyFrameEngine::loadKeyFrameMotions();
 
-  char* p = buffer;
-  while(*p)
-  {
-    char* p2 = strchr(p, '\n');
-    *p2 = 0;
-    ctrl->printLn(p);
-    p = p2 + 1;
-  }
+  STREAM_EXT(debugOut.out.bin, kfms);
+  debugOut.out.finishMessage(idKeyFrameMotions);
 
-  if(success)
-  {
-    ctrl->printLn("SpecialActions compiled");
-    SYNC;
-    for(const float f : motionData)
-      debugOut.out.bin << f;
-    debugOut.out.finishMessage(idMotionNet);
-  }
   return true;
 }
 
@@ -1861,7 +1799,7 @@ bool RobotConsole::sendWek(In& stream)
 {
   std::string parameter;
   stream >> parameter;
-  if(parameter != "")
+  if (parameter != "")
     return false;
 
   /*for(int i = 1; i < WalkRequest::numOfKickTypes; i += 2)
@@ -1897,23 +1835,23 @@ bool RobotConsole::queueFillRequest(In& stream)
   std::string request;
   stream >> request;
   QueueFillRequest qfr;
-  if(request == "queue")
+  if (request == "queue")
   {
     qfr.behavior = QueueFillRequest::sendImmediately;
     qfr.filter = QueueFillRequest::sendEverything;
     qfr.target = QueueFillRequest::sendViaNetwork;
   }
-  else if(request == "replace")
+  else if (request == "replace")
   {
     qfr.behavior = QueueFillRequest::sendImmediately;
     qfr.filter = QueueFillRequest::latestOnly;
     qfr.target = QueueFillRequest::sendViaNetwork;
   }
-  else if(request == "reject")
+  else if (request == "reject")
   {
     qfr.behavior = QueueFillRequest::discardAll;
   }
-  else if(request == "collect")
+  else if (request == "collect")
   {
     qfr.behavior = QueueFillRequest::sendAfter;
     qfr.filter = QueueFillRequest::sendEverything;
@@ -1921,17 +1859,17 @@ bool RobotConsole::queueFillRequest(In& stream)
 
     stream >> qfr.timingMilliseconds;
     qfr.timingMilliseconds *= 1000;
-    if(!qfr.timingMilliseconds)
+    if (!qfr.timingMilliseconds)
       return false;
   }
-  else if(request == "save")
+  else if (request == "save")
   {
     qfr.filter = QueueFillRequest::sendEverything;
     qfr.target = QueueFillRequest::writeToStick;
 
     stream >> qfr.timingMilliseconds;
     qfr.timingMilliseconds *= 1000;
-    if(!qfr.timingMilliseconds)
+    if (!qfr.timingMilliseconds)
       qfr.behavior = QueueFillRequest::sendImmediately;
     else
       qfr.behavior = QueueFillRequest::sendAfter;
@@ -1947,22 +1885,20 @@ bool RobotConsole::queueFillRequest(In& stream)
 bool RobotConsole::moduleRequest(In& stream)
 {
   SYNC;
-  std::string representation,
-    module,
-    pattern;
+  std::string representation, module, pattern;
   stream >> representation >> module >> pattern;
-  if(representation == "modules")
+  if (representation == "modules")
   {
-    for(const auto& m : moduleInfo.modules)
+    for (const auto& m : moduleInfo.modules)
     {
       std::string text = m.name + " (" + ModuleBase::getName(m.category) + "): ";
-      for(const auto& r : m.requirements)
+      for (const auto& r : m.requirements)
         text += r + " ";
       text += "-> ";
-      for(const auto& r : m.representations)
+      for (const auto& r : m.representations)
       {
         bool selected = false;
-        for(const auto& rp : moduleInfo.config.representationProviders)
+        for (const auto& rp : moduleInfo.config.representationProviders)
           selected |= rp.provider == m.name;
         text += r + (selected ? "* " : " ");
       }
@@ -1971,24 +1907,24 @@ bool RobotConsole::moduleRequest(In& stream)
 
     return true;
   }
-  else if(representation == "?")
+  else if (representation == "?")
   {
-    for(const auto& rp : moduleInfo.config.representationProviders)
+    for (const auto& rp : moduleInfo.config.representationProviders)
     {
       std::string process = "both";
-      for(const auto& m : moduleInfo.modules)
-        if(m.name == rp.provider)
+      for (const auto& m : moduleInfo.modules)
+        if (m.name == rp.provider)
           process = m.processIdentifier != 'c' ? "Motion" : "Cognition";
       std::string text = rp.representation + " (" + process + "): ";
-      for(const auto& m : moduleInfo.modules)
-        if(std::find(m.representations.begin(), m.representations.end(), rp.representation) != m.representations.end())
+      for (const auto& m : moduleInfo.modules)
+        if (std::find(m.representations.begin(), m.representations.end(), rp.representation) != m.representations.end())
           text += m.name + (m.name == rp.provider ? "* " : " ");
       text += rp.provider == "default" ? "default*" : "default";
       ctrl->list(text, module, true);
     }
     return true;
   }
-  else if(representation == "save")
+  else if (representation == "save")
   {
     OutMapFile stream("modules.cfg");
     moduleInfo.sendRequest(stream, true);
@@ -1996,16 +1932,16 @@ bool RobotConsole::moduleRequest(In& stream)
   }
   else
   {
-    if(std::find(moduleInfo.representations.begin(), moduleInfo.representations.end(), representation) == moduleInfo.representations.end())
+    if (std::find(moduleInfo.representations.begin(), moduleInfo.representations.end(), representation) == moduleInfo.representations.end())
       return false;
-    else if(module == "?")
+    else if (module == "?")
     {
       std::string provider;
-      for(const auto& rp : moduleInfo.config.representationProviders)
-        if(rp.representation == representation)
+      for (const auto& rp : moduleInfo.config.representationProviders)
+        if (rp.representation == representation)
           provider = rp.provider;
-      for(const auto& m : moduleInfo.modules)
-        if(std::find(m.representations.begin(), m.representations.end(), representation) != m.representations.end())
+      for (const auto& m : moduleInfo.modules)
+        if (std::find(m.representations.begin(), m.representations.end(), representation) != m.representations.end())
           ctrl->list(m.name + (m.name == provider ? "*" : ""), pattern);
       ctrl->list(std::string("default") + ("default" == provider ? "*" : ""), pattern);
       ctrl->printLn("");
@@ -2014,27 +1950,27 @@ bool RobotConsole::moduleRequest(In& stream)
     else
     {
       char process = 0;
-      if(module != "off" && module != "default")
-        for(const auto& m : moduleInfo.modules)
-          if(m.name == module)
+      if (module != "off" && module != "default")
+        for (const auto& m : moduleInfo.modules)
+          if (m.name == module)
           {
             process = m.processIdentifier;
             break;
           }
 
-      for(auto i = moduleInfo.config.representationProviders.begin(); i != moduleInfo.config.representationProviders.end();)
+      for (auto i = moduleInfo.config.representationProviders.begin(); i != moduleInfo.config.representationProviders.end();)
       {
-        if(i->representation == representation)
+        if (i->representation == representation)
         {
           char processOld = 0;
-          if(process)
-            for(const auto& m : moduleInfo.modules)
-              if(m.name == i->provider)
+          if (process)
+            for (const auto& m : moduleInfo.modules)
+              if (m.name == i->provider)
               {
                 processOld = m.processIdentifier;
                 break;
               }
-          if(!process || !processOld || process == processOld)
+          if (!process || !processOld || process == processOld)
           {
             i = moduleInfo.config.representationProviders.erase(i);
             continue;
@@ -2043,7 +1979,7 @@ bool RobotConsole::moduleRequest(In& stream)
         ++i;
       }
 
-      if(module != "off")
+      if (module != "off")
         moduleInfo.config.representationProviders.push_back(ModuleManager::Configuration::RepresentationProvider(representation, module));
 
       moduleInfo.timeStamp = SystemCall::getCurrentSystemTime() + ++mrCounter;
@@ -2062,7 +1998,7 @@ bool RobotConsole::moveRobot(In& stream)
 {
   SYNC;
   stream >> movePos.x() >> movePos.y() >> movePos.z();
-  if(stream.eof())
+  if (stream.eof())
     moveOp = movePosition;
   else
   {
@@ -2082,7 +2018,7 @@ bool RobotConsole::moveBall(In& stream)
 
 void RobotConsole::printLn(const std::string& line)
 {
-  if(nullptr != ctrl)
+  if (nullptr != ctrl)
   {
     ctrl->printLn(line);
   }
@@ -2092,12 +2028,12 @@ bool RobotConsole::view3D(In& stream)
 {
   std::string buffer;
   stream >> buffer;
-  if(buffer == "?")
+  if (buffer == "?")
   {
     stream >> buffer;
     ctrl->list("image", buffer);
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:")
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:")
         ctrl->list(ctrl->translate(debugRequestTable.debugRequests[i].description.substr(13)), buffer);
     ctrl->printLn("");
     return true;
@@ -2107,41 +2043,40 @@ bool RobotConsole::view3D(In& stream)
     std::string buffer2;
     bool jpeg = false;
     bool upperCam = false;
-    for(;;)
+    for (;;)
     {
       stream >> buffer2;
-      if(!jpeg && buffer2 == "jpeg")
+      if (!jpeg && buffer2 == "jpeg")
         jpeg = true;
-      else if(!upperCam && buffer2 == "upper")
+      else if (!upperCam && buffer2 == "upper")
         upperCam = true;
       else
         break;
     }
 
-    if(buffer == "image" || buffer == "imageUpper")
+    if (buffer == "image" || buffer == "imageUpper")
     {
       upperCam = (buffer != "image");
       std::string name = buffer2 != "" ? buffer2 : std::string("image");
-      if(imageViews3D.find(name) != imageViews3D.end())
+      if (imageViews3D.find(name) != imageViews3D.end())
       {
         ctrl->printLn("View already exists. Specify a (different) name.");
         return true;
       }
       imageViews3D[name];
-      addColorSpaceViews("raw "+ buffer, name, false, upperCam);
-      if(jpeg)
+      addColorSpaceViews("raw " + buffer, name, false, upperCam);
+      if (jpeg)
         upperCam ? handleConsole("dr representation:JPEGImageUpper on") : handleConsole("dr representation:JPEGImage on");
       else
         upperCam ? handleConsole("dr representation:ImageUpper on") : handleConsole("dr representation:Image on");
       return true;
     }
-    else if(!jpeg)
-      for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-        if(debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:" &&
-           ctrl->translate(debugRequestTable.debugRequests[i].description.substr(13)) == buffer)
+    else if (!jpeg)
+      for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+        if (debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:" && ctrl->translate(debugRequestTable.debugRequests[i].description.substr(13)) == buffer)
         {
           std::string name = buffer2 != "" ? buffer2 : std::string(buffer);
-          if(imageViews3D.find(name) != imageViews3D.end())
+          if (imageViews3D.find(name) != imageViews3D.end())
           {
             ctrl->printLn("View already exists. Specify a (different) name.");
             return true;
@@ -2158,7 +2093,7 @@ bool RobotConsole::viewField(In& stream)
 {
   std::string name;
   stream >> name;
-  if(fieldViews.find(name) != fieldViews.end())
+  if (fieldViews.find(name) != fieldViews.end())
     ctrl->printLn("View already exists. Specify a different name.");
   else
   {
@@ -2172,22 +2107,21 @@ bool RobotConsole::viewField(In& stream)
 
 bool RobotConsole::viewData(In& stream)
 {
-  std::string name,
-    option;
+  std::string name, option;
   stream >> name >> option;
-  for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-    if(std::string("debugData:") + name == ctrl->translate(debugRequestTable.debugRequests[i].description))
+  for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+    if (std::string("visualizeData:") + name == ctrl->translate(debugRequestTable.debugRequests[i].description))
     {
       // enable the debug request if it is not already enabled
       DebugRequest& d = debugRequestTable.debugRequests[i];
-      if(option == "off")
+      if (option == "off")
       {
         d.enable = false;
         return true;
       }
-      else if(option == "on" || option == "")
+      else if (option == "on" || option == "")
       {
-        if(representationViews.find(name) == representationViews.end())
+        if (representationViews.find(name) == representationViews.end())
         {
           representationViews[name] = new DataView(robotName + ".data." + name.c_str(), name, *this, streamHandler);
           ctrl->addView(representationViews[name], robotName + ".data", SimRobot::Flag::copy | SimRobot::Flag::exportAsImage);
@@ -2213,43 +2147,44 @@ bool RobotConsole::viewDrawing(In& stream, RobotConsole::Views& views, const cha
 {
   std::string buffer;
   stream >> buffer;
-  if(buffer == "?")
+  if (buffer == "?")
   {
     stream >> buffer;
-    for(Views::const_iterator i = views.begin(); i != views.end(); ++i)
+    for (Views::const_iterator i = views.begin(); i != views.end(); ++i)
       ctrl->list(i->first, buffer);
     ctrl->printLn("");
     return true;
   }
   else
-    for(Views::const_iterator i = views.begin(); i != views.end(); ++i)
-      if(i->first == buffer)
+    for (Views::const_iterator i = views.begin(); i != views.end(); ++i)
+      if (i->first == buffer)
       {
         stream >> buffer;
-        if(buffer == "?")
+        if (buffer == "?")
         {
           stream >> buffer;
-          for(std::unordered_map< const char*, DrawingManager::Drawing>::const_iterator j = drawingManager.drawings.begin(); j != drawingManager.drawings.end(); ++j)
-            if(!strcmp(drawingManager.getDrawingType(j->first), type))
+          for (std::unordered_map<const char*, DrawingManager::Drawing>::const_iterator j = drawingManager.drawings.begin(); j != drawingManager.drawings.end(); ++j)
+            if (!strcmp(drawingManager.getDrawingType(j->first), type))
               ctrl->list(ctrl->translate(j->first), buffer);
           ctrl->printLn("");
           return true;
         }
         else
         {
-          for(std::unordered_map< const char*, DrawingManager::Drawing>::const_iterator j = drawingManager.drawings.begin(); j != drawingManager.drawings.end(); ++j)
-            if(ctrl->translate(j->first) == buffer && !strcmp(drawingManager.getDrawingType(j->first), type))
+          for (std::unordered_map<const char*, DrawingManager::Drawing>::const_iterator j = drawingManager.drawings.begin(); j != drawingManager.drawings.end(); ++j)
+            if (ctrl->translate(j->first) == buffer && !strcmp(drawingManager.getDrawingType(j->first), type))
             {
               std::string buffer2;
               stream >> buffer2;
-              if(buffer2 == "on" || buffer2 == "")
+              if (buffer2 == "on" || buffer2 == "")
               {
-                views[i->first].remove(j->first);
+                if (std::string(j->first).substr(0, 7) != "origin:")
+                  views[i->first].remove(j->first);
                 views[i->first].push_back(j->first);
                 handleConsole(std::string("dr debugDrawing:") + buffer + " on");
                 return true;
               }
-              else if(buffer2 == "off")
+              else if (buffer2 == "off")
               {
                 views[i->first].remove(j->first);
                 handleConsole(std::string("dr debugDrawing:") + buffer + " off");
@@ -2267,30 +2202,30 @@ bool RobotConsole::viewImage(In& stream)
 {
   std::string buffer;
   stream >> buffer;
-  if(buffer == "?")
+  if (buffer == "?")
   {
     stream >> buffer;
     ctrl->list("none", buffer);
     ctrl->list("image", buffer);
     ctrl->list("imageUpper", buffer);
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:")
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:")
         ctrl->list(ctrl->translate(debugRequestTable.debugRequests[i].description.substr(13)), buffer);
     ctrl->printLn("");
     return true;
   }
-  else if(buffer == "none")
+  else if (buffer == "none")
   {
     bool upperCam = false;
     stream >> buffer;
-    if(buffer == "upper")
+    if (buffer == "upper")
     {
       upperCam = true;
       stream >> buffer;
     }
 
     std::string name = buffer != "" ? buffer : "none";
-    if(imageViews.find(name) != imageViews.end())
+    if (imageViews.find(name) != imageViews.end())
     {
       ctrl->printLn("View already exists. Specify a (different) name.");
       return true;
@@ -2304,24 +2239,22 @@ bool RobotConsole::viewImage(In& stream)
   else
   {
     std::string buffer2;
-    bool jpeg = false,
-      segmented = false,
-      upperCam = false;
-    for(;;)
+    bool jpeg = false, segmented = false, upperCam = false;
+    for (;;)
     {
       stream >> buffer2;
-      if(!jpeg && buffer2 == "jpeg")
+      if (!jpeg && buffer2 == "jpeg")
         jpeg = true;
-      else if(!segmented && buffer2 == "segmented")
+      else if (!segmented && buffer2 == "segmented")
         segmented = true;
       else
         break;
     }
 
-    if(buffer == "image" || buffer == "imageUpper")
+    if (buffer == "image" || buffer == "imageUpper")
     {
       std::string name = buffer2 != "" ? buffer2 : buffer + (segmented ? "Segmented" : "");
-      if(imageViews.find(name) != imageViews.end())
+      if (imageViews.find(name) != imageViews.end())
       {
         ctrl->printLn("View already exists. Specify a (different) name.");
         return true;
@@ -2333,28 +2266,27 @@ bool RobotConsole::viewImage(In& stream)
       std::string enableGain;
       stream >> enableGain;
       float gain = 1.0f;
-      if(enableGain == "gain")
+      if (enableGain == "gain")
       {
         stream >> gain;
       }
       actualImageViews[name] = new ImageView(robotName + ".image." + name.c_str(), *this, ("raw " + buffer).c_str(), name, segmented, upperCam, gain);
       ctrl->addView(actualImageViews[name], robotName + ".image", SimRobot::Flag::copy | SimRobot::Flag::exportAsImage);
-      if(segmented)
+      if (segmented)
         segmentedImageViews.emplace_back(actualImageViews[name]);
-      if(jpeg)
+      if (jpeg)
         handleConsole("dr representation:JPEGI" + buffer.substr(1) + " on");
       else
         handleConsole("dr representation:I" + buffer.substr(1) + " on");
 
       return true;
     }
-    else if(!jpeg)
-      for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-        if(debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:" &&
-           ctrl->translate(debugRequestTable.debugRequests[i].description.substr(13)) == buffer)
+    else if (!jpeg)
+      for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+        if (debugRequestTable.debugRequests[i].description.substr(0, 13) == "debug images:" && ctrl->translate(debugRequestTable.debugRequests[i].description.substr(13)) == buffer)
         {
           std::string name = buffer2 != "" ? buffer2 : std::string(buffer) + (segmented ? "Segmented" : "");
-          if(imageViews.find(name) != imageViews.end())
+          if (imageViews.find(name) != imageViews.end())
           {
             ctrl->printLn("View already exists. Specify a (different) name.");
             return true;
@@ -2381,47 +2313,49 @@ bool RobotConsole::viewPlot(In& stream)
   std::string xUnit;
   float xScale;
   stream >> name >> plotSize >> minValue >> maxValue >> yUnit >> xUnit >> xScale;
-  if(plotSize < 2 || minValue >= maxValue)
+  if (plotSize < 2 || minValue >= maxValue)
     return false;
-  if(xScale == 0.)
+  if (xScale == 0.)
     xScale = 1.;
   QString fullName = robotName + ".plot." + name.c_str();
-  if((unsigned int) plotSize > maxPlotSize)
+  if ((unsigned int)plotSize > maxPlotSize)
     maxPlotSize = plotSize;
-  if(plotViews.find(name) != plotViews.end())
+  if (plotViews.find(name) != plotViews.end())
   {
-    PlotView* plotView = (PlotView*) ctrl->application->resolveObject(fullName);
+    PlotView* plotView = (PlotView*)ctrl->application->resolveObject(fullName);
     ASSERT(plotView);
-    plotView->setParameters((unsigned int) plotSize, minValue, maxValue, yUnit, xUnit, xScale);
+    plotView->setParameters((unsigned int)plotSize, minValue, maxValue, yUnit, xUnit, xScale);
     return true;
   }
   plotViews[name];
   ctrl->setPlotViews(plotViews);
   ctrl->updateCommandCompletion();
-  ctrl->addView(new PlotView(fullName, *this, name, (unsigned int) plotSize, minValue, maxValue, yUnit, xUnit, xScale), robotName + ".plot", SimRobot::Flag::copy | SimRobot::Flag::exportAsImage);
+  ctrl->addView(new PlotView(fullName, *this, name, (unsigned int)plotSize, minValue, maxValue, yUnit, xUnit, xScale), robotName + ".plot", SimRobot::Flag::copy | SimRobot::Flag::exportAsImage);
   return true;
 }
 
 bool RobotConsole::kickView()
 {
-  if(kickViewSet)
+  if (kickViewSet)
     ctrl->printLn("View already exists.");
   else
   {
-    if(mode == SystemCall::simulatedRobot)
+    if (mode == SystemCall::simulatedRobot)
     {
       kickViewSet = true;
-      ctrl->addView(new KickView(robotName + ".KikeView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, printBuffer,
-                                 (SimRobotCore2::Body*)ctrl->application->resolveObject(robotFullName, SimRobotCore2::body)), robotName);
+      ctrl->addView(
+          new KickView(robotName + ".KikeView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, printBuffer, (SimRobotCore2::Body*)ctrl->application->resolveObject(robotFullName, SimRobotCore2::body)),
+          robotName);
       return true;
     }
-    if(mode == SystemCall::remoteRobot)
+    if (mode == SystemCall::remoteRobot)
     {
       kickViewSet = true;
       QString puppetName("RoboCup.puppets." + robotName);
 
-      ctrl->addView(new KickView(robotName + ".KikeView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, printBuffer,
-                                 (SimRobotCore2::Body*)ctrl->application->resolveObject(puppetName, SimRobotCore2::body)), robotName);
+      ctrl->addView(
+          new KickView(robotName + ".KikeView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, printBuffer, (SimRobotCore2::Body*)ctrl->application->resolveObject(puppetName, SimRobotCore2::body)),
+          robotName);
       return true;
     }
   }
@@ -2437,9 +2371,9 @@ void RobotConsole::sendDebugMessage(InMessage& msg)
 std::string RobotConsole::getDebugRequest(const std::string& name)
 {
   SYNC;
-  for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+  for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
   {
-    if(std::string("debugData:") + name == ctrl->translate(debugRequestTable.debugRequests[i].description))
+    if (std::string("debugData:") + name == ctrl->translate(debugRequestTable.debugRequests[i].description))
     {
       return debugRequestTable.debugRequests[i].description.substr(11);
     }
@@ -2452,45 +2386,45 @@ bool RobotConsole::viewPlotDrawing(In& stream)
 {
   std::string buffer;
   stream >> buffer;
-  if(buffer == "?")
+  if (buffer == "?")
   {
     stream >> buffer;
-    for(PlotViews::const_iterator i = plotViews.begin(); i != plotViews.end(); ++i)
+    for (PlotViews::const_iterator i = plotViews.begin(); i != plotViews.end(); ++i)
       ctrl->list(i->first.c_str(), buffer);
     ctrl->printLn("");
     return true;
   }
   else
-    for(PlotViews::const_iterator i = plotViews.begin(); i != plotViews.end(); ++i)
-      if(i->first == buffer)
+    for (PlotViews::const_iterator i = plotViews.begin(); i != plotViews.end(); ++i)
+      if (i->first == buffer)
       {
         stream >> buffer;
-        if(buffer == "?")
+        if (buffer == "?")
         {
           stream >> buffer;
-          for(int j = 0; j < debugRequestTable.currentNumberOfDebugRequests; ++j)
-            if(debugRequestTable.debugRequests[j].description.substr(0, 5) == "plot:")
+          for (int j = 0; j < debugRequestTable.currentNumberOfDebugRequests; ++j)
+            if (debugRequestTable.debugRequests[j].description.substr(0, 5) == "plot:")
               ctrl->list(ctrl->translate(debugRequestTable.debugRequests[j].description.substr(5)).c_str(), buffer);
           ctrl->printLn("");
           return true;
         }
         else
         {
-          for(int j = 0; j < debugRequestTable.currentNumberOfDebugRequests; ++j)
-            if(ctrl->translate(debugRequestTable.debugRequests[j].description) == std::string("plot:") + buffer)
+          for (int j = 0; j < debugRequestTable.currentNumberOfDebugRequests; ++j)
+            if (ctrl->translate(debugRequestTable.debugRequests[j].description) == std::string("plot:") + buffer)
             {
               Layer layer;
               layer.layer = buffer;
               stream >> buffer;
-              if(buffer == "?")
+              if (buffer == "?")
               {
                 stream >> buffer;
-                for(int color = 0; color < numOfColors; ++color)
-                  ctrl->list(ctrl->translate(getName((Color) color)).c_str(), buffer);
+                for (int color = 0; color < numOfColors; ++color)
+                  ctrl->list(ctrl->translate(getName((Color)color)).c_str(), buffer);
                 ctrl->printLn("");
                 return true;
               }
-              if(buffer == "off")
+              if (buffer == "off")
               {
                 {
                   SYNC;
@@ -2501,25 +2435,25 @@ bool RobotConsole::viewPlotDrawing(In& stream)
               }
               else
               {
-                if(buffer == "black")
+                if (buffer == "black")
                   layer.color = ColorRGBA::black;
-                else if(buffer == "red")
+                else if (buffer == "red")
                   layer.color = ColorRGBA::red;
-                else if(buffer == "green")
+                else if (buffer == "green")
                   layer.color = ColorRGBA::green;
-                else if(buffer == "blue")
+                else if (buffer == "blue")
                   layer.color = ColorRGBA::blue;
-                else if(buffer == "yellow")
+                else if (buffer == "yellow")
                   layer.color = ColorRGBA::yellow;
-                else if(buffer == "cyan")
+                else if (buffer == "cyan")
                   layer.color = ColorRGBA::cyan;
-                else if(buffer == "magenta")
+                else if (buffer == "magenta")
                   layer.color = ColorRGBA::magenta;
-                else if(buffer == "orange")
+                else if (buffer == "orange")
                   layer.color = ColorRGBA::orange;
-                else if(buffer == "violet")
+                else if (buffer == "violet")
                   layer.color = ColorRGBA::violet;
-                else if(buffer == "gray")
+                else if (buffer == "gray")
                   layer.color = ColorRGBA::gray;
                 else
                 {
@@ -2528,10 +2462,10 @@ bool RobotConsole::viewPlotDrawing(In& stream)
                   layer.color = ColorRGBA((c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff);
                 }
                 stream >> layer.description;
-                if(layer.description.empty())
+                if (layer.description.empty())
                 {
                   const char* name = strrchr(layer.layer.c_str(), ':');
-                  if(name)
+                  if (name)
                     layer.description = name + 1;
                   else
                     layer.description = layer.layer;
@@ -2553,11 +2487,11 @@ bool RobotConsole::viewPlotDrawing(In& stream)
 
 bool RobotConsole::joystickExecCommand(const std::string& cmd)
 {
-  if(cmd == "")
+  if (cmd == "")
     return false;
 
   ctrl->executeConsoleCommand(cmd, this);
-  if(joystickTrace)
+  if (joystickTrace)
     ctrl->printLn(cmd);
 
   return true;
@@ -2565,55 +2499,54 @@ bool RobotConsole::joystickExecCommand(const std::string& cmd)
 
 void RobotConsole::handleJoystick()
 {
-  if(!joystick.update())
+  if (!joystick.update())
     return; //return if no joystick was found
 
   // handle joystick events
   unsigned int buttonId;
   bool pressed;
   bool buttonCommandExecuted(false);
-  while(joystick.getNextEvent(buttonId, pressed))
+  while (joystick.getNextEvent(buttonId, pressed))
   {
     ASSERT(buttonId < Joystick::numOfButtons);
     buttonCommandExecuted |= joystickExecCommand(pressed ? joystickButtonPressCommand[buttonId] : joystickButtonReleaseCommand[buttonId]);
-    if(!pressed)
-      for(int j = 0; j < joystickNumOfMotionCommands; ++j)
+    if (!pressed)
+      for (int j = 0; j < joystickNumOfMotionCommands; ++j)
         joystickMotionCommands[j].lastCommand = "";
   }
 
   // walk and move head only when there is no button command
-  if(buttonCommandExecuted)
+  if (buttonCommandExecuted)
     return;
 
   unsigned int timeNow = SystemCall::getCurrentSystemTime();
-  if(lines.empty()
-     && timeNow - joystickLastTime >= 100)  // don't generate too many commands
+  if (lines.empty() && timeNow - joystickLastTime >= 100) // don't generate too many commands
   {
     joystickLastTime = timeNow;
     float speeds[Joystick::numOfAxes];
     bool preparedSpeeds = false;
-    for(int j = 0; j < joystickNumOfMotionCommands; ++j)
+    for (int j = 0; j < joystickNumOfMotionCommands; ++j)
     {
       JoystickMotionCommand& cmd(joystickMotionCommands[j]);
-      if(!cmd.command.empty())
+      if (!cmd.command.empty())
       {
-        if(!preparedSpeeds)
+        if (!preparedSpeeds)
         {
-          for(int i = 0; i < Joystick::numOfAxes; ++i)
+          for (int i = 0; i < Joystick::numOfAxes; ++i)
           {
             float d = joystick.getAxisState(i);
             float threshold = joystickAxisThresholds[i];
-            if(d < -threshold)
+            if (d < -threshold)
               speeds[i] = (d + threshold) / (1 - threshold);
-            else if(d > threshold)
+            else if (d > threshold)
               speeds[i] = (d - threshold) / (1 - threshold);
             else
               speeds[i] = 0;
-            if(joystickAxisMappings[i])
+            if (joystickAxisMappings[i])
             {
               bool pressed1 = joystick.isButtonPressed(joystickAxisMappings[i] & 0xffff);
               bool pressed2 = joystick.isButtonPressed(joystickAxisMappings[i] >> 16);
-              if(pressed1 != pressed2)
+              if (pressed1 != pressed2)
                 speeds[i] = pressed1 ? 1.f : -1.f;
             }
             speeds[i] *= joystickAxisMaxSpeeds[i];
@@ -2621,19 +2554,20 @@ void RobotConsole::handleJoystick()
           }
           preparedSpeeds = true;
         }
-        if(joystickCommandBuffer.size() < cmd.command.length() + 258)
+        if (joystickCommandBuffer.size() < cmd.command.length() + 258)
           joystickCommandBuffer.resize(cmd.command.length() + 258);
         ASSERT(Joystick::numOfAxes == 8);
-        sprintf(&joystickCommandBuffer[0], cmd.command.c_str(),
-                speeds[cmd.indices[0]],
-                speeds[cmd.indices[1]],
-                speeds[cmd.indices[2]],
-                speeds[cmd.indices[3]],
-                speeds[cmd.indices[4]],
-                speeds[cmd.indices[5]],
-                speeds[cmd.indices[6]],
-                speeds[cmd.indices[7]]);
-        if(strcmp(cmd.lastCommand.c_str(), &joystickCommandBuffer[0]))
+        sprintf(&joystickCommandBuffer[0],
+            cmd.command.c_str(),
+            speeds[cmd.indices[0]],
+            speeds[cmd.indices[1]],
+            speeds[cmd.indices[2]],
+            speeds[cmd.indices[3]],
+            speeds[cmd.indices[4]],
+            speeds[cmd.indices[5]],
+            speeds[cmd.indices[6]],
+            speeds[cmd.indices[7]]);
+        if (strcmp(cmd.lastCommand.c_str(), &joystickCommandBuffer[0]))
         {
           joystickExecCommand(&joystickCommandBuffer[0]);
           cmd.lastCommand = &joystickCommandBuffer[0];
@@ -2647,12 +2581,12 @@ bool RobotConsole::joystickCommand(In& stream)
 {
   std::string command;
   stream >> command;
-  if(command == "show")
+  if (command == "show")
   {
     joystickTrace = true;
     return true;
   }
-  else if(command == "hide")
+  else if (command == "hide")
   {
     joystickTrace = false;
     return true;
@@ -2663,7 +2597,7 @@ bool RobotConsole::joystickCommand(In& stream)
   //rest of line into one string (std::stringstream-like .str() would be nice :-/):
   std::string line;
   stream >> line;
-  while(!stream.eof())
+  while (!stream.eof())
   {
     std::string text;
     stream >> text;
@@ -2671,11 +2605,11 @@ bool RobotConsole::joystickCommand(In& stream)
     line += text;
   }
 
-  if(command == "press" || command == "release")
+  if (command == "press" || command == "release")
   {
-    if(number > 0 && number <= Joystick::numOfButtons)
+    if (number > 0 && number <= Joystick::numOfButtons)
     {
-      if(command == "release")
+      if (command == "release")
         joystickButtonReleaseCommand[number - 1].swap(line);
       else
         joystickButtonPressCommand[number - 1].swap(line);
@@ -2683,19 +2617,19 @@ bool RobotConsole::joystickCommand(In& stream)
     }
     return false;
   }
-  else if(command == "motion")
+  else if (command == "motion")
   {
-    if(number > 0 && number <= joystickNumOfMotionCommands)
+    if (number > 0 && number <= joystickNumOfMotionCommands)
     {
       JoystickMotionCommand& cmd(joystickMotionCommands[number - 1]);
-      for(int i = 0; i < Joystick::numOfAxes; ++i)
+      for (int i = 0; i < Joystick::numOfAxes; ++i)
         cmd.indices[i] = 0;
       std::string::size_type pos = line.find("$");
       int i = 0;
-      while(i < Joystick::numOfAxes && pos != std::string::npos)
+      while (i < Joystick::numOfAxes && pos != std::string::npos)
       {
         int id = line[pos + 1] - '1';
-        if(id >= 0 && id < Joystick::numOfAxes)
+        if (id >= 0 && id < Joystick::numOfAxes)
         {
           cmd.indices[i++] = id;
           line.replace(pos, 2, "%lf");
@@ -2717,7 +2651,7 @@ bool RobotConsole::joystickSpeeds(In& stream)
 {
   int id;
   stream >> id;
-  if(id > 0 && id <= Joystick::numOfAxes)
+  if (id > 0 && id <= Joystick::numOfAxes)
   {
     stream >> joystickAxisMaxSpeeds[id - 1] >> joystickAxisThresholds[id - 1] >> joystickAxisCenters[id - 1];
     return true;
@@ -2729,7 +2663,7 @@ bool RobotConsole::joystickMaps(In& stream)
 {
   int axis, button1, button2;
   stream >> axis >> button1 >> button2;
-  if(axis > 0 && axis <= Joystick::numOfAxes && button1 >= 0 && button1 <= Joystick::numOfButtons && button2 > 0 && button2 <= Joystick::numOfButtons)
+  if (axis > 0 && axis <= Joystick::numOfAxes && button1 >= 0 && button1 <= Joystick::numOfButtons && button2 > 0 && button2 <= Joystick::numOfButtons)
   {
     joystickAxisMappings[axis - 1] = button1 == 0 ? 0 : ((button1 - 1) | ((button2 - 1) << 16));
     return true;
@@ -2743,19 +2677,20 @@ bool RobotConsole::saveRequest(In& stream, bool first)
   std::string path;
   stream >> buffer >> path;
 
-  if(buffer == "?")
+  if (buffer == "?")
   {
-    for(auto& entry : ctrl->representationToFile)
-      ctrl->list(entry.first.c_str(), path);
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (debugRequestTable.debugRequests[i].description.substr(0, 11) == "debug data:")
+        ctrl->list(ctrl->translate(debugRequestTable.debugRequests[i].description.substr(11)), path);
     ctrl->printLn("");
     return true;
   }
   else
   {
-    for(int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
-      if(std::string("debugData:") + buffer == ctrl->translate(debugRequestTable.debugRequests[i].description))
+    for (int i = 0; i < debugRequestTable.currentNumberOfDebugRequests; ++i)
+      if (std::string("debugData:") + buffer == ctrl->translate(debugRequestTable.debugRequests[i].description))
       {
-        if(first) // request current Values
+        if (first) // request current Values
         {
           SYNC;
           debugOut.out.bin << DebugRequest(debugRequestTable.debugRequests[i].description, true);
@@ -2770,22 +2705,63 @@ bool RobotConsole::saveRequest(In& stream, bool first)
         else
         {
           getOrSetWaitsFor = "";
-          DebugDataInfos::const_iterator j = debugDataInfos.find(debugRequestTable.debugRequests[i].description.substr(11));
+          const std::string representation = debugRequestTable.debugRequests[i].description.substr(11);
+          DebugDataInfos::const_iterator j = debugDataInfos.find(representation);
           ASSERT(j != debugDataInfos.end());
 
-          std::string filename;
-          if(path == "") // no path specified, use default location
+          const std::string moduleConfig = getConfigFileForRepresentation(representation);
+          std::string filename = path;
+          if (path == "") // no path specified, use default location
           {
-            filename = getPathForRepresentation(debugRequestTable.debugRequests[i].description.substr(11));
-            if(filename == "")
+            filename = getPathForRepresentation(representation);
+          }
+          else if (path.back() == '/') // directory given
+          {
+            const std::string prefix = std::string(File::getBHDir()) + "/Config/";
+            filename = prefix + path + moduleConfig;
+          }
+
+          std::filesystem::create_directories(std::filesystem::path(filename).parent_path());
+
+          {
+            OutMapFile file(filename);
+            if (!file.exists())
             {
-              ctrl->printLn("Error getting filename for " + debugRequestTable.debugRequests[i].description.substr(11) + ". Representation can not be saved.");
+              ctrl->printLn("Unable to open " + filename + " for write.");
               return true;
             }
+            MapWriter writer(streamHandler, file);
+            j->second.second->handleAllMessages(writer);
           }
-          OutMapFile file(filename);
-          MapWriter writer(streamHandler, file);
-          j->second.second->handleAllMessages(writer);
+
+          std::list<std::string> names = File::getFullNamesHierarchy(moduleConfig);
+
+          // keep full config file if first one in hierarchy
+          if (names.front() == filename)
+            return true;
+          // keep full config file if not part of hierarchy
+          if (std::find(names.begin(), names.end(), filename) == names.end())
+            return true;
+
+          std::shared_ptr<SimpleMap> map_with;
+          {
+            InMapFile infile_with(names);
+            map_with = infile_with.getMap();
+          }
+
+          names.remove(filename);
+
+          std::shared_ptr<SimpleMap> map_without;
+          {
+            InMapFile infile_without(names);
+            map_without = infile_without.getMap();
+          }
+
+          *map_with -= *map_without;
+
+          OutMapFile outfile(filename);
+          outfile << *map_with;
+
           return true;
         }
       }
@@ -2797,7 +2773,7 @@ bool RobotConsole::saveImage(In& stream)
 {
   std::string cam;
   stream >> cam;
-  if(cam == "reset")
+  if (cam == "reset")
   {
     imageSaveNumber = 0;
     return true;
@@ -2805,9 +2781,9 @@ bool RobotConsole::saveImage(In& stream)
   else
   {
     bool useUpperCam;
-    if(cam == "upper")
+    if (cam == "upper")
       useUpperCam = true;
-    else if(cam == "lower")
+    else if (cam == "lower")
       useUpperCam = false;
     else
       return false;
@@ -2815,17 +2791,17 @@ bool RobotConsole::saveImage(In& stream)
     std::string filename;
     stream >> filename;
     int number = -1;
-    if(filename == "number")
+    if (filename == "number")
     {
       number = imageSaveNumber++;
       stream >> filename;
     }
-    if(filename == "")
+    if (filename == "")
       filename = "raw_image_" + cam + ".bmp";
 
     SYNC;
     Image* srcImage;
-    if(useUpperCam)
+    if (useUpperCam)
       srcImage = camImages["raw imageUpper"].image;
     else
       srcImage = camImages["raw image"].image;
@@ -2836,40 +2812,54 @@ bool RobotConsole::saveImage(In& stream)
 
 void RobotConsole::handleKeyEvent(int key, bool pressed)
 {
-  if(joystickTrace && pressed)
+  if (joystickTrace && pressed)
   {
     char buf[33];
     sprintf(buf, "%u", key + 1);
     ctrl->printLn(std::string("shortcut: ") + buf);
   }
   std::string* joystickButtonCommand(pressed ? joystickButtonPressCommand : joystickButtonReleaseCommand);
-  if(key >= 0 && key < Joystick::numOfButtons && joystickButtonCommand[key] != "")
+  if (key >= 0 && key < Joystick::numOfButtons && joystickButtonCommand[key] != "")
     ctrl->executeConsoleCommand(joystickButtonCommand[key], this);
 }
 
-std::string RobotConsole::getPathForRepresentation(std::string representation)
+std::string RobotConsole::getPathForRepresentation(const std::string& representation)
 {
-  unordered_map<std::string, std::string>::const_iterator i = ctrl->representationToFile.find(representation);
-  if(i == ctrl->representationToFile.end())
-    return "";
-
   // Check where the file has to be placed. Search order:
   // Robots/[robotname]
   // Robots/Default
-  // Locations/[locationname]
-  // Locations/Default
   // the config directory, default return value
 
-  std::list<std::string> names = File::getFullNames(i->second);
-  for(std::list<std::string>::const_iterator i = names.begin(); i != names.end(); ++i)
+  std::string configName = getConfigFileForRepresentation(representation);
+  std::list<std::string> names = File::getFullNames(configName);
+  for (std::list<std::string>::const_iterator i = names.begin(); i != names.end(); ++i)
   {
     File path(*i, "r", false);
-    if(path.exists())
+    if (path.exists())
       return *i;
   }
 
   // if file is not anywhere else, return config directory as default directory
-  return i->second;
+  return names.back();
+}
+
+std::string RobotConsole::getConfigFileForRepresentation(const std::string& representation)
+{
+  std::string config;
+
+  // check custom config names first
+  auto file = ctrl->representationToFile.find(representation);
+  if (file != ctrl->representationToFile.end())
+  {
+    config = file->second;
+  }
+  else
+  {
+    config = representation.substr(representation.find(":") + 1);
+    config = getConfigName(config.c_str());
+  }
+
+  return config;
 }
 
 bool RobotConsole::acceptCamera(In& stream)
@@ -2877,7 +2867,7 @@ bool RobotConsole::acceptCamera(In& stream)
   std::string command;
   stream >> command;
 
-  if(command == "?")
+  if (command == "?")
   {
     stream >> command;
     ctrl->list(drawingsViaProcess == 'b' ? "both*" : "both", command);
@@ -2888,32 +2878,15 @@ bool RobotConsole::acceptCamera(In& stream)
   else
   {
     SYNC;
-    if(command == "upper")
+    if (command == "upper")
       drawingsViaProcess = 'c';
-    else if(command == "lower")
+    else if (command == "lower")
       drawingsViaProcess = 'd';
-    else if(command == "both")
+    else if (command == "both")
       drawingsViaProcess = 'b';
     else
       return false;
   }
 
   return true;
-}
-
-void RobotConsole::saveColorCalibration()
-{
-  SYNC;
-
-  std::list<std::string> names = File::getFullNames("colorCalibration.cfg");
-  std::list<std::string>::const_iterator i;
-  for(i = names.begin(); i != names.end(); ++i)
-  {
-    File path(*i, "r", false);
-    if(path.exists())
-      break;
-  }
-
-  OutMapFile stream(i == names.end() ? "colorCalibration.cfg" : *i);
-  stream << colorCalibration;
 }

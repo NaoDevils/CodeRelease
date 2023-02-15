@@ -20,8 +20,7 @@
  * @tparam M The class that represents a single measurement / sample.
  * @tparam C The class the error function is a member of.
  */
-template <class M, class C>
-class GaussNewtonOptimizer
+template <class M, class C> class GaussNewtonOptimizer
 {
 private:
   using Vector = Eigen::Matrix<float, Eigen::Dynamic, 1>;
@@ -32,16 +31,15 @@ private:
   Vector currentValues; /**< The vector (Nx1-matrix) containing the current error values for all measurements. */
   const std::vector<M>& measurements; /**< A reference to the vector containing all measurements. */
   const C& object; /**< The object used to call the error function. */
-  float(C::*pFunction)(const M& measurement, const std::vector<float>& parameters) const;  /**< A pointer to the error function. */
+  float (C::*pFunction)(const M& measurement, const std::vector<float>& parameters) const; /**< A pointer to the error function. */
   const float delta = 0.001f; /**< The delta used to approximate the partial derivatives of the Jacobian. */
 
 public:
-  GaussNewtonOptimizer(const std::vector<float>& parameters, const std::vector<M>& measurements, const C& object,
-                       float(C::*pFunction)(const M& measurement, const std::vector<float>& parameters) const) :
-    numOfMeasurements(static_cast<unsigned>(measurements.size())), currentParameters(parameters),
-    currentValues(numOfMeasurements, 1), measurements(measurements), object(object), pFunction(pFunction)
+  GaussNewtonOptimizer(const std::vector<float>& parameters, const std::vector<M>& measurements, const C& object, float (C::*pFunction)(const M& measurement, const std::vector<float>& parameters) const)
+      : numOfMeasurements(static_cast<unsigned>(measurements.size())), currentParameters(parameters), currentValues(numOfMeasurements, 1), measurements(measurements),
+        object(object), pFunction(pFunction)
   {
-    for(unsigned int i = 0; i < numOfMeasurements; ++i)
+    for (unsigned int i = 0; i < numOfMeasurements; ++i)
       currentValues(i, 0) = (object.*pFunction)(measurements[i], currentParameters);
   }
 
@@ -55,13 +53,13 @@ public:
   {
     // build jacobi matrix
     Matrix jacobiMatrix(numOfMeasurements, currentParameters.size());
-    for(unsigned int j = 0; j < currentParameters.size(); ++j)
+    for (unsigned int j = 0; j < currentParameters.size(); ++j)
     {
       // the first derivative is approximated using values slightly above and below the current value
       const float oldParameter = currentParameters[j];
       const float parameterAbove = oldParameter + delta;
       const float parameterBelow = oldParameter - delta;
-      for(unsigned int i = 0; i < numOfMeasurements; ++i)
+      for (unsigned int i = 0; i < numOfMeasurements; ++i)
       {
         // approximate first derivation numerically
         currentParameters[j] = parameterAbove;
@@ -77,19 +75,19 @@ public:
     try
     {
       Vector result = (jacobiMatrix.transpose() * jacobiMatrix).inverse() * jacobiMatrix.transpose() * currentValues;
-      for(unsigned int i = 0; i < currentParameters.size(); ++i)
+      for (unsigned int i = 0; i < currentParameters.size(); ++i)
         currentParameters[i] -= result(i);
 
-      for(unsigned int i = 0; i < numOfMeasurements; ++i)
+      for (unsigned int i = 0; i < numOfMeasurements; ++i)
         currentValues(i, 0) = (object.*pFunction)(measurements[i], currentParameters);
 
       float sum = 0;
-      for(unsigned int i = 0; i < currentParameters.size(); ++i)
+      for (unsigned int i = 0; i < currentParameters.size(); ++i)
         sum += std::abs(result(i));
 
       return sum;
     }
-    catch(...)
+    catch (...)
     {
       OUTPUT_WARNING("YELP! Catching Exception!");
       return 0.0f;
@@ -100,8 +98,5 @@ public:
    * The method returns the current parameter vector.
    * @return The current parameter vector.
    */
-  const std::vector<float>& getParameters() const
-  {
-    return currentParameters;
-  }
+  const std::vector<float>& getParameters() const { return currentParameters; }
 };

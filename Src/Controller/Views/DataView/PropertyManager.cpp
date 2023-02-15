@@ -11,24 +11,23 @@ PropertyManager::PropertyManager()
 {
   initTypes();
 
-  connect(this, SIGNAL(valueChanged(QtProperty*, const QVariant&)),
-          this, SLOT(slotValueChanged(QtProperty*, const QVariant&)));
+  connect(this, SIGNAL(valueChanged(QtProperty*, const QVariant&)), this, SLOT(slotValueChanged(QtProperty*, const QVariant&)));
 }
 
 PropertyManager::~PropertyManager()
 {
   QList<TypeDescriptor*> typeDescriptors(theDescriptors.values());
 
-  for(QList<TypeDescriptor*>::iterator i = typeDescriptors.begin(); i != typeDescriptors.end(); i++)
+  for (QList<TypeDescriptor*>::iterator i = typeDescriptors.begin(); i != typeDescriptors.end(); i++)
   {
-    delete(*i);
+    delete (*i);
   }
   theDescriptors.clear();
 }
 
 bool PropertyManager::isPropertyTypeSupported(int type) const
 {
-  if(theDescriptors.contains(type))
+  if (theDescriptors.contains(type))
   {
     return true;
   }
@@ -40,7 +39,7 @@ bool PropertyManager::isPropertyTypeSupported(int type) const
 
 QVariant PropertyManager::value(const QtProperty* pProperty) const
 {
-  if(theValues.contains(pProperty))
+  if (theValues.contains(pProperty))
   {
     //this is a property with custom type and therefore managed by us
     return theValues[pProperty];
@@ -54,7 +53,7 @@ QVariant PropertyManager::value(const QtProperty* pProperty) const
 
 int PropertyManager::valueType(int propertyType) const
 {
-  if(theDescriptors.contains(propertyType))
+  if (theDescriptors.contains(propertyType))
   {
     return propertyType;
   }
@@ -67,7 +66,7 @@ int PropertyManager::valueType(int propertyType) const
 QString PropertyManager::valueText(const QtProperty* pProperty) const
 {
   int propType = propertyType(pProperty);
-  if(theValues.contains(pProperty) && theDescriptors.contains(propType))
+  if (theValues.contains(pProperty) && theDescriptors.contains(propType))
   {
     QVariant var = theValues[pProperty];
     return theDescriptors[propType]->toString(var);
@@ -90,9 +89,9 @@ void PropertyManager::initTypes()
 
 void PropertyManager::setValue(QtProperty* pProperty, const QVariant& val)
 {
-  if(theValues.contains(pProperty))
+  if (theValues.contains(pProperty))
   {
-    if(theValues[pProperty] != val)
+    if (theValues[pProperty] != val)
     {
       theValues[pProperty] = val;
       emit propertyChanged(pProperty);
@@ -109,7 +108,7 @@ void PropertyManager::initializeProperty(QtProperty* pProperty)
 {
   int typeId = propertyType(pProperty);
 
-  if(theDescriptors.contains(typeId))
+  if (theDescriptors.contains(typeId))
   {
     theValues[pProperty] = theDescriptors[typeId]->createDefault();
   }
@@ -119,7 +118,7 @@ void PropertyManager::initializeProperty(QtProperty* pProperty)
 
 void PropertyManager::uninitializeProperty(QtProperty* pProperty)
 {
-  if(theDescriptors.contains(propertyType(pProperty)))
+  if (theDescriptors.contains(propertyType(pProperty)))
   {
     theValues.remove(pProperty);
   }
@@ -129,7 +128,7 @@ void PropertyManager::uninitializeProperty(QtProperty* pProperty)
 void PropertyManager::slotValueChanged(QtProperty* pProperty, const QVariant& value)
 {
   //update values
-  if(theValues.contains(pProperty))
+  if (theValues.contains(pProperty))
   {
     theValues[pProperty] = value;
   }

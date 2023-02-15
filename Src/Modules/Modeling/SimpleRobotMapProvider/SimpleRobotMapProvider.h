@@ -12,18 +12,19 @@
 #include "Representations/Modeling/SimpleRobotsDistributed.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/RobotsPercept.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 
 MODULE(SimpleRobotMapProvider,
-{ ,
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
   REQUIRES(FrameInfo),
+  REQUIRES(RobotInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotPose),
   REQUIRES(RobotsPercept),
@@ -32,12 +33,12 @@ MODULE(SimpleRobotMapProvider,
   PROVIDES(RobotMap),
   PROVIDES(LocalRobotMap),
   PROVIDES(SimpleRobotsDistributed),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (bool) global, // use team mate data?
     (bool) useTeamMatePercepts, // use percepts from team mates? PROBLEM: preview!
     (bool) useVelocity,// if false, robot positions will not change without new percepts
 
+    (float)(0.5f) mergeLocationFactor,
     (float) mergeLocationDiff,
     (float) mergeRotDiff,
     (float) mergeSpeedDiff,
@@ -46,12 +47,14 @@ MODULE(SimpleRobotMapProvider,
     (float) minValidity, // 0..1
     (float) maxStartValidity, // max validity, when robot map entry is added
     (float) validityUpdate, // per frame
+    (int) maxLocalLifetimeOfUnseenRobot,
+    (int) maxLifetimeOfUnseenRobot,
 
     (int) minColorCount, // min colored percepts for mate/opp decision
 
-    (unsigned int) maxRobotsToSend, // Guess what.
-  }),
-});
+    (unsigned int) maxRobotsToSend // Guess what.
+  )
+);
 
 class SimpleRobotMapProvider : public SimpleRobotMapProviderBase
 {
@@ -75,10 +78,9 @@ public:
   SimpleRobotMapProvider();
 
 private:
-
-  void update(RobotMap &robotMap);
-  void update(LocalRobotMap &localRobotMap);
-  void update(SimpleRobotsDistributed &simpleRobotsDistributed);
+  void update(RobotMap& robotMap);
+  void update(LocalRobotMap& localRobotMap);
+  void update(SimpleRobotsDistributed& simpleRobotsDistributed);
   void execute();
   void updateWithLocalData(const bool& upper);
   void updateWithTeamMatePoses();

@@ -29,14 +29,14 @@ float GaussianDistribution::probabilityAt(float p) const
 
 void GaussianDistribution::generateDistributionFromMeasurements(float* x, int numOfX)
 {
-  if(numOfX < 2)
+  if (numOfX < 2)
     return;
   mean = 0.0f;
-  for(int i = 0; i < numOfX; i++)
+  for (int i = 0; i < numOfX; i++)
     mean += x[i];
   mean /= numOfX;
   variance = 0.0f;
-  for(int i = 0; i < numOfX; i++)
+  for (int i = 0; i < numOfX; i++)
     variance += (x[i] - mean) * (x[i] - mean);
   variance *= 1.0f / (numOfX - 1);
 }

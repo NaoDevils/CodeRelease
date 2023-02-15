@@ -10,58 +10,29 @@
 #include "Platform/BHAssert.h"
 
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #else
 #include "bhumanstub.h"
 #endif
 
 /** Maximum number of possible foot steps in buffer */
-#define MAX_STEPS	300
+#define MAX_STEPS 300
 
 /**
  * @class Robot
  * Representation to transfer the target foot steps to other modules.
  */
-class FootSteps : public Streamable
-{
-public :
-
+STREAMABLE(FootSteps,
 	/** When the controller is not running this step is used. */
 	StepData suggestedStep;
-
-	/** Is the controller running? */
-	bool running;
 
   DWE::State walkState;
 
 	/** Immediate stop in case of emergency. */
-	bool emergencyStop;
+	bool emergencyStop = false;
 
   /** Position of the robot after the whole preview phase is executed */
   Point robotPoseAfterStep;
-
- /**
-  * The provided time is the number of the frame when the currently created foot step
-  * will be executed
-  */
-  unsigned time; 
-
-
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-		STREAM(running)
-    STREAM(time)
-		STREAM_REGISTER_FINISH;
-	};
-
-	/** Constructor */
-	FootSteps() : steps(MAX_STEPS)
-	{
-		running=false;
-		emergencyStop=false;
-
-	};
 
 	/** Initialize the data. */
 	void reset()
@@ -70,9 +41,6 @@ public :
 		emergencyStop=false;
 		steps.clear();
 	}
-
-	/** Destructor */
-	~FootSteps(){};
 
 	int getNumOfSteps() const
 	{
@@ -111,6 +79,16 @@ public :
 	 *	ZMP/IP-Controller 
 	 */
 
-	std::vector<Footposition> steps;
-};
+	std::vector<Footposition> steps{ MAX_STEPS };
+	,
+
+	/** Is the controller running? */
+	(bool)(false) running,
+
+	/**
+	 * The provided time is the number of the frame when the currently created foot step
+	 * will be executed
+	 */
+	(unsigned)(0) time
+);
 #endif

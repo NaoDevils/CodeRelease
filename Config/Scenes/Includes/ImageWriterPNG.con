@@ -1,0 +1,5 @@
+echo mr SequenceImageUpper default
+echo mr SequenceImage default
+echo mr ProcessedBallPatches CLIPBallPerceptor
+echo mr PNGImageDummy ImageWriterPNG
+echo vd parameters:ImageWriterPNG 

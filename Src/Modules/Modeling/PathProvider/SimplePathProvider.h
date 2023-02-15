@@ -3,8 +3,10 @@
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
 #include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -18,7 +20,6 @@
 #include "Tools/Module/Module.h"
 
 MODULE(SimplePathProvider,
-{ ,
   REQUIRES(BallSymbols),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
@@ -27,6 +28,7 @@ MODULE(SimplePathProvider,
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
+  REQUIRES(Ballchaser),
   REQUIRES(MotionRequest),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
@@ -34,14 +36,15 @@ MODULE(SimplePathProvider,
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(GameSymbols),
   REQUIRES(PositioningSymbols),
+  REQUIRES(TacticSymbols),
   PROVIDES(Path),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float)(200.f) ballInfluenceRadius,
     (float)(350.f) centerCircleInfluenceRadius,
     (float)(250.f) goalPostInfluenceRadius,
     (float)(400.f) robotInfluenceRadius,
     (float)(500.f) teamRobotInfluenceRadius,
+    (float)(600.f) ballchaserInfluenceRadius,
     (float)(400.f) targetStateSwitchDistance,
     (float)(100.f) targetStateSwitchDistanceHysteresis,
     (float)(300.f) omniStateSwitchDistance,
@@ -51,19 +54,18 @@ MODULE(SimplePathProvider,
     (bool)(false) mergeObstacles,
     (bool)(false) avoidRobotCrashes,
     (Angle)(90_deg) ballApproachCone,
-    (float)(800.f) setPlayInfluenceRadius,
-  }),
-});
+    (float)(800.f) setPlayInfluenceRadius
+  )
+);
 
 class SimplePathProvider : public SimplePathProviderBase
 {
 public:
   ENUM(PathFollowState,
-  {
     omni, // near obstacles, omnidirectional avoidance
     target, // near target: keep in sight, turn to target rotation
-    far, // default: high speed
-  }); 
+    far // default: high speed
+  );
 
   SimplePathProvider();
 
@@ -87,28 +89,28 @@ private:
   struct sortObstacles
   {
     SimplePathProvider* spp;
-    sortObstacles(SimplePathProvider* p) : spp(p) {};
-    bool operator()(const Obstacle &a, const Obstacle &b)
+    sortObstacles(SimplePathProvider* p) : spp(p){};
+    bool operator()(const Obstacle& a, const Obstacle& b)
     {
-      return (spp->theRobotPoseAfterPreview.translation - a.position).norm() - a.radius <
-        (spp->theRobotPoseAfterPreview.translation - b.position).norm() - b.radius;
+      return (spp->theRobotPoseAfterPreview.translation - a.position).norm() - a.radius < (spp->theRobotPoseAfterPreview.translation - b.position).norm() - b.radius;
     }
   };
 
   struct sortPoses
   {
     SimplePathProvider* spp;
-    sortPoses(SimplePathProvider* p) : spp(p) {};
-    bool operator()(const Pose2f &a, const Pose2f &b)
+    sortPoses(SimplePathProvider* p) : spp(p){};
+    bool operator()(const Pose2f& a, const Pose2f& b)
     {
-      return (spp->theRobotPoseAfterPreview.translation - a.translation).norm() <
-        (spp->theRobotPoseAfterPreview.translation - b.translation).norm();
+      return (spp->theRobotPoseAfterPreview.translation - a.translation).norm() < (spp->theRobotPoseAfterPreview.translation - b.translation).norm();
     }
   };
-  PathFollowState state;
-  bool wasBlockingWayToGoal;
+  bool initialized = false;
+  PathFollowState state = PathFollowState::far;
+  bool wasBlockingWayToGoal = false;
+  ;
   bool isGoalieInOwnPenaltyArea = false;
-  
+
   float distanceToClosestObstacle;
   Vector2f nearestObstaclePosition;
   Path::ObstacleType nearestObstacleType;
@@ -117,22 +119,25 @@ private:
   bool ballIsObstacle = false;
   bool avoidBallLeft = false;
   bool inBallApproach = false;
-  Vector2f goalAreaDownLeft;
-  Vector2f goalAreaDownRight;
-  Vector2f goalAreaUpRight;
-  Vector2f goalAreaUpLeft;
+  Vector2f penaltyAreaDownLeft;
+  Vector2f penaltyAreaDownRight;
+  Vector2f penaltyAreaUpRight;
+  Vector2f penaltyAreaUpLeft;
 
+  void initialize();
   void update(Path& path);
   void handleRobots();
   void handleBall();
   void handleStaticObstacles();
   void buildPath();
-  void avoidObstacles(bool notAllowedInGoalArea);
+  /** used for goal/penalty area avoidance **/
+  void avoidRectangularArea(const Vector2f& bottomLeft, const Vector2f& topLeft, const Vector2f& topRight, const Vector2f& bottomRight);
+  void avoidObstacles(bool notAllowedInPenaltyArea);
   bool isOldPathFine(Path& path);
-  
+
   Pose2f destWorldCoordinates;
 
-  inline float distancePointToVector(const Vector2f &point, const Vector2f &vector, const Vector2f &base)
+  inline float distancePointToVector(const Vector2f& point, const Vector2f& vector, const Vector2f& base)
   {
     Vector2f normal = vector;
     normal.rotateRight();
@@ -140,5 +145,4 @@ private:
     float distance = (point - base).dot(normal);
     return std::abs(distance);
   }
-
 };

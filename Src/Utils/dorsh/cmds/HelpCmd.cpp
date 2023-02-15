@@ -20,20 +20,19 @@ std::string HelpCmd::getDescription() const
   return "Print this help message.";
 }
 
-bool HelpCmd::execute(Context &context, const std::vector<std::string> &params)
+bool HelpCmd::execute(Context& context, const std::vector<std::string>& params)
 {
-  if(params.empty())
+  if (params.empty())
   {
     std::vector<Command*> allCmds = Commands::getInstance().getAllCommands();
-    for(std::vector<Command*>::iterator i = allCmds.begin(); i != allCmds.end(); ++i)
-      context.printLine((*i)->getName() + ":\n\t" +
-                        toString(fromString((*i)->getDescription()).replace("\n", "\n\t")));
+    for (std::vector<Command*>::iterator i = allCmds.begin(); i != allCmds.end(); ++i)
+      context.printLine((*i)->getName() + ":\n\t" + QString::fromStdString((*i)->getDescription()).replace("\n", "\n\t").toStdString());
   }
   else
-    for(size_t i = 0; i < params.size(); ++i)
+    for (size_t i = 0; i < params.size(); ++i)
     {
       Command* cmd = Commands::getInstance()[params[i]];
-      if(cmd)
+      if (cmd)
         context.printLine(cmd->getName() + ":\t" + cmd->getDescription());
       else
         context.errorLine(params[i] + ":\t<not found>");
@@ -49,16 +48,16 @@ std::vector<std::string> HelpCmd::complete(const std::string& cmdLine) const
   size_t lastIdx = commandWithArgs.size() - 1;
 
   // indicates that we want to find a new parameter
-  if(*(--cmdLine.end()) == ' ')
+  if (*(--cmdLine.end()) == ' ')
   {
     ++lastIdx;
     commandWithArgs.push_back("");
   }
 
   std::vector<std::string> cmds = Commands::getInstance().getAllCommandNames();
-  for(size_t i = 0; i < cmds.size(); ++i)
+  for (size_t i = 0; i < cmds.size(); ++i)
   {
-    if(startsWidth(cmds[i], commandWithArgs[lastIdx]))
+    if (startsWidth(cmds[i], commandWithArgs[lastIdx]))
     {
       std::vector<std::string> v = commandWithArgs;
       v[lastIdx] = cmds[i];

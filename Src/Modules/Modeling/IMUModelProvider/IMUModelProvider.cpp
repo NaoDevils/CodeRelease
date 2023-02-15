@@ -1,11 +1,13 @@
 /**
 * @file IMUModel.cpp
-* 
+*
 * Definition of class IMUModel
 *
 * @author <a href="mailto:kaden@informatik.hu-berlin.de">Steffen Kaden</a>
+* @url https://github.com/BerlinUnited/NaoTH/blob/develop/NaoTHSoccer/Source/Motion/SensorFilter/IMUModel.h
 * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
-*/ 
+* @author <a href="mailto:arne.moos@tu-dortmund.de">Arne Moos</a>
+*/
 
 #include "IMUModelProvider.h"
 
@@ -14,73 +16,78 @@
 #include "Tools/Debugging/DebugDrawings.h"
 
 
-IMUModelProvider::IMUModelProvider() :
-    integrated(1,0,0,0)
+IMUModelProvider::IMUModelProvider() : integrated(1, 0, 0, 0)
 {
-  ukf_acc_global.P = Eigen::Matrix<double,3,3>::Identity(); // covariance matrix of current state
-  ukf_rot.P        = Eigen::Matrix<double,6,6>::Identity(); // covariance matrix of current state
-
+  ukf_acc_global.P = Eigen::Matrix<double, 3, 3>::Identity(); // covariance matrix of current state
+  ukf_rot.P = Eigen::Matrix<double, 6, 6>::Identity(); // covariance matrix of current state
+  isWalking = false;
+  isActive = true;
+  lastActive = true;
   reloadParameters();
 }
 
-IMUModelProvider::~IMUModelProvider()
+IMUModelProvider::~IMUModelProvider() {}
+
+void IMUModelProvider::reset()
 {
+  ukf_rot.reset();
+  ukf_acc_global.reset();
+  integrated = Eigen::Quaterniond(1, 0, 0, 0);
+  //reloadParameters();
 }
 
-void IMUModelProvider::update(IMUModel &imuModel)
+void IMUModelProvider::update(IMUModel& imuModel)
 {
-
-  DECLARE_PLOT("module:IMUModelProvider:Measurement:gyro:x");
-  DECLARE_PLOT("module:IMUModelProvider:Measurement:gyro:y");
-  DECLARE_PLOT("module:IMUModelProvider:Measurement:gyro:z");
-
-  DECLARE_PLOT("module:IMUModelProvider:Measurement:acc:x");
-  DECLARE_PLOT("module:IMUModelProvider:Measurement:acc:y");
-  DECLARE_PLOT("module:IMUModelProvider:Measurement:acc:z");
+  timeStampIsWalking = theMotionInfo.motion != MotionRequest::Motion::walk || theMotionInfo.walkRequest.isZeroSpeed() ? timeStampIsWalking : theFrameInfo.time;
+  isWalking = theFrameInfo.getTimeSince(timeStampIsWalking) < 1000;
+  isActive = theRobotInfo.transitionToFramework != 0.f && theRobotInfo.penalty == PENALTY_NONE;
 
   DECLARE_PLOT("module:IMUModelProvider:State:orientation:x");
   DECLARE_PLOT("module:IMUModelProvider:State:orientation:y");
 
+  //TODO reset when necessary, e.g. after being lift or when coming from penalty
   DEBUG_RESPONSE_ONCE("module:IMUModelProvider:reset_filter")
   {
-    ukf_rot.reset();
-    ukf_acc_global.reset();
-    integrated = Eigen::Quaterniond(1, 0, 0, 0);
+    reset();
   }
 
+  if (isActive && !lastActive)
+    reset();
+
   DEBUG_RESPONSE_ONCE("module:IMUModelProvider:reset_representation")
-    imuModel = IMUModel();
+  imuModel = IMUModel();
 
   DEBUG_RESPONSE_ONCE("module:IMUModelProvider:reloadParameters")
-    reloadParameters();
+  reloadParameters();
 
   /* handle ukf filter for rotation */
-  if(theMotionInfo.motion == MotionRequest::Motion::walk)
+  if (isWalking)
   {
     ukf_rot.Q = Q_rotation_walk;
-  } else {
+  }
+  else
+  {
     ukf_rot.Q = Q_rotation;
   }
 
   ukf_rot.generateSigmaPoints();
 
-  Eigen::Vector3d u_rot(0,0,0); // TODO: use generated angular acceleration as control vector?
+  Eigen::Vector3d u_rot(0, 0, 0); // TODO: use generated angular acceleration as control vector?
   ukf_rot.predict(u_rot, theFrameInfo.cycleTime);
 
   // don't generate sigma points again because the process noise would be applied a second time
   // ukf.generateSigmaPoints();
 
   Eigen::Vector3d gyro;
-  // gyro z axis seems to measure in opposite direction (turning left measures negative angular velocity, should be positive)
-  gyro << theInertialSensorData.gyro.x(), theInertialSensorData.gyro.y(), -theInertialSensorData.gyro.z();
+  gyro << theInertialSensorData.gyro.x(), theInertialSensorData.gyro.y(), theInertialSensorData.gyro.z();
   Eigen::Vector3d acceleration = Eigen::Vector3d(theInertialSensorData.acc.x(), theInertialSensorData.acc.y(), theInertialSensorData.acc.z());
 
   IMU_RotationMeasurement z;
   z << acceleration.normalized(), gyro;
-  
-  if (theMotionInfo.motion == MotionRequest::Motion::walk)
+
+  if (isWalking)
   {
-    if(enableWhileWalking)
+    if (enableWhileWalking)
     {
       ukf_rot.update(z, R_rotation_walk);
     }
@@ -98,17 +105,17 @@ void IMUModelProvider::update(IMUModel &imuModel)
   // TODO: really needs bias removal or "calibration" of g
   IMU_AccMeasurementGlobal z_acc = ukf_rot.state.getRotationAsQuaternion()._transformVector(acceleration);
 
-  if (theMotionInfo.motion == MotionRequest::Motion::walk)
+  if (isWalking)
     ukf_acc_global.Q = Q_acc_walk;
   else
     ukf_acc_global.Q = Q_acc;
 
   ukf_acc_global.generateSigmaPoints();
 
-  Eigen::Vector3d u_acc(0,0,0); // TODO: use generated jerk as control vector?
+  Eigen::Vector3d u_acc(0, 0, 0); // TODO: use generated jerk as control vector?
   ukf_acc_global.predict(u_acc, theFrameInfo.cycleTime);
 
-  if (theMotionInfo.motion == MotionRequest::Motion::walk)
+  if (isWalking)
   {
     if (enableWhileWalking)
       ukf_acc_global.update(z_acc, R_acc_walk);
@@ -117,36 +124,37 @@ void IMUModelProvider::update(IMUModel &imuModel)
     ukf_acc_global.update(z_acc, R_acc);
 
   /* acc ukf end */
-
   writeIMUData(imuModel);
+
+  lastActive = isActive;
 }
 
-void IMUModelProvider::writeIMUData(IMUModel &imuModel)
+void IMUModelProvider::writeIMUData(IMUModel& imuModel)
 {
   // raw sensor values
   imuModel.rotational_velocity_sensor = theInertialSensorData.gyro.cast<float>();
-  imuModel.acceleration_sensor        = theInertialSensorData.acc.cast<float>();
+  imuModel.acceleration_sensor = theInertialSensorData.acc.cast<float>();
 
   // global position data
   // TODO: check for correct integration
   // TODO: prediction or state?
-  imuModel.acceleration.x() = static_cast<float>(ukf_acc_global.state.acceleration()(0,0));
-  imuModel.acceleration.y() = static_cast<float>(ukf_acc_global.state.acceleration()(1,0));
-  imuModel.acceleration.z() = static_cast<float>(ukf_acc_global.state.acceleration()(2,0)) - gravity;
+  imuModel.acceleration.x() = static_cast<float>(ukf_acc_global.state.acceleration()(0, 0));
+  imuModel.acceleration.y() = static_cast<float>(ukf_acc_global.state.acceleration()(1, 0));
+  imuModel.acceleration.z() = static_cast<float>(ukf_acc_global.state.acceleration()(2, 0)) - theWalkCalibration.gravity;
 
   imuModel.location += imuModel.velocity * theFrameInfo.cycleTime + imuModel.acceleration * theFrameInfo.cycleTime * theFrameInfo.cycleTime * 0.5f;
   imuModel.velocity += imuModel.acceleration * theFrameInfo.cycleTime;
 
-  // the state we are estimating in ukf_rot is 20 ms in the past. so predict 20 ms as estimate for the real current state
-  UKF<RotationState<Measurement<6>,6> > sensor_delay_corrected_rot = ukf_rot;
+  // the state we are estimating in ukf_rot is (X * cycleTime) ms in the past. so predict (X * cycleTime) ms as estimate for the real current state
+  UKF<RotationState<Measurement<6>, 6>> sensor_delay_corrected_rot = ukf_rot;
   sensor_delay_corrected_rot.generateSigmaPoints();
-  Eigen::Vector3d u_rot(0,0,0);
-  sensor_delay_corrected_rot.predict(u_rot, 2 * theFrameInfo.cycleTime);
+  Eigen::Vector3d u_rot(0, 0, 0);
+  sensor_delay_corrected_rot.predict(u_rot, theWalkingEngineParams.imuSensorDelayFrames * theFrameInfo.cycleTime);
 
   // store rotation in IMUData as a rotation vector
   imuModel.rotation = eigenVectorToVector3D(sensor_delay_corrected_rot.state.rotation()).cast<float>();
   RotationMatrix bodyIntoGlobalMapping(sensor_delay_corrected_rot.state.getRotationAsAngleAxisd().cast<float>());
-  
+
   /*
     * Note: the following code lines use the inverse mapping, i.e. globalIntoBodyMapping, by using the third row of bodyIntoGlobalMapping's matrix representation
     * Note: The negative of the determined angles is the correct solution in this case because the projected "global" z axis is not pointing upwards in the torso's coordinate system.
@@ -160,24 +168,16 @@ void IMUModelProvider::writeIMUData(IMUModel &imuModel)
     * this results in huge devation of the angles determined by atan2 because the projected y axis might end up in the second or third quadrant of the YZ plane
     */
 
-  imuModel.orientation = Vector2a(static_cast<Angle>(-atan2f(-bodyIntoGlobalMapping(2, 1), bodyIntoGlobalMapping(2, 2))),
-    static_cast<Angle>(-atan2f(bodyIntoGlobalMapping(2, 0), bodyIntoGlobalMapping(2, 2))));
+  Eigen::Vector3d global_Z_in_body(bodyIntoGlobalMapping(2, 0), bodyIntoGlobalMapping(2, 1), bodyIntoGlobalMapping(2, 2));
+  imuModel.orientation_rotvec = quaternionToVector3D(Eigen::Quaterniond::FromTwoVectors(global_Z_in_body, Eigen::Vector3d(0, 0, 1))).cast<float>();
+  RotationMatrix bodyIntoGlobalMappingWithoutZ(Eigen::Quaterniond::FromTwoVectors(global_Z_in_body, Eigen::Vector3d(0, 0, 1)).cast<float>());
 
-  Eigen::Vector3d global_Z_in_body(bodyIntoGlobalMapping(2,0), bodyIntoGlobalMapping(2,1), bodyIntoGlobalMapping(2,2));
-  imuModel.orientation_rotvec = quaternionToVector3D(Eigen::Quaterniond::FromTwoVectors(global_Z_in_body, Eigen::Vector3d(0,0,1))).cast<float>();
+  imuModel.orientation = Vector2a(static_cast<Angle>(-atan2f(bodyIntoGlobalMappingWithoutZ(1, 2), bodyIntoGlobalMappingWithoutZ(1, 1))),
+      static_cast<Angle>(-atan2f(-bodyIntoGlobalMappingWithoutZ(0, 2), bodyIntoGlobalMappingWithoutZ(0, 0))));
 
   imuModel.rotational_velocity.x() = static_cast<float>(ukf_rot.state.rotational_velocity()(0, 0));
   imuModel.rotational_velocity.y() = static_cast<float>(ukf_rot.state.rotational_velocity()(1, 0));
-  imuModel.rotational_velocity.z() = static_cast<float>(ukf_rot.state.rotational_velocity()(2,0));
-
-  PLOT("module:IMUModelProvider:Measurement:rotational_velocity:x", theInertialSensorData.gyro.x());
-  PLOT("module:IMUModelProvider:Measurement:rotational_velocity:y", theInertialSensorData.gyro.y());
-  PLOT("module:IMUModelProvider:Measurement:rotational_velocity:z", theInertialSensorData.gyro.z());
-  PLOT("module:IMUModelProvider:Measurement:acc:x", theInertialSensorData.acc.x());
-  PLOT("module:IMUModelProvider:Measurement:acc:y", theInertialSensorData.acc.y());
-  PLOT("module:IMUModelProvider:Measurement:acc:z", theInertialSensorData.acc.z());
-  PLOT("module:IMUModelProvider:Measurement:angle:x", toDegrees(theInertialSensorData.angle.x()));
-  PLOT("module:IMUModelProvider:Measurement:angle:y", toDegrees(theInertialSensorData.angle.y()));
+  imuModel.rotational_velocity.z() = static_cast<float>(ukf_rot.state.rotational_velocity()(2, 0));
 
   PLOT("module:IMUModelProvider:State:location:x", imuModel.location.x());
   PLOT("module:IMUModelProvider:State:location:y", imuModel.location.y());
@@ -213,8 +213,8 @@ void IMUModelProvider::reloadParameters()
   Q_acc *= standAcceleration.processNoiseAcc;
 
   Q_acc_walk.setIdentity();
-  Q_acc *= walkAcceleration.processNoiseAcc;
-    
+  Q_acc_walk *= walkAcceleration.processNoiseAcc;
+
   // measurement covariance matrix
   R_acc.setIdentity();
   R_acc *= standAcceleration.measurementNoiseAcc;
@@ -225,21 +225,21 @@ void IMUModelProvider::reloadParameters()
   /* parameters for the rotation filter */
   // process noise
   Q_rotation.setIdentity();
-  Q_rotation.block<3,3>(0,0) *= standRotation.processNoiseRot;
-  Q_rotation.block<3,3>(3,3) *= standRotation.processNoiseGyro;
+  Q_rotation.block<3, 3>(0, 0) *= standRotation.processNoiseRot;
+  Q_rotation.block<3, 3>(3, 3) *= standRotation.processNoiseGyro;
 
   Q_rotation_walk.setIdentity();
-  Q_rotation.block<3,3>(0,0) *= walkRotation.processNoiseRot;
-  Q_rotation.block<3,3>(3,3) *= walkRotation.processNoiseGyro;
+  Q_rotation_walk.block<3, 3>(0, 0) *= walkRotation.processNoiseRot;
+  Q_rotation_walk.block<3, 3>(3, 3) *= walkRotation.processNoiseGyro;
 
   // measurement covariance matrix
   R_rotation.setIdentity();
-  R_rotation.block<3,3>(0,0) *= standRotation.measurementNoiseAcc;
-  R_rotation.block<3,3>(3,3) *= standRotation.measurementNoiseGyro;
+  R_rotation.block<3, 3>(0, 0) *= standRotation.measurementNoiseAcc;
+  R_rotation.block<3, 3>(3, 3) *= standRotation.measurementNoiseGyro;
 
   R_rotation_walk.setIdentity();
-  R_rotation_walk.block<3,3>(0,0) *= walkRotation.measurementNoiseAcc;
-  R_rotation_walk.block<3,3>(3,3) *= walkRotation.measurementNoiseGyro;
+  R_rotation_walk.block<3, 3>(0, 0) *= walkRotation.measurementNoiseAcc;
+  R_rotation_walk.block<3, 3>(3, 3) *= walkRotation.measurementNoiseGyro;
 }
 
 MAKE_MODULE(IMUModelProvider, sensing)

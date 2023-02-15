@@ -34,8 +34,7 @@ static inline float randomFloat(float min, float max)
  * @param n the number of possible return values (0 ... n-1)
  * @return The random number.
  */
-template<typename T, typename = std::enable_if<std::is_integral<T>::value>>
-static inline T random(T n)
+template <typename T, typename = std::enable_if<std::is_integral<T>::value>> static inline T random(T n)
 {
   std::uniform_int_distribution<T> rnd(0, n - 1);
   return rnd(randomGenerator);

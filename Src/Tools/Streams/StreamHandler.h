@@ -10,6 +10,7 @@ class StreamHandler;
 
 In& operator>>(In& in, StreamHandler& streamHandler);
 Out& operator<<(Out& out, const StreamHandler& streamHandler);
+StreamHandler& operator<<(StreamHandler& a, const StreamHandler& b);
 
 class ConsoleRoboCupCtrl;
 class RobotConsole;
@@ -41,6 +42,7 @@ private:
    * Only a process is allowed to create the instance.
    */
   friend class Process;
+  friend class SubThread;
 
   struct RegisteringAttributes
   {
@@ -53,10 +55,10 @@ private:
   BasicTypeSpecification basicTypeSpecification;
 
   typedef std::pair<std::string, const char*> TypeNamePair;
-  typedef std::unordered_map<const char*, std::vector<TypeNamePair> > Specification;
+  typedef std::unordered_map<const char*, std::vector<TypeNamePair>> Specification;
   Specification specification;
 
-  typedef std::unordered_map<const char*, std::vector<const char*> > EnumSpecification;
+  typedef std::unordered_map<const char*, std::vector<const char*>> EnumSpecification;
   EnumSpecification enumSpecification;
 
   typedef std::unordered_map<std::string, int> StringTable;
@@ -74,7 +76,7 @@ private:
 public:
   void clear();
   void startRegistration(const char* name, bool registerWithExternalOperator);
-  void registerBase() {registeringBase = true;}
+  void registerBase() { registeringBase = true; }
   void finishRegistration();
   void registerWithSpecification(const char* name, const std::type_info& ti);
   void registerEnum(const std::type_info& ti, const char* (*fp)(int));
@@ -99,6 +101,7 @@ public:
 private:
   friend In& operator>>(In&, StreamHandler&);
   friend Out& operator<<(Out&, const StreamHandler&);
+  friend StreamHandler& operator<<(StreamHandler& a, const StreamHandler& b);
   friend class ConsoleRoboCupCtrl; // constructs a StreamHandler used when outside process contexts.
   friend class RobotConsole; // constructs a StreamHandler storing the information received.
   friend class Framework;

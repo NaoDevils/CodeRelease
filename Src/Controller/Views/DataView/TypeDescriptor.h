@@ -34,8 +34,7 @@ namespace Type //The namespace is here to fix a VC-compiler bug
     /**
      * Provides a mapping from c++ types to type ids.
      */
-    template <class T>
-    static int getTypeId();
+    template <class T> static int getTypeId();
 
     /**
      * Returns a special type for groups.
@@ -48,18 +47,17 @@ namespace Type //The namespace is here to fix a VC-compiler bug
     static int getEnumTypeId();
   };
 
-  template<> int TypeDescriptor::getTypeId<int>();
-  template<> int TypeDescriptor::getTypeId<double>();
-  template<> int TypeDescriptor::getTypeId<char>();
-  template<> int TypeDescriptor::getTypeId<bool>();
-  template<> int TypeDescriptor::getTypeId<std::string>();
+  template <> int TypeDescriptor::getTypeId<int>();
+  template <> int TypeDescriptor::getTypeId<double>();
+  template <> int TypeDescriptor::getTypeId<char>();
+  template <> int TypeDescriptor::getTypeId<bool>();
+  template <> int TypeDescriptor::getTypeId<std::string>();
 
   /**
    * This is the default implementation of getTypeId.
    * It provides an automatic mapping for all types registered in TypeDeclarations.h
    */
-  template<class T>
-  int TypeDescriptor::getTypeId()
+  template <class T> int TypeDescriptor::getTypeId()
   {
     //This will fail if T has not been defined using the Q_DECLARE_METATYPE macro.
     return qMetaTypeId<T>();
@@ -68,14 +66,10 @@ namespace Type //The namespace is here to fix a VC-compiler bug
   /**
    * A TypeDescriptor template to create numeric types with a numeric default value.
    */
-  template <class datatype, int defaultValue>
-  class NumericValueTypeDescriptor : public TypeDescriptor
+  template <class datatype, int defaultValue> class NumericValueTypeDescriptor : public TypeDescriptor
   {
   public:
-    int getSupportedTypeId()
-    {
-      return getTypeId<datatype>();
-    }
+    int getSupportedTypeId() { return getTypeId<datatype>(); }
 
     QString toString(const QVariant& var) const
     {
@@ -83,36 +77,43 @@ namespace Type //The namespace is here to fix a VC-compiler bug
       return QString::number(value);
     }
 
-    QVariant createDefault()
-    {
-      return QVariant::fromValue<datatype>(defaultValue);
-    }
+    QVariant createDefault() { return QVariant::fromValue<datatype>(defaultValue); }
   };
 
   /**
    * Type descriptor for unsigned int
    */
-  class UIntDescriptor : public NumericValueTypeDescriptor<unsigned int, 0> {};
+  class UIntDescriptor : public NumericValueTypeDescriptor<unsigned int, 0>
+  {
+  };
 
   /**
    * Type descriptor for unsigned char
    */
-  class UCharDescriptor : public NumericValueTypeDescriptor<unsigned char, 0> {};
+  class UCharDescriptor : public NumericValueTypeDescriptor<unsigned char, 0>
+  {
+  };
 
   /**
    * Type descriptor for short
    */
-  class ShortDescriptor : public NumericValueTypeDescriptor<short, 0> {};
+  class ShortDescriptor : public NumericValueTypeDescriptor<short, 0>
+  {
+  };
 
   /**
    * Type descriptor for unsigned short
    */
-  class UShortDescriptor : public NumericValueTypeDescriptor<unsigned short, 0> {};
+  class UShortDescriptor : public NumericValueTypeDescriptor<unsigned short, 0>
+  {
+  };
 
   /**
    * Type descriptor for float
    */
-  class FloatDescriptor : public NumericValueTypeDescriptor<float, 0> {};
+  class FloatDescriptor : public NumericValueTypeDescriptor<float, 0>
+  {
+  };
 
   /**
    * Type descriptor to display angles correctly, i.e. as 12deg or 0.3rad
@@ -120,10 +121,7 @@ namespace Type //The namespace is here to fix a VC-compiler bug
   class AngleTypeDescriptor : public TypeDescriptor
   {
   public:
-    int getSupportedTypeId()
-    {
-      return getTypeId<AngleWithUnity>();
-    }
+    int getSupportedTypeId() { return getTypeId<AngleWithUnity>(); }
 
     QString toString(const QVariant& var) const
     {
@@ -131,9 +129,6 @@ namespace Type //The namespace is here to fix a VC-compiler bug
       return value == SensorData::off ? "off" : QString::number(value.deg ? value.toDegrees() : value) + " " + (value.deg ? "deg" : "rad");
     }
 
-    QVariant createDefault()
-    {
-      return QVariant::fromValue<AngleWithUnity>(AngleWithUnity());
-    }
+    QVariant createDefault() { return QVariant::fromValue<AngleWithUnity>(AngleWithUnity()); }
   };
-}
+} // namespace Type

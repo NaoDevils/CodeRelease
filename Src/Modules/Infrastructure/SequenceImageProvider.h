@@ -16,7 +16,6 @@
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 MODULE(SequenceImageProvider,
-{,
   REQUIRES(Image),
   REQUIRES(ImageUpper),
   REQUIRES(CameraInfo),
@@ -28,12 +27,11 @@ MODULE(SequenceImageProvider,
   REQUIRES(GameInfo),
   PROVIDES_WITHOUT_MODIFY(SequenceImage),
   PROVIDES_WITHOUT_MODIFY(SequenceImageUpper),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (unsigned) consecutiveFrames, /**< Number of consecutive Frames to be logged. */
-    (unsigned) pausedFrames, /**< Number of Frames paused between logging */
-  }),
-});
+    (unsigned) pausedFrames /**< Number of Frames paused between logging */
+  )
+);
 
 class SequenceImageProvider : public SequenceImageProviderBase
 {
@@ -46,7 +44,7 @@ public:
 private:
   void logCurrentImage(SequenceImage& sequenceImage, bool upper);
   void updateImage(SequenceImage& lfrImage, bool upper) const;
-  
+
   unsigned currentCounterOfConsecutiveFrames;
   unsigned currentCounterOfPausedFrames;
   unsigned modifiedPausedFrames;

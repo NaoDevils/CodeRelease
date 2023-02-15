@@ -8,58 +8,58 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include "SystemCall.h"
 #include "Platform/File.h"
-#include <cstdio>  /* defines FILENAME_MAX */
+#include <cstdio> /* defines FILENAME_MAX */
 #include <array>
 #include <memory>
 #include <sstream>
 #ifndef TARGET_TOOL
-#  include "Controller/ConsoleRoboCupCtrl.h"
-#  ifdef WINDOWS
-#    include "Platform/Windows/SoundPlayer.h"
-#  elif defined(OSX)
-#    include "Platform/OSX/SoundPlayer.h"
-#  else
-#    include "Platform/Linux/SoundPlayer.h"
-#  endif
+#include "Controller/ConsoleRoboCupCtrl.h"
+#include "Tools/Debugging/Annotation.h"
+#ifdef WINDOWS
+#include "Platform/Windows/SoundPlayer.h"
+#elif defined(MACOS)
+#include "Platform/MACOS/SoundPlayer.h"
 #else
-#  ifndef WINDOWS
-#    ifdef LINUX
-#      include <pthread.h>
-#    endif
-#    include <unistd.h>
-#  else
-#    define NOMINMAX
-#    include <Windows.h>
-#  endif
-#  include <cstring>
-#  include "Platform/BHAssert.h"
+#include "Platform/Linux/SoundPlayer.h"
+#endif
+#else
+#ifndef WINDOWS
+#ifdef LINUX
+#include <pthread.h>
+#endif
+#include <unistd.h>
+#else
+#include <Windows.h>
+#endif
+#include <cstring>
+#include "Platform/BHAssert.h"
 #endif
 
 #ifndef WINDOWS
-#  include <sys/types.h>
-#  include <unistd.h>
-#  define GETCWD ::getcwd
-#  define POPEN ::popen
-#  define PCLOSE ::pclose
-#  ifdef OSX
-#    include <mach/mach_init.h>
-#    include <mach/thread_act.h>
-#    include <mach/mach_time.h>
-#    include <sys/param.h>
-#    include <sys/mount.h>
-#  else
-#    include <sys/sysinfo.h>
-#    include <sys/statvfs.h>
-#  endif
-#  include <ctime>
-#  include <netdb.h>
-#  include <arpa/inet.h>
+#include <sys/types.h>
+#include <unistd.h>
+#define GETCWD ::getcwd
+#define POPEN ::popen
+#define PCLOSE ::pclose
+#ifdef MACOS
+#include <mach/mach_init.h>
+#include <mach/thread_act.h>
+#include <mach/mach_time.h>
+#include <sys/param.h>
+#include <sys/mount.h>
 #else
-#  include <Windows.h>
-#  include <direct.h>
-#  define GETCWD ::_getcwd
-#  define POPEN ::_popen
-#  define PCLOSE ::_pclose
+#include <sys/sysinfo.h>
+#include <sys/statvfs.h>
+#endif
+#include <ctime>
+#include <netdb.h>
+#include <arpa/inet.h>
+#else
+#include <Windows.h>
+#include <direct.h>
+#define GETCWD ::_getcwd
+#define POPEN ::_popen
+#define PCLOSE ::_pclose
 #endif
 
 int SystemCall::getCurrentProcessId()
@@ -97,7 +97,7 @@ std::string SystemCall::execute(const std::string& cmd)
   static const std::string error = "popen() failed!";
 
   // Declare buffer
-  std::array<char, 512> buffer {0};
+  std::array<char, 512> buffer{0};
 
   // Create pipe
   std::unique_ptr<FILE, decltype(&PCLOSE)> pipe(POPEN(cmd.c_str(), "r"), PCLOSE);
@@ -116,7 +116,7 @@ std::string SystemCall::execute(const std::string& cmd)
 
 bool SystemCall::fileExists(const std::string& file)
 {
-  if (FILE *f = fopen(file.c_str(), "r"))
+  if (FILE* f = fopen(file.c_str(), "r"))
   {
     fclose(f);
     return true;
@@ -128,7 +128,7 @@ bool SystemCall::fileExists(const std::string& file)
 unsigned SystemCall::getCurrentSystemTime()
 {
 #ifndef TARGET_TOOL
-  if(RoboCupCtrl::controller)
+  if (RoboCupCtrl::controller)
     return RoboCupCtrl::controller->getTime();
   else
 #endif
@@ -139,9 +139,9 @@ unsigned SystemCall::getRealSystemTime()
 {
 #ifdef WINDOWS
   unsigned time = timeGetTime();
-#elif defined(OSX)
+#elif defined(MACOS)
   static mach_timebase_info_data_t info = {0, 0};
-  if(info.denom == 0)
+  if (info.denom == 0)
     mach_timebase_info(&info);
   unsigned int time = unsigned(mach_absolute_time() * (info.numer / info.denom) / 1000000);
 #else
@@ -150,7 +150,7 @@ unsigned SystemCall::getRealSystemTime()
   unsigned int time = (unsigned int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000l);
 #endif
   static unsigned base = 0;
-  if(!base)
+  if (!base)
     base = time - 10000; // avoid time == 0, because it is often used as a marker
   return time - base;
 }
@@ -158,7 +158,7 @@ unsigned SystemCall::getRealSystemTime()
 unsigned long long SystemCall::getCurrentThreadTime()
 {
 #if defined(WINDOWS)
-  static LARGE_INTEGER frequency = { 0 };
+  static LARGE_INTEGER frequency = {0};
   if (frequency.QuadPart == 0)
   {
     QueryPerformanceFrequency(&frequency);
@@ -166,12 +166,11 @@ unsigned long long SystemCall::getCurrentThreadTime()
   LARGE_INTEGER timeLL;
   QueryPerformanceCounter(&timeLL);
   return static_cast<unsigned long long>(timeLL.QuadPart * 1000000 / frequency.QuadPart);
-#elif defined(OSX)
+#elif defined(MACOS)
   thread_basic_info_data_t tbid;
   mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
-  VERIFY(!thread_info(mach_thread_self(), THREAD_BASIC_INFO, (thread_info_t) &tbid, &count));
-  return (tbid.user_time.seconds + tbid.system_time.seconds) * 1000000ll +
-         tbid.user_time.microseconds + tbid.system_time.microseconds;
+  VERIFY(!thread_info(mach_thread_self(), THREAD_BASIC_INFO, (thread_info_t)&tbid, &count));
+  return (tbid.user_time.seconds + tbid.system_time.seconds) * 1000000ll + tbid.user_time.microseconds + tbid.system_time.microseconds;
 #else
   clockid_t cid;
   struct timespec ts;
@@ -182,7 +181,7 @@ unsigned long long SystemCall::getCurrentThreadTime()
   unsigned long long time = ts.tv_sec * 1000000ll + ts.tv_nsec / 1000;
 
   static unsigned long long base = 0;
-  if(!base)
+  if (!base)
     base = time - 1000000;
   return time - base;
 #endif
@@ -191,7 +190,7 @@ unsigned long long SystemCall::getCurrentThreadTime()
 const char* SystemCall::getHostName()
 {
   static const char* hostname = 0;
-  if(!hostname)
+  if (!hostname)
   {
     static char buf[100] = {0};
     VERIFY(!gethostname(buf, sizeof(buf)));
@@ -203,12 +202,12 @@ const char* SystemCall::getHostName()
 const char* SystemCall::getHostAddr()
 {
   static const char* hostaddr = 0;
-  if(!hostaddr)
+  if (!hostaddr)
   {
     static char buf[100];
-    hostent* hostAddr = (hostent*) gethostbyname(getHostName());
-    if(hostAddr && *hostAddr->h_addr_list)
-      strcpy(buf, inet_ntoa(*(in_addr*) *hostAddr->h_addr_list));
+    hostent* hostAddr = (hostent*)gethostbyname(getHostName());
+    if (hostAddr && *hostAddr->h_addr_list)
+      strcpy(buf, inet_ntoa(*(in_addr*)*hostAddr->h_addr_list));
     else
       strcpy(buf, "127.0.0.1");
     hostaddr = buf;
@@ -219,7 +218,7 @@ const char* SystemCall::getHostAddr()
 SystemCall::Mode SystemCall::getMode()
 {
 #ifndef TARGET_TOOL
-  if(RoboCupCtrl::controller)
+  if (RoboCupCtrl::controller)
     return ((ConsoleRoboCupCtrl*)RoboCupCtrl::controller)->getMode();
   else
 #endif
@@ -243,12 +242,12 @@ void SystemCall::getLoad(float& mem, float load[3])
   memStat.dwLength = sizeof(MEMORYSTATUS);
   GlobalMemoryStatus(&memStat);
   mem = float(memStat.dwMemoryLoad) / 100.f;
-#elif defined(OSX) // FIXME
+#elif defined(MACOS) // FIXME
   mem = -1.f;
   load[0] = load[1] = load[2] = -1.f;
 #else
   struct sysinfo info;
-  if(sysinfo(&info) == -1)
+  if (sysinfo(&info) == -1)
     load[0] = load[1] = load[2] = mem = -1.f;
   else
   {
@@ -264,22 +263,22 @@ unsigned long long SystemCall::getFreeDiskSpace(const char* path)
 {
   std::string fullPath = File::isAbsolute(path) ? path : std::string(File::getBHDir()) + "/Config/" + path;
 #ifdef WINDOWS
-  for(std::string::size_type i = 0; i < fullPath.size(); ++i)
-    if(fullPath[i] == '/')
+  for (std::string::size_type i = 0; i < fullPath.size(); ++i)
+    if (fullPath[i] == '/')
       fullPath[i] = '\\';
 
   // Free space can only be determined for a directory
   DWORD attr = GetFileAttributes(fullPath.c_str());
-  if(attr == 0xffffffff || !(attr & FILE_ATTRIBUTE_DIRECTORY))
+  if (attr == 0xffffffff || !(attr & FILE_ATTRIBUTE_DIRECTORY))
   {
     std::string::size_type p = fullPath.rfind('\\');
-    if(p != std::string::npos)
+    if (p != std::string::npos)
       fullPath = fullPath.substr(0, p + 1);
     ASSERT(GetFileAttributes(fullPath.c_str()) & FILE_ATTRIBUTE_DIRECTORY);
   }
 
   // UNC only works for roots
-  if(fullPath.size() > 2 && fullPath[0] == '\\' && fullPath[1] == '\\')
+  if (fullPath.size() > 2 && fullPath[0] == '\\' && fullPath[1] == '\\')
   {
     std::string::size_type p = fullPath.find('\\', 2);
     p = fullPath.find('\\', p + 1);
@@ -287,23 +286,23 @@ unsigned long long SystemCall::getFreeDiskSpace(const char* path)
   }
 
   // UNC requires a trailing backslash
-  if(!fullPath.empty() && fullPath.back() != '\\')
+  if (!fullPath.empty() && fullPath.back() != '\\')
     fullPath += '\\';
 
   ULARGE_INTEGER freeBytesAvailable;
-  if(GetDiskFreeSpaceEx(fullPath.c_str(), &freeBytesAvailable, nullptr, nullptr))
+  if (GetDiskFreeSpaceEx(fullPath.c_str(), &freeBytesAvailable, nullptr, nullptr))
     return freeBytesAvailable.QuadPart;
   else
     return 0;
-#elif defined(OSX)
+#elif defined(MACOS)
   struct statfs data;
-  if(!statfs(fullPath.c_str(), &data))
+  if (!statfs(fullPath.c_str(), &data))
     return data.f_bavail * data.f_bsize;
   else
     return 0;
 #else
   struct statvfs data;
-  if(!statvfs(fullPath.c_str(), &data))
+  if (!statvfs(fullPath.c_str(), &data))
     return data.f_bavail * data.f_bsize;
   else
     return 0;
@@ -316,7 +315,7 @@ void* SystemCall::alignedMalloc(size_t size, size_t alignment)
   return _aligned_malloc(size, alignment);
 #else
   void* ptr;
-  if(!posix_memalign(&ptr, alignment, size))
+  if (!posix_memalign(&ptr, alignment, size))
   {
     return ptr;
   }
@@ -340,5 +339,20 @@ void SystemCall::alignedFree(void* ptr)
 int SystemCall::playSound(const char* name)
 {
   return SoundPlayer::play(name);
+}
+
+int SystemCall::text2Speech(std::string text)
+{
+  std::string t = "t2s:" + text;
+  return SoundPlayer::play(t.c_str());
+}
+
+int SystemCall::text2SpeechESpeak(const char* text)
+{
+#ifndef TARGET_TOOL
+  ANNOTATION("Text2Speech", text);
+#endif
+  OUTPUT_TEXT("Say: " << std::string(text));
+  return 0;
 }
 #endif

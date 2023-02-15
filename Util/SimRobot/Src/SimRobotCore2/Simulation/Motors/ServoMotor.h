@@ -18,7 +18,7 @@ class ServoMotor : public Motor
 public:
   /**
   * @class Controller
-  * A PID controller that controlls the motor
+  * A PID controller that controls the motor
   */
   class Controller
   {
@@ -42,7 +42,7 @@ public:
     float lastError;
   };
 
-  Controller controller; /**< A PID controller that controlls the motor */
+  Controller controller; /**< A PID controller that controls the motor */
   float maxVelocity;
   float maxForce;
 
@@ -57,26 +57,33 @@ private:
   class PositionSensor : public Sensor::Port
   {
   public:
-    Joint* joint;
+    ServoMotor* servoMotor;
 
     //API
-    virtual void updateValue();
-    virtual bool getMinAndMax(float& min, float& max) const;
+    void updateValue() override;
+    bool getMinAndMax(float& min, float& max) const override;
   } positionSensor;
+
+  /** Last position of an angular hinge. */
+  float lastPos;
+
+  /** Stiffness of this motor. */
+  int stiffness;
+  void setStiffness(int value) override;
 
   /**
   * Initializes the motor
   * @param joint The joint that is controlled by this motor
   */
-  virtual void create(Joint* joint);
+  void create(Joint* joint) override;
 
   /** Called before computing a simulation step to update the joint */
-  virtual void act();
+  void act() override;
 
   /** Registers this object at SimRobot's GUI */
-  virtual void registerObjects();
+  void registerObjects() override;
 
   // actuator API
-  virtual void setValue(float value);
-  virtual bool getMinAndMax(float& min, float& max) const;
+  void setValue(float value) override;
+  bool getMinAndMax(float& min, float& max) const override;
 };

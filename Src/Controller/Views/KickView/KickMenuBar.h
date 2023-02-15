@@ -24,8 +24,8 @@ public:
   QMenu* dragPlaneMenu;
 
   QActionGroup* dragPlaneActionGroup;
-private:
 
+private:
   void createActions();
   void createMenus();
 };

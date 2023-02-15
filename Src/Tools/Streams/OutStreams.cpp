@@ -33,7 +33,7 @@ void OutBinary::writeAngle(const Angle& d, PhysicalOutStream& stream)
 
 void OutText::writeBool(bool value, PhysicalOutStream& stream)
 {
-  if(value)
+  if (value)
     stream.writeToStream(" true", 5);
   else
     stream.writeToStream(" false", 6);
@@ -43,28 +43,28 @@ void OutText::writeString(const char* value, PhysicalOutStream& stream)
 {
   stream.writeToStream(" ", 1);
   bool containsSpaces = !*value || *value == '"' || strcspn(value, " \n\r\t") < strlen(value);
-  if(containsSpaces)
+  if (containsSpaces)
     stream.writeToStream("\"", 1);
-  for(; *value; ++value)
-    if(*value == '"' && containsSpaces)
+  for (; *value; ++value)
+    if (*value == '"' && containsSpaces)
       stream.writeToStream("\\\"", 2);
-    else if(*value == '\n')
+    else if (*value == '\n')
       stream.writeToStream("\\n", 2);
-    else if(*value == '\r')
+    else if (*value == '\r')
       stream.writeToStream("\\r", 2);
-    else if(*value == '\t')
+    else if (*value == '\t')
       stream.writeToStream("\\t", 2);
-    else if(*value == '\\')
+    else if (*value == '\\')
       stream.writeToStream("\\\\", 2);
     else
       stream.writeToStream(value, 1);
-  if(containsSpaces)
+  if (containsSpaces)
     stream.writeToStream("\"", 1);
 }
 
 void OutText::writeData(const void* p, size_t size, PhysicalOutStream& stream)
 {
-  for(size_t i = 0; i < size; ++i)
+  for (size_t i = 0; i < size; ++i)
     writeChar(*((const char*&)p)++, stream);
 }
 
@@ -110,6 +110,12 @@ void OutText::writeUInt(unsigned int d, PhysicalOutStream& stream)
   stream.writeToStream(buf, strlen(buf));
 }
 
+void OutText::writeInt64(int64_t d, PhysicalOutStream& stream)
+{
+  sprintf(buf, " %" PRIi64, d); // TODO: check if llu is correct on every platform
+  stream.writeToStream(buf, strlen(buf));
+}
+
 void OutText::writeUInt64(uint64_t d, PhysicalOutStream& stream)
 {
   sprintf(buf, " %" PRIu64, d); // TODO: check if llu is correct on every platform
@@ -142,7 +148,7 @@ void OutText::writeEndL(PhysicalOutStream& stream)
 
 void OutTextRaw::writeBool(bool value, PhysicalOutStream& stream)
 {
-  if(value)
+  if (value)
     stream.writeToStream("true", 4);
   else
     stream.writeToStream("false", 5);
@@ -155,7 +161,7 @@ void OutTextRaw::writeString(const char* value, PhysicalOutStream& stream)
 
 void OutTextRaw::writeData(const void* p, size_t size, PhysicalOutStream& stream)
 {
-  for(size_t i = 0; i < size; ++i)
+  for (size_t i = 0; i < size; ++i)
     writeChar(*((const char*&)p)++, stream);
 }
 
@@ -201,6 +207,12 @@ void OutTextRaw::writeUInt(unsigned int d, PhysicalOutStream& stream)
   stream.writeToStream(buf, strlen(buf));
 }
 
+void OutTextRaw::writeInt64(int64_t d, PhysicalOutStream& stream)
+{
+  sprintf(buf, "%" PRIi64, d); // TODO: check llu on every platform
+  stream.writeToStream(buf, strlen(buf));
+}
+
 void OutTextRaw::writeUInt64(uint64_t d, PhysicalOutStream& stream)
 {
   sprintf(buf, "%" PRIu64, d); // TODO: check llu on every platform
@@ -221,7 +233,7 @@ void OutTextRaw::writeDouble(double d, PhysicalOutStream& stream)
 
 void OutTextRaw::writeAngle(const Angle& d, PhysicalOutStream& stream)
 {
-  if(d == SensorData::off)
+  if (d == SensorData::off)
     sprintf(buf, "%g", static_cast<float>(d));
   else
     sprintf(buf, "%gdeg", d.toDegrees());
@@ -236,7 +248,7 @@ void OutTextRaw::writeEndL(PhysicalOutStream& stream)
 
 OutFile::~OutFile()
 {
-  if(stream != nullptr)
+  if (stream != nullptr)
     delete stream;
 }
 
@@ -257,7 +269,7 @@ void OutFile::open(const std::string& name, bool append)
 
 void OutFile::writeToStream(const void* p, size_t size)
 {
-  if(stream != nullptr)
+  if (stream != nullptr)
     stream->write(p, size);
 }
 
@@ -269,7 +281,7 @@ std::string OutFile::getFullName() const
 
 void OutMemory::writeToStream(const void* p, size_t size)
 {
-  if(memory != nullptr)
+  if (memory != nullptr)
   {
     memcpy(memory, p, size);
     memory += size;
@@ -277,13 +289,11 @@ void OutMemory::writeToStream(const void* p, size_t size)
   }
 }
 
-OutMap::OutMap(Out& stream, bool singleLine) :
-  stream(stream), singleLine(singleLine)
-{}
+OutMap::OutMap(Out& stream, bool singleLine) : stream(stream), singleLine(singleLine) {}
 
 void OutMap::writeLn()
 {
-  if(singleLine)
+  if (singleLine)
     stream << " ";
   else
     stream << endl;
@@ -292,15 +302,24 @@ void OutMap::writeLn()
 void OutMap::outUChar(unsigned char value)
 {
   Entry& e = stack.back();
-  if(e.enumToString)
-    stream << e.enumToString(value);
+  if (e.enumToString)
+  {
+    if (const char* name = e.enumToString(value))
+      stream << name;
+    else
+    {
+      char id[4] = {0};
+      snprintf(id, sizeof(id), "%u", value);
+      stream << id;
+    }
+  }
   else
     stream << static_cast<unsigned>(value);
 }
 
 void OutMap::outUInt(unsigned int value)
 {
-  if(stack.back().type != -1)
+  if (stack.back().type != -1)
     stream << value;
 }
 
@@ -308,38 +327,38 @@ void OutMap::outString(const char* value)
 {
   char buf[2] = {0};
   bool containsSpecialChars = !*value || *value == '"' || strcspn(value, " \n\r\t=,;]}") < strlen(value);
-  if(containsSpecialChars)
+  if (containsSpecialChars)
     stream << "\"";
-  for(; *value; ++value)
-    if(*value == '"' && containsSpecialChars)
+  for (; *value; ++value)
+    if (*value == '"' && containsSpecialChars)
       stream << "\\\"";
-    else if(*value == '\n')
+    else if (*value == '\n')
       stream << "\\n";
-    else if(*value == '\r')
+    else if (*value == '\r')
       stream << "\\r";
-    else if(*value == '\t')
+    else if (*value == '\t')
       stream << "\\t";
-    else if(*value == '\\')
+    else if (*value == '\\')
       stream << "\\\\";
     else
     {
       buf[0] = *value;
       stream << buf;
     }
-  if(containsSpecialChars)
+  if (containsSpecialChars)
     stream << "\"";
 }
 
-void OutMap::select(const char* name, int type, const char * (*enumToString)(int))
+void OutMap::select(const char* name, int type, const char* (*enumToString)(int))
 {
   Streaming::trimName(name);
-  if(!stack.empty())
+  if (!stack.empty())
   {
     ASSERT(name || type >= 0);
     Entry& e = stack.back();
-    if(!e.hasSubEntries)
+    if (!e.hasSubEntries)
     {
-      if(e.type == -1) // array
+      if (e.type == -1) // array
       {
         stream << "[";
         writeLn();
@@ -349,21 +368,21 @@ void OutMap::select(const char* name, int type, const char * (*enumToString)(int
         stream << "{";
         writeLn();
       }
-      if(!singleLine)
+      if (!singleLine)
         indentation += "  ";
       e.hasSubEntries = true;
     }
   }
 
-  if(type < 0) // attribute
+  if (type < 0) // attribute
   {
     stream << indentation;
-    if(name)
+    if (name)
       stream << name << " = ";
   }
-  else if(type == 0) // first array element
+  else if (type == 0) // first array element
     stream << indentation;
-  else if(type > 0) // further array elements
+  else if (type > 0) // further array elements
   {
     stream << ",";
     writeLn();
@@ -376,11 +395,11 @@ void OutMap::select(const char* name, int type, const char * (*enumToString)(int
 void OutMap::deselect()
 {
   Entry& e = stack.back();
-  if(e.hasSubEntries)
+  if (e.hasSubEntries)
   {
-    if(!singleLine)
+    if (!singleLine)
       indentation = indentation.substr(2);
-    if(e.type == -1) // array
+    if (e.type == -1) // array
     {
       writeLn();
       stream << indentation << "]";
@@ -388,10 +407,10 @@ void OutMap::deselect()
     else // other attribute or array element
       stream << indentation << "}";
   }
-  else if(e.type == -1) // empty array
+  else if (e.type == -1) // empty array
     stream << "[]";
 
-  if(e.type < 0) // attribute
+  if (e.type < 0) // attribute
   {
     stream << ";";
     writeLn();
@@ -399,7 +418,7 @@ void OutMap::deselect()
   stack.pop_back();
 }
 
-void OutMap::write(const void *p, size_t size)
+void OutMap::write(const void* p, size_t size)
 {
   ASSERT(false);
 }

@@ -3,7 +3,6 @@
 #include "Tools/Streams/AutoStreamable.h"
 
 template<typename T> STREAMABLE(Next,
-{
   Next() = default;
   Next(const Next& other) = delete;
 
@@ -28,5 +27,5 @@ template<typename T> STREAMABLE(Next,
 
   (T) next,
   (unsigned)(0) readCounter,
-  (unsigned)(0) writeCounter,
-});
+  (unsigned)(0) writeCounter
+);

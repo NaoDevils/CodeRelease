@@ -32,7 +32,11 @@ public:
   LogPlayer(MessageQueue& targetQueue);
 
   /** Destructor. */
-  ~LogPlayer() {if(streamHandler) delete streamHandler;}
+  ~LogPlayer()
+  {
+    if (streamHandler)
+      delete streamHandler;
+  }
 
   /** Deletes all messages from the queue */
   void init();
@@ -148,9 +152,23 @@ public:
 
   /**
   * The functions filters the message queue.
+  * @param startFrame Start frame id that should be kept.
+  * @param endFrame End frame id that should be kept.
+  */
+  void keep(int startFrame, int endFrame);
+
+  /**
+  * The functions filters the message queue.
   * @param messageIDs An null-terminated array of message ids that should be removed.
   */
   void remove(MessageID* messageIDs);
+
+  /**
+  * The functions filters the message queue.
+  * @param startFrame Start frame id that should be removed.
+  * @param endFrame End frame id that should be removed.
+  */
+  void remove(int startFrame, int endFrame);
 
   /**
   * The function creates a histogram on the message ids contained in the log file.
@@ -160,12 +178,11 @@ public:
 
   /** different states of the logplayer */
   ENUM(LogPlayerState,
-  {,
     initial,
     recording,
     paused,
-    playing,
-  });
+    playing
+  );
 
   LogPlayerState state; /**< The state of the log player. */
   int currentFrameNumber; /**< The number of the current frame. */
@@ -185,7 +202,7 @@ private:
   /**
   * The method counts the number of frames.
   */
-  void countFrames();
+  void countFramesAndMessages();
 
   /**
    * Creates the index of the first message numbers of all frames.
@@ -207,13 +224,11 @@ private:
   */
   void replayStreamSpecification();
 
-  template<class T>
-  std::string represetation2csv(Streamable *stream);
+  template <class T> std::string represetation2csv(Streamable* stream);
 };
 
 
-template<class T>
-std::string LogPlayer::represetation2csv(Streamable *stream)
+template <class T> std::string LogPlayer::represetation2csv(Streamable* stream)
 {
   return ((T*)stream)->csv();
 }

@@ -42,9 +42,7 @@ public:
    * @param fullName The path to this view in the scene graph
    * @param robotConsole The robot console which owns \c sensorData.
    */
-  SensorView(const QString& fullName, RobotConsole& robotConsole, const FsrSensorData& fsrSensorData,
-             const InertialSensorData& inertialSensorData, const KeyStates& keyStates,
-             const SystemSensorData& systemSensorData);
+  SensorView(const QString& fullName, RobotConsole& robotConsole, const FsrSensorData& fsrSensorData, const InertialSensorData& inertialSensorData, const KeyStates& keyStates, const SystemSensorData& systemSensorData);
 
 private:
   /**
@@ -53,6 +51,6 @@ private:
    * @return The widget.
    */
   virtual SimRobot::Widget* createWidget();
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 };

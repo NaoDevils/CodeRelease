@@ -30,6 +30,8 @@ public:
   bool setOpened(const SimRobot::Object* object, bool opened);
   bool setActive(const SimRobot::Object* object, bool active);
 
+  virtual void saveLayout();
+
   QAction* toggleViewAction() const;
 
 signals:
@@ -40,8 +42,10 @@ private:
   class RegisteredObject : public QTreeWidgetItem
   {
   public:
-    RegisteredObject(const SimRobot::Module* module, SimRobot::Object* object, QTreeWidgetItem* parentItem, int flags) :
-        QTreeWidgetItem(parentItem), module(module), object(object), fullName(object->getFullName()), flags(flags), opened(false) {}
+    RegisteredObject(const SimRobot::Module* module, SimRobot::Object* object, QTreeWidgetItem* parentItem, int flags)
+        : QTreeWidgetItem(parentItem), module(module), object(object), fullName(object->getFullName()), flags(flags), opened(false)
+    {
+    }
 
     const SimRobot::Module* module;
     SimRobot::Object* object;

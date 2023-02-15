@@ -27,7 +27,7 @@ public:
   static void trace(const char* format, ...);
 };
 
-#ifdef OSX
+#ifdef MACOS
 // Prevent strange recursive include: <assert.h> is resolved by this file!
 #include <../include/assert.h>
 #else
@@ -38,7 +38,9 @@ public:
 #define TRACE(...) Assert::trace(__VA_ARGS__)
 
 #else
-#define ASSERT(e) ((void)0)
-#define VERIFY(e) ((void)(e))
-#define TRACE(...) ((void)0)
+
+#define ASSERT(e) static_cast<void>(0)
+#define VERIFY(e) static_cast<void>(e)
+#define TRACE(...) static_cast<void>(0)
+
 #endif

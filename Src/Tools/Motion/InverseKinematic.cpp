@@ -15,8 +15,7 @@
 #include "Tools/Math/Pose3f.h"
 #include "Tools/Math/Rotation.h"
 
-bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, JointAngles& jointAngles,
-                                     const RobotDimensions& robotDimensions, float ratio)
+bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
 {
   static const Pose3f rotPi_4 = RotationMatrix::aroundX(pi_4);
   static const Pose3f rotMinusPi_4 = RotationMatrix::aroundX(-pi_4);
@@ -56,10 +55,10 @@ bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& p
   const float h2Sqr = h2 * h2;
   const float hlSqr = hl * hl;
   const float hrSqr = hr * hr;
-  const float lCosMinusAlpha = (h1Sqr + hlSqr - h2Sqr) / (2.f* h1 * hl);
-  const float rCosMinusAlpha = (h1Sqr + hrSqr - h2Sqr) / (2.f* h1 * hr);
-  const float lCosMinusBeta = (h2Sqr + hlSqr - h1Sqr) / (2.f* h2 * hl);
-  const float rCosMinusBeta = (h2Sqr + hrSqr - h1Sqr) / (2.f* h2 * hr);
+  const float lCosMinusAlpha = (h1Sqr + hlSqr - h2Sqr) / (2.f * h1 * hl);
+  const float rCosMinusAlpha = (h1Sqr + hrSqr - h2Sqr) / (2.f * h1 * hr);
+  const float lCosMinusBeta = (h2Sqr + hlSqr - h1Sqr) / (2.f * h2 * hl);
+  const float rCosMinusBeta = (h2Sqr + hrSqr - h1Sqr) / (2.f * h2 * hr);
   const float lAlpha = -std::acos(cosClipping.limit(lCosMinusAlpha));
   const float rAlpha = -std::acos(cosClipping.limit(rCosMinusAlpha));
   const float lBeta = -std::acos(cosClipping.limit(lCosMinusBeta));
@@ -82,15 +81,14 @@ bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& p
   return hl <= maxLen && hr <= maxLen;
 }
 
-bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, const Vector2f& bodyRotation,
-                                     JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
+bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, const Vector2f& bodyRotation, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
 {
   const Quaternionf bodyRot = Rotation::aroundX(bodyRotation.x()) * Rotation::aroundY(bodyRotation.y());
   return calcLegJoints(positionLeft, positionRight, bodyRot, jointAngles, robotDimensions, ratio);
 }
 
-bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, const Quaternionf& bodyRotation,
-                                     JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
+bool InverseKinematic::calcLegJoints(
+    const Pose3f& positionLeft, const Pose3f& positionRight, const Quaternionf& bodyRotation, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
 {
   static const Pose3f rotPi_4 = RotationMatrix::aroundX(pi_4);
   static const Pose3f rotMinusPi_4 = RotationMatrix::aroundX(-pi_4);
@@ -130,10 +128,10 @@ bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& p
   const float h2Sqr = h2 * h2;
   const float hlSqr = hl * hl;
   const float hrSqr = hr * hr;
-  const float lCosMinusAlpha = (h1Sqr + hlSqr - h2Sqr) / (2.f* h1 * hl);
-  const float rCosMinusAlpha = (h1Sqr + hrSqr - h2Sqr) / (2.f* h1 * hr);
-  const float lCosMinusBeta = (h2Sqr + hlSqr - h1Sqr) / (2.f* h2 * hl);
-  const float rCosMinusBeta = (h2Sqr + hrSqr - h1Sqr) / (2.f* h2 * hr);
+  const float lCosMinusAlpha = (h1Sqr + hlSqr - h2Sqr) / (2.f * h1 * hl);
+  const float rCosMinusAlpha = (h1Sqr + hrSqr - h2Sqr) / (2.f * h1 * hr);
+  const float lCosMinusBeta = (h2Sqr + hlSqr - h1Sqr) / (2.f * h2 * hl);
+  const float rCosMinusBeta = (h2Sqr + hrSqr - h1Sqr) / (2.f * h2 * hr);
   const float lAlpha = -std::acos(cosClipping.limit(lCosMinusAlpha));
   const float rAlpha = -std::acos(cosClipping.limit(rCosMinusAlpha));
   const float lBeta = -std::acos(cosClipping.limit(lCosMinusBeta));
@@ -156,19 +154,18 @@ bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& p
   return hl <= maxLen && hr <= maxLen;
 }
 
-void InverseKinematic::calcHeadJoints(const Vector3f& position, const float imageTilt, const RobotDimensions& robotDimensions,
-                                      const bool lowerCamera, Vector2f& panTilt, const CameraCalibration& cameraCalibration)
+void InverseKinematic::calcHeadJoints(
+    const Vector3f& position, const float imageTilt, const RobotDimensions& robotDimensions, const bool lowerCamera, Vector2f& panTilt, const CameraCalibration& cameraCalibration)
 {
   const Vector2f headJoint2Target(std::sqrt(sqr(position.x()) + sqr(position.y())), position.z() - robotDimensions.hipToNeckLength);
-  const Vector2f headJoint2Camera(robotDimensions.getXOffsetNeckToCamera(lowerCamera),
-                                  robotDimensions.getZOffsetNeckToCamera(lowerCamera));
+  const Vector2f headJoint2Camera(robotDimensions.getXOffsetNeckToCamera(lowerCamera), robotDimensions.getZOffsetNeckToCamera(lowerCamera));
   const float headJoint2CameraAngle = std::atan2(headJoint2Camera.x(), headJoint2Camera.y());
   const float cameraAngle = pi3_2 - imageTilt - (pi_2 - headJoint2CameraAngle) - robotDimensions.getTiltNeckToCamera(lowerCamera);
   const float targetAngle = std::asin(headJoint2Camera.norm() * std::sin(cameraAngle) / headJoint2Target.norm());
   const float headJointAngle = pi - targetAngle - cameraAngle;
   panTilt.y() = std::atan2(headJoint2Target.x(), headJoint2Target.y()) - headJointAngle - headJoint2CameraAngle;
   panTilt.x() = std::atan2(position.y(), position.x());
-  if(lowerCamera)
+  if (lowerCamera)
   {
     panTilt.x() -= cameraCalibration.lowerCameraRotationCorrection.z();
     panTilt.y() -= cameraCalibration.lowerCameraRotationCorrection.y();

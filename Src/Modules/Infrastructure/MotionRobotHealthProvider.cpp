@@ -12,7 +12,7 @@ void MotionRobotHealthProvider::update(MotionRobotHealth& motionRobotHealth)
 {
   // Compute frame rate of motion process:
   unsigned now = SystemCall::getCurrentSystemTime();
-  if(lastExecutionTime != 0)
+  if (lastExecutionTime != 0)
     timeBuffer.push_front(now - lastExecutionTime);
   motionRobotHealth.motionFrameRate = timeBuffer.sum() ? 1000.0f / timeBuffer.averagef() : 0.f;
   motionRobotHealth.avgMotionTime = float(timeBuffer.average());

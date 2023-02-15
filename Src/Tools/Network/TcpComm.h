@@ -10,7 +10,6 @@
 
 #ifdef WINDOWS
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#define NOMINMAX
 #include <WinSock2.h>
 #else
 #include <netinet/in.h>
@@ -22,7 +21,7 @@
 #define socket_t int
 #endif
 
- /**
+/**
   * @class TcpComm
   * The class implements a tcp connection.
   */

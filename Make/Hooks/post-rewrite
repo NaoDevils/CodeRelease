@@ -1,6 +1,0 @@
-#!/bin/bash
-
-if [ "$1" = "rebase" ]
-then
-  "`dirname "$0"`/generate.sh"
-fi

@@ -16,8 +16,8 @@
 #define Joystick_H
 #endif
 
-#ifdef OSX
-#include "OSX/Joystick.h"
+#ifdef MACOS
+#include "macOS/Joystick.h"
 #define Joystick_H
 #endif
 

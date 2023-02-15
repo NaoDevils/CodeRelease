@@ -3,26 +3,32 @@
 #include <QLabel>
 #include <QMenu>
 #include <QProgressBar>
+#include <QDrag>
+#include <QMimeData>
+#include <QApplication>
 
 #include <sstream>
+#include <iostream>
 
 #include "Utils/dorsh/models/Robot.h"
 #include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/tools/ShellTools.h"
 #include "Utils/dorsh/ui/RobotView.h"
 #include "Utils/dorsh/ui/TeamSelector.h"
 #include "Utils/dorsh/ui/SensorWindow.h"
-#include "Utils/dorsh/tools/StringTools.h"
-
+#include "Platform/SystemCall.h"
+#include <naodevilsbase/naodevilsbase.h>
 
 
 void RobotView::init()
 {
   QFormLayout* layout = new QFormLayout();
 
-  if(playerNumber)
+  if (playerNumber)
+  {
     cPlayerNumber = new QLabel(QString("<font size=5><b>") + QString::number(playerNumber) + QString("</b></font>"));
+    cPlayerNumber->setTextInteractionFlags(Qt::NoTextInteraction);
+  }
 
   statusWidget = new QWidget(this);
   statusWidget->setMaximumSize(320, 160);
@@ -30,10 +36,10 @@ void RobotView::init()
   this->setMaximumHeight(155);
   QGridLayout* statusLayout = new QGridLayout(statusWidget);
   this->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),
-    this, SLOT(ShowContextMenu(const QPoint&)));
+  connect(this, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(ShowContextMenu(const QPoint&)));
 
   QLabel* bodyNameLabel = new QLabel(QString("<font size=2><b>") + QString("Body") + QString("</b></font>"));
+  bodyNameLabel->setTextInteractionFlags(Qt::NoTextInteraction);
   bodyName = new QLabel(this);
   bodyName->setMaximumSize(90, 20);
   bodyName->setMinimumSize(60, 20);
@@ -42,6 +48,7 @@ void RobotView::init()
   statusLayout->addWidget(bodyName, 0, 1);
 
   QLabel* pingLabelWLAN = new QLabel("<font size=2><b>Wlan</b></font>", statusWidget);
+  pingLabelWLAN->setTextInteractionFlags(Qt::NoTextInteraction);
   pingBarWLAN = new QLabel(this);
   pingBarWLAN->setMaximumSize(90, 20);
   pingBarWLAN->setMinimumSize(60, 20);
@@ -51,6 +58,7 @@ void RobotView::init()
   statusLayout->addWidget(pingBarWLAN, 1, 1);
 
   QLabel* pingLabelLAN = new QLabel("<font size=2><b>Lan</b></font>", statusWidget);
+  pingLabelLAN->setTextInteractionFlags(Qt::NoTextInteraction);
   pingBarLAN = new QLabel(this);
   pingBarLAN->setMaximumSize(90, 20);
   pingBarLAN->setMinimumSize(60, 20);
@@ -60,59 +68,70 @@ void RobotView::init()
   statusLayout->addWidget(pingBarLAN, 2, 1);
 
   QLabel* powerLabel = new QLabel("<font size=2><b>Power</b></font>", statusWidget);
+  powerLabel->setTextInteractionFlags(Qt::NoTextInteraction);
   powerBar = new QProgressBar(this);
   powerBar->setMaximumSize(90, 20);
   powerBar->setMinimumSize(60, 20);
   powerBar->setRange(0, 100);
-  powerBar->setValue(0);
+  powerBar->reset();
   powerBar->setAlignment(Qt::AlignCenter);
-  if (robot)
-  {
-    std::map<std::string, std::string> emptyMap;
-    emptyMap[robot->name] = 1;
-    emptyMap["battery_charge"] = "0.000000";
-    emptyMap["battery_status"] = "-32708.000000";
-    setPower(emptyMap);
-    setMap(emptyMap);
-  }
   statusLayout->addWidget(powerLabel, 3, 0, Qt::AlignLeft);
   statusLayout->addWidget(powerBar, 3, 1);
+
+  QLabel* tempLabel = new QLabel("<font size=2><b>Temp</b></font>", statusWidget);
+  tempLabel->setTextInteractionFlags(Qt::NoTextInteraction);
+  tempBar = new QProgressBar(this);
+  tempBar->setMaximumSize(90, 20);
+  tempBar->setMinimumSize(60, 20);
+  tempBar->setRange(0, 100);
+  tempBar->reset();
+  tempBar->setAlignment(Qt::AlignCenter);
+  tempBar->setRange(20, 110);
+  tempBar->setFormat("%v°C");
+  statusLayout->addWidget(tempLabel, 4, 0, Qt::AlignLeft);
+  statusLayout->addWidget(tempBar, 4, 1);
 
   layout->addRow(cPlayerNumber, statusWidget);
 
   setLayout(layout);
+  setStyleSheet("QGroupBox { padding: 15% 0 0 0; }");
   connect(this, SIGNAL(toggled(bool)), this, SLOT(setSelected(bool)));
 
-  if(robot)
+  if (robot)
   {
+    sensorMap = {{"name", robot->name}};
     Session::getInstance().registerDataListener(this, robot);
-    Session::getInstance().registerWifiListener(this, robot);
   }
-
-  wifiOverMap = false;
-  wifiOverTeamPack = true;
 
   update();
   setAcceptDrops(true);
+
+  dataTimer.setSingleShot(true);
+  connect(&dataTimer,
+      &QTimer::timeout,
+      [&]()
+      {
+        changeData(sensorMap);
+      });
 }
 
 void RobotView::update()
 {
-  if(playerNumber)
+  if (playerNumber)
     cPlayerNumber->setVisible(false);
   statusWidget->setVisible(false);
   setCheckable(false);
-  if(robot)
+  if (robot)
   {
     RobotConfigDorsh* r = robot;
     robot = 0;
     setCheckable(playerNumber);
     robot = r;
-    if(playerNumber)
+    if (playerNumber)
       setChecked(isSelected());
     std::string ipPostfix = robot->wlan.substr(robot->wlan.length() - 2);
-    setTitle(fromString(robot->name + " (." + ipPostfix + ")"));
-    if(playerNumber)
+    setTitle(QString::fromStdString(robot->name + " (." + ipPostfix + ")"));
+    if (playerNumber)
     {
       cPlayerNumber->setEnabled(isSelected());
       cPlayerNumber->setVisible(true);
@@ -121,289 +140,301 @@ void RobotView::update()
   }
   else
   {
-    setTitle(fromString("Empty"));
-    cPlayerNumber->setVisible(true);
-    cPlayerNumber->setEnabled(false);
+    setTitle("Empty");
+    if (playerNumber)
+    {
+      cPlayerNumber->setEnabled(false);
+      cPlayerNumber->setVisible(true);
+    }
   }
+  changeData(sensorMap);
 }
 
-RobotView::RobotView(TeamSelector* teamSelector,
-                     RobotConfigDorsh* robot,
-                     unsigned short playerNumber,
-                     unsigned short pos)
-  : QGroupBox(teamSelector),
-    teamSelector(teamSelector),
-    robot(robot),
-    playerNumber(playerNumber),
-    pos(pos),
-    cPlayerNumber(0)
+RobotView::RobotView(TeamSelector* teamSelector, RobotConfigDorsh* robot, unsigned short playerNumber, unsigned short pos)
+    : QGroupBox(teamSelector), teamSelector(teamSelector), robot(robot), playerNumber(playerNumber), pos(pos), cPlayerNumber(0)
 {
   init();
 }
 
-RobotView::RobotView(TeamSelector* teamSelector,
-                     RobotConfigDorsh* robot)
-  : QGroupBox(teamSelector),
-    teamSelector(teamSelector),
-    robot(robot),
-    playerNumber(0),
-    pos(0),
-    cPlayerNumber(0)
+RobotView::RobotView(TeamSelector* teamSelector, RobotConfigDorsh* robot)
+    : QGroupBox(teamSelector), teamSelector(teamSelector), robot(robot), playerNumber(0), pos(0), cPlayerNumber(0)
 {
   init();
 }
 
 QString RobotView::getRobotName() const
 {
-  if(!robot)
+  if (!robot)
     return "";
-  return fromString(robot->name);
+  return QString::fromStdString(robot->name);
 }
 
 bool RobotView::isSelected() const
 {
-  if(!robot)
+  if (!robot)
     return false;
   return teamSelector->getSelectedTeam()->isPlayerSelected(robot);
 }
 
 void RobotView::setRobot(RobotConfigDorsh* robot)
 {
-  if(this->robot)
+  if (this->robot)
   {
     Session::getInstance().removeDataListener(this, this->robot);
-    Session::getInstance().removeWifiListener(this, this->robot);
   }
   this->robot = robot;
-  if(playerNumber)
+  if (playerNumber)
   {
     Team* team = teamSelector->getSelectedTeam();
     team->changePlayer(playerNumber, pos, robot);
   }
-  if(robot)
+  if (robot)
   {
     Session::getInstance().registerDataListener(this, robot);
-    Session::getInstance().registerWifiListener(this, robot);
   }
-  emit robotChanged();
 }
 
-void RobotView::changeWifi(std::string robotName, bool connected)
+unsigned RobotView::lastDataUpdate(const nlohmann::json& json)
 {
-  if (robot)
-  {
-    if (robot->name == robotName)
-    {
-      QLabel* bar = pingBarWLAN;
-      if (connected)
-      {
-        bar->setStyleSheet("QLabel { background-color : lime; border: 1px solid silver; }");
-        wifiOverTeamPack = true;
-        wifiOverMap = false;
-      }
-      else
-      {
-        if (!wifiOverMap)
-        {
-          bar->setStyleSheet("QLabel { background-color : #e6e6e6; border: 1px solid silver; }");
-          wifiOverTeamPack = false;
-        }
+  const unsigned currentTime = SystemCall::getRealSystemTime();
 
-      }
+  const unsigned lan = json.contains("lan") ? currentTime - json["lan"].get<unsigned>() : std::numeric_limits<unsigned>::max();
+  const unsigned wlan = json.contains("wlan") ? currentTime - json["wlan"].get<unsigned>() : std::numeric_limits<unsigned>::max();
+
+  return std::min(lan, wlan);
+}
+
+unsigned RobotView::lastUpdate(const nlohmann::json& json)
+{
+  const unsigned currentTime = SystemCall::getRealSystemTime();
+
+  const unsigned tc = json.contains("tc") ? currentTime - json["tc"].get<unsigned>() : std::numeric_limits<unsigned>::max();
+
+  return std::min(tc, lastDataUpdate(json));
+}
+
+void RobotView::setPings(const nlohmann::json& json)
+{
+  if (!robot)
+    return;
+
+  if (json.at("name").get<std::string>() != robot->name)
+    return;
+
+  const unsigned currentTime = SystemCall::getRealSystemTime();
+  if (json.contains("lan") && currentTime - json["lan"].get<unsigned>() < dataTimeout)
+    pingBarLAN->setStyleSheet("QLabel { background-color : lime; border: 1px solid silver; }");
+  else
+    pingBarLAN->setStyleSheet("QLabel { background-color : #e6e6e6; border: 1px solid silver; }");
+
+  if (json.contains("wlan") && currentTime - json["wlan"].get<unsigned>() < dataTimeout)
+    pingBarWLAN->setStyleSheet("QLabel { background-color : lime; border: 1px solid silver; font-size: 7pt; }");
+  else if (json.contains("tc") && currentTime - json["tc"].get<unsigned>() < dataTimeout)
+    pingBarWLAN->setStyleSheet("QLabel { background-color : yellow; border: 1px solid silver; font-size: 7pt; }");
+  else
+    pingBarWLAN->setStyleSheet("QLabel { background-color : #e6e6e6; border: 1px solid silver; font-size: 7pt; }");
+
+  if (lastDataUpdate(json) < dataTimeout && json.contains("wifi_state"))
+    pingBarWLAN->setText(QString::fromStdString(json["wifi_state"].get<std::string>()));
+  else
+    pingBarWLAN->setText("");
+}
+
+void RobotView::setPower(const nlohmann::json& json)
+{
+  if (!robot)
+    return;
+
+  if (json.at("name").get<std::string>() != robot->name)
+    return;
+
+  if (lastDataUpdate(json) < dataTimeout && json.contains("sensors"))
+  {
+    const float battery_charge = json.at("sensors").at("battery").at(0).get<float>();
+    const float battery_status = json.at("sensors").at("battery").at(1).get<float>();
+
+    int value = static_cast<int>(battery_charge * 100.f);
+    bool powerPlugged = !(static_cast<short>(battery_status) & 0b100000);
+
+    if (powerPlugged)
+      powerBar->setStyleSheet("QProgressBar::chunk { background-color: lime; border: 1px solid silver; }");
+    else
+      powerBar->setStyleSheet("QProgressBar::chunk { background-color: red; border: 1px solid silver; }");
+
+    powerBar->setValue(value);
+  }
+  else
+  {
+    powerBar->setStyleSheet("QProgressBar::chunk { background-color: gray; border: 1px solid silver; }");
+    powerBar->reset();
+  }
+}
+
+void RobotView::setTemp(const nlohmann::json& json)
+{
+  if (!robot)
+    return;
+
+  if (json.at("name").get<std::string>() != robot->name)
+    return;
+
+  if (lastDataUpdate(json) < dataTimeout && json.contains("sensors"))
+  {
+    const std::vector<float> temperatures = json.at("sensors").at("temperature").get<std::vector<float>>();
+    if (temperatures.size() != NDData::Joint::numOfJoints)
+      return;
+
+    const auto maxTemp = std::max_element(temperatures.begin() + NDData::Joint::lHipYawPitch, temperatures.begin() + NDData::Joint::rAnkleRoll + 1);
+    static constexpr float lowTemp = 40.f;
+    static constexpr float highTemp = 90.f;
+    const float temp = std::clamp(*maxTemp, lowTemp, highTemp);
+
+    const int hue = static_cast<int>(120.f - (temp - lowTemp) / (highTemp - lowTemp) * 120.f);
+    QColor color;
+    color.setHsv(hue, 255, 255);
+    tempBar->setStyleSheet(QString("QProgressBar::chunk { background-color: %1; border: 1px solid silver; }").arg(color.name()));
+    tempBar->setValue(*maxTemp);
+
+    return;
+  }
+
+  tempBar->setStyleSheet("QProgressBar::chunk { background-color: gray; border: 1px solid silver; }");
+  tempBar->reset();
+}
+
+void RobotView::setMap(const nlohmann::json& json)
+{
+  if (!robot)
+    return;
+
+  if (json.at("name").get<std::string>() != robot->name)
+    return;
+
+  sensorMap = json;
+
+  if (unsigned timediff = lastUpdate(json); timediff < dataTimeout)
+    dataTimer.start(dataTimeout - timediff);
+  else
+    dataTimer.stop();
+
+  QString bodyText = "";
+  int state = 0;
+
+  if (lastDataUpdate(json) < dataTimeout)
+  {
+
+    const auto sameBodyId = [&](const auto& r)
+    {
+      return sensorMap.contains("bodyId") && r.second->bodyId == sensorMap.at("bodyId").get<std::string>();
+    };
+    const auto bodyIt = std::find_if(Session::getInstance().robotsByName.begin(), Session::getInstance().robotsByName.end(), sameBodyId);
+
+    if (bodyIt != Session::getInstance().robotsByName.end())
+      bodyText = QString::fromStdString(bodyIt->first);
+
+    state = sensorMap.contains("state") ? sensorMap.at("state").get<int>() : 0;
+  }
+
+  bodyName->setText(bodyText);
+
+  if (playerNumber)
+  {
+    switch (state)
+    {
+    case 0:
+      cPlayerNumber->setText("<font size = 5><b>" + QString::number(playerNumber) + "</b></font>");
+      cPlayerNumber->setToolTip("");
+      break;
+    case 15:
+      cPlayerNumber->setText("<font size = 5 color = crimson><b>" + QString::number(playerNumber) + "</b></font>");
+      cPlayerNumber->setToolTip("Framework stopped");
+      break;
+    default:
+      cPlayerNumber->setText("<font size = 10 color = crimson><b>&#9760;</b></font>");
+      cPlayerNumber->setToolTip("Framework crashed");
     }
   }
 }
 
-void RobotView::setPings(std::map<std::string, std::string> map)
+void RobotView::changeData(const nlohmann::json& json)
 {
-  if (robot)
-  {
-    auto iter = map.find(robot->name);
-    if (iter != map.cend())
-    {
-      auto lanConnection = map.find("lan_connection");
-      if (lanConnection != map.cend())
-      {
-        QLabel* bar = pingBarLAN;
-
-        std::stringstream stream;
-        std::string lan_connection = map["lan_connection"];
-
-        bool lanConnected;
-        stream << lan_connection;
-        stream >> lanConnected;
-
-        if (lanConnected)
-        {
-          bar->setStyleSheet("QLabel { background-color : lime; border: 1px solid silver; }");
-        }
-        else
-        {
-          bar->setStyleSheet("QLabel { background-color : #e6e6e6; border: 1px solid silver; }");
-        }
-      }
-      auto wifiConnection = map.find("wifi_state");
-      if (wifiConnection != map.cend())
-      {
-        QLabel* bar = pingBarWLAN;
-        if (map["wifi_state"] == "COMPLETED")
-        {
-          bar->setStyleSheet("QLabel { background-color : lime; border: 1px solid silver; }");
-          wifiOverMap = true;
-          wifiOverTeamPack = false;
-        }
-        else if (map["wifi_state"] == "SCANNING")
-        {
-          bar->setStyleSheet("QLabel { background-color : yellow; border: 1px solid silver; }");
-          wifiOverMap = true;
-          wifiOverTeamPack = false;
-        }
-        else
-        {
-          if (!wifiOverTeamPack)
-          {
-            bar->setStyleSheet("QLabel { background-color : #e6e6e6; border: 1px solid silver; }");
-            wifiOverMap = false;
-          }
-        }
-        bar->setText(fromString(map["wifi_name"]));
-      }
-    }
-  }
+  setPower(json);
+  setTemp(json);
+  setMap(json);
+  setPings(json);
 }
 
-void RobotView::setPower(std::map<std::string, std::string> map)
+void RobotView::mousePressEvent(QMouseEvent* e)
 {
-  if (robot)
-  {
-    auto iter = map.find(robot->name);
-    if (iter != map.cend())
-    {
-      std::string battery_charge = map["battery_charge"];
-      std::string battery_status = map["battery_status"];
-
-      std::stringstream stream;
-      float charge;
-      stream << battery_charge;
-      stream >> charge;
-
-      int value = static_cast<int>(charge * 100.f);
-      //bool powerPlugged = false;
-      std::stringstream stream2;
-      float plugged;
-      stream2 << battery_status;
-      stream2 >> plugged;
-      bool powerPlugged = !(static_cast<short>(plugged) & 0b100000);
-      powerBar->setValue(value);
-
-      if (powerPlugged)
-        powerBar->setStyleSheet("QProgressBar::chunk { background-color: lime; border: 1px solid silver; }");
-      else
-        powerBar->setStyleSheet("QProgressBar::chunk { background-color: red; border: 1px solid silver; }");
-    }
-  }
-}
-
-void RobotView::setMap(std::map<std::string, std::string> map)
-{
-  if (robot)
-  {
-    auto iter = map.find(robot->name);
-    bool bodyNameFound = false;
-    if (iter != map.cend())
-    {
-      sensorMap = map;
-      for (auto it = Session::getInstance().robotsByName.cbegin(), end = Session::getInstance().robotsByName.cend(); it != end; ++it)
-      {
-        if (it->second->bodyId == sensorMap["bodyId"])
-        {
-          bodyName->setText(fromString(it->first));
-          bodyNameFound = true;
-        }
-      }
-
-      std::stringstream stream;
-      int bhumanState;
-      stream << sensorMap["state"];
-      stream >> bhumanState;
-
-      if (playerNumber)
-      {
-        switch (bhumanState)
-        {
-        case 0:
-          cPlayerNumber->setText("<font size = 5><b>" + QString::number(playerNumber) + "</b></font>");
-          cPlayerNumber->setToolTip("");
-          break;
-        case 15:
-          cPlayerNumber->setText("<font size = 5 color = crimson><b>" + QString::number(playerNumber) + "</b></font>");
-          cPlayerNumber->setToolTip("Framework stopped");
-          break;
-        default:
-          cPlayerNumber->setText("<font size = 10 color = crimson><b>&#9760;</b></font>");
-          cPlayerNumber->setToolTip("Framework crashed");
-        }
-      }
-
-      if (!bodyNameFound)
-      {
-        bodyName->setText("");
-      }
-    }
-  }
+  if (e->button() == Qt::LeftButton)
+    dragStartPosition = e->pos();
 }
 
 void RobotView::mouseMoveEvent(QMouseEvent* me)
 {
-  if(!robot)
+  if (!robot)
     return;
+  if (!(me->buttons() & Qt::LeftButton))
+    return;
+  if ((me->pos() - dragStartPosition).manhattanLength() < QApplication::startDragDistance())
+    return;
+
   QDrag* d = new QDrag(this);
-  QPixmap pm = QPixmap::grabWidget(this, rect());
+  QPixmap pm = grab();
   d->setPixmap(pm);
   d->setHotSpot(me->pos());
   QMimeData* data = new QMimeData();
-  data->setText(fromString(robot->name));
+  data->setText(QString::fromStdString(robot->name));
   d->setMimeData(data);
   d->exec(Qt::MoveAction);
   me->accept();
 }
 
+void RobotView::mouseReleaseEvent(QMouseEvent* e)
+{
+  if (e->button() == Qt::LeftButton)
+    setChecked(!isChecked());
+}
+
 void RobotView::dragEnterEvent(QDragEnterEvent* e)
 {
-  if(e->source() && e->source() != this && e->source()->inherits("RobotView"))
-    e->acceptProposedAction();
+  if (e->source() && e->source() != this && e->source()->inherits("RobotView"))
+  {
+    const RobotView* source = dynamic_cast<RobotView*>(e->source());
+    if (source->playerNumber || playerNumber)
+      e->acceptProposedAction();
+  }
+}
+
+void RobotView::swap(RobotView& other)
+{
+  if (!this->playerNumber)
+    other.setSelected(false);
+
+  if (!other.playerNumber)
+    this->setSelected(false);
+
+  RobotConfigDorsh* thisRobot = this->robot;
+  RobotConfigDorsh* otherRobot = other.robot;
+
+  this->setRobot(otherRobot);
+  other.setRobot(thisRobot);
+
+  std::swap(this->sensorMap, other.sensorMap);
+
+  this->update();
+  other.update();
+
+  emit this->robotChanged();
+  emit other.robotChanged();
 }
 
 void RobotView::dropEvent(QDropEvent* e)
 {
   e->accept();
-  QString robotName = e->mimeData()->text();
-  RobotConfigDorsh* r = Session::getInstance().robotsByName[toString(robotName)];
   RobotView* source = dynamic_cast<RobotView*>(e->source());
-  if(source->playerNumber)
-  {
-    bool selected = source->isSelected();
-    if(source->robot)
-      source->setSelected(false);
-    if(robot)
-      source->setRobot(robot);
-    else
-      source->setRobot(0);
-    source->setSelected(selected);
-    source->update();
-    setRobot(r);
-    update();
-  }
-  else
-  {
-    // setSelected crashes if you drop a robot from robotpool to robotpool
-    //bool selected = isSelected();
-    setSelected(false);
-    setRobot(r);
-    //setSelected(selected);
-    update();
-    source->setRobot(r);
-  }
+
+  swap(*source);
 }
 
 void RobotView::setSelected(bool selected)
@@ -439,7 +470,7 @@ void RobotView::ShowContextMenu(const QPoint& pos) // this is a slot
     QMenu myMenu;
     QAction* action1 = myMenu.addAction("ssh LAN");
     QAction* action2 = myMenu.addAction("ssh WLAN");
-    QAction* action4 = myMenu.addAction("show SensorReader");//action for opening Simulator: see showSensorReader()
+    QAction* action4 = myMenu.addAction("show SensorReader"); //action for opening Simulator: see showSensorReader()
     connect(action1, SIGNAL(triggered()), this, SLOT(Cable()));
     connect(action2, SIGNAL(triggered()), this, SLOT(WIFI()));
     connect(action4, SIGNAL(triggered()), this, SLOT(sSR()));
@@ -449,26 +480,14 @@ void RobotView::ShowContextMenu(const QPoint& pos) // this is a slot
 
 void RobotView::openTerm(bool wlan)
 {
-  char cCurrentPath[FILENAME_MAX];
-  GetCurrentDir(cCurrentPath, sizeof(cCurrentPath));
-  cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
-  std::string path(cCurrentPath);
-
-  printf("The current working directory is %s", cCurrentPath);
-
-  std::string command = connectCommand(wlan ? robot->wlan : robot->lan);
+  const auto [cmd, params] = connectCommand(wlan ? robot->wlan : robot->lan);
+  std::string command = cmd.toStdString() + " \"" + params.join("\" \"").toStdString() + "\"";
 
 #ifdef WINDOWS
-  command = "start " + command;  // add "start " to be able to focus the dorsh window
-  system(command.c_str());
-
-#elif OSX
-  // Use AppleScript to open a new terminal window executing the command:
-  command = "/usr/bin/osascript -e 'tell application \"Terminal\" to do script \"" + command + "\"'";
+  command = "start " + command;
   system(command.c_str());
 #else
-  //linux stuff
-  command = "x-terminal-emulator -e '" + command + " &'";   // & to start in background and be able to focus the dorsh window
+  command = "x-terminal-emulator -e '" + command + "' &";
   system(command.c_str());
 #endif
 }

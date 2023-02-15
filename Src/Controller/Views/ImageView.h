@@ -22,7 +22,6 @@
 #include "Tools/Math/Eigen.h"
 #include "Controller/RobotConsole.h"
 #include "Controller/RoboCupCtrl.h"
-#include "Controller/Views/ColorCalibrationView/ColorCalibrationView.h"
 #include "Controller/Visualization/PaintMethods.h"
 #include "Controller/ImageViewAdapter.h"
 #include "Representations/Infrastructure/Image.h"
@@ -62,7 +61,6 @@ private:
   RobotConsole& console; /**< A reference to the console object. */
   const std::string background; /**< The name of the background image. */
   const std::string name; /**< The name of the view. */
-  bool segmented;  /**< The image will be segmented. */
   float gain; /**< The intensity is multiplied with this factor. */
   bool isActImage; /**< Whether this is an auto color table image view */
 
@@ -73,8 +71,8 @@ private:
   */
   virtual SimRobot::Widget* createWidget();
 
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 
   friend class ImageWidget;
 };
@@ -86,10 +84,7 @@ public:
   ImageWidget(ImageView& imageView);
   virtual ~ImageWidget();
 
-  void setUndoRedo(const bool enableUndo, const bool enableRedo);
-  void setDrawnColor(ColorClasses::Color color) {drawnColor = color;}
-  void setDrawAllColors(bool drawAll) {drawAllColors = drawAll;}
-  ColorClasses::Color getDrawnColor() const {return drawnColor;}
+  virtual void saveLayout();
 
 private:
   ImageView& imageView;
@@ -97,7 +92,6 @@ private:
   int imageWidth;
   int imageHeight;
   unsigned int lastImageTimeStamp;
-  unsigned int lastColorTableTimeStamp;
   unsigned int lastDrawingsTimeStamp;
   QPainter painter;
   QPoint dragStart;
@@ -108,18 +102,10 @@ private:
   QPoint offset;
   bool headControlMode;
 
-  // which classified should be drawn?
-  ColorClasses::Color drawnColor;
-  bool drawAllColors;
-
-  QAction* undoAction;
-  QAction* redoAction;
-
   void paintEvent(QPaintEvent* event);
   virtual void paint(QPainter& painter);
   void paintDrawings(QPainter& painter);
   void copyImage(const Image& srcImage);
-  void copyImageSegmented(const Image& srcImage);
   void paintImage(QPainter& painter, const Image& srcImage);
   bool needsRepaint() const;
   void window2viewport(QPoint& point);
@@ -133,11 +119,11 @@ private:
 
   QSize sizeHint() const { return QSize(imageWidth, imageHeight); }
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
 
   virtual void update()
   {
-    if(needsRepaint())
+    if (needsRepaint())
       QWidget::update();
   }
 
@@ -147,8 +133,6 @@ private:
 
 private slots:
   void saveImg();
-  void allColorsAct();
-  void colorAct(int color);
 
 private:
   /* The toolbar of a widget (and therefore the containing actions) is deleted by the
@@ -161,12 +145,9 @@ private:
   {
   private:
     QAction** toBeSetToNULL;
+
   public:
-    WorkAroundAction(QAction** toBeSetToNULL, const QIcon& icon, const QString& text, QObject* parent)
-      : QAction(icon, text, parent), toBeSetToNULL(toBeSetToNULL) {}
-    ~WorkAroundAction()
-    {
-      (*toBeSetToNULL) = nullptr;
-    }
+    WorkAroundAction(QAction** toBeSetToNULL, const QIcon& icon, const QString& text, QObject* parent) : QAction(icon, text, parent), toBeSetToNULL(toBeSetToNULL) {}
+    ~WorkAroundAction() { (*toBeSetToNULL) = nullptr; }
   };
 };

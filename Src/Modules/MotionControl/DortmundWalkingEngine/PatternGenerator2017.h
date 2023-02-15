@@ -42,17 +42,17 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/Modeling/Path.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/Sensing/RobotModel.h"
+#include "Representations/Sensing/TorsoMatrix.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/MotionSelection.h"
-#include "Representations/MotionControl/ReferenceModificator.h"
 #include "Representations/MotionControl/RefZMP.h"
-#include "Representations/MotionControl/FallDownAngleReduction.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Tools/RingBufferWithSum.h"
@@ -61,69 +61,82 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/MotionControl/WalkRequest.h"
 #include "Tools/Settings.h"
-#include "Representations/Modeling/IMUModel.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/CSConverter2019.h"
+#include "Representations/MotionControl/MotionState.h"
+#include "Tools/Debugging/DebugImages.h"
+#include "Representations/Infrastructure/Image.h"
+#include "Representations/Configuration/OdometryCorrectionTable.h"
+#include "Representations/MotionControl/CustomStepSelection.h"
+#include "Representations/Infrastructure/GameInfo.h"
 
 MODULE(PatternGenerator2017,
-{,
   REQUIRES(WalkingEngineParams),
   REQUIRES(SpeedRequest),
   REQUIRES(Path),
   REQUIRES(RobotModel),
+  REQUIRES(TorsoMatrix),
   REQUIRES(RobotDimensions),
   REQUIRES(FallDownState),
   REQUIRES(FLIPMParameter),
   REQUIRES(MotionSelection),
   REQUIRES(MotionRequest),
-  REQUIRES(InertialSensorData),
-  REQUIRES(IMUModel),
+  USES(MotionState),
+  REQUIRES(FsrSensorData),
+  REQUIRES(JoinedIMUData),
   REQUIRES(RobotInfo),
   REQUIRES(ZMPModel),
   USES(WalkingInfo),
-  USES(ReferenceModificator),
   REQUIRES(FrameInfo),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
   REQUIRES(RobotHealth),
-  PROVIDES(FootSteps),
-  PROVIDES(Footpositions),
-  PROVIDES(RefZMP2018),
-  PROVIDES(SpeedInfo),
-  PROVIDES(FallDownAngleReduction),
+  PROVIDES_CONCURRENT(FootSteps),
+  PROVIDES_CONCURRENT(Footpositions),
+  PROVIDES_CONCURRENT(RefZMP2018),
+  PROVIDES_CONCURRENT(SpeedInfo),
+  PROVIDES_CONCURRENT(CustomStepSelection),
+  REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(RoleSymbols),
-
-  LOADS_PARAMETERS(
-  {,
+  REQUIRES(OdometryCorrectionTables),
+  REQUIRES(GameInfo),
+  HAS_PREEXECUTION,
+  LOADS_PARAMETERS(,
     (Vector2f)(Vector2f(0.07f, 0.10f)) prependStepsTransMax,
+    (Pose2f)(Pose2f(90_deg,0.2f,0.1f)) prependStepsMaxDistance,
     (Angle)(30_deg) prependStepsRotMax,
     (int)(3) maxPrependedSteps,
-    (float)(0.f) stepRotationWeight,
-    (float)(6.5f) maxCustomKickScore,
+    (float)(0.f) stepRotationWeightForScore,
+    (float)(0.125f) stepYTranslationWeightForScore,
+    (float)(6.5f) maxPrependStepsScore,
     (int)(3) stepsBetweenCustomSteps,
+    (bool)(false) resetPreviewDuringPrependStep,
     ((WalkRequest) StepRequestVector) activeKicks,
     ((WalkRequest) StepRequestVector) activeGoalieKicks,
     (bool)(true) useResetPreview,
-    (bool)(true) skipStepInReset,
     (bool)(false) useHalfFramesInRefZMP,
-    (bool)(false) waitForZMP,
+    (bool)(false) startRefZMPCycleInDS,
+    (bool)(false) useRotationForRefZMP,
+    (bool)(false) useZeroRefZMP,
+    (bool)(false) freezeDSRefZMPUntilFSR,
+    (bool)(false) slowDSRefZMPUntilFSR,
+    (int)(5) maxFramesForDSExtension,
     (int) (90) slowDownTemperature,
     (Angle)(2_deg) maxGyroSpeedForTransition,
     (float)(0.239f) initialStandbyHeight,
     (bool)(false) useRealSpeedInCustomSteps,
     (float)(0.5f) penaltyShootoutSlowDownFactor,
-    (bool)(false) useIMUModel,
-    (float)(1.f) fallDownFactor,
-    (float)(2.f) fallDownExponentialBasis,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
     (bool)(false) useSafetySteps,
     (int)(1000) angleSumForSafetyStepFront,
     (int)(300) angleSumForSafetyStepBack,
     (float)(2.f) angleSumDecay,
-    (float)(0.1f) sensorErrorMinForStepCorrection,
-    (float)(0.35f) absoluteMinStepDuration,
-    (float)(1.f) absoluteMaxStepDuration,
-  }),
-});
+    (float)(7.f) comErrorFrontForSafetySteps,
+    (float)(-5.f) comErrorBackForSafetySteps,
+    (Vector2f)(Vector2f(3.f,2.f)) maxSafetyStepCorrection,
+    (bool)(false) customStepOdometryCorrection
+  )
+);
 
 /**
 * @class PatternGenerator2017
@@ -132,7 +145,6 @@ MODULE(PatternGenerator2017,
 class PatternGenerator2017 : public PatternGenerator2017Base
 {
 public:
-
   // state machine in general:
   // standby (other motion called) -> goingToReady -> ready (walk 0,0,0) -> walking -> stopping
   // ready -> goingToStandby -> standby
@@ -162,6 +174,8 @@ public:
   */
   void updateCoM(Point CoM);
 
+  /** Updates the support foot and max force on left/right foot */
+  void calcSupportFoot();
 
   /** Constructor.
   */
@@ -182,7 +196,6 @@ public:
   void reset();
 
 protected:
-  
   /** The current state of the pattern generator. */
   DWE::State currentState = DWE::standby;
 
@@ -202,23 +215,29 @@ protected:
 
   /** Current walking phase */
   DWE::WalkingPhase currentWalkingPhase = DWE::unlimitedDoubleSupport;
+  int walkingPhaseExtension = 0;
   DWE::WalkingPhase walkingPhaseBeforePreview = DWE::unlimitedDoubleSupport;
-  
+
   FootSteps localSteps; /**< Static foot steps on the ground. Just one step except at the beginning when preview is filled. */
   /** for creating the current foot position going to the CSConverter */
   Footpositions localFootPositions; /**< Both foot positions, including movement */
   FootSteps plannedFootSteps; /**< All static foot steps, kept for calculating localFootPositions. */
-  Footposition resetFootPosition;
-  Footposition nextPlannedFootPosition;
+  Footposition resetFootPosition; /**< When resetting preview, reset to this foot position */
+  CustomStepSelection localCustomStepSelection;
   std::vector<Point> currentFootStepTrajectory; /**< trajectory of the current foot step (w/o preview). recalculated once a new foot step phase completes. */
   /** For ZMP generation */
   RefZMP2018 localRefZMP2018;
-  Point plotZMP = Point();
-  float lastspdx = 0; // x speed in previous frame
-  float lpxss = 0;										/**< Last position of ZMP along the x axis */
-  ZMP zmp, lastZMPRCS;
+  ZMP zmp;
+  Vector2f lastRefZMPEndPositionFC = Vector2f::Zero();
+  // for support foot change detection -->
+  RingBufferWithSum<float, 3> supportFootBuffer;
+  RingBufferWithSum<float, 5> supportFootDirectionBuffer;
+  DWE::SupportFootState supportFootState = DWE::bothFeetSupport;
+  // <--
+  // for safety step detection
+  RingBufferWithSum<float, 50> comXBuffer;
+  float defaultCoMXPosition = 0.f;
 
-  
   /** Default rotation of feet. Set to 0. */
   float baseRot = 0.f;
 
@@ -228,12 +247,6 @@ protected:
   Point distanceLeft;
   bool running = false; /* true, if the walk is active and speed is not zero, i.e. robot is not just standing. */
 
-  /** Skip the current frame to reach the preview delta */
-  bool skip;
-
-  /** Last speed, to make sure limits are respected. */
-  Pose2f lastSpeed = Pose2f();
-    
   /** Current time (frames since running) */
   int currentTimeStamp;
 
@@ -253,8 +266,7 @@ protected:
   * @return the duration of the phase in frames.
   */
   inline unsigned int getPhaseLength(float ratio, float stepDur);
-  /** Initialize a new walk phase */
-  void initWalkingPhase();
+
   /** The last added step. */
   Footposition lastStep;
 
@@ -269,8 +281,8 @@ protected:
   */
   Pose2f robotPose2f; // the position next to the newest step, i.e. the theRobotPoseAfterPreview.
   Pose2f robotPose2fAfterCurrentStep;
-  Pose2f speedBeforeStep; // speed before this step, used for acc if preview is reset
   float direction; // the direction of the upper body (changes continously during rotation in single support phases).
+
 
   bool resetPreviewPossible = false;
   int stepsInPreview = 0;
@@ -301,13 +313,7 @@ protected:
   /** Add a new step to buffer. */
   void addStep();
 
-  void addRefZMP(const Footposition &footPosition);
-  struct RefZMPState
-  {
-    float lpxss;										/**< Last position of ZMP along the x axis */
-    ZMP zmp, lastZMPRCS;
-  };
-  std::vector<RefZMPState> refZMPStates;
+  void addRefZMP2020(const Footposition& footPosition);
 
   /** Calculate some values for the next step (currently step duration). */
   float calcDynamicStepDuration(float speedX, float speedY, float speedR);
@@ -318,115 +324,94 @@ protected:
   /** Applies the speed requested in newMovement. */
   void applyAcceleration();
 
-  void updateFallDownReduction();
-
   /** Calculate optimal preview depending on N and step phase length */
   int getOptimalPreviewLength();
 
   /** Decrease or increase preview on demand, calls addStep() as much as needed. */
   void updatePreview();
 
-  bool isSpeed0() { return 
-    (theSpeedRequest.translation.x() == 0) &&
-    (theSpeedRequest.translation.y() == 0) &&
-    (theSpeedRequest.rotation == 0); };
+  /** Drawings and plots. */
+  void draw();
+
+  bool isSpeed0() { return (theSpeedRequest.translation.x() == 0) && (theSpeedRequest.translation.y() == 0) && (theSpeedRequest.rotation == 0); };
 
   /* SpeedInfo related stuff */
   RingBufferWithSum<Pose2f, PREVIEW_LENGTH> speedBuffer;
   bool decelByAcc;
-  Point ballWalkingCS;
-    
-  /**
-  * Coordinate system of footPos is always a standing robot with
-  * root in the current swing foot.
-  * Foot positions for double support phases are ignored.
-  * Foot positions for support foot are ignored.
-  * Foot trajectory interpolates positions via b-splines and adds result to swing foot position.
-  * TODO: make config files smaller by removing useless information!
-  */
-  struct Step : public Streamable
-  {
-    Pose2f footPos[2];   // pose2f offset for left/right foot
-    bool onFloor[2];     // foot is on floor
-    std::vector<Vector3f> swingFootTraj;// control points for trajectory of foot in air, not used atm
-    int duration;        // number of frames for this step
-    std::vector<Point> spline;    // calculated on loading
-    bool kick;
-    bool mirrored = false;
-    virtual void serialize(In* in, Out* out);
-    void mirror();
-  };
-  
-  struct StepsFile : Streamable
-  {
-    typedef std::vector<Step> StepsT;
-    typedef StepsT::iterator StepsIterator;
-    
-    Vector2f ballOffset;
-    Angle kickAngle;
-    float kickDistance[2];
-    float translationThresholdXFront = 0.015f;
-    float translationThresholdXBack = 0.015f;
-    float translationThresholdY = 0.015f;
-    Angle rotationThreshold = 4_deg;
 
-    int timeUntilKickHack = 120; // time (ms) until kickhack is triggered
-    int kickHackDuration = 100; // duration (ms) of the kickhack
-    Angle kickHackKneeAngle = -10_deg;
-
-    StepsT steps;
-    virtual void serialize(In* in, Out* out);
-    void mirror();
-    bool isApplicable(float distance);
-  };
-  
-  typedef std::vector<StepsFile> StepFiles;
-  typedef StepFiles::iterator StepFilesIterator;
-  
-  StepFiles stepFiles;
+  std::vector<CustomStepsFile> stepFiles;
 
   void loadStepFiles();
   void saveStepFiles();
   void loadStepFile(std::string file, int idx);
   void saveStepFile(std::string file, int idx, bool robot = false);
-  Vector2f prependCustomStep(std::list<Step>& steps, Vector2f distance, bool onFloorLeft);
-  bool prependCustomSteps(std::list<Step>& steps, Pose2f pose, bool startFootLeft, bool endFootLeft, int maxSteps, const StepsFile &stepsFile);
-  Pose2f calcKickPose(const StepsFile& steps, const Vector2f& kickTarget);
+  Vector2f prependCustomStep(std::list<CustomStep>& steps, Vector2f distance, bool onFloorLeft);
+  bool prependCustomSteps(std::list<CustomStep>& steps, Pose2f pose, bool startFootLeft, bool endFootLeft, int maxSteps, const CustomStepsFile& stepsFile);
+  template <class it> void correctOdometry(it& steps);
+  Pose2f calcKickPose(const CustomStepsFile& steps, const Vector2f& kickTarget);
   bool transitionToCustomSteps();
   bool isStablePosition();
   WalkRequest::StepRequest selectCustomStepForKick(const Vector2f& kickTarget);
-  float getScore(const std::list<PatternGenerator2017::Step>& steps);
+  float getScoreForPrependSteps(const std::list<CustomStep>& steps);
   void transitionFromCustomSteps();
-  void transitionToWalk(DWE::MovementInformation &moveInf);
+  void transitionToWalk();
   void setCustomWalkingPhase();
+
+  Pose3f transformWalkToField(const Pose3f& pose) const;
+  Pose3f transformFieldToWalk(const Pose3f& pose) const;
+  Vector2f getBallModelWalk() const;
+  Pose2f getRobotPoseAfterPreviewField() const;
+
   WalkRequest::StepRequest currentCustomStep = WalkRequest::StepRequest::none;
   WalkRequest::StepRequest previousCustomStep = WalkRequest::StepRequest::none;
+  bool previousCustomStepMirrored = false;
+  unsigned previousCustomStepTimeStamp = 0;
 
   /** Current step file executed. -1 if no one executed*/
   int currentStepFileIndex = -1;
-  
-  Vector2f fallDownAngleReductionFactor;
 
   /** The next and current custom step */
-  StepsFile::StepsIterator executedStep;
-  StepsFile::StepsIterator currentExecutedStep;
+  std::vector<CustomStep>::iterator executedStep;
+  std::vector<CustomStep>::iterator currentExecutedStep;
 
   /** Current executed steps, may be modified according to ball position / mirror */
-  StepsFile currentSteps;
+  CustomStepsFile currentSteps;
 
   /** Begin and end of original custom steps without prepended or appended steps */
-  std::vector<Step>::iterator currentStepsBegin, currentStepsEnd;
+  std::vector<CustomStep>::iterator currentStepsBegin, currentStepsEnd;
 
-  bool customStepKickInPreview = false;
-  
-  unsigned lastTimeExecuted = 0;
-  void updateFootSteps(); /**< set foot steps */
+  bool customStepKickInPreview = false; // True from putting kick custom step into preview until kick is executed
+  std::vector<Point> lastCustomStepSpline;
+  std::vector<Footposition> lastFootSteps;
+  std::vector<Point> lastStepRefZMP;
+  std::vector<std::vector<Point>> lastFootStepsRefZMP;
+
+  Pose2f debugRobotPose;
+  int debugStepPos = 0;
+
+  Pose3f debugKickCurrentPose;
+  Pose3f debugKickTargetPose;
+  Vector3f debugKickBall{0.f, 0.f, 0.f};
+
+  Pose3f stepRobotPose3f;
+  Pose3f poseBetweenLegs;
+  RingBuffer<Footposition, 6> footPosBuf;
+
+  DECLARE_DEBUG_IMAGE(FootStepsDrawing);
+
+  void fillFootSteps(); /**< set foot steps */
   void updateFootPositions(); /**< interpolate foot steps into foot positions using speed and trajectory of steps */
   void createFootStepTrajectory(); /**< create trajectory for step once every foot pos has been added to plannedFootSteps */
   void updateRefZMP2018(); /**< create reference zmp using foot steps, removes foot steps */
-  void update(FootSteps & footSteps); 
-  void update(Footpositions & footPositions); 
-  void update(RefZMP2018 & refZMP2018); 
-  void update(SpeedInfo & speedInfo);
-  void update(FallDownAngleReduction& fallDownAngleReduction);
+  void previewReset(); /**< reset preview and walking engine state */
+  void drawSteps(); /**< draw steps + ref zmp on debug image */
+  void drawFoot(bool left, const Pose2f& baseInImage);
+  void updatePose();
+
+  void execute(tf::Subflow&);
+  void update(FootSteps& footSteps);
+  void update(Footpositions& footPositions);
+  void update(RefZMP2018& refZMP2018);
+  void update(SpeedInfo& speedInfo);
+  void update(CustomStepSelection& customStepSelection);
 };

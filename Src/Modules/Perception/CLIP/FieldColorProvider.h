@@ -16,7 +16,6 @@
 #include <algorithm>
 
 MODULE(FieldColorProvider,
-{ ,
   REQUIRES(FallDownState),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
@@ -26,8 +25,7 @@ MODULE(FieldColorProvider,
   REQUIRES(ImageUpper),
   PROVIDES(FieldColors),
   PROVIDES(FieldColorsUpper),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (int) maxPixelCountImageFull,
     (int) maxPixelCountImagePart,
     (bool) useAreaBasedFieldColor,
@@ -35,10 +33,11 @@ MODULE(FieldColorProvider,
     (int) maxDiffOptCb,
     (int) maxDiffOptY,
     (int) maxDiffCbCrRatio,
-  }),
-});
+    (int)(30) minLineToFieldColorThreshold
+  )
+);
 
-class FieldColorProvider: public FieldColorProviderBase
+class FieldColorProvider : public FieldColorProviderBase
 {
 public:
   /**
@@ -53,21 +52,21 @@ public:
   Image::Pixel samples[2000];
   int sampleNo;
 
-  float maxY,maxCr,maxCb,oldMax;
+  float maxY, maxCr, maxCb, oldMax;
 
   float minYDivFactor;
-  
+
   FieldColors localFieldColorLower;
   FieldColorsUpper localFieldColorUpper;
 
-private: 
-  void update(FieldColors &theFieldColor);
-  void update(FieldColorsUpper &theFieldColorUpper);
+private:
+  void update(FieldColors& theFieldColor);
+  void update(FieldColorsUpper& theFieldColorUpper);
 
-  void execute(const  bool &upper);
-  void buildSamples(const bool &upper, const Vector2i &lowerLeft, const Vector2i &upperRight, const int &sampleSize);
-  void calcFieldColorFromSamples(const bool &upper, FieldColors::FieldColor &fieldColor);
-  void smoothFieldColors(const bool &upper);
+  void execute(const bool& upper);
+  void buildSamples(const bool& upper, const Vector2i& lowerLeft, const Vector2i& upperRight, const int& sampleSize);
+  void calcFieldColorFromSamples(const bool& upper, FieldColors::FieldColor& fieldColor);
+  void smoothFieldColors(const bool& upper);
 
-  int fieldColorWeighted(const Image::Pixel &p, const int &optCr, const int &maxY);
+  int fieldColorWeighted(const Image::Pixel& p, const int& optCr, const int& maxY);
 };

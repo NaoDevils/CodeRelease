@@ -22,6 +22,7 @@ struct RobotCameraMatrix : public Pose3f
   void draw() const;
 
   void computeRobotCameraMatrix(const RobotDimensions& robotDimensions, float headYaw, float headPitch, const CameraCalibration& cameraCalibration, bool upperCamera);
+  static Pose3f getNeckCameraMatrix(const RobotDimensions& robotDimensions, const CameraCalibration& cameraCalibration, bool upperCamera);
 };
 
 struct RobotCameraMatrixUpper : public RobotCameraMatrix
@@ -33,7 +34,7 @@ struct RobotCameraMatrixUpper : public RobotCameraMatrix
  * Matrix describing transformation from ground (center between booth feet) to camera.
  */
 STREAMABLE_WITH_BASE(CameraMatrix, Pose3f,
-{
+
   CameraMatrix() = default;
 
   /** 
@@ -44,14 +45,25 @@ STREAMABLE_WITH_BASE(CameraMatrix, Pose3f,
   CameraMatrix(const Pose3f& torsoMatrix, const Pose3f& robotCameraMatrix, const CameraCalibration& cameraCalibration);
 
   void computeCameraMatrix(const Pose3f& torsoMatrix, const Pose3f& robotCameraMatrix, const CameraCalibration& cameraCalibration);
+  void computeCameraMatrix(const Pose3f& torsoMatrix, const Pose3f& torsoNeckMatrix, const Pose3f& neckCameraMatrix, float headYaw, float headPitch);
+  static Pose3f getTorsoNeckMatrix(const RobotDimensions& robotDimensions, const CameraCalibration& cameraCalibration);
 
   /** Draws the camera matrix. */
-  void draw() const,
+  void draw() const;
+protected:
+  void drawFieldLines(bool upper) const;
+  virtual void drawFieldLines() const;
+public:
+  ,
 
-  (bool)(true) isValid, /**< Matrix is only valid if motion was stable. */
-});
+  (bool)(true) isValid /**< Matrix is only valid if motion was stable. */
+);
 
-struct CameraMatrixUpper : public CameraMatrix
-{
+STREAMABLE_WITH_BASE(CameraMatrixUpper, CameraMatrix,
 
-};
+  void draw() const { CameraMatrix::draw(); }
+protected:
+  void drawFieldLines() const;
+public:
+
+);

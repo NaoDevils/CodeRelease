@@ -16,45 +16,24 @@
 * A class represents the map of tracked robots in this robot's environment.
 */
 
-STREAMABLE(RobotMapEntry,
-{,
+STREAMABLE(RobotMapEntry,,
   (Pose2f) pose, /**< The position in absolute field coordinates. */
   ((RobotEstimate) RobotType)(RobotEstimate::unknownRobot) robotType,
   /** This is nice to have but might not be filled correctly and will not be sent! **/
   (Vector2f) velocity,
-  (float)(0.f) validity,
-});
+  (float)(0.f) validity
+);
 
 // Global robot map (local + remote)
 STREAMABLE(RobotMap,
-{
   RobotMap() { robots.reserve(10); }
 
   /** Reset the RobotMap */
   void reset() { robots.clear(); }
 
-  RobotMap& operator=(const RobotMap &other)
-  {
-    if (this == &other)
-      return *this;
-
-    reset();
-    for (unsigned int i = 0; i < other.robots.size(); i++)
-    {
-      RobotMapEntry re;
-      re.pose = other.robots[i].pose;
-      re.robotType = other.robots[i].robotType;
-      re.velocity = other.robots[i].velocity;
-      re.validity = other.robots[i].validity;
-      robots.push_back(re);
-    }
-    return *this;
-  }
-
   void draw() const,
-  (std::vector<RobotMapEntry>) robots, /**< The robots in absolute field coordinates. */
-
-});
+  (std::vector<RobotMapEntry>) robots /**< The robots in absolute field coordinates. */
+);
 
 
 struct GroundTruthRobotMap : public RobotMap
@@ -80,7 +59,6 @@ struct RemoteRobotMap : public RobotMap
 
 
 STREAMABLE(RobotMapCompressedEntry,
-{
   RobotMapCompressedEntry() = default;
   RobotMapCompressedEntry(const Pose2f& pose, RobotEstimate::RobotType type, float validity)
   {
@@ -93,11 +71,11 @@ STREAMABLE(RobotMapCompressedEntry,
   (Vector2s) position,
   (std::uint8_t)(0) rotation,
   ((RobotEstimate) RobotType)(RobotEstimate::unknownRobot) robotType,
-  (std::uint8_t)(0) validity,
-});
+  (std::uint8_t)(0) validity
+);
 
 STREAMABLE(RobotMapCompressed,
-{
+
   RobotMapCompressed() = default;
   RobotMapCompressed(const RobotMap& other)
   {
@@ -128,12 +106,12 @@ STREAMABLE(RobotMapCompressed,
     return robotMap;
   },
 
-  (std::vector<RobotMapCompressedEntry>) robots,
+  (std::vector<RobotMapCompressedEntry>) robots
 
-});
+);
 
 STREAMABLE(LocalRobotMapCompressed,
-{
+
   LocalRobotMapCompressed() = default;
   LocalRobotMapCompressed(const LocalRobotMap& other)
   {
@@ -164,6 +142,6 @@ STREAMABLE(LocalRobotMapCompressed,
     return robotMap;
   },
 
-  (std::vector<RobotMapCompressedEntry>) robots,
+  (std::vector<RobotMapCompressedEntry>) robots
 
-});
+);

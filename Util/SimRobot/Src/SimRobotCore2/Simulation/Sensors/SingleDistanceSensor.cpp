@@ -26,9 +26,9 @@ void SingleDistanceSensor::createPhysics()
   sensor.min = min;
   sensor.max = max;
   sensor.maxSqrDist = max * max;
-  if(translation)
+  if (translation)
     sensor.offset.translation = *translation;
-  if(rotation)
+  if (rotation)
     sensor.offset.rotation = *rotation;
 }
 
@@ -42,7 +42,7 @@ void SingleDistanceSensor::registerObjects()
 
 void SingleDistanceSensor::addParent(Element& element)
 {
-  sensor.physicalObject = dynamic_cast< ::PhysicalObject*>(&element);
+  sensor.physicalObject = dynamic_cast<::PhysicalObject*>(&element);
   ASSERT(sensor.physicalObject);
   Sensor::addParent(element);
 }
@@ -55,11 +55,12 @@ void SingleDistanceSensor::DistanceSensor::staticCollisionCallback(SingleDistanc
   dContactGeom contactGeoms[4];
   int contacts = dCollide(geom1, geom2, 4, contactGeoms, sizeof(dContactGeom));
 
-  for(int i = 0; i < contacts; ++i)
+  for (int i = 0; i < contacts; ++i)
   {
-    dContactGeom& contactGeom = contactGeoms[i];
-    const float sqrDistance = (Vector3<>((float) contactGeom.pos[0], (float) contactGeom.pos[1], (float) contactGeom.pos[2]) - sensor->pose.translation).squareAbs();
-    if(sqrDistance < sensor->closestSqrDistance)
+    const dContactGeom& contactGeom = contactGeoms[i];
+    const float sqrDistance =
+        (Vector3f(static_cast<float>(contactGeom.pos[0]), static_cast<float>(contactGeom.pos[1]), static_cast<float>(contactGeom.pos[2])) - sensor->pose.translation).squaredNorm();
+    if (sqrDistance < sensor->closestSqrDistance)
     {
       sensor->closestSqrDistance = sqrDistance;
       sensor->closestGeom = geom2;
@@ -71,24 +72,24 @@ void SingleDistanceSensor::DistanceSensor::staticCollisionWithSpaceCallback(Sing
 {
   ASSERT(geom1 == sensor->geom);
   ASSERT(dGeomIsSpace(geom2));
-  dSpaceCollide2(geom1, geom2, sensor, (dNearCallback*)&staticCollisionCallback);
+  dSpaceCollide2(geom1, geom2, sensor, reinterpret_cast<dNearCallback*>(&staticCollisionCallback));
 }
 
 void SingleDistanceSensor::DistanceSensor::updateValue()
 {
   pose = physicalObject->pose;
   pose.conc(offset);
-  const Vector3<>& pos = pose.translation;
-  const Vector3<>& dir = pose.rotation.c0;
-  dGeomRaySet(geom, pos.x, pos.y, pos.z, dir.x, dir.y, dir.z);
+  const Vector3f& pos = pose.translation;
+  const Vector3f dir = pose.rotation.col(0);
+  dGeomRaySet(geom, pos.x(), pos.y(), pos.z(), dir.x(), dir.y(), dir.z());
   closestGeom = 0;
   closestSqrDistance = maxSqrDist;
-  dSpaceCollide2(geom, (dGeomID)Simulation::simulation->movableSpace, this, (dNearCallback*)&staticCollisionWithSpaceCallback);
-  dSpaceCollide2(geom, (dGeomID)Simulation::simulation->staticSpace, this, (dNearCallback*)&staticCollisionCallback);
-  if(closestGeom)
+  dSpaceCollide2(geom, reinterpret_cast<dGeomID>(Simulation::simulation->movableSpace), this, reinterpret_cast<dNearCallback*>(&staticCollisionWithSpaceCallback));
+  dSpaceCollide2(geom, reinterpret_cast<dGeomID>(Simulation::simulation->staticSpace), this, reinterpret_cast<dNearCallback*>(&staticCollisionCallback));
+  if (closestGeom)
   {
-    data.floatValue = sqrtf(closestSqrDistance);
-    if(data.floatValue < min)
+    data.floatValue = std::sqrt(closestSqrDistance);
+    if (data.floatValue < min)
       data.floatValue = min;
   }
   else
@@ -107,13 +108,13 @@ void SingleDistanceSensor::drawPhysics(unsigned int flags) const
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  if(flags & SimRobotCore2::Renderer::showSensors)
+  if (flags & SimRobotCore2::Renderer::showSensors)
   {
     glBegin(GL_LINES);
-      glColor3f(0.5f, 0, 0);
-      glNormal3f (0, 0, 1.f);
-      glVertex3f(0.f, 0.f, 0.f);
-      glVertex3f(max, 0.f, 0.f);
+    glColor3f(0.5f, 0, 0);
+    glNormal3f(0, 0, 1.f);
+    glVertex3f(0.f, 0.f, 0.f);
+    glVertex3f(max, 0.f, 0.f);
     glEnd();
   }
 

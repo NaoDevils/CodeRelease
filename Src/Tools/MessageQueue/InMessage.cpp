@@ -22,13 +22,13 @@ bool InMessageQueue::getEof() const
 
 void InMessageQueue::open(MessageQueueBase* q)
 {
-  if(queue == nullptr)
+  if (queue == nullptr)
     queue = q;
 }
 
 void InMessageQueue::readFromStream(void* p, size_t size)
 {
-  if(queue != nullptr)
+  if (queue != nullptr)
     queue->read(p, size);
 }
 
@@ -44,9 +44,8 @@ InTextMessage::InTextMessage(MessageQueueBase* q)
 
 std::string InTextMessage::readAll()
 {
-  std::string result,
-              s;
-  while(!eof())
+  std::string result, s;
+  while (!eof())
   {
     *this >> s;
     result += s;
@@ -59,9 +58,7 @@ InConfigMessage::InConfigMessage(MessageQueueBase* q)
   open(q);
 }
 
-InMessage::InMessage(MessageQueueBase& queue) :
-  queue(queue), bin(&queue), text(&queue), config(&queue)
-{}
+InMessage::InMessage(MessageQueueBase& queue) : queue(queue), bin(&queue), text(&queue), config(&queue) {}
 
 MessageID InMessage::getMessageID() const
 {

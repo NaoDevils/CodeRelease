@@ -6,39 +6,44 @@
 
 #include "Robot.h"
 #include "Tools/Streams/InStreams.h"
+#include "Tools/Module/Logger.h"
 
-Robot::Robot()
+Robot::Robot() : logger(std::make_unique<Logger>(std::initializer_list<char>{'m', 'c'}))
 {
+  create(logger.get());
+
   InMapFile cm("Processes/connect.cfg");
   ASSERT(cm.exists());
 
   // attach receivers to senders
   ConnectionParameter cp;
   cm >> cp;
-  for(std::vector<ConnectionParameter::ProcessConnection>::const_iterator it = cp.processConnections.begin(); it != cp.processConnections.end(); ++it)
+  for (std::vector<ConnectionParameter::ProcessConnection>::const_iterator it = cp.processConnections.begin(); it != cp.processConnections.end(); ++it)
   {
     connect(getSender(it->sender.c_str()), getReceiver(it->receiver.c_str()));
   }
 }
 
+Robot::~Robot() = default;
+
 void Robot::connect(SenderList* sender, ReceiverList* receiver)
 {
-  if(sender && receiver)
+  if (sender && receiver)
     sender->add(receiver);
 }
 
 SenderList* Robot::getSender(const std::string& senderName)
 {
   std::string name;
-  for(ProcessList::const_iterator i = begin(); i != end(); ++i)
+  for (ProcessList::const_iterator i = begin(); i != end(); ++i)
   {
-    if(senderName[0] == '.')
+    if (senderName[0] == '.')
       name = (*i)->getName();
     else
       name = "";
     name += senderName;
     SenderList* sender = (*i)->lookupSender(name);
-    if(sender)
+    if (sender)
       return sender;
   }
   return 0;
@@ -46,10 +51,10 @@ SenderList* Robot::getSender(const std::string& senderName)
 
 ReceiverList* Robot::getReceiver(const std::string& receiverName)
 {
-  for(ProcessList::const_iterator i = begin(); i != end(); ++i)
+  for (ProcessList::const_iterator i = begin(); i != end(); ++i)
   {
     ReceiverList* receiver = (*i)->lookupReceiver(receiverName);
-    if(receiver)
+    if (receiver)
       return receiver;
   }
   return 0;

@@ -22,10 +22,7 @@
 
 class NumberTableWidgetItem : public QTableWidgetItem
 {
-  bool operator<(const QTableWidgetItem& other) const override
-  {
-    return this->text().toFloat() < other.text().toFloat();
-  }
+  bool operator<(const QTableWidgetItem& other) const override { return this->text().toFloat() < other.text().toFloat(); }
 
 public:
   unsigned number;
@@ -45,11 +42,11 @@ struct Row
   Row() : timeStamp(new NumberTableWidgetItem), name(new QTableWidgetItem), annotation(new QTableWidgetItem) {}
   ~Row()
   {
-    if(timeStamp)
+    if (timeStamp)
       delete timeStamp;
-    if(name)
+    if (name)
       delete name;
-    if(annotation)
+    if (annotation)
       delete annotation;
   }
 };
@@ -59,15 +56,16 @@ AnnotationWidget::AnnotationWidget(AnnotationView& view) : view(view), timeOfLas
   table = new QTableWidget();
   table->setColumnCount(3);
   QStringList headerNames;
-  headerNames << "Frame" << "Name" << "Annotation";
+  headerNames << "Frame"
+              << "Name"
+              << "Annotation";
   table->setHorizontalHeaderLabels(headerNames);
   table->verticalHeader()->setVisible(false);
-  table->verticalHeader()->setResizeMode(QHeaderView::Fixed);
+  table->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   table->verticalHeader()->setDefaultSectionSize(15);
-  table->horizontalHeader()->setResizeMode(3, QHeaderView::Stretch);
+  table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
   table->horizontalHeader()->resizeSection(0, 60);
   table->horizontalHeader()->resizeSection(1, 120);
-  table->horizontalHeader()->resizeSection(2, 200);
   table->setEditTriggers(QAbstractItemView::NoEditTriggers);
   table->setAlternatingRowColors(true);
   table->setSortingEnabled(true);
@@ -100,13 +98,22 @@ AnnotationWidget::AnnotationWidget(AnnotationView& view) : view(view), timeOfLas
   this->setLayout(layout);
   QObject::connect(filterEdit, SIGNAL(textChanged(QString)), this, SLOT(filterChanged(QString)));
   table->horizontalHeader()->restoreState(settings.value("HeaderState").toByteArray());
-  table->sortItems(settings.value("SortBy").toInt(), (Qt::SortOrder) settings.value("SortOrder").toInt());
+  table->sortItems(settings.value("SortBy").toInt(), (Qt::SortOrder)settings.value("SortOrder").toInt());
   filter = settings.value("Filter").toString();
   filterEdit->setText(filter);
   settings.endGroup();
 }
 
 AnnotationWidget::~AnnotationWidget()
+{
+  //saveLayout();
+
+  for (auto& i : rows)
+    if (i.second)
+      delete i.second;
+}
+
+void AnnotationWidget::saveLayout()
 {
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(view.fullName);
@@ -116,10 +123,6 @@ AnnotationWidget::~AnnotationWidget()
   settings.setValue("Filter", filter);
   settings.setValue("StopCheckBoxState", stopCheckBox->isChecked());
   settings.endGroup();
-
-  for(auto& i : rows)
-    if(i.second)
-      delete i.second;
 }
 
 QWidget* AnnotationWidget::getWidget()
@@ -129,7 +132,7 @@ QWidget* AnnotationWidget::getWidget()
 
 void AnnotationWidget::update()
 {
-  if(timeOfLastUpdate >= view.info.timeOfLastMessage)
+  if (timeOfLastUpdate >= view.info.timeOfLastMessage)
     return;
   timeOfLastUpdate = SystemCall::getCurrentSystemTime();
 
@@ -138,16 +141,15 @@ void AnnotationWidget::update()
 
   {
     SYNC_WITH(view.info);
-    for(const AnnotationInfo::AnnotationData& data : view.info.newAnnotations)
+    for (const AnnotationInfo::AnnotationData& data : view.info.newAnnotations)
     {
       const QString name = data.name.c_str();
       const QString annotation = data.annotation.c_str();
 
-      if(stopCheckBox->isChecked() &&
-         (name.toLower().contains(filter) || annotation.toLower().contains(filter)))
+      if (stopCheckBox->isChecked() && (name.toLower().contains(filter) || annotation.toLower().contains(filter)))
         view.application->simStop();
 
-      if(rows.find(data.annotationNumber) == rows.end())
+      if (rows.find(data.annotationNumber) == rows.end())
       {
         Row* currentRow = new Row();
         rows[data.annotationNumber] = currentRow;
@@ -174,12 +176,11 @@ void AnnotationWidget::update()
 
 void AnnotationWidget::applyFilter()
 {
-  for(int i = 0; i < table->rowCount(); ++i)
+  for (int i = 0; i < table->rowCount(); ++i)
   {
     QTableWidgetItem* moduleName = table->item(i, 1);
     QTableWidgetItem* annotation = table->item(i, 2);
-    if((moduleName && moduleName->text().toLower().contains(filter)) ||
-       (annotation && annotation->text().toLower().contains(filter)))
+    if ((moduleName && moduleName->text().toLower().contains(filter)) || (annotation && annotation->text().toLower().contains(filter)))
       table->setRowHidden(i, false);
     else
       table->setRowHidden(i, true);
@@ -195,9 +196,9 @@ void AnnotationWidget::filterChanged(const QString& newFilter)
 
 void AnnotationWidget::jumpFrame(int row, int column)
 {
-  if(SystemCall::getMode() == SystemCall::Mode::logfileReplay)
+  if (SystemCall::getMode() == SystemCall::Mode::logfileReplay)
   {
-    NumberTableWidgetItem* item = (NumberTableWidgetItem*) table->item(row, 0);
+    NumberTableWidgetItem* item = (NumberTableWidgetItem*)table->item(row, 0);
     int frame = item->number;
     view.logPlayer.gotoFrame(std::max(std::min(frame - 1, view.logPlayer.numberOfFrames - 1), 0));
   }

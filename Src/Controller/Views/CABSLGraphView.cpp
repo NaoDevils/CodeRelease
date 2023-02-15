@@ -21,17 +21,17 @@ CABSLGraphViewObject::Option::Option(const QString& line)
   QString file = path.last();
   optionName = file.split(QChar('.')).first();
   dotColorDesc = "";
-  if(path.contains("BallSearch"))
+  if (path.contains("BallSearch"))
     dotColorDesc = "[style=filled, fillcolor=yellow1, color=yellow4]";
-  else if(path.contains("Demos"))
+  else if (path.contains("Demos"))
     dotColorDesc = "[style=filled, fillcolor=pink, color=red]";
-  else if(path.contains("Controls"))
+  else if (path.contains("Controls"))
     dotColorDesc = "[style=filled, fillcolor=tan, color=saddlebrown]";
-  else if(path.contains("PenaltyShootout"))
+  else if (path.contains("PenaltyShootout"))
     dotColorDesc = "[style=filled, fillcolor=lightskyblue1, color=navyblue]";
-  else if(path.contains("Skills"))
+  else if (path.contains("Skills"))
     dotColorDesc = "[style=filled, fillcolor=khaki1, color=yellow4]";
-  else if(path.contains("Roles"))
+  else if (path.contains("Roles"))
     dotColorDesc = "[style=filled, fillcolor=palegreen, color=mediumseagreen]";
   else
     dotColorDesc = "";
@@ -41,16 +41,16 @@ void CABSLGraphViewObject::Option::findCalls(const QString& behaviorName, QList<
 {
   QString fileName = QString(File::getBHDir()) + "/Src/Modules/BehaviorControl/" + behaviorName + "/" + filePath;
   QFile file(fileName);
-  if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     return;
   QTextStream in(&file);
-  while(!in.atEnd())
+  while (!in.atEnd())
   {
     QString line = in.readLine();
-    foreach(Option* option, options)
-    if(line.contains(option->pattern()))
-      if(!calls.contains(option->optionName))
-        calls << option->optionName;
+    foreach (Option* option, options)
+      if (line.contains(option->pattern()))
+        if (!calls.contains(option->optionName))
+          calls << option->optionName;
   }
 }
 
@@ -62,8 +62,8 @@ QString CABSLGraphViewObject::Option::declareNode()
 QString CABSLGraphViewObject::Option::drawCalls()
 {
   QString dotLine;
-  foreach(QString call, calls)
-  dotLine += optionName + " -> " + call + ";\n";
+  foreach (QString call, calls)
+    dotLine += optionName + " -> " + call + ";\n";
   return dotLine;
 }
 
@@ -72,8 +72,10 @@ QString CABSLGraphViewObject::Option::pattern()
   return " " + optionName + "(";
 }
 
-CABSLGraphViewObject::CABSLGraphViewObject(const QString& fullName, const QString& behaviorName, const QString& optionsFile) :
-  DotViewObject(fullName), behaviorName(behaviorName), optionsFile(optionsFile) {}
+CABSLGraphViewObject::CABSLGraphViewObject(const QString& fullName, const QString& behaviorName, const QString& optionsFile)
+    : DotViewObject(fullName), behaviorName(behaviorName), optionsFile(optionsFile)
+{
+}
 
 QString CABSLGraphViewObject::generateDotFileContent()
 {
@@ -82,31 +84,32 @@ QString CABSLGraphViewObject::generateDotFileContent()
   // Read files and find option calls
   QString fileName = QString(File::getBHDir()) + "/Src/Modules/BehaviorControl/" + behaviorName + "/" + optionsFile;
   QFile file(fileName);
-  if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
     return QString();
   // Read all lines from global options file
   QTextStream in(&file);
-  while(!in.atEnd())
+  while (!in.atEnd())
   {
     QString line = in.readLine();
-    if(line.contains(".h") && line.contains("#include"))
+    if (line.contains(".h") && line.contains("#include"))
       options << new Option(line);
   }
   // Find calls of other options
-  foreach(Option* option, options)
+  foreach (Option* option, options)
     option->findCalls(behaviorName, options);
 
   // Create dot file
   QString dotSource = "digraph G {\n";
-  dotSource += "node [style=filled,fontname=Arial"
-#ifdef OSX
-  "MT"
+  dotSource +=
+      "node [style=filled,fontname=Arial"
+#ifdef MACOS
+      "MT"
 #endif
-  ",fontsize=9,height=0.2];\n";
+      ",fontsize=9,height=0.2];\n";
   dotSource += "concentrate = true;\n";
-  foreach(Option* option, options)
+  foreach (Option* option, options)
     dotSource += option->declareNode();
-  foreach(Option* option, options)
+  foreach (Option* option, options)
     dotSource += option->drawCalls();
   dotSource += "}\n";
 

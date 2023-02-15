@@ -7,19 +7,19 @@
 #include "CoMProviderModule.h"
 #include "Tools/Debugging/DebugDrawings.h"
 
-CoMProviderModule::CoMProviderModule():
-controller(
-           //theJointAngles,
-           //theWalkingEngineParams,
-           //theJointRequest,
-           theWalkingInfo,
-           //theFootSteps,
-           //theRobotModel,
-           theActualCoMRCS)
+CoMProviderModule::CoMProviderModule()
+    : controller(
+        //theJointAngles,
+        //theWalkingEngineParams,
+        //theJointRequest,
+        theWalkingInfo,
+        //theFootSteps,
+        //theRobotModel,
+        theActualCoMRCS)
 {
 }
 
-void CoMProviderModule::update(ActualCoM &theActualCoM)
+void CoMProviderModule::update(ActualCoM& theActualCoM)
 {
   controller.updateActualCoM(theActualCoM);
   //PLOT("module:CoMProvider:JointData:LHipRoll", theJointAngles.angles[Joints::lHipRoll]);

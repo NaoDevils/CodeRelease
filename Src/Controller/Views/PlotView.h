@@ -39,9 +39,7 @@ public:
   * @param xUnit The name of the x-axis.
   * @param xScale A scale factor for the x-axis.
   */
-  PlotView(const QString& fullName, RobotConsole& console, const std::string& name,
-           unsigned int plotSize, float minValue, float maxValue,
-           const std::string& yUnit = "", const std::string& xUnit = "", float xScale = 1.);
+  PlotView(const QString& fullName, RobotConsole& console, const std::string& name, unsigned int plotSize, float minValue, float maxValue, const std::string& yUnit = "", const std::string& xUnit = "", float xScale = 1.);
 
   /**
   * Destructor.
@@ -57,8 +55,7 @@ public:
   * @param xUnit The name of the x-axis.
   * @param xScale A scale factor for the x-axis.
   */
-  void setParameters(unsigned int plotSize, float minValue, float maxValue,
-                     const std::string& yUnit = "", const std::string& xUnit = "", float xScale = 1);
+  void setParameters(unsigned int plotSize, float minValue, float maxValue, const std::string& yUnit = "", const std::string& xUnit = "", float xScale = 1);
 
 private:
   const QString fullName; /**< The path to this view in the scene graph */
@@ -82,8 +79,8 @@ private:
   */
   virtual SimRobot::Widget* createWidget();
 
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 
   friend class PlotWidget;
 };
@@ -96,6 +93,8 @@ public:
   PlotWidget(PlotView& plotView, PlotWidget*& plotWidget);
 
   virtual ~PlotWidget();
+
+  virtual void saveLayout();
 
 public slots:
   void determineMinMaxValue();
@@ -120,11 +119,11 @@ private:
 
   bool needsRepaint() const;
 
-  virtual QSize sizeHint() const {return QSize(320, 240);}
+  virtual QSize sizeHint() const { return QSize(320, 240); }
 
   virtual void paintEvent(QPaintEvent* event);
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
   virtual void update();
   virtual QMenu* createUserMenu() const;
   virtual void paint(QPainter& painter);

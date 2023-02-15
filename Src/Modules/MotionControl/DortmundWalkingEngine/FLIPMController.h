@@ -13,14 +13,12 @@
 #include <stdio.h>
 #include "StepData.h"
 #include "Point.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/RefZMP.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/MotionControl/TargetCoM.h"
 #include "Representations/MotionControl/WalkingInfo.h"
-#include "Representations/MotionControl/ReferenceModificator.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/SpeedInfo.h"
@@ -35,68 +33,66 @@
 //const int static_N = 50; /**< Length of the preview phase */
 
 MODULE(FLIPMController,
-{ ,
   REQUIRES(WalkingEngineParams),
   REQUIRES(FLIPMParameter),
   REQUIRES(FLIPMControllerParameter),
   REQUIRES(ObservedFLIPMError),
   REQUIRES(RefZMP2018),
-  REQUIRES(InertialSensorData),
   REQUIRES(ZMPModel),
   REQUIRES(FootSteps),
   REQUIRES(Footpositions),
   REQUIRES(SpeedInfo),
   USES(WalkingInfo),
   PROVIDES(TargetCoM),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float)(0.26) min_z_h,
     (float)(0.27) max_z_h,
-    (float)(0.001) epsilon_z_h,
-  }),
-});
+    (float)(0.001) epsilon_z_h
+  )
+);
 
 
 class FLIPMController : public FLIPMControllerBase
 {
 public:
-
-	/** Constructor with all needed source data structures.
+  /** Constructor with all needed source data structures.
 	 * @param theRefZMP The desired ZMP.
 	 * @param theWalkingEngineParams Walking Engine Parameters.
 	 */
-	FLIPMController();
-  
-	~FLIPMController() { } /**< Destructor */
-  
-	/** Start the controller. */
-	void Start() { reset(); }
-  
-	/** Tells the controller to stop moving after the last added step. */
-	void End() { reset(); }
-  
-	/**
+  FLIPMController();
+
+  ~FLIPMController() {} /**< Destructor */
+
+  /** Start the controller. */
+  void Start() { reset(); }
+
+  /** Tells the controller to stop moving after the last added step. */
+  void End() { reset(); }
+
+  /**
 	 * Calculate one target position of the CoM.
 	 * @param targetCoM The representation to fill with the position.
 	 */
-  void update(TargetCoM & targetCoM);
+  void update(TargetCoM& targetCoM);
 
 private:
   Eigen::Matrix<Eigen::Matrix<double, 1, PREVIEW_LENGTH>, 2, 1> lastRefZMP; /**< Reference ZMP of last frame */
   Eigen::Matrix<Eigen::Matrix<double, 1, PREVIEW_LENGTH>, 2, 1> refZMP; /**< Current reference ZMP */
 
-  Eigen::Matrix<Vector6d, 2, 1 > x;	/**< Observer state vector*/
-  Vector2d v;                  		/**< Controller internal value. */
-  
+  Eigen::Matrix<Vector6d, 2, 1> x; /**< Observer state vector*/
+  Vector2d v; /**< Controller internal value. */
+
   float dynamic_z_h;
 
-  Eigen::Matrix<Vector6d, 2, 1 > x_RCS;	/**< Observer state vector*/
-  Vector2d v_RCS;                  		/**< Controller internal value. */
+  Eigen::Matrix<Vector6d, 2, 1> x_RCS; /**< Observer state vector*/
+  Vector2d v_RCS; /**< Controller internal value. */
 
-  bool isRunning;			/**< Is the controller running? */
+  bool isRunning; /**< Is the controller running? */
 
-	void reset();			/**< Resets the controller. */
-	Point controllerStep(); /** Calculate one step of the system. */
-  void executeController(Dimension d, const Eigen::Matrix< double, 1, PREVIEW_LENGTH>  &refZMP);
-  void executeRCSController(Dimension d, const Eigen::Matrix< double, 1, PREVIEW_LENGTH>  &refZMP);
+  int framesToInterpolate = 0;
+
+  void reset(); /**< Resets the controller. */
+  Point controllerStep(); /** Calculate one step of the system. */
+  void executeController(Dimension d, const Eigen::Matrix<double, 1, PREVIEW_LENGTH>& refZMP);
+  void executeRCSController(Dimension d, const Eigen::Matrix<double, 1, PREVIEW_LENGTH>& refZMP);
 };

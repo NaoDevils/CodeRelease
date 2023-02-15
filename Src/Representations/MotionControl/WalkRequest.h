@@ -17,21 +17,17 @@
  * A struct that represents a walk request.
  */
 STREAMABLE(WalkRequest,
-{
   ENUM(RequestType,
-  {,
     speed, /**< Interpret \c request as absolute walking speed. */
-    destination, /**< Interpret \c request as relative target. */
-  });
+    destination /**< Interpret \c request as relative target. */
+  );
 
    ENUM(RotationType,
-   {,
     irrelevant, /**< robot rotation is allowed to be used at will */
-    towardsBall, /**< robot is supposed to rotate towards ball position */
-   });
+    towardsBall /**< robot is supposed to rotate towards ball position */
+   );
 
   ENUM(StepRequest,
-  { ,
     none,
     previewKick,
     any, // lets the walking engine choose the kick using kick target from kick request
@@ -40,8 +36,21 @@ STREAMABLE(WalkRequest,
     safetyStepFront,
     safetyStepBack,
     // kicks are always with left foot (or to the left), have to be mirrored!
+    kickHack,
+    kickHackLong,
+    kickHackVeryLong,
+    frontKickLong, /** Long front kick, slower execution time. */
     frontKickShort, /** Quick short kick to front. */
-  });
+    rotateKick45, /** Rotate the robot 45 degrees and kick with right foot. */
+    rotateKick45Long,
+    sideKickOuter45, /** Side kick to left front, ball is left of robot. */
+    sideKickOuterFoot, /** Side kick to left with the outer (left) foot if ball is next to foot. */
+    sideKickOuterFront, /** Side kick to left with the outer (left) foot if ball is in the front left. */
+    sideKickInner45, /** Side kick to left front, ball is directly in front of robot. */
+    sideKickInnerFoot, /** Side kick to left with the inner (right) foot. */
+    keeperKickFront, /** Quick short kick to front without stepping forward */
+    keeperKick45 /** Quick short kick to 45 degrees without stepping forward */
+  );
 
   // needed to be able to put std::vector<StepRequest> as parameter into LOADS_PARAMETERS macro
   // see e.g. PatternGenerator2017.h
@@ -72,33 +81,20 @@ STREAMABLE(WalkRequest,
     default:
       return true;
     }
-  }
-
-  WalkRequest& operator=(const WalkRequest& other)
-  {
-    if (this == &other)
-    {
-      return *this;
-    }
-    requestType = other.requestType;
-    rotationType = other.rotationType;
-    request = other.request;
-    stepRequest = other.stepRequest;
-    return *this;
   },
 
   (RequestType)(speed) requestType, /**< The walking mode. */
   (RotationType)(irrelevant) rotationType, /**< E.g. ball faced positioning */
   (Pose2f) request, /**< Target relative to robot or speed in mm/s and radian/s. */
-  (StepRequest)(none) stepRequest, /**< The stepRequest (for in-walk predefined motions) */
-});
+  (Pose2f) accLimits, /**< Accelerations limits for current speed request in m/s. */
+  (StepRequest)(none) stepRequest /**< The stepRequest (for in-walk predefined motions) */
+);
 
 /**
 * @struct WalkRequestCompressed
 * A compressed version of WalkRequest used in team communication
 */
 STREAMABLE(WalkRequestCompressed,
-{
   WalkRequestCompressed() = default;
   WalkRequestCompressed(const WalkRequest & walkRequest)
   {
@@ -121,5 +117,5 @@ STREAMABLE(WalkRequestCompressed,
   ((WalkRequest) RequestType) requestType, /**< The currently executed walk type */
   ((WalkRequest) RotationType) rotationType, /**< The currently executed rotation type */
   (Pose2f) destination, /**< The current walk destination (or speed in case of type speed) */
-  ((WalkRequest) StepRequest) stepRequest, /**< The stepRequest (for in-walk predefined motions) */
-});
+  ((WalkRequest) StepRequest) stepRequest /**< The stepRequest (for in-walk predefined motions) */
+);

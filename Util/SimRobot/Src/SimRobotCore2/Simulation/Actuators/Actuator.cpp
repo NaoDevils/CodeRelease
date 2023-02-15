@@ -10,7 +10,6 @@
 void Actuator::addParent(Element& element)
 {
   ::PhysicalObject::addParent(element);
-  GraphicalObject::addParent(element);
 }
 
 const QIcon* Actuator::Port::getIcon() const
@@ -21,7 +20,7 @@ const QIcon* Actuator::Port::getIcon() const
 SimRobot::Widget* Actuator::Port::createWidget()
 {
   CoreModule::module->application->openObject(CoreModule::module->actuatorsObject);
-  if(ActuatorsWidget::actuatorsWidget)
+  if (ActuatorsWidget::actuatorsWidget)
     ActuatorsWidget::actuatorsWidget->openActuator(fullName);
-  return 0;
+  return nullptr;
 }

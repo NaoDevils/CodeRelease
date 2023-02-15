@@ -7,9 +7,11 @@
 #pragma once
 
 #include <unordered_map>
+#include <memory>
 
-class QGLPixelBuffer;
-class QGLWidget;
+class QOpenGLFramebufferObject;
+class QOpenGLContext;
+class QOffscreenSurface;
 
 /**
 * @class OffscreenRenderer
@@ -18,15 +20,6 @@ class QGLWidget;
 class OffscreenRenderer
 {
 public:
-  enum Method
-  {
-    unknown, /**< Call prepareRendering() first */
-    pixelBuffer, /**< Good. */
-    frameBuffer, /**< Good. */
-    hiddenWindow, /**< Well..., it works at least on some systems */
-  };
-
-  /** Default Constructor */
   OffscreenRenderer();
 
   /** Destructor */
@@ -45,9 +38,8 @@ public:
   * @param width The width of an image that will be rendered using this off-screen renderer
   * @param height The height of an image that will be rendered using this off-screen renderer
   * @param sampleBuffers Are sample buffers for multi-sampling required?
-  * @return Whether the OpenGL context was successfully selected
   */
-  bool makeCurrent(int width, int height, bool sampleBuffers = true);
+  void makeCurrent(int width, int height, bool sampleBuffers = true);
 
   /**
   * Reads an image from current rendering context.
@@ -66,41 +58,17 @@ public:
   void finishDepthRendering(void* image, int width, int height);
 
   /**
-  * Requests the used rendering method. Only available when prepareRendering() was called at least once.
-  * @return The used rendering method.
+  * Accesses the QOpenGLWidget used for rendering. It can be used for creating further QOpenGLWidgets with shared display lists and textures.
+  * @return The QOpenGLWidget used for rendering
   */
-  Method getRenderingMethod() const;
-
-  /**
-  * Accesses the QGLWidget used for rendering. It can be used for creating further QGLWidgets with shared display lists and textures.
-  * @return The QGLWidget used for rendering
-  */
-  const QGLWidget* getWidget() const {return mainGlWidget;}
+  QOpenGLContext* getContext() const { return mainGlContext.get(); }
 
 private:
+  std::unique_ptr<QOpenGLContext> mainGlContext;
+  std::unique_ptr<QOffscreenSurface> mainSurface;
 
-  /**
-  * @class Buffer
-  * A render buffer data specialized on rendering images of a defined size.
-  */
-  class Buffer
-  {
-  public:
-    QGLWidget* glWidget;
-    QGLPixelBuffer* pbuffer;
-    unsigned int frameBufferId;
-    unsigned int renderBufferIds[2];
-
-    /** Default constructor */
-    Buffer() : glWidget(0), pbuffer(0), frameBufferId(0) {}
-
-    /** Destructor */
-    ~Buffer();
-  };
-
-  QGLWidget* mainGlWidget;
-  bool usedMainGlWidget;
-  std::unordered_map<unsigned int, Buffer> renderBuffers;
+  std::unordered_map<unsigned int, std::unique_ptr<QOpenGLFramebufferObject>> renderBuffers;
+  QOpenGLFramebufferObject* currentBuffer = nullptr;
 
   /**
   * Initializes the currently selected OpenGL context for off-screen rendering
@@ -108,7 +76,5 @@ private:
   */
   void initContext(bool hasSharedDisplayLists);
 
-  bool initFrameBuffer(int width, int height, Buffer& buffer);
-  bool initPixelBuffer(int width, int height, bool sampleBuffers, Buffer& buffer);
-  void initHiddenWindow(int width, int height, Buffer& buffer);
+  std::unique_ptr<QOpenGLFramebufferObject> initPixelBuffer(int width, int height, bool sampleBuffers);
 };

@@ -21,7 +21,6 @@
  * Contains information about extremities.
  */
 STREAMABLE(RobotModel,
-{
   RobotModel() = default;
 
   /**
@@ -47,5 +46,5 @@ STREAMABLE(RobotModel,
   (Vector3f)(Vector3f::Zero()) centerOfMass, /**< Position of the center of mass (center of gravity) relative to the robot's origin. */
   (Pose3f) soleLeft,
   (Pose3f) soleRight,
-  (float)(0) totalMass, /**< The mass of the robot. */
-});
+  (float)(0) totalMass /**< The mass of the robot. */
+);

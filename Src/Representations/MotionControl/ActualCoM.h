@@ -7,7 +7,6 @@
 #include "Modules/MotionControl/DortmundWalkingEngine/Point.h"
 
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
 #include "Tools/Debugging/Watch.h"
 #else
 #include "bhumanstub.h"
@@ -19,31 +18,16 @@
 * Representing the actual position of center of mass in the walking engines
 * world coordinate system.
 */
-struct ActualCoM : public Streamable, public Point
+struct ActualCoM : public TranslationPoint
 {
-	void watch()
-	{
-		WATCH(x);
-		WATCH(y);
-		WATCH(z);
-	}
-
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-		STREAM(x)
-		STREAM(y)
-		STREAM(z)
-		STREAM_REGISTER_FINISH;
-	};
-
-	/** Constructor */
-	ActualCoM()
-	{
-	};
-
-	/** Desctructor */
-	~ActualCoM(){};
+  void watch()
+  {
+    WATCH(x);
+    WATCH(y);
+    WATCH(z);
+  }
 };
 
-struct ActualCoMRCS : public ActualCoM {};
+struct ActualCoMRCS : public ActualCoM
+{
+};

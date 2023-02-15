@@ -11,11 +11,11 @@
 #include "View3D.h"
 #include "Controller/RoboCupCtrl.h"
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QMouseEvent>
 #include <QSettings>
 
-class View3DWidget : public QGLWidget, public SimRobot::Widget
+class View3DWidget : public QOpenGLWidget, public SimRobot::Widget
 {
 public:
   View3DWidget(View3D& view3D) : view3D(view3D), dragging(false)
@@ -29,6 +29,11 @@ public:
   }
 
   virtual ~View3DWidget()
+  {
+    //saveLayout();
+  }
+
+  virtual void saveLayout()
   {
     QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
     settings.beginGroup(view3D.fullName);
@@ -45,7 +50,7 @@ private:
 
   void paintGL()
   {
-    GLdouble aspect = height ? (GLdouble) width / (GLdouble) height : (GLdouble) width;
+    GLdouble aspect = height ? (GLdouble)width / (GLdouble)height : (GLdouble)width;
 
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_BLEND);
@@ -58,7 +63,12 @@ private:
     glShadeModel(GL_SMOOTH);
     glEnable(GL_DEPTH_TEST);
 
-    if(!glIsList(View3D::cubeId) || view3D.needsUpdate())
+    if (view3D.cubeId == 0)
+      view3D.cubeId = glGenLists(1);
+    if (view3D.colorsId == 0)
+      view3D.colorsId = glGenLists(1);
+
+    if (view3D.needsUpdate())
       view3D.updateDisplayLists();
 
     glMatrixMode(GL_MODELVIEW);
@@ -75,8 +85,8 @@ private:
     glRotated(rotation.x(), 1.0f, 0.0f, 0.0f);
     glRotated(rotation.y(), 0.0f, 0.0f, 1.0f);
 
-    glCallList(View3D::cubeId);
-    glCallList(View3D::colorsId);
+    glCallList(view3D.cubeId);
+    glCallList(view3D.colorsId);
 
     view3D.lastBackground = view3D.background;
   }
@@ -85,7 +95,7 @@ private:
   {
     QWidget::mousePressEvent(event);
 
-    if(event->button() == Qt::LeftButton || event->button() == Qt::MidButton)
+    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton)
     {
       dragStart = event->pos();
       dragging = true;
@@ -103,13 +113,13 @@ private:
   {
     QWidget::mouseMoveEvent(event);
 
-    if(dragging)
+    if (dragging)
     {
       QPoint diff(event->pos() - dragStart);
       dragStart = event->pos();
       rotation.ry() += diff.x();
       rotation.rx() += diff.y();
-      updateGL();
+      QOpenGLWidget::update();
     }
   }
 
@@ -118,31 +128,29 @@ private:
     QWidget::mouseDoubleClickEvent(event);
 
     rotation = QPointF();
-    updateGL();
+    QOpenGLWidget::update();
   }
 
   void wheelEvent(QWheelEvent* event)
   {
-    if(event->delta())
+    if (!event->angleDelta().isNull())
     {
-      if(event->orientation() == Qt::Horizontal)
-        rotation.ry() += static_cast<float>(event->delta()) * 0.2f;
-      else
-        rotation.rx() += static_cast<float>(event->delta()) * 0.2f;
-      updateGL();
+      rotation.ry() += static_cast<float>(event->angleDelta().y()) * 0.2f;
+      rotation.rx() += static_cast<float>(event->angleDelta().x()) * 0.2f;
+      QOpenGLWidget::update();
     }
     else
-      QGLWidget::wheelEvent(event);
+      QOpenGLWidget::wheelEvent(event);
   }
 
   virtual QSize sizeHint() const { return QSize(320, 240); }
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
 
   virtual void update()
   {
-    if(view3D.background != view3D.lastBackground || view3D.needsUpdate())
-      QGLWidget::update();
+    if (view3D.background != view3D.lastBackground || view3D.needsUpdate())
+      QOpenGLWidget::update();
   }
 
   QPointF rotation;
@@ -153,8 +161,7 @@ private:
   QPoint dragStart;
 };
 
-View3D::View3D(const QString& fullName, const Vector3f& background) :
-  background(background), fullName(fullName), icon(":/Icons/tag_green.png") {}
+View3D::View3D(const QString& fullName, const Vector3f& background) : background(background), fullName(fullName), icon(":/Icons/tag_green.png") {}
 
 SimRobot::Widget* View3D::createWidget()
 {

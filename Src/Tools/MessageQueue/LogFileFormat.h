@@ -10,9 +10,8 @@
 #include "Tools/Enum.h"
 
 ENUM(LogFileFormat,
-{,
   logFileUncompressed,
   logFileCompressed,
   logFileMessageIDs,
-  logFileStreamSpecification,
-});
+  logFileStreamSpecification
+);

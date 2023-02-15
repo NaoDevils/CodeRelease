@@ -18,9 +18,9 @@
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/Sensing/GroundContactState.h"
+#include "Tools/ProcessFramework/CycleLocal.h"
 
 MODULE(MotionSelector,
-{,
   USES(SpecialActionsOutput),
   USES(WalkingEngineOutput),
   USES(KickEngineOutput),
@@ -30,19 +30,19 @@ MODULE(MotionSelector,
   REQUIRES(MotionSettings),
   REQUIRES(GroundContactState),
   PROVIDES(MotionSelection),
-  REQUIRES(MotionSelection),
-});
+  REQUIRES(MotionSelection)
+);
 
 class MotionSelector : public MotionSelectorBase
 {
 private:
-  static PROCESS_LOCAL MotionSelector* theInstance; /**< The only instance of this module. */
+  static CycleLocal<MotionSelector*> theInstance; /**< The only instance of this module. */
 
   bool forceStand = false;
-  MotionRequest::Motion lastMotion;
-  MotionRequest::Motion prevMotion;
-  unsigned lastExecution; //FIXME: Value is used uninitialized
-  SpecialActionRequest::SpecialActionID lastActiveSpecialAction;
+  MotionRequest::Motion lastMotion = MotionRequest::specialAction;
+  MotionRequest::Motion prevMotion = MotionRequest::specialAction;
+  unsigned lastExecution = 0;
+  SpecialActionRequest::SpecialActionID lastActiveSpecialAction = SpecialActionRequest::playDead;
 
   void update(MotionSelection& motionSelection);
 
@@ -55,11 +55,8 @@ public:
   */
   static void stand();
   static void move();
-  
-  MotionSelector() : 
-    lastMotion(MotionRequest::specialAction), prevMotion(MotionRequest::specialAction),
-    lastActiveSpecialAction(SpecialActionRequest::playDead)
-  {
-    theInstance = this;
-  }
+
+  MotionSelector() { theInstance = this; }
+
+  ~MotionSelector() { theInstance.reset(); }
 };

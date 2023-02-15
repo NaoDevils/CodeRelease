@@ -8,7 +8,7 @@
 * A class for controlling the speed of angular motors
 * combining three different controllers.
 */
-template<class V = float> class PIDController
+template <class V = float> class PIDController
 {
 private:
   /** The constant factor for a proportional control part (gain) */
@@ -49,7 +49,7 @@ public:
    * Sets the time step length of a simulation control step
    * @param value the time step length
    */
-  void setTimeStep(V value){timeStep = value;};
+  void setTimeStep(V value) { timeStep = value; };
 
   /**
   * Updates the all control factors
@@ -57,7 +57,12 @@ public:
   * @param i The new p value
   * @param d The new p value
   */
-  void updateControlFactors(V p, V i, V d) {pControlFactor = p; iControlFactor = i; dControlFactor = d;}
+  void updateControlFactors(V p, V i, V d)
+  {
+    pControlFactor = p;
+    iControlFactor = i;
+    dControlFactor = d;
+  }
 };
 
 #endif //PIDCONTROLLER_H_

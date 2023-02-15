@@ -20,6 +20,9 @@
         <file>Icons/stand.png</file>
         <file>Icons/sitDown.png</file>
         <file>Icons/chestButton.png</file>
+        <file>Icons/headRear.png</file>
+        <file>Icons/headMiddle.png</file>
+        <file>Icons/headFront.png</file>
         <file>Icons/edit_undo.png</file>
         <file>Icons/edit_redo.png</file>
         <file>Icons/rainbowcursor.png</file>

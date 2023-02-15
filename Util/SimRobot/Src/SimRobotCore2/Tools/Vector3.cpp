@@ -10,7 +10,7 @@
 
 template <class V> V Vector3<V>::abs() const
 {
-  return (V) sqrt(x * x + y * y + z * z);
+  return (V)sqrt(x * x + y * y + z * z);
 }
 
 template class Vector3<float>;

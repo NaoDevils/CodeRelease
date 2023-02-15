@@ -5,8 +5,7 @@
 namespace Arms
 {
   ENUM(Arm,
-  {,
     left,
-    right,
-  });
+    right
+  );
 }

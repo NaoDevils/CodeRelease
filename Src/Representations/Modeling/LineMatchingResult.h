@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Pose2f.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Debugging/DebugDrawings.h"
@@ -17,49 +17,29 @@
 * @class LineMatchingResult
 * A class that represents the line matching result.
 */
-class LineMatchingResult : public Streamable
-{
+STREAMABLE(LineMatchingResult,
 public:
   enum
   {
     maxNumberOfLineObservations = 8 // to have a fixed size for the correspondence array
   };
 
-  class FieldLine : public Streamable
-  {
-  public:
-    Vector2d start,end;
-    double cameraHeight;
-
-    FieldLine() : cameraHeight(0.f) {};
-    FieldLine(const FieldLine & other):start(other.start), end(other.end), cameraHeight(other.cameraHeight){};
-    FieldLine(const Vector2d start_, const Vector2d end_, const double cameraHeight):start(start_),end(end_),cameraHeight(cameraHeight){};
-  
-    /** Streaming (with specifications) */
-    virtual void serialize(In *in, Out *out)
+  STREAMABLE(FieldLine,
+    FieldLine(){}
+    FieldLine(const Vector2d& start_, const Vector2d& end_, const double cameraHeight)
     {
-      STREAM_REGISTER_BEGIN;
-        STREAM(start);
-        STREAM(end);
-        STREAM(cameraHeight);
-      STREAM_REGISTER_FINISH;
+      this->start = start_;
+      this->end = end_;
+      this->cameraHeight = cameraHeight;
     }
-  };
+    ,
+    (Vector2d) start,
+    (Vector2d) end,
+    (double)(0.0) cameraHeight
+  );
 
-  class PoseHypothesis : public Streamable
-  {
-  public:
-    Pose2f pose;
-    int lineCorrespondences[maxNumberOfLineObservations]{ 0 };
-  
-    /** Streaming (with specifications) */
-    virtual void serialize(In *in, Out *out)
-    {
-      STREAM_REGISTER_BEGIN;
-        STREAM(pose);
-        STREAM(lineCorrespondences);
-      STREAM_REGISTER_FINISH;
-    }
+  STREAMABLE(PoseHypothesis,
+    PoseHypothesis() { memset(lineCorrespondences, 0, sizeof(lineCorrespondences)); }
 
     void setLineCorrespondences(const int otherLineCorrespondences[])
     {
@@ -68,37 +48,19 @@ public:
         lineCorrespondences[i] = otherLineCorrespondences[i];
       }
     }
-    
-    PoseHypothesis& operator=(const PoseHypothesis& other)
-    {
-      this->pose = other.pose;
-      this->setLineCorrespondences(other.lineCorrespondences);
-      return *this;
-    }
-  };
+    ,
+    (Pose2f) pose,
+    (int[maxNumberOfLineObservations]) lineCorrespondences
+  );
 
-  class PoseHypothesisInterval : public Streamable
-  {
-  public:
-    Pose2f start,end;
-    int lineCorrespondences[maxNumberOfLineObservations]{ 0 };
-  
-    /** Streaming (with specifications) */
-    virtual void serialize(In *in, Out *out)
-    {
-      STREAM_REGISTER_BEGIN;
-        STREAM(start);
-        STREAM(end);
-        STREAM(lineCorrespondences);
-      STREAM_REGISTER_FINISH;
-    }
-  };
+  STREAMABLE(PoseHypothesisInterval,
+    PoseHypothesisInterval() { memset(lineCorrespondences, 0, sizeof(lineCorrespondences)); }
+    ,
+    (Pose2f) start,
+    (Pose2f) end,
+    (int[maxNumberOfLineObservations]) lineCorrespondences
+  );
 
-  std::vector<FieldLine> fieldLines;
-  std::vector<FieldLine> observations;
-  std::vector<PoseHypothesis> poseHypothesis; /**< Possible poses in absolute field coordinates (for unique poses, i.e. at least one crossing). */
-  std::vector<PoseHypothesisInterval> poseHypothesisIntervals; /**< Possible poses in absolute field coordinates (for pose intervals, i.e. only two parallel lines). */
-  bool onlyObservedOneFieldLine;
 private:
   std::vector<FieldLine> observationsSphericalCoords;
 
@@ -106,7 +68,7 @@ public:
   /**
   * Default constructor.
   */
-  LineMatchingResult() : onlyObservedOneFieldLine(false) { reset(); }
+  LineMatchingResult() { reset(); }
 
   /** Reset the path */
   void reset()
@@ -116,18 +78,6 @@ public:
     poseHypothesis.clear();
     poseHypothesisIntervals.clear();
     onlyObservedOneFieldLine = false;
-  }
-  
-  /** Streaming (with specifications) */
-  virtual void serialize(In *in, Out *out)
-  {
-    STREAM_REGISTER_BEGIN;
-      STREAM(fieldLines);
-      STREAM(observations);
-      STREAM(poseHypothesis);
-      STREAM(poseHypothesisIntervals);
-      STREAM(onlyObservedOneFieldLine);
-    STREAM_REGISTER_FINISH;
   }
 
 private:
@@ -204,4 +154,11 @@ public:
   * The method draws the line matching result.
   */
   void draw() const;
-};
+  ,
+
+  (std::vector<FieldLine>) fieldLines,
+  (std::vector<FieldLine>) observations,
+  (std::vector<PoseHypothesis>) poseHypothesis, /**< Possible poses in absolute field coordinates (for unique poses, i.e. at least one crossing). */
+  (std::vector<PoseHypothesisInterval>) poseHypothesisIntervals, /**< Possible poses in absolute field coordinates (for pose intervals, i.e. only two parallel lines). */
+  (bool)(false) onlyObservedOneFieldLine
+);

@@ -22,10 +22,11 @@ PathToSpeedStable::PathToSpeedStable()
 
 void PathToSpeedStable::update(SpeedRequest& speedRequest)
 {
+  DECLARE_DEBUG_DRAWING("module:PathToSpeedStable:avoidBallIntermediateTarget", "drawingOnField");
   // somehow walk towards ball (no specified kind of step requested)
-  if (theMotionRequest.walkRequest.requestType == WalkRequest::destination
-      && theMotionRequest.walkRequest.rotationType == WalkRequest::towardsBall
-      && theMotionRequest.walkRequest.stepRequest == WalkRequest::none)
+  // Ingmar, 15.07.2020: Does not work like this, reimplement if needed
+  if (theMotionRequest.motion == MotionRequest::walk && theMotionRequest.walkRequest.requestType == WalkRequest::destination
+      && theMotionRequest.walkRequest.rotationType == WalkRequest::towardsBall && theMotionRequest.walkRequest.stepRequest == WalkRequest::none)
   {
     speedRequest.rotation = theBallSymbols.ballPositionRelative.angle();
     speedRequest.translation = Transformation::fieldToRobot(theRobotPoseAfterPreview, thePath.wayPoints[1].translation);
@@ -33,12 +34,12 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
   }
 
   // TODO: ball next to goal post
-  
+
   speedRequest.translation = Vector2f::Zero();
   speedRequest.rotation = 0.f;
 
   // dont move if nearly falling
-  if (std::max<float>(theFallDownAngleReduction.reductionFactor.x(), theFallDownAngleReduction.reductionFactor.y()) >= emergencyStopFallDownReductionFactorThreshold)
+  if (std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) >= emergencyStopFallDownReductionFactorThreshold)
   {
     return;
   }
@@ -63,22 +64,18 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
     /**** decide state ****/
     Pose2f destRel = destWorldCoordinates - theRobotPoseAfterPreview;
     float distanceToTarget = destRel.translation.norm();
-    float angleNextWayPointRelative =
-      Angle::normalize((thePath.wayPoints[1].translation - thePath.wayPoints[0].translation).angle() - theRobotPoseAfterPreview.rotation);
+    float angleNextWayPointRelative = Angle::normalize((thePath.wayPoints[1].translation - thePath.wayPoints[0].translation).angle() - theRobotPoseAfterPreview.rotation);
 
     atBall = (theBehaviorData.soccerState == BehaviorData::controlBall && (theBallSymbols.ballPositionRelativeWOPreview.norm() < (atBall ? 600 : 450)) && theBallSymbols.timeSinceLastSeen < 2000);
-    
+
     //Todo: Test
     //Goalie should only be in state target if game state is playing
-    bool goalieCloseToGoal = theRobotPoseAfterPreview.translation.x() < (theFieldDimensions.xPosOwnPenaltyArea + 500) // only in goal area
-      && std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.yPosLeftDropInLine; // only in goal area
-    
+    bool goalieCloseToGoal = theRobotPoseAfterPreview.translation.x() < (theFieldDimensions.xPosOwnPenaltyArea + 500); // only in goal area
+
     // TODO: seems to be a behavior thing to decide this
     // keeper in playing, not chasing the ball (not after penalty, not without wlan)
-    if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING 
-      && goalieCloseToGoal 
-      && !(theGameSymbols.timeSinceLastPenalty < 15000)
-      && !(theBehaviorConfiguration.noWLAN || !theTeammateData.wlanOK))
+    if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING && goalieCloseToGoal && !(theGameSymbols.timeSinceLastPenalty < 15000)
+        && !(theBehaviorConfiguration.noWLAN || !theTeammateData.wlanOK))
     {
       state = target;
     }
@@ -89,25 +86,23 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
       case target:
         // if target position gets far away, switch to that
         // TODO: if target is behind me with similar rotation, stay
-        if (distanceToTarget > (targetStateSwitchDistance + targetStateSwitchDistanceHysteresis) &&
-          (!atBall) &&
-          (theBehaviorData.soccerState == BehaviorData::controlBall || destRel.translation.x() > 0 || std::abs(destRel.rotation) > walkBackWardsRotation + 0.3f || distanceToTarget > walkBackWardsDistance + 300))
+        if (distanceToTarget > (targetStateSwitchDistance + targetStateSwitchDistanceHysteresis) && (!atBall)
+            && (theBehaviorData.soccerState == BehaviorData::controlBall || destRel.translation.x() > 0 || std::abs(destRel.rotation) > walkBackWardsRotation + 0.3f
+                || distanceToTarget > walkBackWardsDistance + 300))
           state = far;
         break;
       case omni:
         if (distanceToTarget < targetStateSwitchDistance || atBall)
           state = target;
-        else if (thePath.nearestObstacle > omniStateSwitchDistance + omniStateSwitchDistanceHysteresis ||
-          std::abs(angleNextWayPointRelative) < omniStateSwitchAngle / 2)
+        else if (thePath.nearestObstacle > omniStateSwitchDistance + omniStateSwitchDistanceHysteresis || std::abs(angleNextWayPointRelative) < omniStateSwitchAngle / 2)
           state = far;
         break;
       case far:
-        if (distanceToTarget < targetStateSwitchDistance || atBall ||
-          (theBehaviorData.soccerState != BehaviorData::controlBall && destRel.translation.x() < 0 && distanceToTarget < walkBackWardsDistance && std::abs(destRel.rotation) < walkBackWardsRotation))
+        if (distanceToTarget < targetStateSwitchDistance || atBall
+            || (theBehaviorData.soccerState != BehaviorData::controlBall && destRel.translation.x() < 0 && distanceToTarget < walkBackWardsDistance && std::abs(destRel.rotation) < walkBackWardsRotation))
           //&& distanceToTarget < 800))
           state = target;
-        else if (thePath.nearestObstacle < omniStateSwitchDistance &&
-          std::abs(angleNextWayPointRelative) > omniStateSwitchAngle)
+        else if (thePath.nearestObstacle < omniStateSwitchDistance && std::abs(angleNextWayPointRelative) > omniStateSwitchAngle)
           state = omni;
         break;
       default:
@@ -120,25 +115,25 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
     Vector2f translationOnPath = thePath.wayPoints[1].translation - thePath.wayPoints[0].translation;
     translationOnPath.rotate(-theRobotPoseAfterPreview.rotation);
 
-    float maxSpeedX = theWalkingEngineParams.speedLimits.xForward;
+    float maxSpeedX = theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedLimits.speedFactor;
     if (state != far)
     {
-      maxSpeedX = theWalkingEngineParams.speedLimits.xForwardOmni;
+      maxSpeedX = theWalkingEngineParams.speedLimits.xForwardOmni * theWalkingEngineParams.speedLimits.speedFactor;
     }
 
     // if distance exceeds maxSpeeds, clip
-    if (translationOnPath.x() > maxSpeedX || std::abs(translationOnPath.y()) > theWalkingEngineParams.speedLimits.y)
+    if (translationOnPath.x() > maxSpeedX || std::abs(translationOnPath.y()) > (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor))
     {
       float xFactor = std::abs(translationOnPath.x()) / maxSpeedX;
-      float yFactor = std::abs(translationOnPath.y()) / theWalkingEngineParams.speedLimits.y;
+      float yFactor = std::abs(translationOnPath.y()) / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor);
       translationOnPath /= std::max(0.001f, std::max(xFactor, yFactor));
     }
-    
+
     inDribbling = false;
-    float maxSpeedR = theWalkingEngineParams.speedLimits.r;
+    float maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor;
     if (state != far)
     {
-      maxSpeedR = theWalkingEngineParams.speedLimits.r*0.8f;
+      maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor * 0.8f;
     }
 
     switch (state)
@@ -148,24 +143,39 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
       // turn towards target rotation, keep target in sight, TODO!
       // TODO: do not use closest angle, but angle to keep target in sight
       const float targetRot = thePath.wayPoints.back().rotation;
-      float rotDiff = Angle::normalize(targetRot - theRobotPoseAfterPreview.rotation);
+      Vector2f vecRobotToBall = theBallSymbols.ballPositionField - theRobotPoseAfterPreview.translation;
+      Vector2f vecTargetToBall = theBallSymbols.ballPositionField - thePath.wayPoints.back().translation;
+      float rotDiff = Angle::normalize(vecTargetToBall.angle() - vecRobotToBall.angle());
       // need angle of pose to target position to check if target is in sight
-      if (atBall && std::abs(rotDiff) > pi3_4)
-        rotDiff = theBallSymbols.ballPositionRelative.angle();
+      rotateAroundBall = atBall && std::abs(rotDiff) > (rotateAroundBall ? pi_4 : (pi_4 + pi_8));
+      if (rotateAroundBall)
+        rotDiff = theBallSymbols.ballPositionRelative.angle() * 1.5f;
       /*float angleToTargetRel =
         Angle::normalize((thePath.wayPoints.back().translation - theRobotPoseAfterPreview.translation).angle() - theRobotPoseAfterPreview.rotation);*/
-      speedRequest.rotation = (float)(sgn(rotDiff)*std::min<float>(std::abs(rotDiff), theWalkingEngineParams.speedLimits.r));
+      speedRequest.rotation = (float)(sgn(rotDiff) * std::min<float>(std::abs(rotDiff), theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor));
       /*if (atBall && std::abs(theBallSymbols.ballPositionRelative.angle()) > pi3_4)
         speedRequest.translation = Vector2f::Zero();
       else*/
+      if (rotateAroundBall)
       {
-        // at ball, do not rotate translation fully to speed up going around ball
-
-        float rotationFactor = (atBall && theGameInfo.setPlay == SET_PLAY_NONE) ? walkAroundBallTranslationRotationFactor : 1.f;
-        translationOnPath.rotate(-speedRequest.rotation * rotationFactor);
+        // at ball, translate along increasingly smaller circle around ball
+        const float circleRadius = std::min(std::max(walkAroundBallMinDistance, static_cast<float>(toDegrees(rotDiff) * 30)), walkAroundBallMaxDistance);
+        Vector2f ballToRobot = theRobotPoseAfterPreview.translation - theBallSymbols.ballPositionField;
+        ballToRobot.normalize(circleRadius);
+        const Vector2f ballToTarget = thePath.wayPoints.back().translation - theBallSymbols.ballPositionField;
+        Angle targetToRobotSeenFromBall = Angle::normalize(ballToRobot.angle() - ballToTarget.angle());
+        bool avoidLeftAsSeenFromBall = targetToRobotSeenFromBall < 0_deg;
+        ballToRobot.rotate(30_deg * (avoidLeftAsSeenFromBall ? 1.f : -1.f));
+        Vector2f intermediateTargetWC = theBallSymbols.ballPositionField + ballToRobot;
+        CROSS("module:PathToSpeedStable:avoidBallIntermediateTarget", intermediateTargetWC.x(), intermediateTargetWC.y(), 20, 3, Drawings::solidPen, ColorRGBA::yellow);
+        speedRequest.translation = intermediateTargetWC - theRobotPoseAfterPreview.translation;
+        speedRequest.translation.rotate(-theRobotPoseAfterPreview.rotation); // to relative coords
+      }
+      else
+      {
+        rotDiff = Angle::normalize(targetRot - theRobotPoseAfterPreview.rotation);
         speedRequest.translation = translationOnPath;
-        if (std::abs(speedRequest.translation.y()) > 80 && std::abs(speedRequest.translation.x()) < 50 && speedRequest.translation.x() > -50.f)
-          speedRequest.translation.x() = std::min(-50.f, speedRequest.translation.x());
+        speedRequest.rotation = (float)(sgn(rotDiff) * std::min<float>(std::abs(rotDiff), theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor));
       }
       break;
     }
@@ -191,11 +201,10 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
       }
       else if (thePath.nearestObstacle < 750 && std::abs(angleNextWayPointRelative) > Angle::fromDegrees(30))
         alpha = std::min<float>(alpha, 0.5f);
-      speedRequest.translation.x() = theWalkingEngineParams.speedLimits.xForward * (float)alpha;
+      speedRequest.translation.x() = theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedLimits.speedFactor * (float)alpha;
       speedRequest.translation.y() = 0;
       alpha = std::min<float>(nextWPDistance / 500, 1);
-      speedRequest.rotation = 
-        (float)(angleNextWayPointRelative * alpha + Angle::normalize(thePath.wayPoints[1].rotation - theRobotPoseAfterPreview.rotation) * (1 - alpha));
+      speedRequest.rotation = (float)(angleNextWayPointRelative * alpha + Angle::normalize(thePath.wayPoints[1].rotation - theRobotPoseAfterPreview.rotation) * (1 - alpha));
       break;
     }
     default:
@@ -221,6 +230,10 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
         influenceRadius = pathParameters.teamRobotInfluenceRadius;
         obstacleInfluence = influenceOfObstacleOnTranslationTeammate;
         break;
+      case Path::ballchaser:
+        influenceRadius = pathParameters.ballchaserInfluenceRadius;
+        obstacleInfluence = influenceOfObstacleOnTranslationBallchaser;
+        break;
       case Path::centerCircle:
         influenceRadius = pathParameters.centerCircleInfluenceRadius + theFieldDimensions.centerCircleRadius;
         obstacleInfluence = influenceOfObstacleOnTranslationCenterCircle;
@@ -237,50 +250,63 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
       float obstacleTranslationInfluence = std::max(0.f, obstacleInfluence - (distanceInfluence * obstacleInfluence) / influenceRadius);
       Vector2f obstacleRelative = Transformation::fieldToRobot(theRobotPoseAfterPreview, thePath.nearestObstaclePosition);
 
-      speedRequest.translation = speedRequest.translation * (1.f - obstacleTranslationInfluence)
-        - obstacleRelative.normalize(200.f) * obstacleTranslationInfluence;
+      speedRequest.translation = speedRequest.translation * (1.f - obstacleTranslationInfluence) - obstacleRelative.normalize(200.f) * obstacleTranslationInfluence;
     }
 
+    bool speedLimited = false;
     if (useDistanceBasedSpeedPercentageInReady && theGameInfo.state == STATE_READY)
     {
       // if distance on path greater than 4.5 m for 45000 ms (at start of ready), go full speed
       // else decrease, but min speed is half max speed
-      float speedPercentage = std::min(std::max(minSpeedPercentageInReady, std::max(thePath.length*10,7500.f) / std::max(45000 - theGameSymbols.timeSinceGameState, 1000)), 1.f);
+      float speedPercentage = std::min(std::max(minSpeedPercentageInReady, std::max(thePath.length * 10, 7500.f) / std::max(45000 - theGameSymbols.timeSinceGameState, 1000)), 1.f);
       speedRequest.translation *= speedPercentage;
       speedRequest.rotation *= speedPercentage;
+      speedLimited = true;
     }
     // ball chaser and goalie always at full speed, others only if near to ball
-    else if (theBehaviorData.soccerState != BehaviorData::controlBall &&
-      theBallSymbols.ballPositionRelative.norm() > 2000 &&
-      theBehaviorData.role != BehaviorData::keeper)
+    else if (theBehaviorData.soccerState != BehaviorData::controlBall && theBallSymbols.ballPositionRelative.norm() > 2000 && theBehaviorData.role != BehaviorData::keeper)
     {
       speedRequest.translation *= speedPercentageWhenNotChasingBall;
       speedRequest.rotation *= speedPercentageWhenNotChasingBall;
+      speedLimited = true;
     }
 
-    float rotationLimit = (speedRequest.translation.x() == 0.f && speedRequest.translation.y() == 0.f) ?
-      static_cast<float>(theWalkingEngineParams.speedLimits.rOnly) : maxSpeedR;
-
-    // factors 4,2,2 are the speeds we typically do in one step for x/y/r
-    // This is done to reach target within a single fast step since
-    // speed = distance would result in four steps to reach target and thus
-    // slowly approaching target
-    // TODO: only PatterGenerator can really know what to do here
-    float stepSpeedX = speedRequest.translation.x() * 4;
-    float stepSpeedY = speedRequest.translation.y() * 2;
-    float stepSpeedR = speedRequest.rotation * 2;
-    if (stepSpeedX < maxSpeedX && stepSpeedX > -theWalkingEngineParams.speedLimits.xBackward
-      && stepSpeedY < theWalkingEngineParams.speedLimits.y && stepSpeedY > -theWalkingEngineParams.speedLimits.y
-      && std::abs(stepSpeedR) < rotationLimit)
+    if (theBehaviorData.behaviorState == BehaviorData::BehaviorState::calibrateCameraMatrix)
     {
-      speedRequest.translation.x() *= 4;
-
-      speedRequest.translation.y() *= 2;
-
-      speedRequest.rotation *= 2.f;
+      speedRequest.translation *= speedPercentageCameraCalibration;
+      speedRequest.rotation *= speedPercentageCameraCalibration;
+      speedLimited = true;
     }
-    float factorX = (speedRequest.translation.x() > 0) ? speedRequest.translation.x() / maxSpeedX : speedRequest.translation.x() / -theWalkingEngineParams.speedLimits.xBackward;
-    float factorY = std::abs(speedRequest.translation.y()) / theWalkingEngineParams.speedLimits.y;
+
+    float rotationLimit = (speedRequest.translation.x() == 0.f && speedRequest.translation.y() == 0.f)
+        ? static_cast<float>(theWalkingEngineParams.speedLimits.rOnly * theWalkingEngineParams.speedLimits.speedFactor)
+        : maxSpeedR;
+
+    if (!speedLimited) // only do this if we want full speed approach, i.e. not in ready/camera calibration ..
+    {
+      // factors 4,2,2 are the speeds we typically do in one step for x/y/r
+      // This is done to reach target within a single fast step since
+      // speed = distance would result in four steps to reach target and thus
+      // slowly approaching target
+      // TODO: only PatterGenerator can really know what to do here
+      float stepSpeedX = speedRequest.translation.x() * 4;
+      float stepSpeedY = speedRequest.translation.y() * 2;
+      float stepSpeedR = speedRequest.rotation * 2;
+      if (stepSpeedX < maxSpeedX && stepSpeedX > (-theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedLimits.speedFactor)
+          && stepSpeedY < (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor)
+          && stepSpeedY > (-theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor) && std::abs(stepSpeedR) < rotationLimit)
+      {
+        speedRequest.translation.x() *= 4;
+
+        speedRequest.translation.y() *= 2;
+
+        speedRequest.rotation *= 2.f;
+      }
+    }
+    float factorX = (speedRequest.translation.x() > 0)
+        ? speedRequest.translation.x() / maxSpeedX
+        : speedRequest.translation.x() / (-theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedLimits.speedFactor);
+    float factorY = std::abs(speedRequest.translation.y()) / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor);
     float factorR = std::abs(speedRequest.rotation / rotationLimit);
     float maxFactor = std::max(factorX, std::max(factorY, factorR));
     if (maxFactor > 1.f)

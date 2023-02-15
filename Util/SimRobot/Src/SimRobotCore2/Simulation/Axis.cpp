@@ -13,17 +13,17 @@
 
 Axis::~Axis()
 {
-  if(deflection)
+  if (deflection)
     delete deflection;
-  if(motor)
+  if (motor)
     delete motor;
 }
 
 void Axis::create()
 {
   // normalize axis
-  const float len = sqrtf(x * x + y * y + z * z);
-  if(len == float())
+  const float len = std::sqrt(x * x + y * y + z * z);
+  if (len == float())
     x = 1.f;
   else
   {

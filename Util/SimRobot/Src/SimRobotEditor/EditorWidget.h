@@ -34,7 +34,7 @@ private:
   QList<EditorObject*> editors; /**< List of subfiles and folders */
   QHash<QString, EditorObject*> foldersByName;
 
-  virtual const QString& getFullName() const {return fullName;}
+  virtual const QString& getFullName() const { return fullName; }
   virtual const QIcon* getIcon() const;
 
   virtual SimRobotEditor::Editor* addFile(const QString& filePath, const QString& subFileRegExpPattern);
@@ -62,6 +62,8 @@ public:
   EditorWidget(FileEditorObject* editorObject, const QString& fileContent);
   ~EditorWidget();
 
+  virtual void saveLayout();
+
 private:
   FileEditorObject* editorObject;
 
@@ -74,14 +76,14 @@ private:
 
   void updateEditMenu(QMenu* menu, bool aboutToShow) const;
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
   virtual bool canClose();
   virtual QMenu* createFileMenu() const;
   virtual QMenu* createEditMenu() const;
 
-  virtual QSize sizeHint () const { return QSize(640, 480); }
+  virtual QSize sizeHint() const { return QSize(640, 480); }
   virtual void contextMenuEvent(QContextMenuEvent* event);
-  virtual void focusInEvent(QFocusEvent * event);
+  virtual void focusInEvent(QFocusEvent* event);
   virtual void keyPressEvent(QKeyEvent* event);
 
 signals:

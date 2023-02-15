@@ -20,7 +20,7 @@
 class RemoteKalmanPositionHypothesis : public KalmanPositionHypothesis
 {
 public:
-  RemoteKalmanPositionHypothesis() : KalmanPositionHypothesis() {};
+  RemoteKalmanPositionHypothesis() : KalmanPositionHypothesis(){};
 
   /**
    * \brief Constructor with initialization.
@@ -38,22 +38,22 @@ public:
    *                      or (0, 0) if velocity is unknown.
    */
   RemoteKalmanPositionHypothesis(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-    float initialValidity,
-    unsigned timestamp,
-    float perceptValidity,
-    const Vector2f& position,
-    unsigned perceptDuration,
-    const Vector2f& velocity = Vector2f::Zero())
-    : KalmanPositionHypothesis(kalmanNoiseMatrices, initialValidity, timestamp, perceptValidity, position, perceptDuration, velocity) {};
-  
+      float initialValidity,
+      unsigned timestamp,
+      float perceptValidity,
+      const Vector2f& position,
+      unsigned perceptDuration,
+      const Vector2f& velocity = Vector2f::Zero())
+      : KalmanPositionHypothesis(kalmanNoiseMatrices, initialValidity, timestamp, perceptValidity, position, perceptDuration, velocity){};
+
   /**
    * Destructor.
    */
-  ~RemoteKalmanPositionHypothesis() override {};
-  
-  
+  ~RemoteKalmanPositionHypothesis() override{};
+
+
   //MARK: Labeling methods
-  
+
   /**
    * \struct TeammateInfo
    * 
@@ -76,8 +76,7 @@ public:
      * \param [in] timeWhenLastUpdated Timestamp (in ms) when the teammate updated
      *                                 the hypothesis for the last time.
      */
-    TeammateInfo(float validity, unsigned timeWhenLastUpdated)
-      : validity(validity), timeWhenLastUpdated(timeWhenLastUpdated) {}
+    TeammateInfo(float validity, unsigned timeWhenLastUpdated) : validity(validity), timeWhenLastUpdated(timeWhenLastUpdated) {}
 
     virtual ~TeammateInfo() {}
     /// The validity of the teammates local model (range: [0,1]).
@@ -86,7 +85,7 @@ public:
     unsigned timeWhenLastUpdated;
 
     /** Streaming */
-    virtual void serialize(In *in, Out *out)
+    virtual void serialize(In* in, Out* out)
     {
       STREAM_REGISTER_BEGIN;
       STREAM(validity);
@@ -102,7 +101,7 @@ public:
    * \param [in] playerNumber The number of the teammate to be assigned.
    * \param [in] newTeammate The teammate info to be assigned.
    */
-  void addTeammateInfo(int playerNumber, const  RemoteKalmanPositionHypothesis::TeammateInfo& newTeammate);
+  void addTeammateInfo(int playerNumber, const RemoteKalmanPositionHypothesis::TeammateInfo& newTeammate);
 
   /**
    * Add the given set of teammates to this hypothesis. For any teammate in
@@ -132,10 +131,10 @@ public:
    * \return The set of assigned player numbers.
    */
   std::string teammatesString() const;
-  
-  
+
+
   //MARK: Helper methods
-  
+
   /// Fixes compiler warning for overloaded virtual function merge(const RemoteKalmanPositionHypothesis&)
   using KalmanPositionHypothesis::merge;
   /**

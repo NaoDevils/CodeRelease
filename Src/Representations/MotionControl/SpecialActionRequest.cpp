@@ -10,8 +10,8 @@
 
 SpecialActionRequest::SpecialActionID SpecialActionRequest::getSpecialActionFromName(const char* name)
 {
-  for(int i = 0; i < numOfSpecialActionIDs; ++i)
-    if(!strcmp(name, getName(SpecialActionID(i))))
+  for (int i = 0; i < numOfSpecialActionIDs; ++i)
+    if (!strcmp(name, getName(SpecialActionID(i))))
       return SpecialActionID(i);
   return numOfSpecialActionIDs;
 }

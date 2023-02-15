@@ -1,7 +1,11 @@
+// copy from standUpBackNaoFast!
 keyFrameID = standUpBackNao;
-stabilizationP = 0.1;
-stabilizationI = 0;
-stabilizationD = -0.02;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
 keyFrames = [
   { // pull legs up
     headAngles = [0,22deg];
@@ -13,7 +17,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -90deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // ??
@@ -26,7 +32,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -90deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // hold #2, moving arms to prepare ninja move
@@ -39,7 +47,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -90deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // ninja move -> legs down and upper body up
@@ -52,7 +62,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
 
@@ -67,7 +79,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
 
@@ -81,7 +95,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // push onto left leg
@@ -94,7 +110,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // copy of push onto left leg, todo: use waitForStable instead?
@@ -107,7 +125,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
 
@@ -121,7 +141,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // pull right leg in
@@ -134,7 +156,9 @@ keyFrames = [
     angleAtKeyFrameTarget = -10deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // to sitting position, wide legs
@@ -147,7 +171,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // sitting position, legs parallel
@@ -160,7 +186,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0deg;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // stand up copy. was different in mof!!
@@ -173,7 +201,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0;
     useAngleAtKeyFrameTarget = true;
     stabilize = true;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   { // stand up copy for leavingPossible=true
@@ -186,7 +216,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0;
     useAngleAtKeyFrameTarget = true;
     stabilize = true;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = true;
   }
 ];

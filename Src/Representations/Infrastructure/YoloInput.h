@@ -23,17 +23,19 @@ private:
   virtual void serialize(In* in, Out* out)
   {
     STREAM_REGISTER_BEGIN;
-      STREAM(imageUpdated);
-      if(imageUpdated)
-      {
-        STREAM(image);
-        STREAM(width);
-        STREAM(height); 
-        STREAM(channel);
-        STREAM(timeStamp);
-      }
+    STREAM(imageUpdated);
+    if (imageUpdated)
+    {
+      STREAM(image);
+      STREAM(width);
+      STREAM(height);
+      STREAM(channel);
+      STREAM(timeStamp);
+    }
     STREAM_REGISTER_FINISH;
   }
 };
 
-struct YoloInputUpper : public YoloInput{};
+struct YoloInputUpper : public YoloInput
+{
+};

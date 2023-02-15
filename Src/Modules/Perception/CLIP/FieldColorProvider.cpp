@@ -8,27 +8,30 @@ FieldColorProvider::FieldColorProvider()
   minYDivFactor = 500;
 }
 
-void FieldColorProvider::update(FieldColors &theFieldColor)
+void FieldColorProvider::update(FieldColors& theFieldColor)
 {
-  MODIFY("module:FieldColorProvider:fieldColorLower",localFieldColorLower);
-  MODIFY("module:FieldColorProvider:fieldColorUpper",localFieldColorUpper);
-  
+  MODIFY("module:FieldColorProvider:fieldColorLower", localFieldColorLower);
+  MODIFY("module:FieldColorProvider:fieldColorUpper", localFieldColorUpper);
+
   execute(false);
   theFieldColor = localFieldColorLower;
 }
 
 
-void FieldColorProvider::update(FieldColorsUpper &theFieldColorUpper)
+void FieldColorProvider::update(FieldColorsUpper& theFieldColorUpper)
 {
   execute(true);
   theFieldColorUpper = localFieldColorUpper;
 }
 
-void FieldColorProvider::execute(const bool &upper)
+void FieldColorProvider::execute(const bool& upper)
 {
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+  const Image& image = upper ? (Image&)theImageUpper : theImage;
+  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+
+  if (!image.shouldBeProcessed())
+    return;
 
   if (theFallDownState.state != FallDownState::upright)
     return;
@@ -39,7 +42,7 @@ void FieldColorProvider::execute(const bool &upper)
 
   if (!image.isOutOfImage(horizon.base.x(), horizon.base.y(), 10))
     minY = static_cast<int>(horizon.base.y());
-  
+
   /* 
   ** Create average field color (over whole image up to horizon).
   ** This field color is the basis for the region based field colors.
@@ -47,9 +50,9 @@ void FieldColorProvider::execute(const bool &upper)
   Vector2i lowerLeft(4, image.height - 4);
   Vector2i upperRight(image.width - 4, minY);
   buildSamples(upper, lowerLeft, upperRight, maxPixelCountImageFull);
-  FieldColors::FieldColor &fieldColor = upper ? localFieldColorUpper.fieldColorArray[0] : localFieldColorLower.fieldColorArray[0];
+  FieldColors::FieldColor& fieldColor = upper ? localFieldColorUpper.fieldColorArray[0] : localFieldColorLower.fieldColorArray[0];
   calcFieldColorFromSamples(upper, fieldColor);
-  FieldColors &fieldColors = upper ? (FieldColors&)localFieldColorUpper : localFieldColorLower;
+  FieldColors& fieldColors = upper ? (FieldColors&)localFieldColorUpper : localFieldColorLower;
   fieldColors.horizonYAvg = minY;
   fieldColors.areaHeight = 4 + (lowerLeft.y() - upperRight.y()) / 3;
   fieldColors.areaWidth = 4 + (upperRight.x() - lowerLeft.x()) / 3;
@@ -62,7 +65,7 @@ void FieldColorProvider::execute(const bool &upper)
       for (int y = 0; y < 3; y++)
       {
         int areaNo = 1 + 3 * y + x;
-        FieldColors::FieldColor &fieldColorArea = upper ? localFieldColorUpper.fieldColorArray[areaNo] : localFieldColorLower.fieldColorArray[areaNo];
+        FieldColors::FieldColor& fieldColorArea = upper ? localFieldColorUpper.fieldColorArray[areaNo] : localFieldColorLower.fieldColorArray[areaNo];
         lowerLeft.x() = 4 + x * fieldColors.areaWidth;
         upperRight.x() = 4 + x * fieldColors.areaWidth + fieldColors.areaWidth;
         upperRight.y() = minY + y * fieldColors.areaHeight;
@@ -75,9 +78,9 @@ void FieldColorProvider::execute(const bool &upper)
   }
 }
 
-void FieldColorProvider::buildSamples(const bool &upper, const Vector2i &lowerLeft, const Vector2i &upperRight, const int &sampleSize)
+void FieldColorProvider::buildSamples(const bool& upper, const Vector2i& lowerLeft, const Vector2i& upperRight, const int& sampleSize)
 {
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
+  const Image& image = upper ? (Image&)theImageUpper : theImage;
   sampleNo = 0;
   int sampleNoMax = sampleSize - 1;
   int scanWidth = upperRight.x() - lowerLeft.x();
@@ -93,7 +96,7 @@ void FieldColorProvider::buildSamples(const bool &upper, const Vector2i &lowerLe
   // build samples
   float imageRatio = (float)scanWidth / (float)(scanHeight);
   int ySamples = (int)sqrt((float)sampleSize / imageRatio);
-  int xSamples = (int)((float)ySamples*imageRatio);
+  int xSamples = (int)((float)ySamples * imageRatio);
   int xStep = (scanWidth / xSamples);
   int yStep = (scanHeight / ySamples);
   for (int x = lowerLeft.x(); x <= upperRight.x(); x += xStep)
@@ -112,9 +115,9 @@ void FieldColorProvider::buildSamples(const bool &upper, const Vector2i &lowerLe
   }
 }
 
-void FieldColorProvider::calcFieldColorFromSamples(const bool &upper, FieldColors::FieldColor &fieldColor)
+void FieldColorProvider::calcFieldColorFromSamples(const bool& upper, FieldColors::FieldColor& fieldColor)
 {
-  FieldColors::FieldColor &lastMainFieldColor = upper ? localFieldColorUpper.fieldColorArray[0] : localFieldColorLower.fieldColorArray[0];
+  FieldColors::FieldColor& lastMainFieldColor = upper ? localFieldColorUpper.fieldColorArray[0] : localFieldColorLower.fieldColorArray[0];
   maxY = maxCr = maxCb = oldMax = 0;
   int optCr = lastMainFieldColor.fieldColorOptCr;
   int maxFieldColorY = lastMainFieldColor.maxFieldColorY;
@@ -231,30 +234,29 @@ void FieldColorProvider::calcFieldColorFromSamples(const bool &upper, FieldColor
   else
     fieldColor.maxFieldColorY += fieldColor.maxFieldColorY / 5;
 
-  fieldColor.lineToFieldColorYThreshold = (std::min(std::min(fieldColor.fieldColorOptY + fieldColor.fieldColorOptY / 3, fieldColor.fieldColorOptY + 40), 255) - fieldColor.fieldColorOptY);
+  //tk: temp. removed this as it does not allow for minLineToFieldColorThreshold values < 40
+  //fieldColor.lineToFieldColorYThreshold = std::max((std::min(std::min(fieldColor.fieldColorOptY + fieldColor.fieldColorOptY / 3, fieldColor.fieldColorOptY + 40), 255) - fieldColor.fieldColorOptY), minLineToFieldColorThreshold);
+  fieldColor.lineToFieldColorYThreshold = minLineToFieldColorThreshold;
 }
 
-void FieldColorProvider::smoothFieldColors(const bool &upper)
+void FieldColorProvider::smoothFieldColors(const bool& upper)
 {
-  FieldColors::FieldColor &fieldColorMain = upper ?
-    localFieldColorUpper.fieldColorArray[0] : localFieldColorLower.fieldColorArray[0];
+  FieldColors::FieldColor& fieldColorMain = upper ? localFieldColorUpper.fieldColorArray[0] : localFieldColorLower.fieldColorArray[0];
   for (int i = 1; i < 10; i++)
   {
     // TODO: really smooth things by checking surrounding areas
     // TODO: check first if main field color does make sense?
-    FieldColors::FieldColor &fieldColorArea = upper ? 
-      localFieldColorUpper.fieldColorArray[i] : localFieldColorLower.fieldColorArray[i];
-    if (std::abs(fieldColorArea.fieldColorOptCr - fieldColorMain.fieldColorOptCr) > maxDiffOptCr ||
-        std::abs(fieldColorArea.fieldColorOptCb - fieldColorMain.fieldColorOptCb) > maxDiffOptCb || 
-        std::abs(fieldColorArea.fieldColorOptY - fieldColorMain.fieldColorOptY) > maxDiffOptY ||
-        std::abs(fieldColorArea.fieldColorOptCbCrRatio - fieldColorMain.fieldColorOptCbCrRatio) > maxDiffCbCrRatio)
+    FieldColors::FieldColor& fieldColorArea = upper ? localFieldColorUpper.fieldColorArray[i] : localFieldColorLower.fieldColorArray[i];
+    if (std::abs(fieldColorArea.fieldColorOptCr - fieldColorMain.fieldColorOptCr) > maxDiffOptCr
+        || std::abs(fieldColorArea.fieldColorOptCb - fieldColorMain.fieldColorOptCb) > maxDiffOptCb || std::abs(fieldColorArea.fieldColorOptY - fieldColorMain.fieldColorOptY) > maxDiffOptY
+        || std::abs(fieldColorArea.fieldColorOptCbCrRatio - fieldColorMain.fieldColorOptCbCrRatio) > maxDiffCbCrRatio)
       fieldColorArea = fieldColorMain;
   }
 }
 
-int FieldColorProvider::fieldColorWeighted(const Image::Pixel &p, const int &optCr, const int &fieldColorMaxY)
+int FieldColorProvider::fieldColorWeighted(const Image::Pixel& p, const int& optCr, const int& fieldColorMaxY)
 {
-  return (p.y > fieldColorMaxY || p.cr > (std::max(optCr + 10,150))) ? 0 : std::max(128-p.cr,0)+std::abs(optCr-p.cr)/4;
+  return (p.y > fieldColorMaxY || p.cr > (std::max(optCr + 10, 150))) ? 0 : std::max(128 - p.cr, 0) + std::abs(optCr - p.cr) / 4;
 }
 
 MAKE_MODULE(FieldColorProvider, perception)

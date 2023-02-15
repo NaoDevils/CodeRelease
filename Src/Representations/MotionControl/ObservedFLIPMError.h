@@ -5,7 +5,7 @@
 #pragma once
 
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #else
 #include "bhumanstub.h"
 #endif
@@ -14,27 +14,12 @@
  * @class ObservedFLIPMError
  *
  */
-class ObservedFLIPMError : public Streamable
-{
-
-public :
-
+STREAMABLE(ObservedFLIPMError,
 	/** Constructor */
 	ObservedFLIPMError(){
     ObservedError[0].setZero();
     ObservedError[1].setZero();
 	};
-
-	/** Destructor */
-	~ObservedFLIPMError()
-	{};
-
-  Eigen::Matrix< Vector6d, 2, 1> ObservedError;
-	
-	void serialize(In* in,Out* out)
-    {
-      STREAM_REGISTER_BEGIN;
-      STREAM(ObservedError);
-      STREAM_REGISTER_FINISH;
-    };
-};
+  ,
+  (Eigen::Matrix< Vector6d, 2, 1>) ObservedError
+);

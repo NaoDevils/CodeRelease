@@ -10,6 +10,6 @@ echo set representation:HeadAngleRequest pan = 0; tilt = -15deg; speed = 120deg;
 echo set representation:HeadAngleRequest pan = 65deg; tilt = -15deg; speed = 120deg;
 echo set representation:HeadAngleRequest pan = -65deg; tilt = -15deg; speed = 120deg;
 
-vid lower module:CameraMatrixProvider:calibrationHelper
-vid upper module:CameraMatrixProvider:calibrationHelperUpper
+vid lower representation:CameraMatrix:calibrationHelper
+vid upper representation:CameraMatrixUpper:calibrationHelper
 get representation:CameraCalibration

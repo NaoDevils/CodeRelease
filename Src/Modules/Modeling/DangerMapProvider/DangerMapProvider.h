@@ -21,7 +21,6 @@
 #include "Tools/Streams/InStreams.h"
 
 MODULE(DangerMapProvider,
-{,
   REQUIRES(BallModel),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
@@ -30,30 +29,28 @@ MODULE(DangerMapProvider,
   REQUIRES(RobotPose),
   REQUIRES(TeammateData),
   PROVIDES(DangerMap),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float) maxDistanceForUpdate,
     (float) minTeamMateValidity,
     (float) dangerUpdateLoss,
     (float) ballDangerUpdate,
     (float) robotDangerUpdate,
-  }),
-});
+    (bool)(false) includeTeammateData
+  )
+);
 
 class DangerMapProvider : public DangerMapProviderBase
 {
 public:
-
   DangerMapProvider();
 
-  void update(DangerMap &dangerMap);
+  void update(DangerMap& dangerMap);
 
 private:
-
   DangerMap localDangerMap;
 
   // checks, if the view on a certain point on the field is blocked by another robot
-  bool isViewBlocked(const RobotMap &robotMap, const Vector2f &pCellOnField, const Pose2f &pose, const float &camAngle);
+  bool isViewBlocked(const RobotMap& robotMap, const Vector2f& pCellOnField, const Pose2f& pose, const float& camAngle);
 
   // main method
   void updateDanger();
@@ -66,46 +63,36 @@ private:
     {
       Vector2f posField = getFieldCoordinates(i);
       int alpha = 255 - (int)(localDangerMap.danger[i] * 255);
-      RECTANGLE2("module:DangerMapProvider:dangerMap",
-        Vector2i((int)posField.x() - stepSizeHalf, (int)posField.y() - stepSizeHalf),
-        DangerMap::stepSize,
-        DangerMap::stepSize,
-        0,
-        10,
-        Drawings::solidPen,
-        ColorRGBA(static_cast<unsigned char>(255 - alpha), 
-          static_cast<unsigned char>(alpha), 0),
-        Drawings::solidBrush,
-        ColorRGBA(static_cast<unsigned char>(255 - alpha), 
-          static_cast<unsigned char>(alpha), 0, 
-          static_cast<unsigned char>(50 + (255 - alpha)/2)));
+      if (alpha < 255)
+        RECTANGLE2("module:DangerMapProvider:dangerMap",
+            Vector2i((int)posField.x() - stepSizeHalf, (int)posField.y() - stepSizeHalf),
+            DangerMap::stepSize,
+            DangerMap::stepSize,
+            0,
+            10,
+            Drawings::solidPen,
+            ColorRGBA(static_cast<unsigned char>(255 - alpha), static_cast<unsigned char>(alpha), 0),
+            Drawings::solidBrush,
+            ColorRGBA(static_cast<unsigned char>(255 - alpha), static_cast<unsigned char>(alpha), 0, static_cast<unsigned char>(50 + (255 - alpha) / 2)));
     }
   }
 
   // TODO
-  void drawDangerMap3D()
-  {
-
-  }
+  void drawDangerMap3D() {}
 
   // distance between two cells on the field
-  inline float getCellDistance(int firstCell, int secondCell)
-  {
-    return DangerMap::stepSize*((getFieldCoordinates(firstCell) - getFieldCoordinates(secondCell)).norm());
-  }
+  inline float getCellDistance(int firstCell, int secondCell) { return DangerMap::stepSize * ((getFieldCoordinates(firstCell) - getFieldCoordinates(secondCell)).norm()); }
 
   inline Vector2f getFieldCoordinates(int cellNo)
   {
-    return Vector2f(((cellNo / DangerMap::numOfCellsY)*DangerMap::stepSize - theFieldDimensions.xPosOpponentGroundline + DangerMap::stepSize / 2),
-      (float)((cellNo%DangerMap::numOfCellsY)*DangerMap::stepSize - theFieldDimensions.yPosLeftSideline + DangerMap::stepSize / 2));
+    return Vector2f(((cellNo / DangerMap::numOfCellsY) * DangerMap::stepSize - theFieldDimensions.xPosOpponentGroundline + DangerMap::stepSize / 2),
+        (float)((cellNo % DangerMap::numOfCellsY) * DangerMap::stepSize - theFieldDimensions.yPosLeftSideline + DangerMap::stepSize / 2));
   }
 
-  inline int getCellNumber(const Vector2f &posOnField)
+  inline int getCellNumber(const Vector2f& posOnField)
   {
     int xIndex = (int)((posOnField.x() + (float)theFieldDimensions.xPosOpponentGroundline) / 500.f);
     int yIndex = (int)((posOnField.y() + (float)theFieldDimensions.yPosLeftSideline) / 500.f);
-    return xIndex*DangerMap::numOfCellsY + yIndex;
+    return xIndex * DangerMap::numOfCellsY + yIndex;
   }
-
 };
-

@@ -26,7 +26,7 @@ TEST(Rotation, removeZ)
   test_splitZRotation(Quaternionf::Identity());
   test_splitZRotation(Quaternionf(Rotation::AngleAxis::unpack(Vector3f(pi * 3.f / 4.f, 0, 0))));
   test_splitZRotation(Quaternionf(Rotation::AngleAxis::unpack(Vector3f(pi * 3.f / 4.f, 0, pi / 4.f))));
-  for(int i = 0; i < 1000; ++i)
+  for (int i = 0; i < 1000; ++i)
   {
     test_splitZRotation(Quaternionf(AngleAxisf(randomFloat(-pi, pi), Vector3f::Random().normalized())));
   }
@@ -36,7 +36,7 @@ TEST(Rotation, removeZ)
 
 TEST(Rotation, AngleAxisPackaging)
 {
-  for(int i = 0; i < 1000; ++i)
+  for (int i = 0; i < 1000; ++i)
   {
     const AngleAxisf aaOrig = AngleAxisf(randomFloat(-pi, pi), Vector3f::Random().normalized());
     const AngleAxisf aa = Rotation::AngleAxis::unpack(Rotation::AngleAxis::pack(aaOrig));

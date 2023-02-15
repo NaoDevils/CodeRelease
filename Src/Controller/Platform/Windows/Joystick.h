@@ -64,7 +64,6 @@ public:
   bool isButtonPressed(unsigned int buttonId) const;
 
 private:
-
   static unsigned int usedJoysticks; /**< Joystick usage indicator. One bit per joystick. */
 
   unsigned int joystickId; /**< The id of the joystick. */

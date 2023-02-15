@@ -22,9 +22,7 @@ public:
    * @param value The initial state.
    * @param variance The initial variance.
    */
-  Kalman(const V& value, const V& variance) :
-    value(value), variance(variance)
-  {}
+  Kalman(const V& value, const V& variance) : value(value), variance(variance) {}
 
   /**
    * Initializes the filter.

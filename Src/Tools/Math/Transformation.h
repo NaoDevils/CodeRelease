@@ -67,8 +67,7 @@ public:
    * @param cameraInfo The intrinsic camera parameters
    * @param relativePosition The resulting point
    */
-  static bool imageToRobot(const float x, const float y, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2f& relativePosition) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool imageToRobot(const float x, const float y, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& relativePosition);
 
   /**
    * Computes a position relative to the robot given a position of
@@ -80,10 +79,8 @@ public:
    * @param cameraInfo The intrinsic camera parameters
    * @param relativePosition The resulting point
    */
-  static bool imageToRobot(const int x, const int y, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2i& relativePosition) WARN_UNUSED_RESULT;
-  static bool imageToRobot(const int x, const int y, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2f& relativePosition) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool imageToRobot(const int x, const int y, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2i& relativePosition);
+  [[nodiscard]] static bool imageToRobot(const int x, const int y, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& relativePosition);
 
   /**
    * Computes a position relative to the robot given a position of
@@ -93,10 +90,8 @@ public:
    * @param cameraInfo The intrinsic camera parameters
    * @param relativePosition The resulting point
    */
-  static bool imageToRobot(const Vector2i& pointInImage, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2f& relativePosition) WARN_UNUSED_RESULT;
-  static bool imageToRobot(const Vector2f& pointInImage, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2f& relativePosition) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool imageToRobot(const Vector2i& pointInImage, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& relativePosition);
+  [[nodiscard]] static bool imageToRobot(const Vector2f& pointInImage, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& relativePosition);
 
   /**
    * Computes a position relative to the robot on a horizontal plane
@@ -107,8 +102,7 @@ public:
    * @param cameraInfo The intrinsic camera parameters
    * @param pointOnPlane The resulting point
    */
-  static bool imageToRobotHorizontalPlane(const Vector2f& pointInImage, float z, const CameraMatrix& cameraMatrix,
-                                          const CameraInfo& cameraInfo, Vector2f& pointOnPlane) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool imageToRobotHorizontalPlane(const Vector2f& pointInImage, float z, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& pointOnPlane);
 
   /**
    * Calculates where a relative point in the world appears in an image.
@@ -119,10 +113,8 @@ public:
    * @return The result is valid, i.e. the point is in front of the camera. That
    *         still does not mean that the point is within the bounds of the image.
    */
-  static bool robotToImage(const Vector3f& point, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2f& pointInImage) WARN_UNUSED_RESULT;
-  static bool robotToImage(const Vector2f& point, const CameraMatrix& cameraMatrix,
-                           const CameraInfo& cameraInfo, Vector2f& pointInImage) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool robotToImage(const Vector3f& point, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& pointInImage);
+  [[nodiscard]] static bool robotToImage(const Vector2f& point, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& pointInImage);
   /**
    * Calculated where a point relative to the robot and rotated by the z-axis of
    * the camera appears in the image. The point of this method is to easily manipulate relative
@@ -134,8 +126,7 @@ public:
    * @return The result is valid, i.e. the point is in front of the camera. That
    *         still does not mean that the point is within the bounds of the image.
    */
-  static bool robotWithCameraRotationToImage(const Vector2f& point, const CameraMatrix& cameraMatrix,
-      const CameraInfo& cameraInfo, Vector2f& pointInImage) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool robotWithCameraRotationToImage(const Vector2f& point, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& pointInImage);
 
   /**
    * Computes a position relative to the robot and rotated by the z-axis of the camera
@@ -146,6 +137,5 @@ public:
    * @param cameraInfo The intrinsic camera parameters
    * @param relativePosition The resulting point
    */
-  static bool imageToRobotWithCameraRotation(const Vector2i& pointInImage, const CameraMatrix& cameraMatrix,
-      const CameraInfo& cameraInfo, Vector2f& relativePosition) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool imageToRobotWithCameraRotation(const Vector2i& pointInImage, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& relativePosition);
 };

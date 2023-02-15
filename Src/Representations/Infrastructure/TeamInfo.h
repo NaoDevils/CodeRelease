@@ -17,10 +17,13 @@ private:
   using RoboCup::TeamInfo::singleShots; // Hide, because it is not streamed.
 
 public:
+  int teamPort = 0;
+
   TeamInfo();
 
   /** Draws the score in the scene view. */
   void draw() const;
+
 private:
   /**
    * The method makes the object streamable.
@@ -34,10 +37,12 @@ struct OwnTeamInfo : public TeamInfo
 {
   OwnTeamInfo();
   void draw() const;
+  Streamable& operator=(const Streamable& other) noexcept;
 };
 
 struct OpponentTeamInfo : public TeamInfo
 {
   OpponentTeamInfo();
-  void draw() const { TeamInfo::draw(); }
+  void draw() const;
+  Streamable& operator=(const Streamable& other) noexcept;
 };

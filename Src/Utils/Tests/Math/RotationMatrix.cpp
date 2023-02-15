@@ -22,7 +22,7 @@ TEST(RotationMatrix, getAngleAxis)
   Vector3f r2 = r.getAngleAxis() * vec;
   EXPECT_TRUE(r1.isApprox(r2));
 
-  r = aa = AngleAxisf(pi-0.000001f, Vector3f::UnitY());
+  r = aa = AngleAxisf(pi - 0.000001f, Vector3f::UnitY());
   r1 = aa * vec;
   r2 = r.getAngleAxis() * vec;
   EXPECT_TRUE(r1.isApprox(r2));
@@ -50,57 +50,57 @@ TEST(RotationMatrix, getAngleAxis)
   r = aa = AngleAxisf(-3.14060259f, Vector3f(-0.496929348f, 0.435349584f, 0.750687659f));
   r1 = aa * vec;
   r2 = r.getAngleAxis() * vec;
-  if(!r1.isApprox(r2, 1e-4f))
+  if (!r1.isApprox(r2, 1e-4f))
     EXPECT_TRUE(r1.isApprox(r2, 1e-4f));
 
   aa = AngleAxisf::Identity();
   r = RotationMatrix::Identity() * 0.99999f;
   r1 = aa * vec;
   r2 = r.getAngleAxis() * vec;
-  if(!r1.isApprox(r2))
+  if (!r1.isApprox(r2))
     EXPECT_TRUE(r1.isApprox(r2));
 
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     vec = Vector3f::Random();
     r = aa = AngleAxisf(randomFloat(-pi, pi), Vector3f::Random().normalized());
     r1 = aa * vec;
     r2 = r.getAngleAxis() * vec;
-    if(!r1.isApprox(r2, 1e-2f))
-      EXPECT_TRUE(r1.isApprox(r2, 1e-2f)); 
+    if (!r1.isApprox(r2, 1e-2f))
+      EXPECT_TRUE(r1.isApprox(r2, 1e-2f));
   }
 }
 
 TEST(RotationMatrix, getPackedAngleAxisFaulty)
 {
   Vector3f vec(1, 2, 3);
-  AngleAxisf aa(pi-0.0001f, Vector3f::UnitX());
+  AngleAxisf aa(pi - 0.0001f, Vector3f::UnitX());
   RotationMatrix r = aa;
   Vector3f r1 = aa * vec;
   Vector3f r2 = Rotation::AngleAxis::unpack(r.getPackedAngleAxisFaulty()) * vec;
   EXPECT_FALSE(r1.isApprox(r2));
 
-  r = aa = AngleAxisf(pi-0.0001f, Vector3f::UnitY());
+  r = aa = AngleAxisf(pi - 0.0001f, Vector3f::UnitY());
   r1 = aa * vec;
   r2 = Rotation::AngleAxis::unpack(r.getPackedAngleAxisFaulty()) * vec;
   EXPECT_FALSE(r1.isApprox(r2));
 
-  r = aa = AngleAxisf(pi-0.0001f, Vector3f::UnitZ());
+  r = aa = AngleAxisf(pi - 0.0001f, Vector3f::UnitZ());
   r1 = aa * vec;
   r2 = Rotation::AngleAxis::unpack(r.getPackedAngleAxisFaulty()) * vec;
   EXPECT_FALSE(r1.isApprox(r2));
 
-  r = aa = AngleAxisf(-pi+0.0001f, Vector3f::UnitX());
+  r = aa = AngleAxisf(-pi + 0.0001f, Vector3f::UnitX());
   r1 = aa * vec;
   r2 = Rotation::AngleAxis::unpack(r.getPackedAngleAxisFaulty()) * vec;
   EXPECT_FALSE(r1.isApprox(r2));
 
-  r = aa = AngleAxisf(-pi+0.0001f, Vector3f::UnitY());
+  r = aa = AngleAxisf(-pi + 0.0001f, Vector3f::UnitY());
   r1 = aa * vec;
   r2 = Rotation::AngleAxis::unpack(r.getPackedAngleAxisFaulty()) * vec;
   EXPECT_FALSE(r1.isApprox(r2));
 
-  r = aa = AngleAxisf(-pi+0.0001f, Vector3f::UnitZ());
+  r = aa = AngleAxisf(-pi + 0.0001f, Vector3f::UnitZ());
   r1 = aa * vec;
   r2 = Rotation::AngleAxis::unpack(r.getPackedAngleAxisFaulty()) * vec;
   EXPECT_FALSE(r1.isApprox(r2));
@@ -114,7 +114,7 @@ TEST(RotationMatrix, getPackedAngleAxisFaulty)
 
 TEST(RotationMatrix, normalize)
 {
-  for(int i = 0; i < 1000; ++i)
+  for (int i = 0; i < 1000; ++i)
   {
     const Vector3f rVec = Vector3f::Random();
     const AngleAxisf aa = AngleAxisf(randomFloat(-pi, pi), Vector3f::Random().normalized());
@@ -129,7 +129,7 @@ TEST(RotationMatrix, normalize)
 
 TEST(RotationMatrix, rotateX)
 {
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     const Vector3f rVec = Vector3f::Random();
     const float rot = randomFloat(-pi, pi);
@@ -145,7 +145,7 @@ TEST(RotationMatrix, rotateX)
 
 TEST(RotationMatrix, rotateY)
 {
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     const Vector3f rVec = Vector3f::Random();
     const float rot = randomFloat(-pi, pi);
@@ -161,7 +161,7 @@ TEST(RotationMatrix, rotateY)
 
 TEST(RotationMatrix, rotateZ)
 {
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     const Vector3f rVec = Vector3f::Random();
     const float rot = randomFloat(-pi, pi);
@@ -171,7 +171,7 @@ TEST(RotationMatrix, rotateZ)
 
     const Vector3f r1 = q * rVec;
     const Vector3f r2 = r * rVec;
-    if(!r1.isApprox(r2))
+    if (!r1.isApprox(r2))
       EXPECT_TRUE(r1.isApprox(r2));
   }
 }
@@ -203,12 +203,12 @@ TEST(RotationMatrix, getXAngle)
   xAngle = r.getXAngle();
   EXPECT_TRUE(Approx::isEqual(xAngle, Angle::normalize(angle)));
 
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     angle = randomFloat() * pi;
     r = RotationMatrix::aroundX(angle);
     xAngle = r.getXAngle();
-    if(!Approx::isEqual(xAngle, angle, 1e-3f))
+    if (!Approx::isEqual(xAngle, angle, 1e-3f))
       EXPECT_TRUE(Approx::isEqual(xAngle, angle, 1e-3f));
   }
 }
@@ -240,12 +240,12 @@ TEST(RotationMatrix, getYAngle)
   yAngle = r.getYAngle();
   EXPECT_TRUE(Approx::isEqual(yAngle, Angle::normalize(angle)));
 
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     const float angle = randomFloat() * pi;
     const RotationMatrix r = RotationMatrix::aroundY(angle);
     float yAngle = r.getYAngle();
-    if(!Approx::isEqual(yAngle, angle, 1e-3f))
+    if (!Approx::isEqual(yAngle, angle, 1e-3f))
       EXPECT_TRUE(Approx::isEqual(yAngle, angle, 1e-3f));
   }
 }
@@ -277,12 +277,12 @@ TEST(RotationMatrix, getZAngle)
   zAngle = r.getZAngle();
   EXPECT_TRUE(Approx::isEqual(zAngle, Angle::normalize(angle)));
 
-  for(int i = 0; i < RUNS; ++i)
+  for (int i = 0; i < RUNS; ++i)
   {
     angle = randomFloat() * pi;
     r = RotationMatrix::aroundZ(angle);
     zAngle = r.getZAngle();
-    if(!Approx::isEqual(zAngle, angle, 1e-3f))
+    if (!Approx::isEqual(zAngle, angle, 1e-3f))
       EXPECT_TRUE(Approx::isEqual(zAngle, angle, 1e-3f));
   }
 }

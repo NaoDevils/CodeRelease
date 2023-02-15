@@ -8,13 +8,13 @@
 
 #pragma once
 
-#ifdef LINUX
+#if defined(LINUX)
 #include "Linux/Semaphore.h"
 #define SEMAPHORE_INCLUDED
 #endif
 
-#ifdef OSX
-#include "OSX/Semaphore.h"
+#ifdef MACOS
+#include "macOS/Semaphore.h"
 #define SEMAPHORE_INCLUDED
 #endif
 

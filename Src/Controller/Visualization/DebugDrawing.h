@@ -70,7 +70,19 @@ public:
   class Element
   {
   public:
-    enum {LINE, POLYGON, ELLIPSE, ARC, TIP, ORIGIN, TEXT, GRID_RGBA, GRID_MONO, RECTANGLE} type;
+    enum
+    {
+      LINE,
+      POLYGON,
+      ELLIPSE,
+      ARC,
+      TIP,
+      ORIGIN,
+      TEXT,
+      GRID_RGBA,
+      GRID_MONO,
+      RECTANGLE
+    } type;
     Drawings::PenStyle penStyle;
     ColorRGBA penColor;
     int width;
@@ -83,7 +95,7 @@ public:
     int nCount;
     Drawings::BrushStyle brushStyle;
     ColorRGBA brushColor;
-    Polygon() {type = POLYGON;}
+    Polygon() { type = POLYGON; }
   };
 
   /** Stores a grid */
@@ -95,7 +107,7 @@ public:
     int cellSize;
     int cellsX;
     int cellsY;
-    GridRGBA() {type = GRID_RGBA;}
+    GridRGBA() { type = GRID_RGBA; }
   };
 
   /** Stores a grid */
@@ -108,17 +120,14 @@ public:
     int cellsX;
     int cellsY;
     ColorRGBA baseColor;
-    GridMono() {type = GRID_MONO;}
+    GridMono() { type = GRID_MONO; }
   };
 
   /** Stores a tip */
   class Tip : public Element
   {
   public:
-    int x, y,
-        radius,
-        size,
-        next;
+    int x, y, radius, size, next;
     Tip() { type = TIP; }
   };
 
@@ -127,7 +136,7 @@ public:
   {
   public:
     int xStart, yStart, xEnd, yEnd;
-    Line() {type = LINE;}
+    Line() { type = LINE; }
   };
 
   /** Stores an ellipse */
@@ -138,7 +147,7 @@ public:
     float rotation;
     Drawings::BrushStyle brushStyle;
     ColorRGBA brushColor;
-    Ellipse() {type = ELLIPSE;}
+    Ellipse() { type = ELLIPSE; }
   };
 
   /** Stores an ellipse */
@@ -149,7 +158,7 @@ public:
     int startAngle, spanAngle;
     Drawings::BrushStyle brushStyle;
     ColorRGBA brushColor;
-    Arc() {type = ARC;}
+    Arc() { type = ARC; }
   };
 
   /** Stores a Rectangle */
@@ -160,16 +169,14 @@ public:
     float rotation;
     Drawings::BrushStyle brushStyle;
     ColorRGBA brushColor;
-    Rectangle() {type = RECTANGLE;}
+    Rectangle() { type = RECTANGLE; }
   };
 
   /** Stores a text */
   class Text : public Element
   {
   public:
-    int x, y,
-        fontSize,
-        size;
+    int x, y, fontSize, size;
     Text() { type = TEXT; }
   };
 
@@ -179,7 +186,7 @@ public:
   public:
     int x, y;
     float angle;
-    Origin() {type = ORIGIN;}
+    Origin() { type = ORIGIN; }
   };
 
   /**
@@ -190,13 +197,7 @@ public:
   * @param width The width
   * @param color The color
   */
-  void arrow(
-    Vector2f start,
-    Vector2f end,
-    Drawings::PenStyle penStyle,
-    int width,
-    ColorRGBA color
-  );
+  void arrow(Vector2f start, Vector2f end, Drawings::PenStyle penStyle, int width, ColorRGBA color);
 
   /**
   * Adds a tip (popup region) to the debug drawing
@@ -217,15 +218,7 @@ public:
   * @param width Specifies the width of the line.
   * @param color Specifies the color of the line.
   */
-  void line(
-    int xStart,
-    int yStart,
-    int xEnd,
-    int yEnd,
-    Drawings::PenStyle penStyle,
-    int width,
-    ColorRGBA color
-  );
+  void line(int xStart, int yStart, int xEnd, int yEnd, Drawings::PenStyle penStyle, int width, ColorRGBA color);
 
   /**
   * Adds a line to the debug drawing. The line is a solid black line with width 1.
@@ -246,15 +239,7 @@ public:
   * @param brushStyle Specifies the brushStyle of the polygon.
   * @param brushColor Specifies the color of the polygon.
   */
-  void polygon(
-    const Vector2i* points,
-    int nCount,
-    int width,
-    Drawings::PenStyle penStyle,
-    ColorRGBA penColor,
-    Drawings::BrushStyle brushStyle,
-    ColorRGBA brushColor
-  );
+  void polygon(const Vector2i* points, int nCount, int width, Drawings::PenStyle penStyle, ColorRGBA penColor, Drawings::BrushStyle brushStyle, ColorRGBA brushColor);
 
   void gridRGBA(int x, int y, int cellSize, int cellsX, int cellsY, ColorRGBA* cells);
 
@@ -297,12 +282,7 @@ public:
   * @param fontSize The size of the font to render the text.
   * @param color The color of the text.
   */
-  void text(
-    const char* text,
-    int x, int y,
-    int fontSize,
-    ColorRGBA color
-  );
+  void text(const char* text, int x, int y, int fontSize, ColorRGBA color);
 
   /**
   * Sets a new origin for further drawings
@@ -324,7 +304,7 @@ public:
   * The function returns a pointer to the first drawing element.
   * @return A pointer to the first drawing element or 0 if the drawing is empty.
   */
-  const Element* getFirst() const {return usedSize > 0 ? (const Element*) elements : 0;}
+  const Element* getFirst() const { return usedSize > 0 ? (const Element*)elements : 0; }
 
   /**
   * The function returns a pointer to the next drawing element.

@@ -21,13 +21,13 @@ class ReceiverList
 {
 private:
   ReceiverList* next = nullptr; /**< The successor of the current receiver. */
-  std::string name;             /**< The name of a receiver without the module's name. */
+  std::string name; /**< The name of a receiver without the module's name. */
 
 protected:
-  PlatformProcess* process;   /**< The process this receiver is associated with. */
-  void* package[3];           /**< A triple buffer for received packages. */
-  volatile int reading = 0;   /**< Index of package reserved for reading. */
-  volatile int actual = 0;    /**< Index of package that is the most actual. */
+  PlatformProcess* process; /**< The process this receiver is associated with. */
+  void* package[3]; /**< A triple buffer for received packages. */
+  volatile int reading = 0; /**< Index of package reserved for reading. */
+  volatile int actual = 0; /**< Index of package that is the most actual. */
 
   /**
    * The function checks whether a new package has arrived.
@@ -54,13 +54,13 @@ public:
    * Returns the next receiver in the list.
    * @return The next receiver in the list, or 0 if this receiver is the last one.
    */
-  ReceiverList* getNext() const {return next;}
+  ReceiverList* getNext() const { return next; }
 
   /**
    * Returns the connection name of the receiver.
    * @return The connection name without the process name ("Receiver.type.O")
    */
-  const std::string& getName() const {return name;}
+  const std::string& getName() const { return name; }
 
   /**
    * The function checks for all receivers whether a new package has arrived.
@@ -77,7 +77,7 @@ public:
    * The function determines whether the receiver has a pending package.
    * @return Is there still an unprocessed package?
    */
-  bool hasPendingPackage() const {return package[actual] != 0;}
+  bool hasPendingPackage() const { return package[actual] != 0; }
 
   /**
    * The function searches for a receiver with the given name.
@@ -93,7 +93,7 @@ public:
  * The class implements a receiver.
  * A receiver is an object that reads packages from another process.
  */
-template<class T> class Receiver : public ReceiverList, public T
+template <class T> class Receiver : public ReceiverList, public T
 {
 private:
   /**
@@ -102,12 +102,12 @@ private:
   virtual void checkForPackage()
   {
     reading = actual;
-    if(package[reading])
+    if (package[reading])
     {
       T& data = *static_cast<T*>(this);
       InBinaryMemory memory(package[reading]);
       memory >> data;
-      delete[] (char*)package[reading];
+      delete[](char*) package[reading];
       package[reading] = 0;
     }
   }
@@ -117,7 +117,5 @@ public:
    * @param process The process this receiver is associated with.
    * @param receiverName The connection name of the receiver without the process name.
    */
-  Receiver(PlatformProcess* process, const std::string& receiverName) :
-    ReceiverList(process, receiverName)
-  {}
+  Receiver(PlatformProcess* process, const std::string& receiverName) : ReceiverList(process, receiverName) {}
 };

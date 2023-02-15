@@ -8,9 +8,10 @@
 
 #include "QueueFillRequest.h"
 
-QueueFillRequest::QueueFillRequest(Behavior behavior, Filter filter, Target target, int timingMilliseconds) :
-  behavior(behavior), filter(filter), target(target), timingMilliseconds(timingMilliseconds)
-{}
+QueueFillRequest::QueueFillRequest(Behavior behavior, Filter filter, Target target, int timingMilliseconds)
+    : behavior(behavior), filter(filter), target(target), timingMilliseconds(timingMilliseconds)
+{
+}
 
 In& operator>>(In& stream, QueueFillRequest& queueFillRequest)
 {
@@ -22,7 +23,7 @@ In& operator>>(In& stream, QueueFillRequest& queueFillRequest)
   queueFillRequest.filter = static_cast<QueueFillRequest::Filter>(temp);
   stream >> temp;
   queueFillRequest.target = static_cast<QueueFillRequest::Target>(temp);
-  stream >> temp;   // padding
+  stream >> temp; // padding
   stream >> queueFillRequest.timingMilliseconds;
   return stream;
 }

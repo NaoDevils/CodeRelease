@@ -9,8 +9,7 @@
 
 bool MultiDebugSenderBase::terminating = false;
 
-Process::Process(MessageQueue& debugIn, MessageQueue& debugOut) :
-  debugIn(debugIn), debugOut(debugOut)
+Process::Process(MessageQueue& debugIn, MessageQueue& debugOut) : debugIn(debugIn), debugOut(debugOut)
 {
   setGlobals();
   initialized = false;
@@ -18,7 +17,7 @@ Process::Process(MessageQueue& debugIn, MessageQueue& debugOut) :
 
 bool Process::processMain()
 {
-  if(!initialized)
+  if (!initialized)
   {
     init();
     initialized = true;
@@ -29,9 +28,9 @@ bool Process::processMain()
 
   bool wait = main();
 
-  if(Global::getDebugRequestTable().poll)
+  if (Global::getDebugRequestTable().poll)
   {
-    if(Global::getDebugRequestTable().pollCounter++ > 10)
+    if (Global::getDebugRequestTable().pollCounter++ > 10)
     {
       Global::getDebugRequestTable().poll = false;
       OUTPUT(idDebugResponse, text, "pollingFinished");
@@ -60,22 +59,41 @@ void Process::setGlobals()
   Blackboard::setInstance(blackboard); // blackboard is NOT globally accessible
 }
 
-bool Process::handleMessage(InMessage& message)
+std::string Process::getThreadName() const
 {
-  switch(message.getMessageID())
-  {
-    case idDebugRequest:
-    {
-      DebugRequest debugRequest;
-      message.bin >> debugRequest;
-      Global::getDebugRequestTable().addRequest(debugRequest);
-      return true;
-    }
-    case idDebugDataChangeRequest:
-      Global::getDebugDataTable().processChangeRequest(message);
-      return true;
-    default:
-      return false;
-  }
+  return threadName;
 }
 
+void Process::setThreadName(const std::string& threadName)
+{
+  this->threadName = threadName;
+}
+
+Logger* Process::getLogger()
+{
+  return this->logger;
+}
+
+void Process::setLogger(Logger* logger)
+{
+  this->logger = logger;
+}
+
+bool Process::handleMessage(InMessage& message)
+{
+  switch (message.getMessageID())
+  {
+  case idDebugRequest:
+  {
+    DebugRequest debugRequest;
+    message.bin >> debugRequest;
+    Global::getDebugRequestTable().addRequest(debugRequest);
+    return true;
+  }
+  case idDebugDataChangeRequest:
+    Global::getDebugDataTable().processChangeRequest(message);
+    return true;
+  default:
+    return false;
+  }
+}

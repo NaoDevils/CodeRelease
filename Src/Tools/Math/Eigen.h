@@ -6,12 +6,6 @@
 #define EIGEN_MATRIXBASE_PLUGIN "Tools/Math/EigenMatrixBaseExtensions.h"
 #define EIGEN_ARRAY_PLUGIN "Tools/Math/EigenArrayExtensions.h"
 
-#ifdef WINDOWS
-#define WARN_UNUSED_RESULT
-#else
-#define WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
-#endif
-
 #include <Eigen/Dense>
 #include "Tools/Streams/Eigen.h"
 

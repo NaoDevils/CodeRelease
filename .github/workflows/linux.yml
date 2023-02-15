@@ -1,0 +1,29 @@
+name: Build and test on Linux
+
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'Config/**'
+      - '!Config/Robots/**'
+      - 'Config/Robots/Nao/**'
+      - '!Config/Overlays/**'
+      - 'Make/CMake/**'
+      - 'Make/Common/test.sh'
+      - 'Src/**'
+      - 'Util/**'
+
+jobs:
+  build_simrobot:
+    name: Build framework
+    runs-on: self-hosted
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v1
+    - name: compile
+      run: bash -l -c "Make/Linux/compile.sh"
+    - name: test
+      run: bash -l -c "Make/Common/test.sh"

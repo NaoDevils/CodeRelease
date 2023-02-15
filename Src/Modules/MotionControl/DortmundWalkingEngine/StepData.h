@@ -3,12 +3,12 @@
 #include "Point.h"
 #include "WalkingInformations.h"
 #include "Representations/MotionControl/WalkRequest.h"
-/** Maximum number of possible foot positions in buffer */
-#define PREVIEW_MAX	300  
+#include "Tools/Streams/AutoStreamable.h"
 
-class StepData
-{
-public:
+/** Maximum number of possible foot positions in buffer */
+#define PREVIEW_MAX 300
+
+STREAMABLE(StepData,
   StepData()
   {
     direction=0;
@@ -19,32 +19,21 @@ public:
     onFloor[1]=true;
   }
 
-  StepData operator = (const StepData &p)
-  {
-    footPos[0]=p.footPos[0];
-    footPos[1]=p.footPos[1];
-    onFloor[0]=p.onFloor[0];
-    onFloor[1]=p.onFloor[1];
-    direction=p.direction;
-    pitch=p.pitch;
-    roll=p.roll;
-    return *this;
-  }
-
-  Point footPos[2];
   bool onFloor[2];
-  float direction, pitch, roll;
-};
+  float direction;
+  float pitch;
+  float roll;
+  ,
+  (Point[2]) footPos
+);
 
-class Footposition : public StepData
-{
-public:
+STREAMABLE_WITH_BASE(Footposition, StepData,
+
   bool customStepRunning = false;
-  bool inKick = false;
+  bool prependStepRunning = false;
   unsigned int timestamp;
   WalkRequest::StepRequest customStep;
 
-  DWE::WalkingPhase phase = DWE::unlimitedDoubleSupport;
   unsigned int singleSupportDurationInFrames;
   unsigned int doubleSupportDurationInFrames;
   unsigned int frameInPhase;
@@ -52,46 +41,31 @@ public:
   int stepsSinceCustomStep = 0; // remember for reset of preview
 
   // kick hack, set specific angles in LimbCombinator
-  int timeUntilKickHack = 0;
-  int kickHackDuration = 0;
+  int timeUntilKickHackHip = 0;
+  int kickHackDurationHip = 0;
   Angle kickHackKneeAngle = 0_deg;
 
-  Point speed;
-  float lpxss = 0;
-  float lastspdx = 0;
-  Vector2f zmp, lastZMPRCS;
+  Angle kickHackHipAngle = 0_deg;
+  int timeUntilKickHackKnee = 0;
+  int kickHackDurationKnee = 0;
+
+  Pose2f speed;
+  Pose2f leftFootPose2f;
+  Pose2f rightFootPose2f;
+  Pose2f lastLeftFootPose2f;
+  Pose2f lastRightFootPose2f;
+  float deltaDirection;
+  Vector2f lastRefZMPEndPositionFC;
 
   void operator = (const StepData &p)
-  {
-    this->StepData::operator =(p);
-  }
-
-  Footposition& operator = (const Footposition& other)
-  {
-    this->StepData::operator =(other);
-    customStepRunning = other.customStepRunning;
-    inKick = other.inKick;
-    timestamp = other.timestamp;
-    customStep = other.customStep;
-    phase = other.phase;
-    singleSupportDurationInFrames = other.singleSupportDurationInFrames;
-    doubleSupportDurationInFrames = other.doubleSupportDurationInFrames;
-    frameInPhase = other.frameInPhase;
-    stepDurationInSec = other.stepDurationInSec;
-    stepsSinceCustomStep = other.stepsSinceCustomStep;
-    timeUntilKickHack = other.timeUntilKickHack;
-    kickHackDuration = other.kickHackDuration;
-    kickHackKneeAngle = other.kickHackKneeAngle;
-    speed = other.speed;
-    lastspdx = other.lastspdx;
-    lpxss = other.lpxss;
-    zmp = other.zmp;
-    lastZMPRCS = other.lastZMPRCS;
-    return *this;
+  { this->StepData::operator=(p);
   }
 
   Footposition() {};
-};
+  ,
+  ((DWE) WalkingPhase)(WalkingPhase::unlimitedDoubleSupport) phase,
+  (bool)(false) inKick
+);
 
 
 class ZMP : public Vector2f
@@ -99,10 +73,11 @@ class ZMP : public Vector2f
 public:
   ZMP()
   {
-    x() = 0; y() = 0;
+    x() = 0;
+    y() = 0;
   }
 
-  ZMP(const Point &p)
+  ZMP(const Point& p)
   {
     this->x() = p.x;
     this->y() = p.y;
@@ -116,60 +91,95 @@ public:
 
   ZMP(float x, float y)
   {
-    this->x()=x;
-    this->y()=y;
+    this->x() = x;
+    this->y() = y;
   }
 
-  float operator[] (unsigned int i)
+  float operator[](unsigned int i)
   {
     if (i == 0)
       return x();
-    else 
+    else
       return y();
   }
 
-  void operator =(Point &p)
+  void operator=(Point& p)
   {
-    this->x()=p.x;
-    this->y()=p.y;
+    this->x() = p.x;
+    this->y() = p.y;
   }
 
-  void operator =(float p)
-  {
-    x() = y() = 0;
-  }
+  void operator=(float p) { x() = y() = 0; }
 
-  ZMP operator +(const ZMP &zmp)
-  {
-    return ZMP(x() + zmp.x(), y()+ zmp.y());
-  }
+  ZMP operator+(const ZMP& zmp) { return ZMP(x() + zmp.x(), y() + zmp.y()); }
 
-  ZMP operator +=(const ZMP &zmp)
+  ZMP operator+=(const ZMP& zmp)
   {
     x() += zmp.x();
     y() += zmp.y();
     return *this;
   }
 
-  ZMP operator -=(const ZMP &zmp)
+  ZMP operator-=(const ZMP& zmp)
   {
     x() -= zmp.x();
     y() -= zmp.y();
     return *this;
   }
 
-  ZMP operator *(const float f)
+  ZMP operator*(const float f)
   {
     x() *= f;
     y() *= f;
     return *this;
   }
 
-  operator Point()
-  {
-    return Point(x(), y(), 0);
-  }
-
-
+  operator Point() { return Point(x(), y(), 0); }
 };
 
+
+/**
+  * Coordinate system of footPos is always a standing robot with
+  * root in the current swing foot.
+  * Foot positions for double support phases are ignored.
+  * Foot positions for support foot are ignored.
+  * Foot trajectory interpolates positions via b-splines and adds result to swing foot position.
+  * TODO: make config files smaller by removing useless information!
+  */
+struct CustomStep : public Streamable
+{
+  Pose2f footPos[2] = {Pose2f(), Pose2f()}; // pose2f offset for left/right foot
+  bool onFloor[2] = {true, true}; // foot is on floor
+  std::vector<Vector3f> swingFootTraj = {}; // control points for trajectory of foot in air, not used atm
+  int duration = 1; // number of frames for this step
+  std::vector<Point> spline = {}; // calculated on loading
+  bool kick = false;
+  bool mirrored = false;
+  bool isPrepend = false;
+  virtual void serialize(In* in, Out* out);
+  void mirror();
+};
+
+struct CustomStepsFile : Streamable
+{
+  Vector2f ballOffset;
+  Angle kickAngle;
+  float kickDistance[2];
+  float translationThresholdXFront = 0.015f;
+  float translationThresholdXBack = 0.015f;
+  float translationThresholdY = 0.015f;
+  Angle rotationThreshold = 4_deg;
+
+  int timeUntilKickHackHip = 120; // time (ms) until kickhack is triggered in the hip
+  int kickHackDurationHip = 100; // duration (ms) of the kickhack in the hip
+  Angle kickHackHipAngle = -2;
+
+  int timeUntilKickHackKnee = 96; // time (ms) until kickhack is triggered in the knee
+  int kickHackDurationKnee = 108; // duration (ms) of the kickhack in the knee
+  Angle kickHackKneeAngle = -10_deg;
+
+  std::vector<CustomStep> steps;
+  virtual void serialize(In* in, Out* out);
+  void mirror();
+  bool isApplicable(float distance);
+};

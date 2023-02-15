@@ -3,7 +3,7 @@
 inline PlainObject& normalize(RealScalar l)
 {
   const RealScalar vl = norm();
-  if(vl > 1e-9)
+  if (vl > 1e-9)
   {
     derived() *= (l / vl);
   }

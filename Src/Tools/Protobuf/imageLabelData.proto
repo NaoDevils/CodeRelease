@@ -1,0 +1,196 @@
+/* used Version 2.6.1 of protobuf */
+
+syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
+
+package imageLabelData;
+/* Defines a labeled image. "Mainmessage" */
+message ImageLabelData { /* Definition of some datastructures */
+
+    /* Defines a Point on the picture */
+    message Point {
+        required int32 x = 1;
+        required int32 y = 2;
+    }
+
+    /* Defines a rect containing two points */
+    message BoundingBox {
+		required Point upperLeft = 1;
+		required Point lowerRight = 2;
+    }
+
+	/* Defines an object with multiple points (segmentation) */
+	message Segmentation {
+		repeated Point points = 1;
+		optional int32 zorder = 2;
+    }
+
+    /* Defines a specific date containing a day, month and year */
+    message Date{
+        required int32 day = 1;
+        required int32 month = 2;
+        required int32 year = 3;
+    }
+
+    /* Defines a Label. Each labeled object on the image should have 'Label' as member */
+    message Label {
+        required BoundingBox boundingBox = 1;
+        optional Date date = 2;
+        optional int32 verificationcount = 3;
+        optional string person = 4;
+        optional bool concealed = 5;
+		optional int32 blurriness = 6;
+		enum VisibilityLevel {
+			FULL = 0;
+			THREEQUARTER_TO_FULL = 1;
+			HALF_TO_THREEQUARTER = 2;
+			ONEQUARTER_TO_HALF = 3;
+			ZERO_TO_ONEQUARTER = 4;
+			HIDDEN = 5;
+		}
+		optional VisibilityLevel visibilityLevel = 7 [default = FULL];
+		optional int32 id = 8;
+		optional Segmentation segmentation = 9;
+    }
+
+    /* Defines a 3x3 matrix of floats */
+    message Matrix3f {
+        required float m00 = 1;
+        required float m01 = 2;
+        required float m02 = 3;
+        required float m10 = 4;
+        required float m11 = 5;
+        required float m12 = 6;
+        required float m20 = 7;
+        required float m21 = 8;
+        required float m22 = 9;
+    }
+
+    /* Defines a three dimensional vector of floats */
+    message Vector3f {
+        required float x = 1;
+        required float y = 2;
+        required float z = 3;
+    }
+
+    /* Defines a two dimensional vector of floats */
+    message Vector2f {
+        required float x = 1;
+        required float y = 2;
+    }
+
+    /* contains a color as RGB */
+    message Color {
+        required int32 r = 1;
+        required int32 g = 2;
+        required int32 b = 3;
+    }
+
+    /* Defines a labeled robot */
+    message Robot {
+      required Label label = 1;
+      optional int32 orientation = 2;
+      optional bool fallen = 3;
+      /* optional Color teamcolor = 4; */
+	  enum Teamcolor {
+		UNKNOWN = 0;
+		BLUE = 1;
+		RED = 2;
+		YELLOW = 3;
+		BLACK = 4;
+		WHITE = 5;
+		GREEN = 6;
+		ORANGE = 7;
+		PURPLE = 8;
+		BROWN = 9;
+		GRAY = 10;
+      }
+	  optional Teamcolor teamcolor = 5;
+    }
+
+    /* Defines a labeled obstacle */
+    message Obstacle {
+      required Label label = 1;
+    }
+
+    /* Defines some camera information such as resolution */
+    message CameraInformation {
+        required Resolution resolution = 1;
+        optional int32 cameraIndex = 2; /* Nao: lower camera = 1, upper camera = 0 */
+        optional Matrix3f rotation = 3;
+        optional Vector3f translation = 4;
+        optional CameraIntrinsics cameraIntrinsics = 5;
+
+        message Resolution{
+            required int32 height = 1;
+            required int32 width = 2;
+        }
+
+        message CameraIntrinsics{
+            required float openingAngleWidth = 1;
+            required float openingAngleHeight = 2;
+            required Vector2f opticalCenter = 3;
+        }
+    }
+
+    /* Defines a labeled ball */
+    message Ball{
+        required Label label = 1;
+        optional bool moving = 2;
+    }
+
+    /* Defines a labeled goalpost*/
+    message Goalpost{
+        required Label label = 1;
+    }
+
+    /* Defines a labeled goal */
+    message Goal {
+        optional Label leftPost = 1;
+        optional Label rightPost = 2;
+    }
+
+    /* Defines a labeled line crossing */
+    message LineCrossing {
+        required Label label = 1;
+    }
+	
+	/* Defines a labeled penalty cross */
+    message PenaltyCross {
+        required Label label = 1;
+    }
+
+    /* Defines a labeled centercircle */
+    message Centercircle {
+        required Label label = 1;
+    }
+
+    /* Defines a set of general image informations */
+    message ImageInformation {
+        optional int32 imagechannel = 1;    /* Number of channels used while writing image as PNG */
+        optional float blurriness = 2;        /*  Calculating variance of laplacian filter. Heigher values mean sharper images. */
+        optional int32 average_brightnes = 3; /* sum of all brightnesses for each pixel devided by the sum of all pixels */
+    }
+/* Datarepresentation of  */
+
+  repeated Robot robots = 1;
+  repeated Obstacle obstacles = 16;
+  repeated Ball balls = 2;
+  repeated Goalpost goalposts = 15;
+  repeated Goal goals = 3;
+  repeated Label DEPRECATED_penaltyCrosses = 4;
+  repeated PenaltyCross penaltyCrosses = 17;
+  repeated LineCrossing lineCrossing = 11;
+  repeated Centercircle centerCircle = 12;
+  optional BoundingBox patchBoundingBox = 18;
+  
+  optional CameraInformation cameraInformation = 5;
+  optional ImageInformation imageInfos = 13;
+
+  optional int32 timestamp = 6; /* timestamp in ms */
+  optional Date captureDate = 7;
+  optional string captureLocation = 8;
+  optional string datasetName = 9; /* Name of Dataset */
+  optional string team = 10;    /* Name of team */
+  optional int32 playerNumber = 14; /* Number of player */
+}

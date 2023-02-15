@@ -14,10 +14,10 @@ void TeamBallModelProvider::initialize(TeamBallModelParameters& teamParameters)
 {
   // Save TeamBallModel parameters.
   m_teamParameters = teamParameters;
-  
+
   // Set initial (invalid) values of TeamBallModel.
   m_teamBallModel.isValid = false;
-  m_teamBallModel.isLocalBallModel = true;
+  m_teamBallModel.isLocalBallModel = false;
   m_teamBallModel.position = Vector2f::Zero();
   m_teamBallModel.velocity = Vector2f::Zero();
   m_teamBallModel.timeWhenLastValid = 0;
@@ -25,10 +25,7 @@ void TeamBallModelProvider::initialize(TeamBallModelParameters& teamParameters)
 }
 
 void TeamBallModelProvider::generateTeamBallModel(
-  TeamBallModel& teamBallModel,
-  LocalMultipleBallModel& localMultipleBallModel,
-  RemoteMultipleBallModel& remoteMultipleBallModel,
-  const RobotPose& theRobotPose, const FrameInfo& theFrameInfo)
+    TeamBallModel& teamBallModel, LocalMultipleBallModel& localMultipleBallModel, RemoteMultipleBallModel& remoteMultipleBallModel, const RobotPose& theRobotPose, const FrameInfo& theFrameInfo)
 {
   // --- Debug methods ---
 
@@ -47,13 +44,13 @@ void TeamBallModelProvider::generateTeamBallModel(
     localValidity = bestLocalHypothesis->validity;
   if (bestRemoteHypothesis != nullptr)
     remoteValidity = bestRemoteHypothesis->validity;
-  
+
   if (localValidity >= m_teamParameters.minValidityForLocalBallModel)
   {
     // Set valid.
     m_teamBallModel.isValid = true;
     m_teamBallModel.timeWhenLastValid = theFrameInfo.time;
-    
+
     // Use local ball model.
     m_teamBallModel.isLocalBallModel = true;
     generateTeamBallModelFromBallHypothesis(m_teamBallModel, bestLocalHypothesis, &theRobotPose);
@@ -63,7 +60,7 @@ void TeamBallModelProvider::generateTeamBallModel(
     // Set valid.
     m_teamBallModel.isValid = true;
     m_teamBallModel.timeWhenLastValid = theFrameInfo.time;
-    
+
     // Use remote ball model.
     m_teamBallModel.isLocalBallModel = false;
     generateTeamBallModelFromBallHypothesis(m_teamBallModel, bestRemoteHypothesis, nullptr);
@@ -72,7 +69,7 @@ void TeamBallModelProvider::generateTeamBallModel(
   {
     // No valid ball model.
     m_teamBallModel.isValid = false;
-    
+
     // Although there is no valid ball model, update the state of the \c teamBallModel
     // with the last used model (local or remote).
     if (m_teamBallModel.isLocalBallModel)
@@ -80,27 +77,18 @@ void TeamBallModelProvider::generateTeamBallModel(
     else
       generateTeamBallModelFromBallHypothesis(m_teamBallModel, bestRemoteHypothesis, nullptr);
   }
-  
+
   // Write private member m_teamBallModel to output parameter.
   teamBallModel = m_teamBallModel;
-  
-  
+
+
   // --- Debug methods ---
-  
+
   // Draw debug plots.
-  m_plot(
-    localValidity,
-    remoteValidity,
-    localMultipleBallModel.size(),
-    remoteMultipleBallModel.size(),
-    bestLocalHypothesis,
-    bestRemoteHypothesis);
+  m_plot(localValidity, remoteValidity, localMultipleBallModel.size(), remoteMultipleBallModel.size(), bestLocalHypothesis, bestRemoteHypothesis);
 }
 
-void TeamBallModelProvider::generateTeamBallModelFromBallHypothesis(
-    TeamBallModel& teamBallModel,
-    const KalmanPositionHypothesis* hypothesis,
-    const RobotPose* theRobotPose)
+void TeamBallModelProvider::generateTeamBallModelFromBallHypothesis(TeamBallModel& teamBallModel, const KalmanPositionHypothesis* hypothesis, const RobotPose* theRobotPose)
 {
   if (hypothesis != nullptr)
   {
@@ -134,10 +122,8 @@ void TeamBallModelProvider::m_initModify()
   MODIFY("module:BallModelProvider:teamParameters", m_teamParameters);
 }
 
-void TeamBallModelProvider::m_plot(float localValidity, float remoteValidity,
-                                   size_t localHypothesesCount, size_t remoteHypothesesCount,
-                                   const KalmanPositionHypothesis* bestLocalHypothesis,
-                                   const KalmanPositionHypothesis* bestRemoteHypothesis) const
+void TeamBallModelProvider::m_plot(
+    float localValidity, float remoteValidity, size_t localHypothesesCount, size_t remoteHypothesesCount, const KalmanPositionHypothesis* bestLocalHypothesis, const KalmanPositionHypothesis* bestRemoteHypothesis) const
 {
   /*
   vp teamBallModelValidity 300 0 1 validity s 0.033
@@ -162,7 +148,7 @@ void TeamBallModelProvider::m_plot(float localValidity, float remoteValidity,
   PLOT("module:BallModelProvider:localValidityMin", m_teamParameters.minValidityForLocalBallModel);
   PLOT("module:BallModelProvider:remoteValidity", remoteValidity);
   PLOT("module:BallModelProvider:remoteValidityMin", m_teamParameters.minValidityForRemoteBallModel);
-  
+
   // Percepts per second:
   float localPPS = 0, remotePPS = 0;
   float localMeanPerceptValidity = 0.f, remoteMeanPerceptValidity = 0.f;
@@ -176,7 +162,7 @@ void TeamBallModelProvider::m_plot(float localValidity, float remoteValidity,
     remotePPS = bestRemoteHypothesis->perceptsPerSecond();
     remoteMeanPerceptValidity = bestRemoteHypothesis->meanPerceptValidity();
   }
-  
+
   DECLARE_PLOT("module:BallModelProvider:localPerceptsPerSecond");
   DECLARE_PLOT("module:BallModelProvider:remotePerceptsPerSecond");
   PLOT("module:BallModelProvider:localPerceptsPerSecond", localPPS);

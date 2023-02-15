@@ -6,12 +6,11 @@
 #pragma once
 #include <list>
 #include "Representations/MotionControl/FLIPMObservedState.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Tools/Module/Module.h"
-#include "Representations/Modeling/IMUModel.h"
 
 /**
 * @class FLIPMObservedStateProvider
@@ -19,21 +18,21 @@
 */
 
 MODULE(FLIPMObservedStateProvider,
-{ ,
   REQUIRES(FLIPMObserverParameter),
-  REQUIRES(InertialSensorData),
+  REQUIRES(JoinedIMUData),
   REQUIRES(RobotModel),
-  REQUIRES(IMUModel),
   USES(WalkingInfo),
   PROVIDES(FLIPMObservedState),
-});
+  LOADS_PARAMETERS(,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+  )
+);
 
 class FLIPMObservedStateProvider : public FLIPMObservedStateProviderBase
 {
 public:
-  FLIPMObservedStateProvider() {};
-  ~FLIPMObservedStateProvider(void) {};
+  FLIPMObservedStateProvider(){};
+  ~FLIPMObservedStateProvider(void){};
 
-  void update(FLIPMObservedState &theFLIPMObservedState);
-};  
-
+  void update(FLIPMObservedState& theFLIPMObservedState);
+};

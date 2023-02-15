@@ -1,23 +1,19 @@
 # relative drawings
-vfd worldState:origin RobotPose
+vfd worldState origin:RobotPose
+vfd worldState representation:BallModel:endPosition
 vfd worldState representation:BallModel
 vfd worldState module:BallModelProvider:local:hypotheses
 vfd worldState module:BallModelProvider:local:velocities
 vfd worldState module:BallModelProvider:local:covariances
+vfd worldState module:BallModelProvider:perceptBuffer
+echo vfd worldState module:RANSACLineFitter:perceptBuffer
+#vfd worldState module:HoughLineDetector:houghLine
+vfd worldState module:RANSACLineFitter:line
 
 # back to global coordinates
 vfd worldState origin:Reset
-
-vfd worldState representation:TeamBallModel
 vfd worldState module:BallModelProvider:remote:hypotheses
-
-vd module:BallModelProvider:parameters
-vd module:BallModelProvider:teamParameters
-vd module:BallModelProvider:kalmanMatrices
-vd representation:BallPercept
-vd representation:BallModel
-vd representation:RemoteBallModel
-vd representation:TeamBallModel
+vfd worldState representation:TeamBallModel
 
 # Draw number of hypotheses.
 vp teamBallModelHypotheses 300 0 10 "#" s 0.033

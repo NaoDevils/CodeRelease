@@ -12,7 +12,7 @@ Commands& Commands::getInstance()
 bool Commands::addCommand(Command* cmd)
 {
   std::map<std::string, Command*>::iterator iter = commands.find(cmd->getName());
-  if(iter == commands.end())
+  if (iter == commands.end())
     commands.insert(commands.begin(), std::pair<std::string, Command*>(cmd->getName(), cmd));
   else
     return false;
@@ -29,25 +29,25 @@ bool Commands::removeCommand(const std::string& name)
   return commands.erase(name) > 0;
 }
 
-bool Commands::execute(Context *context, const std::string &cmdLine)
+bool Commands::execute(Context* context, const std::string& cmdLine)
 {
   std::vector<std::string> splitted = split(cmdLine);
-  if(splitted.size() < 1)
+  if (splitted.size() < 1)
   {
     context->errorLine("Syntax Error ;-)");
     return false;
   }
   std::map<std::string, Command*>::iterator iter = commands.find(splitted[0]);
-  if(iter == commands.end())
+  if (iter == commands.end())
   {
     context->errorLine(splitted[0] + " not found");
     return false;
   }
   std::vector<std::string> parameters;
-  if(splitted.size() > 1)
+  if (splitted.size() > 1)
   {
     parameters.reserve(splitted.size() - 1);
-    for(size_t i = 1; i < splitted.size(); ++i)
+    for (size_t i = 1; i < splitted.size(); ++i)
       parameters.push_back(splitted[i]);
   }
   return iter->second->execute(*context, parameters);
@@ -56,7 +56,7 @@ bool Commands::execute(Context *context, const std::string &cmdLine)
 Command* Commands::operator[](const std::string& cmd)
 {
   std::map<std::string, Command*>::iterator iter = commands.find(cmd);
-  if(iter == commands.end())
+  if (iter == commands.end())
     return 0;
   return iter->second;
 }
@@ -65,9 +65,7 @@ std::vector<Command*> Commands::getAllCommands()
 {
   std::vector<Command*> all;
   all.reserve(commands.size());
-  for(std::map<std::string, Command*>::const_iterator i = commands.begin();
-      i != commands.end();
-      ++i)
+  for (std::map<std::string, Command*>::const_iterator i = commands.begin(); i != commands.end(); ++i)
     all.push_back(i->second);
   return all;
 }
@@ -76,9 +74,7 @@ std::vector<std::string> Commands::getAllCommandNames() const
 {
   std::vector<std::string> all;
   all.reserve(commands.size());
-  for(std::map<std::string, Command*>::const_iterator i = commands.begin();
-      i != commands.end();
-      ++i)
+  for (std::map<std::string, Command*>::const_iterator i = commands.begin(); i != commands.end(); ++i)
     all.push_back(i->first);
   return all;
 }
@@ -87,11 +83,11 @@ std::vector<std::string> Commands::complete(const std::string& cmdLine)
 {
   std::vector<std::string> commandWithArgs = split(cmdLine);
   std::vector<std::string> result;
-  if(commandWithArgs.size() > 1 || (!cmdLine.empty() && *(--cmdLine.end()) == ' '))
+  if (commandWithArgs.size() > 1 || (!cmdLine.empty() && *(--cmdLine.end()) == ' '))
   {
     // parameter completion (this is the job of the individual Command instaces)
     std::map<std::string, Command*>::const_iterator i = commands.find(commandWithArgs[0]);
-    if(i != commands.end())
+    if (i != commands.end())
     {
       std::vector<std::string> completionResult = i->second->complete(cmdLine);
       result.insert(result.begin(), completionResult.begin(), completionResult.end());
@@ -101,19 +97,18 @@ std::vector<std::string> Commands::complete(const std::string& cmdLine)
      * given command and prepend it if not. Assumes that the prefix is missing
      * in every string if it is missing in the first one.
      */
-    if(!result.empty() && !startsWidth(result[0], commandWithArgs[0]))
+    if (!result.empty() && !startsWidth(result[0], commandWithArgs[0]))
     {
-      for(size_t i = 0; i < result.size(); ++i)
+      for (size_t i = 0; i < result.size(); ++i)
         result[i] = commandWithArgs[0] + " " + result[i];
     }
   }
   else
   {
     // command completion
-    for(std::map<std::string, Command*>::const_iterator i = commands.begin();
-        i != commands.end(); i++)
+    for (std::map<std::string, Command*>::const_iterator i = commands.begin(); i != commands.end(); i++)
     {
-      if(startsWidth(i->first, cmdLine))
+      if (startsWidth(i->first, cmdLine))
         result.push_back(i->first);
     }
   }

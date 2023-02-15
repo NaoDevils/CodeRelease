@@ -1,5 +1,8 @@
+mr JPEGImage JPEGImageProvider
+mr JPEGImageUpper JPEGImageProvider
 vi image jpeg lower gain 1.0
 vi imageUpper jpeg upper gain 1.0
+set parameters:JPEGImageProvider quality = 75;
 
 call Includes/Perception
 

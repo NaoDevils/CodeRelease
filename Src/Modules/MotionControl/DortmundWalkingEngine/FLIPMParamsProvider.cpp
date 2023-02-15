@@ -1,32 +1,13 @@
 #include "FLIPMParamsProvider.h"
-#include "Tools/Module/ModuleManager.h"
 #include <iostream>
 
-FLIPMParamsProvider::FLIPMParamsProvider() {
-  initializedX = true;
-  initializedY = true;
-  calculationValidX = true;
-  calculationValidY = true;
-
+FLIPMParamsProvider::FLIPMParamsProvider()
+{
   xLQRParams.clear();
   yLQRParams.clear();
 
   last_S[0] = paramsX.Ql.cast<double>();
   last_S[1] = paramsY.Ql.cast<double>();
-
-  param_mutex_X.lock();
-    finishedCalculationX = false;
-    threadXStarted = false;
-    sharedResultsXLQRParams.clear();
-  param_mutex_X.unlock();
-  calculationThreadX.setPriority(threadPriority);
-
-  param_mutex_Y.lock();
-    finishedCalculationY = false;
-    threadYStarted = false;
-    sharedResultsYLQRParams.clear();
-  param_mutex_Y.unlock();
-  calculationThreadY.setPriority(threadPriority);
 
   FLIPMControllerParameter loadedFLIPMControllerParameter;
   InMapFile fileC("flipmControllerParameter.cfg");
@@ -63,30 +44,29 @@ FLIPMParamsProvider::FLIPMParamsProvider() {
   yLQRParams.L = loadedFLIPMObserverParameter.observerParamsY.L;
 }
 
-bool FLIPMParamsProvider::checkObservability(const Matrix6d &A, const Matrix3x6d &c) const {
+bool FLIPMParamsProvider::checkObservability(const Matrix6d& A, const Matrix3x6d& c) const
+{
   // calculate observability matrix
   Eigen::Matrix<double, 18, 6> obsv;
 
-  obsv << c,
-          c * A,
-          c * (A * A),
-          c * (A * A * A),
-          c * (A * A * A * A),
-          c * (A * A * A * A * A);
+  obsv << c, c * A, c * (A * A), c * (A * A * A), c * (A * A * A * A), c * (A * A * A * A * A);
 
   Eigen::FullPivLU<Eigen::Matrix<double, 18, 6>> lu_decomp(obsv);
   lu_decomp.setThreshold(1e-10);
   int rank = static_cast<int>(lu_decomp.rank());
 
-  if (rank == A.rows()) {
+  if (rank == A.rows())
+  {
     return true;
   }
-  else {
+  else
+  {
     return false;
   }
 }
 
-bool FLIPMParamsProvider::checkControllability(const Matrix7d &A, const Vector7d &b) const {
+bool FLIPMParamsProvider::checkControllability(const Matrix7d& A, const Vector7d& b) const
+{
   // calculate controllability matrix
   Matrix7d ctrb;
 
@@ -96,61 +76,71 @@ bool FLIPMParamsProvider::checkControllability(const Matrix7d &A, const Vector7d
   lu_decomp.setThreshold(1e-10);
   int rank = static_cast<int>(lu_decomp.rank());
 
-  if (rank == A.rows()) {
+  if (rank == A.rows())
+  {
     return true;
   }
-  else {
+  else
+  {
     return false;
   }
 }
 
 void FLIPMParamsProvider::update(FLIPMControllerParameter& flipmControllerParameter)
 {
-  DEBUG_RESPONSE_ONCE("module:FLIPMParamsProvider:recalculate") {
-    initializedX = false;
-    initializedY = false;
-    calculationValidX = false;
-    calculationValidY = false;
+  DEBUG_RESPONSE_ONCE("module:FLIPMParamsProvider:recalculate:X")
+  {
+    if (!xLQRParamsFuture.valid())
+      xLQRParamsFuture = std::async(std::launch::async,
+          [=]
+          {
+            return executeX();
+          });
   }
 
-  param_mutex_X.lock();
-    if (finishedCalculationX) {
-      xLQRParams = sharedResultsXLQRParams;
-      finishedCalculationX = false;
-      threadXStarted = false;
+  DEBUG_RESPONSE_ONCE("module:FLIPMParamsProvider:recalculate:Y")
+  {
+    if (!yLQRParamsFuture.valid())
+      yLQRParamsFuture = std::async(std::launch::async,
+          [=]
+          {
+            return executeY();
+          });
+  }
+
+  if (xLQRParamsFuture.valid() && xLQRParamsFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+  {
+    xLQRParams = xLQRParamsFuture.get();
+    if (xLQRParams.valid)
       SystemCall::playSound("allright.wav");
-      //OUTPUT_TEXT("Recalculated X-Params");
-    }
-  param_mutex_X.unlock();
+    else
+      SystemCall::playSound("doh.wav");
 
-  param_mutex_Y.lock();
-    if (finishedCalculationY) {
-      yLQRParams = sharedResultsYLQRParams;
-      finishedCalculationY = false;
-      threadYStarted = false;
+    if (!xLQRParams.controllable)
+      OUTPUT_TEXT("Controllability is not given!!! Try to change parameters...");
+    else if (!xLQRParams.observable)
+      OUTPUT_TEXT("Observability is not given!!! Try to change parameters...");
+    else
+      OUTPUT_TEXT("X: solveDARE took " << xLQRParams.calculationTime << " s");
+  }
+
+  if (yLQRParamsFuture.valid() && yLQRParamsFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+  {
+    yLQRParams = yLQRParamsFuture.get();
+    if (yLQRParams.valid)
       SystemCall::playSound("allright.wav");
-      //OUTPUT_TEXT("Recalculated Y-Params");
-    }
-  param_mutex_Y.unlock();
-
-  if (!initializedX && !threadXStarted) {
-    param_mutex_X.lock();
-      threadXStarted = true;
-    param_mutex_X.unlock();
-    calculationThreadX.start(this, &FLIPMParamsProvider::executeX);
-    //execute(X);
+    else
+      SystemCall::playSound("doh.wav");
+    if (!yLQRParams.controllable)
+      OUTPUT_TEXT("Controllability is not given!!! Try to change parameters...");
+    else if (!yLQRParams.observable)
+      OUTPUT_TEXT("Observability is not given!!! Try to change parameters...");
+    else
+      OUTPUT_TEXT("X: solveDARE took " << yLQRParams.calculationTime << " s");
   }
 
-  if (!duplicateXParams && !initializedY && !threadYStarted) {
-    param_mutex_Y.lock();
-      threadYStarted = true;
-    param_mutex_Y.unlock();
-    calculationThreadY.start(this, &FLIPMParamsProvider::executeY);
-    //execute(Y);
-  }
-
-
-  if (calculationValidX) {
+  if (xLQRParams.valid)
+  {
     flipmControllerParameter.controllerParamsX.A = xLQRParams.A;
     flipmControllerParameter.controllerParamsX.b = xLQRParams.b;
     flipmControllerParameter.controllerParamsX.c = xLQRParams.c;
@@ -159,7 +149,8 @@ void FLIPMParamsProvider::update(FLIPMControllerParameter& flipmControllerParame
     flipmControllerParameter.controllerParamsX.Gx = xLQRParams.Gx;
   }
 
-  if (!duplicateXParams && calculationValidY) {
+  if (!duplicateXParams && yLQRParams.valid)
+  {
     flipmControllerParameter.controllerParamsY.A = yLQRParams.A;
     flipmControllerParameter.controllerParamsY.b = yLQRParams.b;
     flipmControllerParameter.controllerParamsY.c = yLQRParams.c;
@@ -167,7 +158,8 @@ void FLIPMParamsProvider::update(FLIPMControllerParameter& flipmControllerParame
     flipmControllerParameter.controllerParamsY.Gd = yLQRParams.Gd;
     flipmControllerParameter.controllerParamsY.Gx = yLQRParams.Gx;
   }
-  else if (calculationValidX) {
+  else if (xLQRParams.valid)
+  {
     flipmControllerParameter.controllerParamsY.A = xLQRParams.A;
     flipmControllerParameter.controllerParamsY.b = xLQRParams.b;
     flipmControllerParameter.controllerParamsY.c = xLQRParams.c;
@@ -179,70 +171,20 @@ void FLIPMParamsProvider::update(FLIPMControllerParameter& flipmControllerParame
 
 void FLIPMParamsProvider::update(FLIPMObserverParameter& flipmObserverParameter)
 {
-  DEBUG_RESPONSE_ONCE("module:FLIPMParamsProvider:recalculate") {
-    initializedX = false;
-    initializedY = false;
-    calculationValidX = false;
-    calculationValidY = false;
-  }
-  param_mutex_X.lock();
-  if (finishedCalculationX) {
-    xLQRParams = sharedResultsXLQRParams;
-    finishedCalculationX = false;
-    threadXStarted = false;
-    OUTPUT_TEXT("Recalculated X-Params");
-  }
-  param_mutex_X.unlock();
-
-  param_mutex_Y.lock();
-  if (finishedCalculationY) {
-    yLQRParams = sharedResultsYLQRParams;
-    finishedCalculationY = false;
-    threadYStarted = false;
-    OUTPUT_TEXT("Recalculated Y-Params");
-  }
-  param_mutex_Y.unlock();
-
-  if (!initializedX && !threadXStarted) {
-    param_mutex_X.lock();
-    threadXStarted = true;
-    param_mutex_X.unlock();
-    calculationThreadX.start(this, &FLIPMParamsProvider::executeX);
-    //execute(X);
-  }
-
-  if (!duplicateXParams && !initializedY && !threadYStarted) {
-    param_mutex_Y.lock();
-    threadYStarted = true;
-    param_mutex_Y.unlock();
-    calculationThreadY.start(this, &FLIPMParamsProvider::executeY);
-    //execute(Y);
-  }
-
-  if (calculationValidX) {
+  if (xLQRParams.valid)
+  {
     flipmObserverParameter.observerParamsX.L = xLQRParams.L;
-  } 
+  }
 
-  if (!duplicateXParams && calculationValidY)
+  if (!duplicateXParams && yLQRParams.valid)
     flipmObserverParameter.observerParamsY.L = yLQRParams.L;
-  else if (calculationValidX)
+  else if (xLQRParams.valid)
     flipmObserverParameter.observerParamsY.L = xLQRParams.L;
 }
 
-void FLIPMParamsProvider::execute(Dimension dim) 
+FLIPMParamsProvider::LQRParams FLIPMParamsProvider::execute(Dimension dim)
 {
-  if (dim == Dimension::X) 
-    calculationValidX = true;
-  else
-    calculationValidY = true;
-  
-  std::mutex &param_mutex = dim == Dimension::X ? param_mutex_X : param_mutex_Y;
-  const FLIPMValues &params = dim == Dimension::X ? paramsX : paramsY;
-  bool &finishedCalculation = dim == Dimension::X ? finishedCalculationX : finishedCalculationY;
-  
-  param_mutex.lock();
-    finishedCalculation = false;
-  param_mutex.unlock();
+  const FLIPMValues& params = dim == Dimension::X ? paramsX : paramsY;
 
   LQRParams lqrParams;
   lqrParams.clear();
@@ -266,18 +208,13 @@ void FLIPMParamsProvider::execute(Dimension dim)
   double Qe = params.Qe;
   double Qx = params.Qx;
   double R = params.R;
-  
+
   Matrix6d Ql = params.Ql.cast<double>();
   Matrix3d RO = params.RO.cast<double>();
-    
+
   ////////////////////////////////////////////////////////////////////
   //lqrParams.A = Matrix6d::Zero();
-  lqrParams.A <<  1,          dt,       dt2,  0,          0,            0,
-                  0,          1,        dt,   0,          0,            0,
-                 -DM,        -EM,       0,    DM,         EM,           0,
-                  0,          0,        0,    1,          dt,           dt2,
-                  Dm * dt,    Em * dt,  0,   -Dm * dt,    1 - Em * dt,  dt,
-                  0,          0,        0,    0,          0,            1;
+  lqrParams.A << 1, dt, dt2, 0, 0, 0, 0, 1, dt, 0, 0, 0, -DM, -EM, 0, DM, EM, 0, 0, 0, 0, 1, dt, dt2, Dm * dt, Em * dt, 0, -Dm * dt, 1 - Em * dt, dt, 0, 0, 0, 0, 0, 1;
 
   //lqrParams.b = Vector6d::Zero();
   lqrParams.b << 0, 0, 0, dt3, dt2, dt;
@@ -286,13 +223,13 @@ void FLIPMParamsProvider::execute(Dimension dim)
   lqrParams.c << 1, 0, -z_h / g, 0, 0, 0;
 
   Vector7d Bt = Vector7d::Zero();
-  Bt << lqrParams.c.dot(lqrParams.b) , lqrParams.b;
+  Bt << lqrParams.c.dot(lqrParams.b), lqrParams.b;
 
   Vector7d It = Vector7d::Zero();
-  It(0,0) = 1;
+  It(0, 0) = 1;
 
   Matrix7x6d Ft = Matrix7x6d::Zero();
-  Ft << lqrParams.c*lqrParams.A, lqrParams.A;
+  Ft << lqrParams.c * lqrParams.A, lqrParams.A;
 
   Matrix7d Qt = Matrix7d::Zero();
   Vector6d cT = lqrParams.c.transpose();
@@ -308,8 +245,9 @@ void FLIPMParamsProvider::execute(Dimension dim)
   Eigen::Matrix<double, 1, 1> Rt = Eigen::Matrix<double, 1, 1>::Ones();
   Rt << R;
 
-  if (checkControllability(At, Bt)) {
-    Matrix7d Pt = solveDARE<7,1>(At, Bt, Qt, Rt, Qt, DARE_maxIterations, 1e-8f);
+  if (checkControllability(At, Bt))
+  {
+    Matrix7d Pt = solveDARE<7, 1>(At, Bt, Qt, Rt, Qt, DARE_maxIterations, 1e-8f);
 
     //lqrParams.Gx = Vector6d::Zero();
     lqrParams.Gx = (1.0 / Eigen::Matrix<double, 1, 1>(R + Bt.transpose() * Pt * Bt)(0)) * (Bt.transpose() * Pt * Ft);
@@ -326,7 +264,8 @@ void FLIPMParamsProvider::execute(Dimension dim)
     std::vector<double> Gd_vec;
     Gd_vec.reserve(PREVIEW_LENGTH);
     Gd_vec.push_back(-lqrParams.Gi);
-    for (int i = 1; i < PREVIEW_LENGTH; i++) {
+    for (int i = 1; i < PREVIEW_LENGTH; i++)
+    {
       Gd_vec.push_back((1 / Eigen::Matrix<double, 1, 1>(R + Bt.transpose() * Pt * Bt)(0)) * Bt.transpose() * X);
       X = Ac.transpose() * X;
     }
@@ -345,64 +284,43 @@ void FLIPMParamsProvider::execute(Dimension dim)
     //Cm(1, 1) = 1;
     //Cm(2, 2) = 1;
 
-    if (checkObservability(lqrParams.A, Cm)) {
-      Matrix6x3d desiredL = paramsFLIPMContY.L;
-
+    if (checkObservability(lqrParams.A, Cm))
+    {
       const unsigned long long startTime = SystemCall::getCurrentThreadTime();
       Matrix6x3d resultingL = dlqr(lqrParams.A.transpose(), Cm.transpose(), Ql, RO, dim);
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> resultingL_rowmajor(resultingL);
-      Eigen::Map<Matrix6x3d> L(resultingL_rowmajor.data(), 6,3);
+      Eigen::Map<Matrix6x3d> L(resultingL_rowmajor.data(), 6, 3);
       lqrParams.L = L;
       const unsigned long long stopTime = SystemCall::getCurrentThreadTime();
 
       const unsigned diff_time2 = unsigned(stopTime - startTime);
-      Matrix6x3d percentualDiff = (desiredL - lqrParams.L).cwiseQuotient(desiredL);
-      double diff2 = percentualDiff.cwiseAbs().maxCoeff();
-      //param_mutex.lock();
-      std::cout << "solveDARE took: " << (diff_time2 / 1000) << "ms | diff: " << diff2 * 100 << "%" << std::endl;
-      //param_mutex.unlock();
+      lqrParams.calculationTime = (diff_time2 / 1000.0 / 1000.0);
     }
-    else {
-      if (dim == Dimension::X)
-        calculationValidX = false;
-      else
-        calculationValidY = false;
-      //param_mutex.lock();
-      std::cout << "Observability is not given!!! Try to change parameters..." << std::endl;
-      //param_mutex.unlock();
-    }
-  }
-  else {
-    if (dim == Dimension::X)
-      calculationValidX = false;
     else
-      calculationValidY = false;
-    //param_mutex.lock();
-    std::cout << "Controllability is not given!!! Try to change parameters..." << std::endl;
-    //param_mutex.unlock();
+    {
+      lqrParams.valid = false;
+      lqrParams.observable = false;
+    }
   }
-  
-  if (dim == Dimension::X)
-    initializedX = true;
   else
-    initializedY = true;
+  {
+    lqrParams.valid = false;
+    lqrParams.controllable = false;
+  }
 
-  param_mutex.lock();
-    finishedCalculation = true;
-    LQRParams &sharedResults = dim == Dimension::X ? sharedResultsXLQRParams : sharedResultsYLQRParams;
-    sharedResults = lqrParams;
-  param_mutex.unlock();
+  return lqrParams;
 }
 
-Matrix6x3d FLIPMParamsProvider::dlqr(const Matrix6d &A, const Matrix6x3d &b, const Matrix6d &Q, const Matrix3d &R, const Dimension &dim) {
+Matrix6x3d FLIPMParamsProvider::dlqr(const Matrix6d& A, const Matrix6x3d& b, const Matrix6d& Q, const Matrix3d& R, const Dimension& dim)
+{
   Matrix6x3d L = Matrix6x3d::Zero();
   Matrix3x6d bt = b.transpose();
-  Matrix6d S = solveDARE<6,3>(A,b,Q,R,last_S[dim],DARE_maxIterations,DARE_threshold);
+  Matrix6d S = solveDARE<6, 3>(A, b, Q, R, last_S[dim], DARE_maxIterations, DARE_threshold);
   last_S[dim] = S;
   Matrix3x6d btS = bt * S;
   Matrix3x6d btSA = btS * A;
   Matrix3d btSb = btS * b;
-  Matrix3d btSbR = R + btSb ;
+  Matrix3d btSbR = R + btSb;
   Matrix3d btSbR_inv = btSbR.inverse();
 
   Matrix3x6d tempL = btSbR_inv * btSA;
@@ -411,21 +329,25 @@ Matrix6x3d FLIPMParamsProvider::dlqr(const Matrix6d &A, const Matrix6x3d &b, con
 }
 
 template <size_t STATE_DIM, size_t CONTROL_DIM>
-Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE_scipy(const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &A, const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM> &b, const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &Q, const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> &R) {
+Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE_scipy(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
+    const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
+    const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
+    const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R)
+{
   Eigen::Matrix<double, STATE_DIM, STATE_DIM> P = Eigen::Matrix<double, STATE_DIM, STATE_DIM>::Zero();
-  
+
   Eigen::Matrix<double, 2 * STATE_DIM + CONTROL_DIM, 2 * STATE_DIM + CONTROL_DIM> H = Eigen::Matrix<double, 2 * STATE_DIM + CONTROL_DIM, 2 * STATE_DIM + CONTROL_DIM>::Zero();
   Eigen::Matrix<double, 2 * STATE_DIM + CONTROL_DIM, 2 * STATE_DIM + CONTROL_DIM> J = Eigen::Matrix<double, 2 * STATE_DIM + CONTROL_DIM, 2 * STATE_DIM + CONTROL_DIM>::Zero();
 
-  H.block(0,            0,                STATE_DIM,    STATE_DIM)    << A;
-  H.block(0,            2*STATE_DIM,      STATE_DIM,    CONTROL_DIM)  << b;
-  H.block(STATE_DIM,    0,                STATE_DIM,    STATE_DIM)    << -Q;
-  H.block(STATE_DIM,    STATE_DIM,        STATE_DIM,    STATE_DIM)    << Eigen::Matrix<double, STATE_DIM, STATE_DIM>::Identity(STATE_DIM, STATE_DIM);
-  H.block(2*STATE_DIM,  2*STATE_DIM,      CONTROL_DIM,  CONTROL_DIM)  << R;
+  H.block(0, 0, STATE_DIM, STATE_DIM) << A;
+  H.block(0, 2 * STATE_DIM, STATE_DIM, CONTROL_DIM) << b;
+  H.block(STATE_DIM, 0, STATE_DIM, STATE_DIM) << -Q;
+  H.block(STATE_DIM, STATE_DIM, STATE_DIM, STATE_DIM) << Eigen::Matrix<double, STATE_DIM, STATE_DIM>::Identity(STATE_DIM, STATE_DIM);
+  H.block(2 * STATE_DIM, 2 * STATE_DIM, CONTROL_DIM, CONTROL_DIM) << R;
 
-  J.block(0,            0,                STATE_DIM,    STATE_DIM) << Eigen::Matrix<double, STATE_DIM, STATE_DIM>::Identity(STATE_DIM, STATE_DIM);
-  J.block(STATE_DIM,    STATE_DIM,        STATE_DIM,    STATE_DIM) << A.transpose();
-  J.block(2*STATE_DIM,  STATE_DIM,        CONTROL_DIM,  STATE_DIM) << -b.transpose();
+  J.block(0, 0, STATE_DIM, STATE_DIM) << Eigen::Matrix<double, STATE_DIM, STATE_DIM>::Identity(STATE_DIM, STATE_DIM);
+  J.block(STATE_DIM, STATE_DIM, STATE_DIM, STATE_DIM) << A.transpose();
+  J.block(2 * STATE_DIM, STATE_DIM, CONTROL_DIM, STATE_DIM) << -b.transpose();
 
   // TODO Balance
 
@@ -458,7 +380,14 @@ Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE_scipy
 }
 
 template <size_t STATE_DIM, size_t CONTROL_DIM>
-Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE(const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &A, const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM> &b, const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &Q, const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> &R, const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &initialP, unsigned int maxIterations, float threshold) {
+Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
+    const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
+    const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
+    const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R,
+    const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& initialP,
+    unsigned int maxIterations,
+    float threshold)
+{
   Eigen::Matrix<double, STATE_DIM, STATE_DIM> P = initialP;
   Eigen::Matrix<double, STATE_DIM, STATE_DIM> P_last;
   Eigen::Matrix<double, CONTROL_DIM, STATE_DIM> K = Eigen::Matrix<double, CONTROL_DIM, STATE_DIM>::Zero();
@@ -468,13 +397,14 @@ Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE(const
   Eigen::EigenSolver<Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>> eigenvalueSolver;
 
   size_t i = 0;
-  while (!finishedRecursion) {
-    P_last = P; 
+  while (!finishedRecursion)
+  {
+    P_last = P;
 
-    if(useRobustIterationMethod)
-      iterateRobust<STATE_DIM,CONTROL_DIM>(A, b, Q, R, P, K, eigenvalueSolver);
+    if (useRobustIterationMethod)
+      iterateRobust<STATE_DIM, CONTROL_DIM>(A, b, Q, R, P, K, eigenvalueSolver);
     else
-      iterateNaive<STATE_DIM,CONTROL_DIM>(A, b, Q, R, P, K);
+      iterateNaive<STATE_DIM, CONTROL_DIM>(A, b, Q, R, P, K);
 
     double diff = (P - P_last).cwiseQuotient(P).cwiseAbs().maxCoeff();
     //double P_norm = P.norm();
@@ -482,7 +412,6 @@ Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE(const
     if (diff < threshold || i > maxIterations)
     {
       finishedRecursion = true;
-      std::cout << "DARE ended with " << i << " Iterations and a diff of " << diff << std::endl;
     }
     //P_norm_old = P_norm;
     i++;
@@ -501,7 +430,12 @@ Eigen::Matrix<double, STATE_DIM, STATE_DIM> FLIPMParamsProvider::solveDARE(const
 // where H_inverse = (R + B^T P B)^-1 and S = P - P B H_inverse B^T * P
 // i.e. P is altered and H_inverse is returned for convenience and use in other functions
 template <size_t STATE_DIM, size_t CONTROL_DIM>
-void FLIPMParamsProvider::iterateNaive(const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &A, const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM> &b, const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &Q, const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> &R, Eigen::Matrix<double, STATE_DIM, STATE_DIM> &P, Eigen::Matrix<double, CONTROL_DIM, STATE_DIM> &K)
+void FLIPMParamsProvider::iterateNaive(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
+    const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
+    const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
+    const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R,
+    Eigen::Matrix<double, STATE_DIM, STATE_DIM>& P,
+    Eigen::Matrix<double, CONTROL_DIM, STATE_DIM>& K)
 {
   Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> H = R;
   H.noalias() += b.transpose() * P * b;
@@ -520,7 +454,13 @@ void FLIPMParamsProvider::iterateNaive(const Eigen::Matrix<double, STATE_DIM, ST
 // Copied from https://adrlab.bitbucket.io/ct/v2.1/ct_optcon/doc/html/DynamicRiccatiEquation_8hpp_source.html ///
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <size_t STATE_DIM, size_t CONTROL_DIM>
-void FLIPMParamsProvider::iterateRobust(const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &A, const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM> &b, const Eigen::Matrix<double, STATE_DIM, STATE_DIM> &Q, const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> &R, Eigen::Matrix<double, STATE_DIM, STATE_DIM> &P, Eigen::Matrix<double, CONTROL_DIM, STATE_DIM> &K, Eigen::EigenSolver<Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>> &eigenvalueSolver)
+void FLIPMParamsProvider::iterateRobust(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
+    const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
+    const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
+    const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R,
+    Eigen::Matrix<double, STATE_DIM, STATE_DIM>& P,
+    Eigen::Matrix<double, CONTROL_DIM, STATE_DIM>& K,
+    Eigen::EigenSolver<Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>>& eigenvalueSolver)
 {
   double epsilon = 1e-4;
   Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> H = R;
@@ -529,8 +469,8 @@ void FLIPMParamsProvider::iterateRobust(const Eigen::Matrix<double, STATE_DIM, S
 
   // compute eigenvalues with eigenvectors enabled
   eigenvalueSolver.compute(H, true);
-  const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM> &V = eigenvalueSolver.eigenvectors().real();
-  const Eigen::Matrix<double, CONTROL_DIM, 1> &lambda = eigenvalueSolver.eigenvalues().real();
+  const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& V = eigenvalueSolver.eigenvectors().real();
+  const Eigen::Matrix<double, CONTROL_DIM, 1>& lambda = eigenvalueSolver.eigenvalues().real();
   ASSERT(eigenvalueSolver.eigenvectors().imag().norm() < 1e-7 && "Eigenvectors not real");
   ASSERT(eigenvalueSolver.eigenvalues().imag().norm() < 1e-7 && "Eigenvalues is not real");
   // Corrected Eigenvalue Matrix

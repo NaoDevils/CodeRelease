@@ -3,8 +3,8 @@ call Includes/connect
 
 # all views are defined in other scripts
 call Includes/JPEGImageViews
-call Includes/FieldViews1
-call Includes/FieldViews2
+call Includes/FieldViewsCreate
+call Includes/FieldViewsPercepts
 
 call Includes/DebugResponses
 

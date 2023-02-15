@@ -1,35 +1,48 @@
 /**
  * @file ModuleManager.cpp
  * Implementation of a class representing the module manager.
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
  * @author <a href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</a>
  */
 
 #include "ModuleManager.h"
 #include "Platform/BHAssert.h"
 #include <algorithm>
+#include "Platform/File.h"
+#include <unordered_set>
 
-ModuleManager::Configuration::RepresentationProvider::RepresentationProvider(const std::string& representation,
-                                                                             const std::string& provider) :
-  representation(representation), provider(provider)
-{}
+#include "Tools/ProcessFramework/SubThread.h"
+#include <taskflow/taskflow.hpp>
 
-ModuleManager::ModuleManager(const std::set<ModuleBase::Category>& categories)
+ModuleManager::Configuration::RepresentationProvider::RepresentationProvider(std::string representation, std::string provider)
+    : representation(std::move(representation)), provider(std::move(provider))
 {
-  for(ModuleBase* i = ModuleBase::first; i; i = i->next)
-    if(categories.find(i->category) != categories.end())
-      modules.push_back(ModuleState(i));
+}
+
+CycleLocal<ModuleManager*> ModuleManager::theInstance{nullptr};
+
+ModuleManager::ModuleManager(const std::set<ModuleBase::Category>& categories, SuperThread* superthread) : taskflow(std::make_unique<tf::Taskflow>())
+{
+  this->superthread = superthread;
+
+  for (ModuleBase& i : *ModuleBase::list)
+    if (categories.find(i.category) != categories.end())
+      modules.emplace_back(&i);
     else
-      otherModules.push_back(ModuleState(i));
+      otherModules.emplace_back(&i);
+
+  theInstance = this;
 }
 
 ModuleManager::~ModuleManager()
 {
   destroy();
+  theInstance.reset();
 }
 
 void ModuleManager::destroy()
 {
-  if(!providers.empty())
+  if (!providers.empty())
   {
     char buf[100];
     OutBinaryMemory out(buf);
@@ -39,322 +52,554 @@ void ModuleManager::destroy()
   }
 }
 
-const ModuleBase::Info* ModuleManager::find(const ModuleBase* module, const std::string& representation, bool all)
+std::optional<std::tuple<std::unordered_set<const char*>, std::unordered_set<const char*>>> ModuleManager::calcShared(const Configuration& config) const
 {
-  for(const ModuleBase::Info* i = module->info; i->representation; ++i)
-    if((i->update || all) && representation == i->representation)
-      return i;
-  return 0;
-}
+  std::unordered_set<const char*> received, sent;
 
-bool ModuleManager::calcShared(const Configuration& config)
-{
-  for(const auto& representationProvider : config.representationProviders)
+  for (const auto& representationProvider : config.representationProviders)
   {
     auto module = std::find(modules.begin(), modules.end(), representationProvider.provider);
     auto otherModule = std::find(otherModules.begin(), otherModules.end(), representationProvider.provider);
-    if(module == modules.end() && otherModule == otherModules.end())
+    if (module == modules.end() && otherModule == otherModules.end())
     {
       // default can provide everthing that exists, but only that
-      if(representationProvider.provider == "default")
+      if (representationProvider.provider == "default")
       {
-        bool exists = false;
-        for(ModuleBase* i = ModuleBase::first; i && !exists; i = i->next)
-          exists = find(i, representationProvider.representation, true) != 0;
-        if(!exists)
+        const auto hasRepresentation = [&](const auto& m)
+        {
+          return m.getInfoByRepresentation(representationProvider.representation) != nullptr;
+        };
+
+        if (!std::any_of(ModuleBase::list->begin(), ModuleBase::list->end(), hasRepresentation))
         {
           OUTPUT_ERROR("Unknown representation " << representationProvider.representation << "!");
-          return false;
+          return {};
         }
       }
       else
       {
         OUTPUT_ERROR("Module " << representationProvider.provider << " is unknown!");
-        return false;
+        return {};
       }
     }
     else
     {
       bool provided = false;
-      if(module != modules.end())
+      if (module != modules.end())
       {
-        provided |= find(module->module, representationProvider.representation) != 0;
-        if(!calcShared(config, representationProvider.representation, *module, modules, received, false))
-          return false;
+        // check if module really provides this representation
+        provided |= module->module->getInfoByRepresentation(representationProvider.representation, Property::provide) != nullptr;
+        if (!calcShared(config, representationProvider.representation, *module, modules, received, false))
+          return {};
       }
-      if(otherModule != otherModules.end())
+      if (otherModule != otherModules.end())
       {
-        provided |= find(otherModule->module, representationProvider.representation) != 0;
-        if(!calcShared(config, representationProvider.representation, *otherModule, otherModules, sent, true))
-          return false;
+        provided |= otherModule->module->getInfoByRepresentation(representationProvider.representation, Property::provide) != nullptr;
+        if (!calcShared(config, representationProvider.representation, *otherModule, otherModules, sent, true))
+          return {};
       }
-      if(!provided)
+      if (!provided)
       {
         OUTPUT_ERROR(representationProvider.provider << " does not provide " << representationProvider.representation << "!");
-        return false;
+        return {};
       }
+    }
+  }
+  return {{std::move(received), std::move(sent)}};
+}
+
+bool ModuleManager::calcShared(
+    const Configuration& config, std::string_view representation, const ModuleState& module, const std::list<ModuleState>& modules, std::unordered_set<const char*>& received, bool silent)
+{
+  const auto isProvidedHere = [&](std::string_view provider)
+  {
+    return provider == "default" || std::find(modules.begin(), modules.end(), provider) != modules.end();
+  };
+
+  for (const std::string& providerOfRepresentation : config.getProvidersByRepresentation(representation))
+  {
+    // check multiple providers for same representation
+    if (providerOfRepresentation != module.module->name && isProvidedHere(providerOfRepresentation))
+    {
+      if (!silent)
+        OUTPUT_ERROR("Representation " << std::string(representation) << " provided by more than one module!");
+      return false;
+    }
+  }
+
+  const auto representationProvidedHere = [&](std::string_view representation)
+  {
+    return [&, representation](const std::string& provider)
+    {
+      const auto module = std::find(modules.begin(), modules.end(), provider);
+      return provider == "default" || (module != modules.end() && module->module->getInfoByRepresentation(representation, Property::provide) != nullptr);
+    };
+  };
+
+  for (const ModuleBase::Info* requirement : module.module->getInfos(Property::require))
+  {
+    const auto configuredProviders = config.getProvidersByRepresentation(requirement->representation);
+
+    bool providedHere = std::any_of(configuredProviders.begin(), configuredProviders.end(), representationProvidedHere(requirement->representation));
+
+    if (configuredProviders.empty())
+    {
+      if (!silent)
+        OUTPUT_ERROR("No provider for representation " << requirement->representation << " required by " << module.module->name << "!");
+      return false;
+    }
+    else if (!providedHere)
+      received.insert(requirement->representation);
+  }
+
+  for (const ModuleBase::Info* requirement : module.module->getInfos(Property::use))
+  {
+    const auto configuredProviders = config.getProvidersByRepresentation(requirement->representation);
+
+    bool providedHere = std::any_of(configuredProviders.begin(), configuredProviders.end(), representationProvidedHere(requirement->representation));
+
+    if (configuredProviders.empty())
+    {
+      if (!silent)
+        OUTPUT_ERROR("No provider for representation " << requirement->representation << " used by " << module.module->name << "!");
+      return false;
+    }
+    else if (!providedHere)
+    {
+      received.insert(requirement->representation);
+      //OUTPUT_ERROR("Cannot use representation " << requirement->representation << " by " << module.module->name << " from different cycle!");
+      //return false;
     }
   }
   return true;
 }
 
-bool ModuleManager::calcShared(const Configuration& config, const std::string& representation,
-                               const ModuleState& module, const std::list<ModuleState>& modules,
-                               std::list<const char*>& received, bool silent)
+ModuleManager::Configuration ModuleManager::mergeConfig(ModuleManager::Configuration& config, In& stream)
 {
-  for(const auto& providerOfRepresentation : config.representationProviders)
-    if(providerOfRepresentation.provider != module.module->name &&
-       providerOfRepresentation.representation == representation &&
-       (providerOfRepresentation.provider == "default" ||
-        std::find(modules.begin(), modules.end(), providerOfRepresentation.provider) != modules.end()))
-    {
-      if(!silent)
-        OUTPUT_ERROR(representation << " provided by more than one module!");
-      return false;
-    }
+  ModuleManager::Configuration newConfig;
+  stream >> newConfig;
 
-  for(const ModuleBase::Info* requirement = module.module->info; requirement->representation; ++requirement)
-    if(!requirement->update)
-    {
-      bool provided = false;
-      bool providedHere = false;
-      for(const auto& providerOfRepresentation : config.representationProviders)
-        if(providerOfRepresentation.representation == requirement->representation)
+  return mergeConfig(config, newConfig);
+}
+
+ModuleManager::Configuration ModuleManager::mergeConfig(ModuleManager::Configuration& config, const ModuleManager::Configuration& newConfig)
+{
+  ModuleManager::Configuration oldConfig;
+
+  auto& oldProviders = oldConfig.representationProviders;
+  auto& currentProviders = config.representationProviders;
+  auto& newProviders = newConfig.representationProviders;
+
+  const auto hasSameRepresentation = [&](const auto& currentProvider)
+  {
+    return std::any_of(newProviders.begin(),
+        newProviders.end(),
+        [&](const auto& newProvider)
         {
-          provided = true;
-          if(providerOfRepresentation.provider == "default")
-            providedHere = true;
-          else
-            for(const auto& module : modules)
-              if(module == providerOfRepresentation.provider &&
-                 find(module.module, providerOfRepresentation.representation) != 0)
-                providedHere = true;
-        }
-      if(!provided)
-      {
-        if(!silent)
-          OUTPUT_ERROR("No provider for required representation " << requirement->representation << "!" << "Required by: " <<module.module->name);
-        return false;
-      }
-      else if(!providedHere && std::find(received.begin(), received.end(), std::string(requirement->representation)) == received.end())
-        received.push_back(requirement->representation);
-    }
-  return true;
+          return currentProvider.representation == newProvider.representation;
+        });
+  };
+
+  const auto part = std::stable_partition(currentProviders.begin(), currentProviders.end(), std::not_fn(hasSameRepresentation));
+
+  oldProviders = {std::make_move_iterator(part), std::make_move_iterator(currentProviders.end())};
+
+  currentProviders.erase(part, currentProviders.end());
+
+  currentProviders.insert(currentProviders.end(), newProviders.begin(), newProviders.end());
+
+  return oldConfig;
 }
 
 void ModuleManager::update(In& stream, unsigned timeStamp)
 {
-  std::list<Provider> providersBackup(providers);
-  std::list<const char*> sentBackup(sent),
-                         receivedBackup(received);
+  stream >> config;
 
-  std::string representation,
-              module;
-
-  providers.clear();
-  sent.clear();
-  received.clear();
-
-  // Remove all markings
-  for(auto& m : modules)
+  if (updateProviders())
   {
-    m.requiredBackup = m.required;
+    this->nextTimeStamp = timeStamp; // use this timestamp after execute was called
+    this->timeStamp = 0; // invalid until execute was called
+  }
+}
+
+bool ModuleManager::updateProviders()
+{
+  // fill shared representations
+  auto shared = calcShared(config);
+  if (!shared.has_value())
+    return false;
+
+  auto& [received, sent] = shared.value();
+  std::list<Provider> providers;
+
+  // remove all markings
+  for (auto& m : modules)
+  {
     m.required = false;
   }
 
-  stream >> config;
-
-  // fill shared representations
-  if(!calcShared(config))
+  // fill providers list
+  for (const auto& rp : config.representationProviders)
   {
-    rollBack(providersBackup, sentBackup, receivedBackup);
-    return;
-  }
-
-  std::list<std::string> providedByDefault;
-  for(const auto& rp : config.representationProviders)
-  {
-    if(rp.provider == "default")
-      providedByDefault.push_back(rp.representation);
-    else
-      for(auto& m : modules)
-        if(rp.provider == m.module->name)
-        {
-          for(const ModuleBase::Info* i = m.module->info; i->representation; ++i)
-            if(i->update && rp.representation == i->representation)
-            {
-              providers.push_back(Provider(i->representation, &m, i->update));
-              break;
-            }
-          m.required = true;
-          break;
-        }
-  }
-
-  if(!sortProviders(providedByDefault))
-  {
-    rollBack(providersBackup, sentBackup, receivedBackup);
-    return;
-  }
-
-  // Delete all modules that are not required anymore
-  for(auto& m : modules)
-    if(!m.required && m.instance)
+    const auto m = std::find(modules.begin(), modules.end(), rp.provider);
+    if (const ModuleBase::Info * info; m != modules.end() && (info = m->module->getInfoByRepresentation(rp.representation, Property::provide)))
     {
-      delete m.instance;
-      m.instance = 0;
-    }
-
-  nextTimeStamp = timeStamp; // use this timestamp after execute was called
-  this->timeStamp = 0; // invalid until execute was called
-}
-
-bool ModuleManager::sortProviders(const std::list<std::string>& providedByDefault)
-{
-  // The representations already provided. These are all that are received from the other process
-  // and the ones that are provided by default.
-  std::list<std::string> provided = providedByDefault;
-  for(const char* r : received)
-    provided.push_back(r);
-
-  int remaining = static_cast<int>(providers.size()), // The number of entries not correct sequence so far.
-      pushBackCount = remaining; // The number of push_backs still allowed. If zero, no valid sequence is possible.
-  std::list<Provider>::iterator i = providers.begin();
-  while(i != providers.end())
-  {
-    const ModuleBase::Info* j;
-    for(j = i->moduleState->module->info; j->representation; ++j)
-      if(!j->update && j->representation != i->representation && std::find(provided.begin(), provided.end(), j->representation) == provided.end())
-        break;
-    if(i->moduleState->module->info->representation && j->representation) // at least one requirement missing
-    {
-      if(pushBackCount) // still one left to try
-      {
-        providers.push_back(*i);
-        i = providers.erase(i);
-        --pushBackCount;
-      }
-      else // we checked all, none was satisfied
-      {
-        std::string text;
-        for(const auto& p : provided)
-        {
-          text += text == "" ? "" : ", ";
-          text += p;
-        }
-        std::string text2 = "";
-        while(i != providers.end())
-        {
-          text2 += text2 == "" ? "" : ", ";
-          text2 += i->representation;
-          ++i;
-        }
-        if(text == "")
-          OUTPUT_ERROR("requirements missing for providers for " << text2 << ".");
-        else
-          OUTPUT_ERROR("only found consistent providers for " << text <<
-                       ".\nRequirements missing for providers for " << text2 << ".");
-        return false;
-      }
-    }
-    else // we found one with all requirements fulfilled
-    {
-      provided.push_back(i->representation); // add representation provided
-      ++i; // continue with next provider
-      --remaining; // we have one less to go,
-      pushBackCount = remaining; // and the search starts again
+      providers.emplace_back(info->representation, &*m, info);
+      m->required = true;
     }
   }
+
+  // generate task graph
+  std::unique_ptr<tf::Taskflow> taskflow = generateTaskflow(providers);
+
+  // check cycles
+  std::list<std::string> cycle = findCyclicDependencies(*taskflow);
+  if (cycle.size() > 0)
+  {
+    const auto join = [](const std::string& a, const std::string& b)
+    {
+      return a + (a.length() > 0 ? " => " : "") + b;
+    };
+
+    const std::string cycleText = std::accumulate(cycle.begin(), cycle.end(), std::string(), join);
+    OUTPUT_ERROR("Cyclic dependencies detected: " << cycleText);
+    return false;
+  }
+
+  // apply new configuration
+  this->providers = std::move(providers);
+  this->taskflow = std::move(taskflow);
+  this->received = std::move(received);
+  this->sent = std::move(sent);
+
+  // delete all modules that are not required anymore
+  // create new modules that are required
+  for (auto& m : modules)
+  {
+    if (!m.required && m.instance)
+    {
+      m.instance.reset();
+    }
+    else if (m.required && !m.instance)
+    {
+      m.instance = m.module->createNew();
+    }
+  }
+
   return true;
 }
 
-void ModuleManager::rollBack(const std::list<Provider>& providers, const std::list<const char*>& sent,
-                             const std::list<const char*>& received)
+
+std::unique_ptr<tf::Taskflow> ModuleManager::generateTaskflow(const std::list<Provider>& providers)
 {
-  this->providers = providers;
-  this->sent = sent;
-  this->received = received;
-  for(auto& m : modules)
-    m.required = m.requiredBackup;
+  std::unique_ptr<tf::Taskflow> taskflow = std::make_unique<tf::Taskflow>();
+
+  // remember tasks
+  std::map<const Provider*, tf::Task> updateTasks;
+  std::map<const ModuleBase*, tf::Task> executeTasks;
+
+  std::map<const ModuleBase*, std::tuple<std::list<tf::Task*>, std::list<tf::Task*>>> tasksOfModules;
+
+  // create tasks
+  for (const Provider& provider : providers)
+  {
+    // add update methods
+    updateTasks[&provider] =
+        taskflow
+            ->emplace(
+                [&]()
+                {
+                  if (provider.moduleState->instance)
+                    provider.update(*provider.moduleState->instance);
+                })
+            .name(std::string(provider.representation) + " [" + provider.moduleState->module->name + "]");
+
+    // remember tasks for update methods of modules to add dependencies later
+    auto& [sequentialTasks, concurrentTasks] = tasksOfModules[provider.moduleState->module];
+    if (provider.info->hasProperty(Property::concurrent))
+      concurrentTasks.push_back(&updateTasks[&provider]);
+    else
+      sequentialTasks.push_back(&updateTasks[&provider]);
+
+    // add pre-execution methods
+    for (const ModuleBase::Info* info : provider.moduleState->module->getInfos(Property::preexecution))
+    {
+      if (executeTasks.find(provider.moduleState->module) == executeTasks.end())
+      {
+        executeTasks[provider.moduleState->module] =
+            taskflow
+                ->emplace(
+                    [&, execute = info->execute](tf::Subflow& subflow)
+                    {
+                      if (provider.moduleState->instance)
+                        execute(*provider.moduleState->instance, subflow);
+                    })
+                .name(std::string(provider.moduleState->module->name) + " [" + provider.moduleState->module->name + "]");
+      }
+    }
+  }
+
+  // a module is able to provide and require the same representation
+  // in this case, the corresponding update method is guaranteed to be executed first
+  // remember this first update method here
+  std::map<const ModuleBase*, tf::Task*> firstUpdateOfModules;
+
+  // add dependencies of update methods
+  for (auto& [provider1, task] : updateTasks)
+  {
+    for (const ModuleBase::Info* requirement : provider1->moduleState->module->getInfos(Property::require))
+    {
+      auto provider2 = std::find(providers.begin(), providers.end(), requirement->representation);
+
+      // skip requirements provided by default
+      if (provider2 == providers.end())
+        continue;
+
+      // skip same representation
+      if (provider1 == &*provider2)
+        continue;
+
+      // skip module that depends on itself
+      if (provider1->moduleState->module == provider2->moduleState->module)
+      {
+        // remember first update method
+        const auto firstUpdate = firstUpdateOfModules.find(provider2->moduleState->module);
+        if (firstUpdate == firstUpdateOfModules.end())
+        {
+          firstUpdateOfModules[provider2->moduleState->module] = &updateTasks[&*provider2];
+          continue;
+        }
+        // skip if we have already remebered the same update method
+        else if (firstUpdate->second == &updateTasks[&*provider2])
+          continue;
+      }
+
+      updateTasks[&*provider2].precede(task);
+    }
+  }
+
+  // add dependencies of pre-executions
+  for (auto& [executeModule, executeTask] : executeTasks)
+  {
+    for (const ModuleBase::Info* requirement : executeModule->getInfos(ModuleBase::Info::Property::require))
+    {
+      auto provider = std::find(providers.begin(), providers.end(), requirement->representation);
+
+      // skip requirements provided by default
+      if (provider == providers.end())
+        continue;
+
+      // skip representations that are provided and required by same module
+      if (executeModule == provider->moduleState->module)
+        continue;
+
+      updateTasks[&*provider].precede(executeTask);
+    }
+  }
+
+  // precalculate successor counts
+  std::unordered_map<const tf::Task*, size_t> numSuccessors;
+  for (const auto& [_, task] : updateTasks)
+  {
+    std::unordered_set<size_t> visited;
+    const std::function<void(tf::Task)> addToVisited = [&](tf::Task t)
+    {
+      if (visited.find(t.hash_value()) == visited.end())
+      {
+        visited.insert(t.hash_value());
+        t.for_each_successor(addToVisited);
+      }
+    };
+    task.for_each_successor(addToVisited);
+
+    numSuccessors[&task] = visited.size();
+  }
+
+  // add dependencies between update/pre-execution methods of the same module
+  for (auto& [module, tasks] : tasksOfModules)
+  {
+    auto& [sequentialTasks, concurrentTasks] = tasks;
+
+    const auto firstUpdate = firstUpdateOfModules.find(module);
+    const auto decreasingSuccessors = [&](const tf::Task* t1, const tf::Task* t2)
+    {
+      // prefer first update method
+      if (firstUpdate != firstUpdateOfModules.end())
+      {
+        if (firstUpdate->second == t1)
+          return true;
+        else if (firstUpdate->second == t2)
+          return false;
+      }
+
+      return numSuccessors[t1] > numSuccessors[t2];
+    };
+    sequentialTasks.sort(decreasingSuccessors);
+
+    // 1. run pre-execution
+    tf::Task* prevTask = executeTasks.find(module) != executeTasks.end() ? &executeTasks[module] : nullptr;
+
+    // 2. run concurrent updates
+    for (tf::Task* concurrentTask : concurrentTasks)
+    {
+      if (prevTask)
+        prevTask->precede(*concurrentTask);
+
+      if (sequentialTasks.size() > 0)
+        concurrentTask->precede(*sequentialTasks.front());
+
+      if (concurrentTask == concurrentTasks.back())
+        prevTask = nullptr;
+    }
+
+    // 3. run sequential updates
+    for (tf::Task* task : sequentialTasks)
+    {
+      if (prevTask)
+        prevTask->precede(*task);
+      prevTask = task;
+    }
+  }
+
+  return taskflow;
+}
+
+std::list<std::string> ModuleManager::findCyclicDependencies(const tf::Taskflow& tf)
+{
+  // transform Taskflow to simple graph structure for easy traversal
+  using Vertex = std::string;
+  using Graph = std::unordered_map<Vertex, std::unordered_set<Vertex>>;
+  Graph graph;
+
+  tf.for_each_task(
+      [&](const tf::Task& task)
+      {
+        auto& pre = graph[task.name()];
+        task.for_each_successor(
+            [&](const tf::Task& suc)
+            {
+              pre.insert(suc.name());
+            });
+      });
+
+  // using depth first search for cycle detection
+  // see: https://de.wikipedia.org/wiki/Zyklus_(Graphentheorie)
+  const auto checkCycle = [](const Graph& graph, const Vertex& v)
+  {
+    std::unordered_set<Vertex> visited, finished;
+    using DepthFirstSearch = std::function<std::list<Vertex>(const Vertex&)>;
+
+    const DepthFirstSearch dfs = [&](const Vertex& v) -> std::list<Vertex>
+    {
+      if (finished.count(v))
+        return {};
+      if (visited.count(v))
+        return {v};
+      visited.insert(v);
+      for (const Vertex& suc : graph.at(v))
+      {
+        std::list<Vertex> ret = dfs(suc);
+        if (ret.size() > 0)
+        {
+          if (ret.size() < 2 || ret.front() != ret.back())
+            ret.push_front(v);
+          return ret;
+        }
+      }
+      finished.insert(v);
+      return {};
+    };
+    return dfs(v);
+  };
+
+  std::list<Vertex> result;
+  tf.for_each_task(
+      [&](const tf::Task& task)
+      {
+        if (result.size() == 0)
+          result = checkCycle(graph, task.name());
+      });
+  return result;
 }
 
 void ModuleManager::load()
 {
-  InMapFile stream("modules.cfg");
-  if(!stream.exists())
+  for (const std::string& name : File::getFullNamesHierarchy("modules.cfg"))
   {
-    OUTPUT_ERROR("failed to load modules.cfg correctly.");
-    ASSERT(true); // since when modules aren't loaded correctly ther come up other failures
+    InMapFile stream(name);
+    if (!stream.exists())
+    {
+      OUTPUT_ERROR("failed to load modules.cfg correctly.");
+      ASSERT(true); // since when modules aren't loaded correctly there come up other failures
+    }
+    mergeConfig(config, stream);
   }
-  update(stream, 0xffffffff);
-}
 
-int interpolationFrameCounter = 0;
+  if (updateProviders())
+  {
+    // we cannot use system time here because we need the same value in motion and cognition
+    this->nextTimeStamp = 1;
+    this->timeStamp = 0;
+  }
+}
 
 void ModuleManager::execute()
 {
-  interpolationFrameCounter++;
-  // Execute all providers in the given sequence
-  for(auto& p : providers)
-    if(p.moduleState->required)
-    {
-      if(!p.moduleState->instance)
-        p.moduleState->instance = p.moduleState->module->createNew(); // returns 0 if provided by "default"
-#ifdef TARGET_ROBOT
-      unsigned timeStamp = SystemCall::getCurrentSystemTime();
-#endif
-      if(p.moduleState->instance)
-        p.update(*p.moduleState->instance);
-#ifdef TARGET_ROBOT
-      int duration = SystemCall::getTimeSince(timeStamp);
-      if(timeStamp > 20000 &&
-         ((duration > 100 &&
-           !Global::getDebugRequestTable().isActive("representation:JPEGImage") &&
-           !Global::getDebugRequestTable().isActive("representation:JPEGImageUpper") &&
-           !Global::getDebugRequestTable().isActive("representation:Image") &&
-           !Global::getDebugRequestTable().isActive("representation:ImageUpper")) ||
-          duration > 500))
-        TRACE("TIMING: providing %s took %d ms at %d s after base",
-              p.representation, duration, timeStamp / 1000 - 10);
-#endif
-    }
-  BH_TRACE;
+  this->superthread->run(*taskflow);
 
-  if(!timeStamp) // Configuration changed recently?
+  if (!timeStamp) // Configuration changed recently?
   { // all representations must be constructed now, so we can receive data
     timeStamp = nextTimeStamp;
     toSend.clear();
-    for(const auto& s : sent)
+    for (const auto& s : sent)
       toSend.push_back(&Blackboard::getInstance()[s]);
     toReceive.clear();
-    for(const auto& r : received)
+    for (const auto& r : received)
       toReceive.push_back(&Blackboard::getInstance()[r]);
   }
 
-  DEBUG_RESPONSE_ONCE("automated requests:ModuleTable")
+  const ModuleManager::NextConfig* nextModuleConfig = nextConfig.load(std::memory_order_acquire);
+  if (nextModuleConfig)
   {
+    if (nextModuleConfig->timestamp > nextTimeStamp)
+    {
+      config = nextModuleConfig->config;
+
+      sendModuleTable = true;
+      writeModuleConfig = true;
+
+      if (updateProviders())
+      {
+        this->nextTimeStamp = nextModuleConfig->timestamp;
+        this->timeStamp = 0;
+      }
+    }
+
+    delete nextModuleConfig;
+    nextConfig.store(nullptr, std::memory_order_relaxed);
+  }
+
+  DEBUG_RESPONSE_ONCE("automated requests:ModuleTable")
+  sendModuleTable = true;
+
+  if (sendModuleTable)
+  {
+    sendModuleTable = false;
+
     Global::getDebugOut().bin << static_cast<unsigned>(modules.size());
-    for(auto& m : modules)
+    for (auto& m : modules)
     {
       Global::getDebugOut().bin << m.module->name << static_cast<unsigned char>(m.module->category);
 
-      unsigned requirementsSize = 0;
-      unsigned providersSize = 0;
-      for(const ModuleBase::Info* j = m.module->info; j->representation; ++j)
-        if(j->update)
-          ++providersSize;
-        else
-          ++requirementsSize;
+      const auto require = m.module->getInfos(Property::require);
+      Global::getDebugOut().bin << static_cast<unsigned>(require.size());
+      for (const ModuleBase::Info* j : require)
+        Global::getDebugOut().bin << j->representation;
 
-      Global::getDebugOut().bin << static_cast<unsigned>(requirementsSize);
-      for(const ModuleBase::Info* j = m.module->info; j->representation; ++j)
-        if(!j->update)
-          Global::getDebugOut().bin << j->representation;
-
-      Global::getDebugOut().bin << static_cast<unsigned>(providersSize);
-      for(const ModuleBase::Info* j = m.module->info; j->representation; ++j)
-        if(j->update)
-          Global::getDebugOut().bin << j->representation;
+      const auto provide = m.module->getInfos(Property::provide);
+      Global::getDebugOut().bin << static_cast<unsigned>(provide.size());
+      for (const ModuleBase::Info* j : provide)
+        Global::getDebugOut().bin << j->representation;
     }
 
     Global::getDebugOut().bin << config;
@@ -365,18 +610,72 @@ void ModuleManager::execute()
 void ModuleManager::readPackage(In& stream)
 {
   unsigned timeStamp;
-  stream >> timeStamp;
+  bool readModuleConfig;
+  stream >> timeStamp >> readModuleConfig;
+
   // Communication is only possible if both sides are based on the same module request.
-  if(timeStamp == this->timeStamp)
-    for(Streamable* s : toReceive)
+  if (timeStamp && this->timeStamp && timeStamp == this->timeStamp)
+  {
+    // throw away received config
+    if (readModuleConfig)
+    {
+      ModuleManager::Configuration dummy;
+      unsigned nextTimeStamp;
+      stream >> nextTimeStamp >> dummy;
+    }
+
+    writeModuleConfig = false;
+    for (Streamable* s : toReceive)
       stream >> *s;
+  }
   else
+  {
+    if (readModuleConfig)
+    {
+      unsigned nextTimeStamp;
+      stream >> nextTimeStamp;
+
+      if (nextTimeStamp > this->nextTimeStamp)
+      {
+        stream >> config;
+        sendModuleTable = true;
+        // we should not keep sending our own config when we receive one
+        writeModuleConfig = false;
+        if (updateProviders())
+        {
+          this->nextTimeStamp = nextTimeStamp;
+          this->timeStamp = 0;
+        }
+      }
+    }
+
     stream.skip(10000000); // skip everything
+  }
 }
 
 void ModuleManager::writePackage(Out& stream) const
 {
-  stream << timeStamp;
-  for(const Streamable* s : toSend)
+  stream << timeStamp << writeModuleConfig;
+
+  if (writeModuleConfig)
+    stream << nextTimeStamp << config;
+
+
+  for (const Streamable* s : toSend)
     stream << *s;
+}
+
+ModuleManager::Configuration ModuleManager::sendModuleRequest(const ModuleManager::Configuration& configRequest)
+{
+  // With C++17, smart pointers cannot be used with std::atomic :-(
+  ModuleManager::Configuration config((*theInstance)->config);
+  const ModuleManager::Configuration oldConfig = mergeConfig(config, configRequest);
+
+  const ModuleManager::NextConfig* expected = nullptr;
+  const ModuleManager::NextConfig* nextConfig = new ModuleManager::NextConfig{SystemCall::getCurrentSystemTime(), std::move(config)};
+
+  // Implement error handling / rollback if another module request is still being processed?
+  VERIFY((*theInstance)->nextConfig.compare_exchange_strong(expected, nextConfig, std::memory_order_release, std::memory_order_relaxed));
+
+  return oldConfig;
 }

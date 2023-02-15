@@ -23,10 +23,7 @@ CLIPPreprocessor::CLIPPreprocessor()
   lineSizes.resize(Image::maxResolutionHeight);
 }
 
-CLIPPreprocessor::~CLIPPreprocessor()
-{
-
-}
+CLIPPreprocessor::~CLIPPreprocessor() {}
 
 void CLIPPreprocessor::createScanLines()
 {
@@ -62,7 +59,7 @@ void CLIPPreprocessor::createScanLines()
   initialized = true;
 }
 
-void CLIPPreprocessor::update(CLIPPointsPercept &theCLIPPointsPercept)
+void CLIPPreprocessor::update(CLIPPointsPercept& theCLIPPointsPercept)
 {
   wasReset = false;
   execute(false);
@@ -70,30 +67,35 @@ void CLIPPreprocessor::update(CLIPPointsPercept &theCLIPPointsPercept)
   theCLIPPointsPercept = localCLIPPointsPercept;
 }
 
-void CLIPPreprocessor::update(BallSpots &ballSpots)
+void CLIPPreprocessor::update(BallSpots& ballSpots)
 {
   wasReset = false;
   execute(false);
   execute(true);
-  if (sortBallSpots) {
-    std::sort(localBallSpots.ballSpots.begin(), localBallSpots.ballSpots.end());
-    std::sort(localBallSpots.ballSpotsUpper.begin(), localBallSpots.ballSpotsUpper.end());
+  if (sortBallSpots)
+  {
+    auto sorting_criteria = [](const auto& a, const auto& b)
+    {
+      return a.position.y() > b.position.y();
+    };
+    std::sort(localBallSpots.ballSpots.begin(), localBallSpots.ballSpots.end(), sorting_criteria);
+    std::sort(localBallSpots.ballSpotsUpper.begin(), localBallSpots.ballSpotsUpper.end(), sorting_criteria);
   }
   ballSpots = localBallSpots;
 }
 
-void CLIPPreprocessor::update(ObstacleBasePoints &obstacleBasePoints)
+void CLIPPreprocessor::update(ObstacleBasePoints& obstacleBasePoints)
 {
   wasReset = false;
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:fieldBorders","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:goalSegments","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLines","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegments:Lower","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegments:Upper","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:obstaclePoints:Lower","drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:obstaclePoints:Upper","drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:fieldBorders", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:goalSegments", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLines", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegments:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegments:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:obstaclePoints:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:obstaclePoints:Upper", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:fieldHull:Lower", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:CLIPPreprocessor:fieldHull:Upper", "drawingOnImage");
   execute(false);
@@ -110,27 +112,26 @@ void CLIPPreprocessor::reset()
   obstaclePointsLow.clear();
   obstaclePointsHigh.clear();
   obstaclePointsLeft.clear();
-  obstaclePointsRight.clear(); 
+  obstaclePointsRight.clear();
   fieldBorderRight.base = Vector2f::Zero();
   fieldBorderRight.direction = Vector2f::Zero();
   fieldBorderLeft.base = Vector2f::Zero();
   fieldBorderLeft.direction = Vector2f::Zero();
   fieldBorderFront.base = Vector2f::Zero();
   fieldBorderFront.direction = Vector2f::Zero();
-  
+
   wasReset = true;
-  
+
   // just wanted to have this in a method which is only called once per frame
-  INIT_DEBUG_IMAGE(SIPField,theImage);
+  INIT_DEBUG_IMAGE(SIPField, theImage);
   INIT_DEBUG_IMAGE(SIPFieldUpper, theImageUpper);
-  
 }
 
-void CLIPPreprocessor::execute(const bool &upper)
+void CLIPPreprocessor::execute(const bool& upper)
 {
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+  const Image& image = upper ? (Image&)theImageUpper : theImage;
+  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
 
   unsigned actualTimeStamp = upper ? timeStampUpper : timeStamp;
   if (!initialized)
@@ -149,26 +150,29 @@ void CLIPPreprocessor::execute(const bool &upper)
     }
 
 #ifdef USE_FULL_RESOLUTION
-    imageWidth = image.resolutionWidth*2;
-    imageHeight = image.resolutionHeight*2;
+    imageWidth = image.resolutionWidth * 2;
+    imageHeight = image.resolutionHeight * 2;
 #else
     imageWidth = image.width;
     imageHeight = image.height;
 #endif
 
+    if (!image.shouldBeProcessed())
+      return;
+
     // only horizon.base used (thereby assuming it is a straight line to save some calculations)
-    horizon = Geometry::calculateHorizon(cameraMatrix,cameraInfo);
+    horizon = Geometry::calculateHorizon(cameraMatrix, cameraInfo);
 
     obstaclePointsLow.clear();
     obstaclePointsHigh.clear();
     obstaclePointsLeft.clear();
-    obstaclePointsRight.clear(); 
+    obstaclePointsRight.clear();
     if (!wasReset)
       reset();
 
     if (theFallDownState.state != FallDownState::upright || cameraMatrix.isValid == false)
       return;
- 
+
     //if (wasReset)
     //  wasReset = false;
 
@@ -178,7 +182,7 @@ void CLIPPreprocessor::execute(const bool &upper)
     }
 
     // === DEBUG DRAWINGS ===
-   
+
     // obstacle points
     DEBUG_RESPONSE("debug drawing:module:CLIPPreprocessor:obstaclePoints:Upper")
     {
@@ -209,12 +213,12 @@ void CLIPPreprocessor::execute(const bool &upper)
           DOT("module:CLIPPreprocessor:obstaclePoints:Lower", obstaclePointsRight[i].x(), obstaclePointsRight[i].y(), ColorRGBA(80, 200, 200), ColorRGBA::magenta);
       }
     }
-           
+
     // scan lines
     DEBUG_RESPONSE("debug drawing:module:CLIPPreprocessor:scanLines")
     {
-      std::vector<ScanLine> &scanLinesHorizontal = upper ? scanLinesHorizontalUpper : scanLinesHorizontalLower;
-      std::vector<ScanLine> &scanLinesVertical = upper ? scanLinesVerticalUpper : scanLinesVerticalLower;
+      std::vector<ScanLine>& scanLinesHorizontal = upper ? scanLinesHorizontalUpper : scanLinesHorizontalLower;
+      std::vector<ScanLine>& scanLinesVertical = upper ? scanLinesVerticalUpper : scanLinesVerticalLower;
       for (std::vector<ScanLine>::const_iterator line = scanLinesHorizontal.begin(); line != scanLinesHorizontal.end(); ++line)
         LINE("module:CLIPPreprocessor:scanLines", line->from.x(), line->from.y(), line->to.x(), line->to.y(), 1, Drawings::solidPen, ColorRGBA::white);
       for (std::vector<ScanLine>::const_iterator line = scanLinesVertical.begin(); line != scanLinesVertical.end(); ++line)
@@ -268,7 +272,7 @@ void CLIPPreprocessor::execute(const bool &upper)
   }
 }
 
-void CLIPPreprocessor::scanField(const bool &upper)
+void CLIPPreprocessor::scanField(const bool& upper)
 {
   /*
   * TODO: remove color jump stuff at least if scanning for black-white ball
@@ -279,28 +283,28 @@ void CLIPPreprocessor::scanField(const bool &upper)
     return;
 
 
-  const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
-  const FieldColors &fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
-  const int imageSizeFactor = imageHeight/240;
-  const int hScanLineDistance = upper ? imageSizeFactor*hScanLineDistanceUpper : imageSizeFactor*hScanLineDistanceLower;
-  const int vScanLineDistance = upper ? imageSizeFactor*vScanLineDistanceUpper : imageSizeFactor*vScanLineDistanceLower;
-  std::vector<ScanLine> &scanLinesHorizontal = upper ? scanLinesHorizontalUpper : scanLinesHorizontalLower;
-  std::vector<ScanLine> &scanLinesVertical = upper ? scanLinesVerticalUpper : scanLinesVerticalLower;
+  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+  const FieldColors& fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
+  const int imageSizeFactor = imageHeight / 240;
+  const int hScanLineDistance = upper ? imageSizeFactor * hScanLineDistanceUpper : imageSizeFactor * hScanLineDistanceLower;
+  const int vScanLineDistance = upper ? imageSizeFactor * vScanLineDistanceUpper : imageSizeFactor * vScanLineDistanceLower;
+  std::vector<ScanLine>& scanLinesHorizontal = upper ? scanLinesHorizontalUpper : scanLinesHorizontalLower;
+  std::vector<ScanLine>& scanLinesVertical = upper ? scanLinesVerticalUpper : scanLinesVerticalLower;
 
   //const int goalScanDistanceFromHorizon = std::max(hScanLineDistance*2,imageHeight/15);
 
   // compute relative ball max min values only once per image
-  minBallCr = std::max(3* fieldColor.fieldColorArray[0].fieldColorOptCr/2,ballBaseCrValue);
-  minBallCb = (2* fieldColor.fieldColorArray[0].fieldColorOptCb)/3;
-  maxBallCb = (3* fieldColor.fieldColorArray[0].fieldColorOptCb)/2;
+  minBallCr = std::max(3 * fieldColor.fieldColorArray[0].fieldColorOptCr / 2, ballBaseCrValue);
+  minBallCb = (2 * fieldColor.fieldColorArray[0].fieldColorOptCb) / 3;
+  maxBallCb = (3 * fieldColor.fieldColorArray[0].fieldColorOptCb) / 2;
 
   // reset no of end points and field lines
   scanLineVNo = 0;
   scanLineHNo = 0;
-  
+
   fieldEndPoints.clear();
-  
+
   obstaclePointsLow.clear();
   obstaclePointsHigh.clear();
   obstaclePointsLeft.clear();
@@ -308,13 +312,8 @@ void CLIPPreprocessor::scanField(const bool &upper)
 
   // create table of field line widths
   int yStart = std::min<int>(std::max<int>(static_cast<int>(horizon.base.y()), 4), imageHeight);
-  float lineSizeMax = std::max(
-    Geometry::calculateLineSizePrecise(Vector2i(imageWidth/2, imageHeight),
-      cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth),
-    2.f);
-  float lineSizeMin = std::max<float>(
-    Geometry::calculateLineSizePrecise(Vector2i(imageWidth / 2, yStart), cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth),
-    1.f);
+  float lineSizeMax = std::max(Geometry::calculateLineSizePrecise(Vector2i(imageWidth / 2, imageHeight), cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth), 2.f);
+  float lineSizeMin = std::max<float>(Geometry::calculateLineSizePrecise(Vector2i(imageWidth / 2, yStart), cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth), 1.f);
   for (int y = 0; y < yStart; y++)
     lineSizes[y] = 0;
   for (int y = yStart; y < imageHeight; y++)
@@ -326,7 +325,7 @@ void CLIPPreprocessor::scanField(const bool &upper)
   for (int x = 4; x < imageWidth && scanLineNo < maxScanLineNo; x += vScanLineDistance)
   {
     scanLinesVertical[scanLineNo].scanLineSegments.clear();
-    processScanLine(scanLinesVertical[scanLineNo],upper);
+    processScanLine(scanLinesVertical[scanLineNo], upper);
     scanLineNo++;
   }
 
@@ -335,36 +334,23 @@ void CLIPPreprocessor::scanField(const bool &upper)
     if (upper)
       drawScanLineSegments(true);
   }
-    
+
   DEBUG_RESPONSE("debug drawing:module:CLIPPreprocessor:scanLineSegmentsRaw:Lower")
   {
     if (!upper)
       drawScanLineSegments(false);
   }
-    
+
   for (int n = 0; n < (int)scanLinesVertical.size(); n++)
   {
-    classifyScanLineSegments(scanLinesVertical[n],upper);
-    postProcessScanLine(scanLinesVertical[n],upper);
+    classifyScanLineSegments(scanLinesVertical[n], upper);
+    postProcessScanLine(scanLinesVertical[n], upper);
     scanLineVNo++;
   }
 
   // find field border
-
-  int fieldBorderAvgY = imageHeight/5;
   findFieldBorders();
-  
-  if (fieldBorderFront.base.x() != 0)
-  {
-    Vector2f fieldBorderFrontLeft = Vector2f::Zero();
-    Vector2f fieldBorderFrontRight = Vector2f::Zero();
-    if (Geometry::getIntersectionOfLines(fieldBorderFront,Geometry::Line(Vector2f(4.f,4.f),Vector2f(0.f,1.f)),fieldBorderFrontLeft)
-      && Geometry::getIntersectionOfLines(fieldBorderFront,Geometry::Line(Vector2f((float)(imageWidth-4),4.f),Vector2f(0.f,1.f)),fieldBorderFrontRight)
-      && fieldBorderFrontLeft.y() >=4 && fieldBorderFrontRight.y() < imageHeight
-      && fieldBorderFrontRight.y() >= 0 && fieldBorderFrontLeft.y() < imageHeight
-      && std::abs(fieldBorderFrontLeft.y() - fieldBorderFrontRight.y()) < 20)
-      fieldBorderAvgY = (int)(fieldBorderFrontLeft.y() + fieldBorderFrontRight.y())/2;
-  }
+
 
   //goal scan lines (horizontal) not used anymore (since CLIPGoalPerceptor2015).
   /*int goalScanStartY = std::max((int)horizon.base.y-hScanLineDistance*3, 4);
@@ -393,18 +379,19 @@ void CLIPPreprocessor::scanField(const bool &upper)
 
   for (int n = scanLineNoYStart; n < (int)scanLinesHorizontal.size(); n++)
   {
-    classifyScanLineSegments(scanLinesHorizontal[n],upper);
-    postProcessScanLine(scanLinesHorizontal[n],upper);
+    classifyScanLineSegments(scanLinesHorizontal[n], upper);
+    postProcessScanLine(scanLinesHorizontal[n], upper);
     scanLineHNo++;
   }
 
-  if (useObstacleBasePoints) {
+  if (useObstacleBasePoints)
+  {
     //addObstaclePercepts(upper);
     createObstacleBasePoints(upper);
   }
 }
 
-void CLIPPreprocessor::createObstacleBasePoints(const bool &upper)
+void CLIPPreprocessor::createObstacleBasePoints(const bool& upper)
 {
   // look for reasonably sized obstacle point clusters
   // TODO: lying obstacles covered? -> also check RobotDetector
@@ -416,13 +403,13 @@ void CLIPPreprocessor::createObstacleBasePoints(const bool &upper)
   const int vScanLineDistance = upper ? upperVDistance : lowerVDistance;
   const int hScanLineDistance = upper ? upperHDistance : lowerHDistance;
   const int maxScanLineDistance = imageWidth / 20;
-  
-  // create base points from vertical scan lines 
+
+  // create base points from vertical scan lines
   const int sizeLow = static_cast<int>(obstaclePointsLow.size());
   const int maxYDistanceLow = maxScanLineDistance; // TODO
   const int maxScanLineNumberDistance = 2;
   const int maxXDistanceLow = vScanLineDistance * maxScanLineNumberDistance;
-  std::vector< Vector2f > currentObstaclePoints(100);
+  std::vector<Vector2f> currentObstaclePoints(100);
   // get points on roughly a line close to each other
   for (int firstPoint = 0; firstPoint < sizeLow; firstPoint++)
   {
@@ -534,44 +521,35 @@ void CLIPPreprocessor::createObstacleBasePoints(const bool &upper)
   }
 }
 
-void CLIPPreprocessor::postProcessScanLine(const ScanLine &scanLine, const bool &upper)
+void CLIPPreprocessor::postProcessScanLine(const ScanLine& scanLine, const bool& upper)
 {
-  const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
 
   const bool isVertical = scanLine.from.x() == scanLine.to.x();
-  
+
   int uncertainty = 0; // if high enough, probably unknown object (i.e. an obstacle)
 
   bool isUnknownFieldEnd = (isVertical && scanLine.fullScanLine);
-  
+
   if (scanLine.scanLineSegments.size() == 1)
   {
     return;
   }
-    
+
   int segNo = 0;
-  Vector2f lastGreen(0,0);
+  Vector2f lastGreen(0, 0);
   int size = static_cast<int>(scanLine.scanLineSegments.size());
   float lastLineSize = 100; // just initializing
   bool foundLine = false;
   int lineSizeMultiplicator = isUnknownFieldEnd ? 2 : 3;
-  bool foundSomething = false;
-  bool lastSegmentBall = false;
-  bool foundBall = false;
   while (segNo < size)
   {
-    if (!foundBall)
-      lastSegmentBall = false;
-    else
-      lastSegmentBall = true;
-    foundBall = false;
-    foundSomething = false;
-    const ScanLineSegment &seg = scanLine.scanLineSegments.at(segNo);
+    const ScanLineSegment& seg = scanLine.scanLineSegments.at(segNo);
     if (seg.segmentType == obstacleSegment)
     {
-      if (isVertical && segNo+1 < size)
-        uncertainty+=2;
+      if (isVertical && segNo + 1 < size)
+        uncertainty += 2;
       else
       {
         uncertainty += 3;
@@ -587,57 +565,46 @@ void CLIPPreprocessor::postProcessScanLine(const ScanLine &scanLine, const bool 
     else if (seg.segmentType == lineSegment && segNo > 0)
     {
       if (!foundLine)
-        lastLineSize = Geometry::calculateLineSizePrecise(seg.startPointInImage.cast<int>(),
-          cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth);
+        lastLineSize = Geometry::calculateLineSizePrecise(seg.startPointInImage.cast<int>(), cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth);
       foundLine = true;
-      const ScanLineSegment &prevSegment = scanLine.scanLineSegments.at(std::max(0,segNo-1));
-      const ScanLineSegment &nextSegment = scanLine.scanLineSegments.at(std::min(size-1,segNo+1));
+      const ScanLineSegment& prevSegment = scanLine.scanLineSegments.at(std::max(0, segNo - 1));
+      const ScanLineSegment& nextSegment = scanLine.scanLineSegments.at(std::min(size - 1, segNo + 1));
       uncertainty++;
       if ((prevSegment.segmentType == fieldSegment && nextSegment.segmentType == fieldSegment)
-        && (lastLineSize*lineSizeMultiplicator > (seg.endPointInImage-seg.startPointInImage).norm()))
+          && (lastLineSize * lineSizeMultiplicator > (seg.endPointInImage - seg.startPointInImage).norm()))
       {
-        Vector2f linePoint(((seg.endPointInImage.x()+seg.startPointInImage.x()))/2.f,
-            ((seg.endPointInImage.y()+seg.startPointInImage.y()))/2.f);
-        lastLineSize = (seg.endPointInImage-seg.startPointInImage).norm();
-        
-        addLinePoint(linePoint,lastLineSize,isVertical,upper);
-        foundSomething = true;
-      }
-      else if (prevSegment.segmentType == fieldSegment && nextSegment.segmentType == ballSegment)
-      {
-        foundSomething = true;
-      }
-      else if (foundBall && nextSegment.segmentType == fieldSegment)
-      {
-        foundSomething = true;
+        Vector2f linePoint(((seg.endPointInImage.x() + seg.startPointInImage.x())) / 2.f, ((seg.endPointInImage.y() + seg.startPointInImage.y())) / 2.f);
+        lastLineSize = (seg.endPointInImage - seg.startPointInImage).norm();
+
+        addLinePoint(linePoint, lastLineSize, isVertical, upper);
       }
     }
     else if (seg.segmentType == ballSegment)
-    {        
+    {
       // do not add ball spots from horizontal scan that are probably too high (HACK, test!)
-      if (((theFieldDimensions.ballType != SimpleFieldDimensions::BallType::orange) || isPixelBallColor(seg.avgY, seg.avgCb, seg.avgCr))//seg.avgCr*3 > seg.avgCb*4)
-        && (!(upper && (scanLine.from.y() == scanLine.to.y() && seg.startPointInImage.y() < imageHeight/4))))
+      if (((theFieldDimensions.ballType != SimpleFieldDimensions::BallType::orange) || isPixelBallColor(seg.avgY, seg.avgCb, seg.avgCr)) //seg.avgCr*3 > seg.avgCb*4)
+          && (!(upper && (scanLine.from.y() == scanLine.to.y() && seg.startPointInImage.y() < imageHeight / 4))))
       {
-        const ScanLineSegment &prevSegment = scanLine.scanLineSegments.at(std::max(0,segNo-1));
-        const ScanLineSegment &nextSegment = scanLine.scanLineSegments.at(std::min(size-1,segNo+1));
-        if ((prevSegment.segmentType == fieldSegment && (nextSegment.segmentType == unknownSegment || nextSegment.segmentType == fieldSegment || nextSegment.segmentType == lineSegment || nextSegment.segmentType == obstacleSegment))
-          || (nextSegment.segmentType == fieldSegment && (prevSegment.segmentType == unknownSegment || prevSegment.segmentType == fieldSegment || prevSegment.segmentType == lineSegment || prevSegment.segmentType == obstacleSegment))
-          || (prevSegment.segmentType == ballSegment && (nextSegment.segmentType == unknownSegment || nextSegment.segmentType == fieldSegment || nextSegment.segmentType == lineSegment || nextSegment.segmentType == obstacleSegment))
-          || (nextSegment.segmentType == ballSegment && (prevSegment.segmentType == unknownSegment || prevSegment.segmentType == fieldSegment || prevSegment.segmentType == lineSegment || prevSegment.segmentType == obstacleSegment))
-          || (segNo == 0 && (nextSegment.segmentType == fieldSegment || nextSegment.segmentType == lineSegment || nextSegment.segmentType == obstacleSegment)))
+        const ScanLineSegment& prevSegment = scanLine.scanLineSegments.at(std::max(0, segNo - 1));
+        const ScanLineSegment& nextSegment = scanLine.scanLineSegments.at(std::min(size - 1, segNo + 1));
+        if ((prevSegment.segmentType == fieldSegment
+                && (nextSegment.segmentType == unknownSegment || nextSegment.segmentType == fieldSegment || nextSegment.segmentType == lineSegment || nextSegment.segmentType == obstacleSegment))
+            || (nextSegment.segmentType == fieldSegment
+                && (prevSegment.segmentType == unknownSegment || prevSegment.segmentType == fieldSegment || prevSegment.segmentType == lineSegment || prevSegment.segmentType == obstacleSegment))
+            || (prevSegment.segmentType == ballSegment
+                && (nextSegment.segmentType == unknownSegment || nextSegment.segmentType == fieldSegment || nextSegment.segmentType == lineSegment || nextSegment.segmentType == obstacleSegment))
+            || (nextSegment.segmentType == ballSegment
+                && (prevSegment.segmentType == unknownSegment || prevSegment.segmentType == fieldSegment || prevSegment.segmentType == lineSegment || prevSegment.segmentType == obstacleSegment))
+            || (segNo == 0 && (nextSegment.segmentType == fieldSegment || nextSegment.segmentType == lineSegment || nextSegment.segmentType == obstacleSegment)))
         {
-          addBallSpot(Vector2f(((seg.endPointInImage.x()+seg.startPointInImage.x()))/2.f,
-            ((seg.endPointInImage.y()+seg.startPointInImage.y()))/2.f),
-            seg.avgY,seg.avgCb,seg.avgCr,upper);
-          foundSomething = true;
-          foundBall = true;
+          addBallSpot(Vector2f(((seg.endPointInImage.x() + seg.startPointInImage.x())) / 2.f, ((seg.endPointInImage.y() + seg.startPointInImage.y())) / 2.f), seg.avgY, seg.avgCb, seg.avgCr, upper);
         }
       }
     }
     else if (seg.segmentType == fieldSegment)
     {
       lastGreen = seg.endPointInImage;
-      uncertainty = std::max(0,uncertainty-1);
+      uncertainty = std::max(0, uncertainty - 1);
     }
     if (seg.segmentType == unknownSegment && lastGreen.x() != 0)
     {
@@ -649,13 +616,9 @@ void CLIPPreprocessor::postProcessScanLine(const ScanLine &scanLine, const bool 
       if (isVertical) // from vertical scan
       {
         // adding ballspots if field end next??
-        if (seg.segmentType == ballSegment && scanLine.scanLineSegments.at(std::max(0,segNo-1)).segmentType == fieldSegment)
+        if (seg.segmentType == ballSegment && scanLine.scanLineSegments.at(std::max(0, segNo - 1)).segmentType == fieldSegment)
         {
-          addBallSpot(Vector2f(((seg.endPointInImage.x()+seg.startPointInImage.x()))/2.f,
-                     ((seg.endPointInImage.y()+seg.startPointInImage.y()))/2.f),
-                     seg.avgY,seg.avgCb,seg.avgCr,
-                     upper);
-          foundBall = true;
+          addBallSpot(Vector2f(((seg.endPointInImage.x() + seg.startPointInImage.x())) / 2.f, ((seg.endPointInImage.y() + seg.startPointInImage.y())) / 2.f), seg.avgY, seg.avgCb, seg.avgCr, upper);
         }
         if (lastGreen.x() > 0.5f)
         {
@@ -677,38 +640,37 @@ void CLIPPreprocessor::postProcessScanLine(const ScanLine &scanLine, const bool 
     }
     segNo++;
   }
-  if (isUnknownFieldEnd && 
-    lastGreen.x() > 0.5 &&
-	  (scanLine.scanLineSegments.back().endPointInImage.y() > scanLine.to.y() + 5 
-		|| (scanLine.scanLineSegments.back().segmentType != fieldSegment &&
-		(scanLine.scanLineSegments.back().endPointInImage-scanLine.scanLineSegments.back().startPointInImage).norm() > lastLineSize)))
+  if (isUnknownFieldEnd && lastGreen.x() > 0.5
+      && (scanLine.scanLineSegments.back().endPointInImage.y() > scanLine.to.y() + 5
+          || (scanLine.scanLineSegments.back().segmentType != fieldSegment
+              && (scanLine.scanLineSegments.back().endPointInImage - scanLine.scanLineSegments.back().startPointInImage).norm() > lastLineSize)))
   {
     FieldEndPoint newFEP;
     newFEP.imageCoordinates = lastGreen;
     newFEP.inlier = false;
     fieldEndPoints.push_back(newFEP);
-  }   
+  }
 }
 
-void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &upper)
+void CLIPPreprocessor::classifyScanLineSegments(ScanLine& scanLine, const bool& upper)
 {
-  const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
-  
+  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+
   const bool isVertical = scanLine.from.x() == scanLine.to.x();
 
-  float expectedBallSize = Geometry::calculateLineSizePrecise((scanLine.to+scanLine.from)/2, cameraMatrix, cameraInfo, theFieldDimensions.ballRadius * 2);
+  float expectedBallSize = Geometry::calculateLineSizePrecise((scanLine.to + scanLine.from) / 2, cameraMatrix, cameraInfo, theFieldDimensions.ballRadius * 2);
 
   int lastAvgY = -1000;
   int lastAvgCb = -1000;
   int lastAvgCr = -1000;
   for (int i = 0; i < (int)scanLine.scanLineSegments.size(); i++)
   {
-    ScanLineSegment &seg = scanLine.scanLineSegments[i];
-    float segmentLength = std::max(1.f,(seg.startPointInImage-seg.endPointInImage).norm());
-    if (((seg.segmentType == unknownSegment || seg.segmentType == ballSegment) 
-          && ((float)seg.fieldColorCount/segmentLength > minFieldColorForFieldSegment || abs(lastAvgY-seg.avgY)+abs(lastAvgCb-seg.avgCb)+abs(lastAvgCr-seg.avgCr) < 15))
-      || (seg.segmentType == obstacleSegment && (float)seg.fieldColorCount/segmentLength > 0.7f))
+    ScanLineSegment& seg = scanLine.scanLineSegments[i];
+    float segmentLength = std::max(1.f, (seg.startPointInImage - seg.endPointInImage).norm());
+    if (((seg.segmentType == unknownSegment || seg.segmentType == ballSegment)
+            && ((float)seg.fieldColorCount / segmentLength > minFieldColorForFieldSegment || abs(lastAvgY - seg.avgY) + abs(lastAvgCb - seg.avgCb) + abs(lastAvgCr - seg.avgCr) < 15))
+        || (seg.segmentType == obstacleSegment && (float)seg.fieldColorCount / segmentLength > 0.7f))
     {
       seg.segmentType = fieldSegment;
       lastAvgY = seg.avgY;
@@ -720,10 +682,8 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
   for (int i = 0; i < (int)scanLine.scanLineSegments.size(); i++)
   {
     const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
-    if (i != nextIndex
-      && scanLine.scanLineSegments[i].segmentType == nextSegment.segmentType
-      && !(scanLine.scanLineSegments[i].gradientColorEnd && nextSegment.gradientColorStart))
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
+    if (i != nextIndex && scanLine.scanLineSegments[i].segmentType == nextSegment.segmentType && !(scanLine.scanLineSegments[i].gradientColorEnd && nextSegment.gradientColorStart))
     {
       scanLine.scanLineSegments[nextIndex].startPointInImage = scanLine.scanLineSegments[i].startPointInImage;
       scanLine.scanLineSegments.erase(scanLine.scanLineSegments.begin() + i);
@@ -735,8 +695,8 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
   for (int i = 0; i < (int)scanLine.scanLineSegments.size(); i++)
   {
     const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
-    ScanLineSegment &seg = scanLine.scanLineSegments[i];
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
+    ScanLineSegment& seg = scanLine.scanLineSegments[i];
     if (i != nextIndex && seg.segmentType == lineSegment && nextSegment.segmentType == lineSegment)
     {
       scanLine.scanLineSegments[nextIndex].startPointInImage = scanLine.scanLineSegments[i].startPointInImage;
@@ -750,12 +710,10 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
   {
     const int prevIndex = std::max(0, i - 1);
     const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
-    const ScanLineSegment &prevSegment = scanLine.scanLineSegments[prevIndex];
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
-    ScanLineSegment &seg = scanLine.scanLineSegments[i];
-    if ((seg.segmentType == unknownSegment) &&
-      prevSegment.segmentType == lineSegment &&
-      (nextSegment.segmentType == unknownSegment || nextSegment.segmentType == lineSegment))
+    const ScanLineSegment& prevSegment = scanLine.scanLineSegments[prevIndex];
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
+    ScanLineSegment& seg = scanLine.scanLineSegments[i];
+    if ((seg.segmentType == unknownSegment) && prevSegment.segmentType == lineSegment && (nextSegment.segmentType == unknownSegment || nextSegment.segmentType == lineSegment))
     {
       scanLine.scanLineSegments[prevIndex].segmentType = unknownSegment;
     }
@@ -764,9 +722,8 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
   for (int i = 0; i < (int)scanLine.scanLineSegments.size(); i++)
   {
     const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
-    if (i != nextIndex
-      && scanLine.scanLineSegments[i].segmentType == nextSegment.segmentType)
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
+    if (i != nextIndex && scanLine.scanLineSegments[i].segmentType == nextSegment.segmentType)
     {
       scanLine.scanLineSegments[nextIndex].startPointInImage = scanLine.scanLineSegments[i].startPointInImage;
       scanLine.scanLineSegments[nextIndex].gradientColorStart = scanLine.scanLineSegments[i].gradientColorStart;
@@ -778,12 +735,12 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
 
   for (int i = 0; i < (int)scanLine.scanLineSegments.size(); i++)
   {
-    const int prevIndex = std::max(0,i-1);
-    const int nextIndex = std::min((int)scanLine.scanLineSegments.size()-1,i+1);
-    const ScanLineSegment &prevSegment = scanLine.scanLineSegments[prevIndex];
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
+    const int prevIndex = std::max(0, i - 1);
+    const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
+    const ScanLineSegment& prevSegment = scanLine.scanLineSegments[prevIndex];
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
     float segmentLength = (scanLine.scanLineSegments[i].endPointInImage - scanLine.scanLineSegments[i].startPointInImage).norm();
-    for (int j = i+1; j < (int)scanLine.scanLineSegments.size(); j++)
+    for (int j = i + 1; j < (int)scanLine.scanLineSegments.size(); j++)
     {
       if (scanLine.scanLineSegments[j].segmentType == unknownSegment || scanLine.scanLineSegments[j].segmentType == lineSegment)
         segmentLength += (scanLine.scanLineSegments[j].endPointInImage - scanLine.scanLineSegments[j].startPointInImage).norm();
@@ -799,28 +756,25 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
     }
 
     if (scanLine.scanLineSegments[i].segmentType == unknownSegment && scanLine.scanLineSegments[i].fieldColorCount < 2
-      && (prevSegment.segmentType == fieldSegment || nextSegment.segmentType == fieldSegment))
+        && (prevSegment.segmentType == fieldSegment || nextSegment.segmentType == fieldSegment))
     {
       Vector2i pImage(scanLine.scanLineSegments[i].startPointInImage.cast<int>());
       if (!isVertical)
-        expectedBallSize = Geometry::calculateLineSizePrecise(pImage, cameraMatrix, cameraInfo, theFieldDimensions.ballRadius*2);
-      
-      if (segmentLength < expectedBallSize*2)
+        expectedBallSize = Geometry::calculateLineSizePrecise(pImage, cameraMatrix, cameraInfo, theFieldDimensions.ballRadius * 2);
+
+      if (segmentLength < expectedBallSize * 2)
         scanLine.scanLineSegments[i].segmentType = ballSegment;
       else if (segmentLength > expectedBallSize && useObstacleBasePoints)
         scanLine.scanLineSegments[i].segmentType = obstacleSegment;
-    } 
+    }
   }
-
 
 
   for (int i = 0; i < (int)scanLine.scanLineSegments.size(); i++)
   {
     const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
-    if (i != nextIndex
-      && scanLine.scanLineSegments[i].segmentType == nextSegment.segmentType
-      && !(scanLine.scanLineSegments[i].gradientColorEnd && nextSegment.gradientColorStart))
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
+    if (i != nextIndex && scanLine.scanLineSegments[i].segmentType == nextSegment.segmentType && !(scanLine.scanLineSegments[i].gradientColorEnd && nextSegment.gradientColorStart))
     {
       scanLine.scanLineSegments[nextIndex].startPointInImage = scanLine.scanLineSegments[i].startPointInImage;
       scanLine.scanLineSegments.erase(scanLine.scanLineSegments.begin() + i);
@@ -835,37 +789,35 @@ void CLIPPreprocessor::classifyScanLineSegments(ScanLine &scanLine, const bool &
   {
     const int prevIndex = std::max(0, i - 1);
     const int nextIndex = std::min((int)scanLine.scanLineSegments.size() - 1, i + 1);
-    const ScanLineSegment &prevSegment = scanLine.scanLineSegments[prevIndex];
-    const ScanLineSegment &nextSegment = scanLine.scanLineSegments[nextIndex];
-    if (scanLine.scanLineSegments[i].segmentType == unknownSegment
-      && (prevSegment.segmentType == fieldSegment && nextSegment.segmentType == fieldSegment))
+    const ScanLineSegment& prevSegment = scanLine.scanLineSegments[prevIndex];
+    const ScanLineSegment& nextSegment = scanLine.scanLineSegments[nextIndex];
+    if (scanLine.scanLineSegments[i].segmentType == unknownSegment && (prevSegment.segmentType == fieldSegment && nextSegment.segmentType == fieldSegment))
     {
       scanLine.scanLineSegments[nextIndex].startPointInImage = scanLine.scanLineSegments[prevIndex].startPointInImage;
       scanLine.scanLineSegments.erase(scanLine.scanLineSegments.begin() + prevIndex, scanLine.scanLineSegments.begin() + i);
       i = prevIndex;
     }
   }
-        
 }
 
-void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
+void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
 {
-  const Image &image = upper ? (Image&)theImageUpper : theImage;
-  const FieldColors &fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
-  const CameraMatrix &cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo &cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
+  const Image& image = upper ? (Image&)theImageUpper : theImage;
+  const FieldColors& fieldColor = upper ? (FieldColors&)theFieldColorsUpper : theFieldColors;
+  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
 
   bool isVertical = (scanLine.from.x() == scanLine.to.x());
-  
-  int minY = std::max(scanLine.to.y(),std::min(scanLine.from.y(),static_cast<int>(horizon.base.y())));
-  float scanLineLength = (float)std::max(scanLine.from.y()-minY,scanLine.to.x()-scanLine.from.x());
+
+  int minY = std::max(scanLine.to.y(), std::min(scanLine.from.y(), static_cast<int>(horizon.base.y())));
+  float scanLineLength = (float)std::max(scanLine.from.y() - minY, scanLine.to.x() - scanLine.from.x());
 
   int imageX = scanLine.from.x();
   int imageY = scanLine.from.y();
   int stepSize = scanLine.stepSize;
   int zero = 0;
-  int &stepSizeY = isVertical ? stepSize : zero;
-  int &stepSizeX = isVertical ? zero : stepSize;
+  int& stepSizeY = isVertical ? stepSize : zero;
+  int& stepSizeX = isVertical ? zero : stepSize;
   int xNorm = isVertical ? 0 : 1;
   int yNorm = isVertical ? 1 : 0;
   pixelCount = 0;
@@ -873,10 +825,10 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
   bool isUnknownFieldEnd = (isVertical && scanLine.fullScanLine);
   bool foundField = false;
   float lastLineSize = (float)(imageWidth / 6);
-  
+
 #ifdef USE_FULL_RESOLUTION
   Image::YUVPixel p;
-  image.getPixel(imageX,imageY,&p);
+  image.getPixel(imageX, imageY, &p);
 #else
   Image::Pixel p = image[imageY][imageX];
 #endif
@@ -886,32 +838,30 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
   fieldColorBuffer.fill(0);
 
   int colorDiff = 0;
-  int ySum, cbSum, crSum;
   int yDiff, yDiff2;
-  ySum = cbSum = crSum = 0;
   yDiff = yDiff2 = 0;
 
   int segmentLength = 0;
-  
+
   lastLineSize = lineSizes[scanLine.from.y()];
   float lineSizeMin = lineSizes[minY];
-  const int stepSizeMin = std::max<int>(1,std::min<int>(imageHeight/30,(int)lineSizeMin/4));
-  const int stepSizeMax = std::max<int>(stepSizeMin,std::min<int>(imageHeight/30,(int)lastLineSize/4));
+  const int stepSizeMin = std::max<int>(1, std::min<int>(imageHeight / 30, (int)lineSizeMin / 4));
+  const int stepSizeMax = std::max<int>(stepSizeMin, std::min<int>(imageHeight / 30, (int)lastLineSize / 4));
   stepSize = stepSizeMax;
-  
-  int stepSizeLine = std::max(1,(int)lastLineSize/20);
-  int &stepSizeLineY = isVertical ? stepSizeLine : zero;
-  int &stepSizeLineX = isVertical ? zero : stepSizeLine;
+
+  int stepSizeLine = std::max(1, (int)lastLineSize / 20);
+  int& stepSizeLineY = isVertical ? stepSizeLine : zero;
+  int& stepSizeLineX = isVertical ? zero : stepSizeLine;
 
   scanLine.scanLineSegments.emplace_back(ScanLineSegment((float)imageX, (float)imageY, 0, lastColorDiff() > minColorDiff, unknownSegment));
 
-  bool isGradientYUp = false; 
+  bool isGradientYUp = false;
 
   bool isGradientColor = false;
 
   int segmentNo = 0;
-  
-  while (scanLine.to.x()-imageX >= 0 && imageY >= minY)
+
+  while (scanLine.to.x() - imageX >= 0 && imageY >= minY)
   {
     if (scanLine.scanLineSegments.size() > 48) // 50 were reserved
     {
@@ -921,7 +871,7 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
       return;
     }
 #ifdef USE_FULL_RESOLUTION
-    image.getPixel(imageX,imageY,&p);
+    image.getPixel(imageX, imageY, &p);
 #else
     p = image[imageY][imageX];
 #endif
@@ -929,22 +879,22 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
     ASSERT(pixelCount > 0 && pixelCount < INT_MAX);
     ASSERT(static_cast<unsigned>(pixelCount) < scanLinePixelBuffer.size());
 
-    float currentscannedRatio = (imageX-scanLine.from.x() + imageY-minY)/(scanLineLength+1);
-    stepSize = (int)(stepSizeMin+currentscannedRatio*(float)(stepSizeMax-stepSizeMin));
-    
+    float currentscannedRatio = (imageX - scanLine.from.x() + imageY - minY) / (scanLineLength + 1);
+    stepSize = (int)(stepSizeMin + currentscannedRatio * (float)(stepSizeMax - stepSizeMin));
+
     ASSERT(pixelCount <= INT_MAX);
     yDiff = scanLinePixelBuffer[static_cast<int>(pixelCount) - 1].y - scanLinePixelBuffer[pixelCount].y;
     yDiff2 = scanLinePixelBuffer[static_cast<int>(pixelCount) - 2].y - scanLinePixelBuffer[pixelCount].y;
-    colorDiff = std::max(lastColorDiff(),lastColorDiff2());
+    colorDiff = std::max(lastColorDiff(), lastColorDiff2());
     fieldColorBuffer.push_front(fieldColor.isPixelFieldColor(scanLinePixelBuffer[pixelCount].y, scanLinePixelBuffer[pixelCount].cb, scanLinePixelBuffer[pixelCount].cr) ? 1 : 0);
-    foundField = foundField || (fieldColorBuffer.sum() > 4 && (100*scanLine.scanLineSegments[segmentNo].fieldColorCount)/(segmentLength+1) > 50);
+    foundField = foundField || (fieldColorBuffer.sum() > 4 && (100 * scanLine.scanLineSegments[segmentNo].fieldColorCount) / (segmentLength + 1) > 50);
 
     // main state machine
     if (scanLine.scanLineSegments[segmentNo].segmentType == unknownSegment)
     {
       isGradientYUp = foundField && ((-yDiff) > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold || (-yDiff2) > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold);
-	    isGradientColor = (colorDiff > minColorDiff);
-      
+      isGradientColor = (colorDiff > minColorDiff);
+
       if (isGradientYUp)
       {
         scanLine.scanLineSegments[segmentNo].gradientColorEnd = isGradientColor;
@@ -952,36 +902,36 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
         // TODO: use full resolution here?
         int maxY = scanLinePixelBuffer[pixelCount].y;
         int minY = maxY;
-        int maxScanWidth = std::max((3*stepSize)/2,3);
+        int maxScanWidth = std::max((3 * stepSize) / 2, 3);
         stepSizeLine = std::max(1, stepSize / 4);
         int counter = 0;
         bool foundHigh, foundLow;
         foundHigh = foundLow = false;
         bool foundEnd = false;
         int lastY = scanLinePixelBuffer[pixelCount].y;
-        int linePosX,linePosY,linePosLowX,linePosLowY,linePosHighX,linePosHighY;
-        
-        linePosX = linePosLowX = linePosHighX = imageX-xNorm;
-        linePosY = linePosLowY = linePosHighY = imageY+yNorm;
-        
-        while (counter <= maxScanWidth && !image.isOutOfImage(linePosX,linePosY,2))
+        int linePosX, linePosY, linePosLowX, linePosLowY, linePosHighX, linePosHighY;
+
+        linePosX = linePosLowX = linePosHighX = imageX - xNorm;
+        linePosY = linePosLowY = linePosHighY = imageY + yNorm;
+
+        while (counter <= maxScanWidth && !image.isOutOfImage(linePosX, linePosY, 2))
         {
 #ifdef USE_FULL_RESOLUTION
-          image.getPixel(linePosX,linePosY,&p);
+          image.getPixel(linePosX, linePosY, &p);
 #else
           p = image[linePosY][linePosX];
 #endif
           lastY = p.y;
           if (foundHigh && foundLow)
           {
-            if (minY+5 >= lastY)
+            if (minY + 5 >= lastY)
             {
               foundEnd = true;
               break;
             }
             else
             {
-              minY = std::min(lastY,minY);
+              minY = std::min(lastY, minY);
               linePosLowX = linePosX;
               linePosLowY = linePosY;
             }
@@ -1007,11 +957,10 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
             linePosLowX = linePosX;
             linePosLowY = linePosY;
           }
-          
+
           linePosX -= stepSizeLineX;
           linePosY += stepSizeLineY;
           counter += stepSizeLine;
-
         }
         if (segmentLength > 4 && (scanLine.scanLineSegments[segmentNo].avgCr / segmentLength) > ballBaseCrValue)
         {
@@ -1020,7 +969,7 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
           scanLine.scanLineSegments[segmentNo].avgCr /= segmentLength;
           scanLine.scanLineSegments[segmentNo].endPointInImage.x() = (float)imageX;
           scanLine.scanLineSegments[segmentNo].endPointInImage.y() = (float)imageY;
-          scanLine.scanLineSegments.emplace_back((float)imageX,(float)imageY,0,isGradientColor,unknownSegment);
+          scanLine.scanLineSegments.emplace_back((float)imageX, (float)imageY, 0, isGradientColor, unknownSegment);
           segmentNo++;
           segmentLength = 0;
           continue;
@@ -1029,7 +978,7 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
         {
           scanLine.scanLineSegments[segmentNo].endPointInImage.x() = (float)linePosLowX;
           scanLine.scanLineSegments[segmentNo].endPointInImage.y() = (float)linePosLowY;
-          if (segmentLength < stepSize*2)
+          if (segmentLength < stepSize * 2)
           {
             scanLine.scanLineSegments.pop_back();
             segmentNo--;
@@ -1042,13 +991,13 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
             scanLine.scanLineSegments[segmentNo].avgCb /= segmentLength;
             scanLine.scanLineSegments[segmentNo].avgCr /= segmentLength;
           }
-        
-          scanLine.scanLineSegments.emplace_back(((float)(linePosLowX+linePosHighX))/2.f,((float)(linePosLowY+linePosHighY))/2.f,0,isGradientColor,lineSegment);
+
+          scanLine.scanLineSegments.emplace_back(((float)(linePosLowX + linePosHighX)) / 2.f, ((float)(linePosLowY + linePosHighY)) / 2.f, 0, isGradientColor, lineSegment);
           segmentNo++;
           segmentLength = 0;
-          
-		      // scan for line end;
-          maxScanWidth = std::max((int)(2.f*lastLineSize),5);
+
+          // scan for line end;
+          maxScanWidth = std::max((int)(2.f * lastLineSize), 5);
           foundHigh = foundLow = foundEnd = false;
           linePosX = linePosLowX = linePosHighX = imageX;
           linePosY = linePosLowY = linePosHighY = imageY;
@@ -1056,27 +1005,27 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
           minY = maxY;
           int fieldColorCount = 0;
 
-          while (counter <= maxScanWidth && !image.isOutOfImage(linePosX,linePosY,2))
+          while (counter <= maxScanWidth && !image.isOutOfImage(linePosX, linePosY, 2))
           {
 #ifdef USE_FULL_RESOLUTION
-            image.getPixel(linePosX,linePosY,&p);
+            image.getPixel(linePosX, linePosY, &p);
 #else
             p = image[(int)linePosY][(int)linePosX];
 #endif
             lastY = p.y;
             scanLinePixelBuffer[++pixelCount] = p;
             scanLine.scanLineSegments[segmentNo].gradientColorEnd = lastColorDiff() > minColorDiff;
-            
+
             if (foundHigh && foundLow)
             {
-              if (minY+5 >= lastY)
+              if (minY + 5 >= lastY)
               {
                 foundEnd = true;
                 break;
               }
               else
               {
-                minY = std::min(lastY,minY);
+                minY = std::min(lastY, minY);
                 linePosLowX = linePosX;
                 linePosLowY = linePosY;
               }
@@ -1102,7 +1051,7 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
               linePosLowX = linePosX;
               linePosLowY = linePosY;
             }
-            
+
             linePosX += stepSizeLineX;
             linePosY -= stepSizeLineY;
             counter += stepSizeLine;
@@ -1110,44 +1059,42 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
           }
           if (foundEnd)
           {
-            Vector2f endPoint(((float)(linePosLowX+linePosHighX))/2.f,((float)(linePosLowY+linePosHighY))/2.f);
+            Vector2f endPoint(((float)(linePosLowX + linePosHighX)) / 2.f, ((float)(linePosLowY + linePosHighY)) / 2.f);
             scanLine.scanLineSegments[segmentNo].endPointInImage = endPoint;
             lastLineSize = lineSizes[(int)endPoint.y()];
-            stepSizeLine = (int)std::max((lastLineSize/20),1.f);
-                    
-            scanLine.scanLineSegments.emplace_back(
-              ScanLineSegment(endPoint.x()+xNorm,
-              endPoint.y()-yNorm,
-              (fieldColorBuffer[0] == 1)*stepSize,isGradientColor,unknownSegment));
+            stepSizeLine = (int)std::max((lastLineSize / 20), 1.f);
+
+            scanLine.scanLineSegments.emplace_back(ScanLineSegment(endPoint.x() + xNorm, endPoint.y() - yNorm, (fieldColorBuffer[0] == 1) * stepSize, isGradientColor, unknownSegment));
             segmentNo++;
             segmentLength = stepSize;
-            
-			      imageX = (int)endPoint.x()+stepSizeX;
-            imageY = (int)endPoint.y()-stepSizeY;
-            if ((scanLine.to.x()-imageX) + (imageY-scanLine.to.y()) < stepSize || image.isOutOfImage(imageX,imageY,stepSize))
+
+            imageX = (int)endPoint.x() + stepSizeX;
+            imageY = (int)endPoint.y() - stepSizeY;
+            if ((scanLine.to.x() - imageX) + (imageY - scanLine.to.y()) < stepSize || image.isOutOfImage(imageX, imageY, stepSize))
             {
               scanLine.scanLineSegments.pop_back();
               segmentNo--;
               return;
             }
 #ifdef USE_FULL_RESOLUTION
-            image.getPixel(imageX,imageY,&p);
+            image.getPixel(imageX, imageY, &p);
 #else
             p = image[imageY][imageX];
 #endif
             scanLinePixelBuffer[++pixelCount] = p;
-            scanLine.scanLineSegments[segmentNo].avgY = stepSize*scanLinePixelBuffer[pixelCount].y;
-            scanLine.scanLineSegments[segmentNo].avgCb = stepSize*scanLinePixelBuffer[pixelCount].cb;
-            scanLine.scanLineSegments[segmentNo].avgCr = stepSize*scanLinePixelBuffer[pixelCount].cr;
+            scanLine.scanLineSegments[segmentNo].avgY = stepSize * scanLinePixelBuffer[pixelCount].y;
+            scanLine.scanLineSegments[segmentNo].avgCb = stepSize * scanLinePixelBuffer[pixelCount].cb;
+            scanLine.scanLineSegments[segmentNo].avgCr = stepSize * scanLinePixelBuffer[pixelCount].cr;
             continue;
           }
           else
           {
             scanLine.scanLineSegments[segmentNo].segmentType = unknownSegment;
             scanLine.scanLineSegments[segmentNo].fieldColorCount = fieldColorCount;
-            if (isUnknownFieldEnd && foundField && fieldColorCount < std::max(5,segmentLength/2) )
+            if (isUnknownFieldEnd && foundField && fieldColorCount < std::max(5, segmentLength / 2))
             {
-              if (!useObstacleBasePoints) {
+              if (!useObstacleBasePoints)
+              {
                 return;
               }
               scanLine.scanLineSegments[segmentNo].endPointInImage = Vector2f((float)(linePosX + xNorm), (float)(linePosY - yNorm));
@@ -1174,17 +1121,15 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
           imageY += stepSizeY;
         }
       }
-      else if (segmentLength < imageHeight/80)
+      else if (segmentLength < imageHeight / 80)
       {
-        
       }
-      else if (yDiff > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold/2
-        || isGradientColor)
+      else if (yDiff > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold / 2 || isGradientColor)
       {
-        scanLine.scanLineSegments[segmentNo].endPointInImage = Vector2f((float)(imageX-xNorm),(float)(imageY+yNorm));
+        scanLine.scanLineSegments[segmentNo].endPointInImage = Vector2f((float)(imageX - xNorm), (float)(imageY + yNorm));
         scanLine.scanLineSegments[segmentNo].gradientColorEnd = isGradientColor;
 
-        if (segmentLength < stepSize*2)
+        if (segmentLength < stepSize * 2)
         {
           scanLine.scanLineSegments.pop_back();
           segmentNo--;
@@ -1196,49 +1141,48 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
           scanLine.scanLineSegments[segmentNo].avgY /= segmentLength;
           scanLine.scanLineSegments[segmentNo].avgCb /= segmentLength;
           scanLine.scanLineSegments[segmentNo].avgCr /= segmentLength;
-          if ((100*scanLine.scanLineSegments.back().fieldColorCount)/segmentLength < 25 
-            && !(scanLine.scanLineSegments.back().gradientColorStart && scanLine.scanLineSegments.back().gradientColorEnd))
+          if ((100 * scanLine.scanLineSegments.back().fieldColorCount) / segmentLength < 25
+              && !(scanLine.scanLineSegments.back().gradientColorStart && scanLine.scanLineSegments.back().gradientColorEnd))
           {
             scanLine.scanLineSegments.back().segmentType = unknownSegment;
-            if (isUnknownFieldEnd && foundField && segmentLength > Geometry::calculateLineSizePrecise(Vector2i(imageX,imageY),cameraMatrix,cameraInfo,theFieldDimensions.ballRadius*2))
+            if (isUnknownFieldEnd && foundField && segmentLength > Geometry::calculateLineSizePrecise(Vector2i(imageX, imageY), cameraMatrix, cameraInfo, theFieldDimensions.ballRadius * 2))
             {
-              if (useObstacleBasePoints) {
+              if (useObstacleBasePoints)
+              {
                 scanLine.scanLineSegments.back().segmentType = obstacleSegment;
               }
               return;
             }
           }
         }
-        scanLine.scanLineSegments.emplace_back(ScanLineSegment((float)imageX, (float)imageY,
-              0,isGradientColor,unknownSegment));
-		    segmentLength = 0;
+        scanLine.scanLineSegments.emplace_back(ScanLineSegment((float)imageX, (float)imageY, 0, isGradientColor, unknownSegment));
+        segmentLength = 0;
         segmentNo++;
       }
-    } 
+    }
     else // possible obstacle segment..
     {
       if (fieldColorBuffer.sum() > 4)
 
       {
-        scanLine.scanLineSegments[segmentNo].endPointInImage = Vector2f((float)(imageX - xNorm*stepSize * 2), (float)(imageY + yNorm*stepSize * 2));
+        scanLine.scanLineSegments[segmentNo].endPointInImage = Vector2f((float)(imageX - xNorm * stepSize * 2), (float)(imageY + yNorm * stepSize * 2));
         if (segmentLength > 0)
         {
           scanLine.scanLineSegments[segmentNo].avgY /= segmentLength;
           scanLine.scanLineSegments[segmentNo].avgCb /= segmentLength;
           scanLine.scanLineSegments[segmentNo].avgCr /= segmentLength;
         }
-        scanLine.scanLineSegments.emplace_back(ScanLineSegment((float)imageX, (float)imageY,
-          fieldColorBuffer.sum()*stepSize,isGradientColor,unknownSegment));
+        scanLine.scanLineSegments.emplace_back(ScanLineSegment((float)imageX, (float)imageY, fieldColorBuffer.sum() * stepSize, isGradientColor, unknownSegment));
         segmentNo++;
         segmentLength = 0;
       }
     }
-    
+
     segmentLength += stepSize;
-    scanLine.scanLineSegments[segmentNo].avgY += stepSize*scanLinePixelBuffer[pixelCount].y;
-    scanLine.scanLineSegments[segmentNo].avgCb += stepSize*scanLinePixelBuffer[pixelCount].cb;
-    scanLine.scanLineSegments[segmentNo].avgCr += stepSize*scanLinePixelBuffer[pixelCount].cr;
-    scanLine.scanLineSegments[segmentNo].fieldColorCount += fieldColorBuffer[0]*stepSize;
+    scanLine.scanLineSegments[segmentNo].avgY += stepSize * scanLinePixelBuffer[pixelCount].y;
+    scanLine.scanLineSegments[segmentNo].avgCb += stepSize * scanLinePixelBuffer[pixelCount].cb;
+    scanLine.scanLineSegments[segmentNo].avgCr += stepSize * scanLinePixelBuffer[pixelCount].cr;
+    scanLine.scanLineSegments[segmentNo].fieldColorCount += fieldColorBuffer[0] * stepSize;
     imageX += stepSizeX;
     imageY -= stepSizeY;
   }
@@ -1252,10 +1196,7 @@ void CLIPPreprocessor::processScanLine(ScanLine &scanLine, const bool &upper)
   }
 }
 
-void CLIPPreprocessor::addBallSpot(
-    const Vector2f &point,
-    const int &y, const int &cb, const int &cr,
-    const bool &upper)
+void CLIPPreprocessor::addBallSpot(const Vector2f& point, const int& y, const int& cb, const int& cr, const bool& upper)
 {
   BallSpot newBallSpot;
   newBallSpot.position.x() = (int)point.x();
@@ -1269,19 +1210,15 @@ void CLIPPreprocessor::addBallSpot(
     localBallSpots.ballSpots.push_back(newBallSpot);
 }
 
-void CLIPPreprocessor::addLinePoint(
-  const Vector2f &linePoint, 
-  const float &lineSize, 
-  bool isVertical, 
-  const bool &upper)
+void CLIPPreprocessor::addLinePoint(const Vector2f& linePoint, const float& lineSize, bool isVertical, const bool& upper)
 {
   CLIPPointsPercept::Point point;
   point.inImage = linePoint;
   point.onField = Vector2f::Zero();
   point.lineSizeInImage = lineSize;
   //Geometry::calculatePointOnField(linePoint.x,linePoint.y,theCameraMatrix,theimage,point.onField);
-  point.scanLineNoX = scanLineHNo;
-  point.scanLineNoY = scanLineVNo;
+  point.scanLineNoH = scanLineHNo;
+  point.scanLineNoV = scanLineVNo;
   point.isVertical = isVertical;
   if (upper)
     localCLIPPointsPercept.pointsUpper.push_back(point);
@@ -1311,11 +1248,11 @@ void CLIPPreprocessor::findFieldBorders()
   for (int i = 2; i < (int)fieldEndPoints.size(); i++)
   {
     size = static_cast<int>(fieldHull.size());
-    if ((fieldHull[size-1]-fieldHull[size-2]).angle() > (fieldEndPoints[i].imageCoordinates-fieldHull[size-1]).angle())
+    if ((fieldHull[size - 1] - fieldHull[size - 2]).angle() > (fieldEndPoints[i].imageCoordinates - fieldHull[size - 1]).angle())
     {
       fieldHull.pop_back();
       size = static_cast<int>(fieldHull.size());
-      if (size > 1 && (fieldHull[size-1]-fieldHull[size-2]).angle() > (fieldEndPoints[i].imageCoordinates-fieldHull[size-1]).angle())
+      if (size > 1 && (fieldHull[size - 1] - fieldHull[size - 2]).angle() > (fieldEndPoints[i].imageCoordinates - fieldHull[size - 1]).angle())
         fieldHull.pop_back();
     }
     fieldHull.push_back(fieldEndPoints[i].imageCoordinates);
@@ -1337,7 +1274,7 @@ void CLIPPreprocessor::findFieldBorders()
       outliers = 0;
       indexBase = random(fieldEndPointNo);
       int tries = 0;
-      while (fieldEndPoints[indexBase].imageCoordinates.y() == 0 && tries < fieldEndPointNo/2)
+      while (fieldEndPoints[indexBase].imageCoordinates.y() == 0 && tries < fieldEndPointNo / 2)
       {
         indexBase = random(fieldEndPointNo);
         tries++;
@@ -1375,7 +1312,7 @@ void CLIPPreprocessor::findFieldBorders()
           fieldBorderFront.base = testLine.base;
           fieldBorderFront.direction = testLine.direction;
         }
-        else if (testLine.base.x() < imageWidth/2)
+        else if (testLine.base.x() < imageWidth / 2)
         {
           fieldBorderLeft.base = testLine.base;
           fieldBorderLeft.direction = testLine.direction;
@@ -1385,7 +1322,7 @@ void CLIPPreprocessor::findFieldBorders()
           fieldBorderRight.base = testLine.base;
           fieldBorderRight.direction = testLine.direction;
         }
-        
+
         // remove inliers from field end points and try to find next line
         std::vector<FieldEndPoint>::iterator j = fieldEndPoints.begin();
 
@@ -1409,42 +1346,33 @@ void CLIPPreprocessor::findFieldBorders()
       {
         Vector2f fieldBorderFrontLeft = Vector2f::Zero();
         Vector2f fieldBorderFrontRight = Vector2f::Zero();
-        if ((Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f(4.f, 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontLeft) ||
-          Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f((float)(imageWidth - 4), 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontRight)) &&
-          fieldBorderFrontLeft.y() >= 4 && fieldBorderFrontRight.y() <= imageHeight - 4)
+        if ((Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f(4.f, 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontLeft)
+                || Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f((float)(imageWidth - 4), 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontRight))
+            && fieldBorderFrontLeft.y() >= 4 && fieldBorderFrontRight.y() <= imageHeight - 4)
         {
-          LINE("module:CLIPPreprocessor:fieldBorders",
-            fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(),
-            fieldBorderFrontRight.x(), fieldBorderFrontRight.y(),
-            3, Drawings::solidPen, ColorRGBA::yellow);
+          LINE("module:CLIPPreprocessor:fieldBorders", fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(), fieldBorderFrontRight.x(), fieldBorderFrontRight.y(), 3, Drawings::solidPen, ColorRGBA::yellow);
         }
       }
       if (fieldBorderLeft.base.x() > 1)
       {
         Vector2f fieldBorderFrontLeft = Vector2f::Zero();
         Vector2f fieldBorderFrontRight = Vector2f::Zero();
-        if ((Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f(4.f, 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontLeft) ||
-          Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f((float)(imageWidth - 4), 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontRight)) &&
-          fieldBorderFrontLeft.y() >= 4 && fieldBorderFrontRight.y() <= imageHeight - 4)
+        if ((Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f(4.f, 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontLeft)
+                || Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f((float)(imageWidth - 4), 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontRight))
+            && fieldBorderFrontLeft.y() >= 4 && fieldBorderFrontRight.y() <= imageHeight - 4)
         {
-          LINE("module:CLIPPreprocessor:fieldBorders",
-            fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(),
-            fieldBorderFrontRight.x(), fieldBorderFrontRight.y(),
-            3, Drawings::solidPen, ColorRGBA::yellow);
+          LINE("module:CLIPPreprocessor:fieldBorders", fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(), fieldBorderFrontRight.x(), fieldBorderFrontRight.y(), 3, Drawings::solidPen, ColorRGBA::yellow);
         }
       }
       if (fieldBorderRight.base.x() > 1)
       {
         Vector2f fieldBorderFrontLeft = Vector2f::Zero();
         Vector2f fieldBorderFrontRight = Vector2f::Zero();
-        if ((Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f(4.f, 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontLeft) ||
-          Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f((float)(imageWidth - 4), 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontRight)) &&
-          fieldBorderFrontLeft.y() >= 4 && fieldBorderFrontRight.y() <= imageHeight - 4)
+        if ((Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f(4.f, 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontLeft)
+                || Geometry::getIntersectionOfLines(fieldBorderFront, Geometry::Line(Vector2f((float)(imageWidth - 4), 4.f), Vector2f(0.f, 1.f)), fieldBorderFrontRight))
+            && fieldBorderFrontLeft.y() >= 4 && fieldBorderFrontRight.y() <= imageHeight - 4)
         {
-          LINE("module:CLIPPreprocessor:fieldBorders",
-            fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(),
-            fieldBorderFrontRight.x(), fieldBorderFrontRight.y(),
-            3, Drawings::solidPen, ColorRGBA::yellow);
+          LINE("module:CLIPPreprocessor:fieldBorders", fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(), fieldBorderFrontRight.x(), fieldBorderFrontRight.y(), 3, Drawings::solidPen, ColorRGBA::yellow);
         }
       }
     }
@@ -1453,157 +1381,132 @@ void CLIPPreprocessor::findFieldBorders()
 
 void CLIPPreprocessor::drawFieldLower()
 {
-  const CameraInfo &cameraInfo = theCameraInfo;
-  for (int i = 0; i < cameraInfo.height;i++)
+  const CameraInfo& cameraInfo = theCameraInfo;
+  for (int i = 0; i < cameraInfo.height; i++)
   {
-    for (int j = 0; j < cameraInfo.width;j++)
+    for (int j = 0; j < cameraInfo.width; j++)
     {
       Image::Pixel p = theImage[i][j];
-      if (theFieldColors.isPixelFieldColor(p.y,p.cb,p.cr))
+      if (theFieldColors.isPixelFieldColor(p.y, p.cb, p.cr))
       {
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField,j,i,150,50,50);
+        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField, j, i, 150, 50, 50);
       }
-      else if (isPixelBallColor(p.y,p.cb,p.cr))
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField,j,i,150,20,230);
+      else if (isPixelBallColor(p.y, p.cb, p.cr))
+        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField, j, i, 150, 20, 230);
       else
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField,j,i,0,128,128);
+        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField, j, i, 0, 128, 128);
     }
   }
 }
 
 void CLIPPreprocessor::drawFieldUpper()
 {
-  const CameraInfo &cameraInfo = theCameraInfoUpper;
-  for (int i = 0; i < cameraInfo.height;i++)
+  const CameraInfo& cameraInfo = theCameraInfoUpper;
+  for (int i = 0; i < cameraInfo.height; i++)
   {
-    for (int j = 0; j < cameraInfo.width;j++)
+    for (int j = 0; j < cameraInfo.width; j++)
     {
       Image::Pixel p = theImageUpper[i][j];
-      if ((!useAreaBasedFieldColor && theFieldColorsUpper.isPixelFieldColor(p.y,p.cb,p.cr))
-        || (useAreaBasedFieldColor && theFieldColorsUpper.isPixelFieldColorInArea(p.y, p.cb, p.cr,j,i)))
+      if ((!useAreaBasedFieldColor && theFieldColorsUpper.isPixelFieldColor(p.y, p.cb, p.cr)) || (useAreaBasedFieldColor && theFieldColorsUpper.isPixelFieldColorInArea(p.y, p.cb, p.cr, j, i)))
       {
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper,j,i,150,50,50);
+        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper, j, i, 150, 50, 50);
       }
-      else if (isPixelBallColor(p.y,p.cb,p.cr))
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper,j,i,150,20,230);
+      else if (isPixelBallColor(p.y, p.cb, p.cr))
+        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper, j, i, 150, 20, 230);
       else
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper,j,i,0,128,128);
+        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper, j, i, 0, 128, 128);
     }
   }
 }
 
-void CLIPPreprocessor::drawScanLineSegments(const bool &upper)
+void CLIPPreprocessor::drawScanLineSegments(const bool& upper)
 {
-  std::vector<ScanLine> &scanLinesHorizontal = upper ? scanLinesHorizontalUpper : scanLinesHorizontalLower;
-  std::vector<ScanLine> &scanLinesVertical = upper ? scanLinesVerticalUpper : scanLinesVerticalLower;
+  std::vector<ScanLine>& scanLinesHorizontal = upper ? scanLinesHorizontalUpper : scanLinesHorizontalLower;
+  std::vector<ScanLine>& scanLinesVertical = upper ? scanLinesVerticalUpper : scanLinesVerticalLower;
 
   // vertical scan lines
-  for (std::vector<ScanLine>::const_iterator i = scanLinesVertical.begin();i != scanLinesVertical.end();++i)
+  for (std::vector<ScanLine>::const_iterator i = scanLinesVertical.begin(); i != scanLinesVertical.end(); ++i)
   {
-    for (std::vector<ScanLineSegment>::const_iterator seg = i->scanLineSegments.begin();seg != i->scanLineSegments.end();++seg)
+    for (std::vector<ScanLineSegment>::const_iterator seg = i->scanLineSegments.begin(); seg != i->scanLineSegments.end(); ++seg)
     {
       drawSegment(seg, upper);
     }
   }
   // horizontal scan lines
-  for (std::vector<ScanLine>::const_iterator i = scanLinesHorizontal.begin();i != scanLinesHorizontal.end();++i)
+  for (std::vector<ScanLine>::const_iterator i = scanLinesHorizontal.begin(); i != scanLinesHorizontal.end(); ++i)
   {
-    for (std::vector<ScanLineSegment>::const_iterator seg = i->scanLineSegments.begin();seg != i->scanLineSegments.end();++seg)
+    for (std::vector<ScanLineSegment>::const_iterator seg = i->scanLineSegments.begin(); seg != i->scanLineSegments.end(); ++seg)
     {
-      drawSegment(seg, upper);      
+      drawSegment(seg, upper);
     }
   }
   //field End Points and connections, if close enough (only used for drawings)
-  for (int i = 0; i < (int)fieldEndPoints.size()-1; i++)
+  for (int i = 0; i < (int)fieldEndPoints.size() - 1; i++)
   {
-    if ((fieldEndPoints[i].imageCoordinates-fieldEndPoints[i+1].imageCoordinates).norm() < 40)
+    if ((fieldEndPoints[i].imageCoordinates - fieldEndPoints[i + 1].imageCoordinates).norm() < 40)
     {
       if (upper)
         LINE("module:CLIPPreprocessor:scanLineSegments:Upper",
-          fieldEndPoints[i].imageCoordinates.x(),fieldEndPoints[i].imageCoordinates.y(),
-          fieldEndPoints[i+1].imageCoordinates.x(),fieldEndPoints[i+1].imageCoordinates.y(),
-          1,Drawings::solidPen,ColorRGBA(138,043,226));
+            fieldEndPoints[i].imageCoordinates.x(),
+            fieldEndPoints[i].imageCoordinates.y(),
+            fieldEndPoints[i + 1].imageCoordinates.x(),
+            fieldEndPoints[i + 1].imageCoordinates.y(),
+            1,
+            Drawings::solidPen,
+            ColorRGBA(138, 043, 226));
       else
         LINE("module:CLIPPreprocessor:scanLineSegments:Lower",
-          fieldEndPoints[i].imageCoordinates.x(),fieldEndPoints[i].imageCoordinates.y(),
-          fieldEndPoints[i+1].imageCoordinates.x(),fieldEndPoints[i+1].imageCoordinates.y(),
-          1,Drawings::solidPen,ColorRGBA(138,043,226));
+            fieldEndPoints[i].imageCoordinates.x(),
+            fieldEndPoints[i].imageCoordinates.y(),
+            fieldEndPoints[i + 1].imageCoordinates.x(),
+            fieldEndPoints[i + 1].imageCoordinates.y(),
+            1,
+            Drawings::solidPen,
+            ColorRGBA(138, 043, 226));
     }
     else
     {
       if (upper)
       {
-        DOT("module:CLIPPreprocessor:scanLineSegments:Upper",
-          fieldEndPoints[i].imageCoordinates.x(),fieldEndPoints[i].imageCoordinates.y(),
-          ColorRGBA(138,043,226),ColorRGBA(138,043,226));
-        DOT("module:CLIPPreprocessor:scanLineSegments:Upper",
-          fieldEndPoints[i+1].imageCoordinates.x(),fieldEndPoints[i+1].imageCoordinates.y(),
-          ColorRGBA(138,043,226),ColorRGBA(138,043,226));
+        DOT("module:CLIPPreprocessor:scanLineSegments:Upper", fieldEndPoints[i].imageCoordinates.x(), fieldEndPoints[i].imageCoordinates.y(), ColorRGBA(138, 043, 226), ColorRGBA(138, 043, 226));
+        DOT("module:CLIPPreprocessor:scanLineSegments:Upper", fieldEndPoints[i + 1].imageCoordinates.x(), fieldEndPoints[i + 1].imageCoordinates.y(), ColorRGBA(138, 043, 226), ColorRGBA(138, 043, 226));
       }
       else
       {
-        DOT("module:CLIPPreprocessor:scanLineSegments:Lower",
-          fieldEndPoints[i].imageCoordinates.x(),fieldEndPoints[i].imageCoordinates.y(),
-          ColorRGBA(138,043,226),ColorRGBA(138,043,226));
-        DOT("module:CLIPPreprocessor:scanLineSegments:Lower",
-          fieldEndPoints[i+1].imageCoordinates.x(),fieldEndPoints[i+1].imageCoordinates.y(),
-          ColorRGBA(138,043,226),ColorRGBA(138,043,226));
+        DOT("module:CLIPPreprocessor:scanLineSegments:Lower", fieldEndPoints[i].imageCoordinates.x(), fieldEndPoints[i].imageCoordinates.y(), ColorRGBA(138, 043, 226), ColorRGBA(138, 043, 226));
+        DOT("module:CLIPPreprocessor:scanLineSegments:Lower", fieldEndPoints[i + 1].imageCoordinates.x(), fieldEndPoints[i + 1].imageCoordinates.y(), ColorRGBA(138, 043, 226), ColorRGBA(138, 043, 226));
       }
     }
   }
 }
 
-void CLIPPreprocessor::drawSegment(std::vector<ScanLineSegment>::const_iterator seg, const bool &upper)
+void CLIPPreprocessor::drawSegment(std::vector<ScanLineSegment>::const_iterator seg, const bool& upper)
 {
   // mark new segments (could be same color/type!)
   if (upper)
   {
     if (seg->startPointInImage.x() == seg->endPointInImage.x())
     {
-      LINE("module:CLIPPreprocessor:scanLineSegments:Upper",
-        (seg->endPointInImage.x()-2),seg->endPointInImage.y(),
-        (seg->endPointInImage.x()+2),seg->endPointInImage.y(),
-        1,Drawings::solidPen,ColorRGBA::black);
-      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper",
-        (seg->endPointInImage.x()-2),seg->endPointInImage.y(),
-        (seg->endPointInImage.x()+2),seg->endPointInImage.y(),
-        1,Drawings::solidPen,ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegments:Upper", (seg->endPointInImage.x() - 2), seg->endPointInImage.y(), (seg->endPointInImage.x() + 2), seg->endPointInImage.y(), 1, Drawings::solidPen, ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper", (seg->endPointInImage.x() - 2), seg->endPointInImage.y(), (seg->endPointInImage.x() + 2), seg->endPointInImage.y(), 1, Drawings::solidPen, ColorRGBA::black);
     }
     else
     {
-      LINE("module:CLIPPreprocessor:scanLineSegments:Upper",
-        seg->endPointInImage.x(),(seg->endPointInImage.y()-2),
-        seg->endPointInImage.x(),(seg->endPointInImage.y()+2),
-        1,Drawings::solidPen,ColorRGBA::black);
-      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper",
-        seg->endPointInImage.x(),(seg->endPointInImage.y()-2),
-        seg->endPointInImage.x(),(seg->endPointInImage.y()+2),
-        1,Drawings::solidPen,ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegments:Upper", seg->endPointInImage.x(), (seg->endPointInImage.y() - 2), seg->endPointInImage.x(), (seg->endPointInImage.y() + 2), 1, Drawings::solidPen, ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper", seg->endPointInImage.x(), (seg->endPointInImage.y() - 2), seg->endPointInImage.x(), (seg->endPointInImage.y() + 2), 1, Drawings::solidPen, ColorRGBA::black);
     }
   }
   else
   {
     if (seg->startPointInImage.x() == seg->endPointInImage.x())
     {
-      LINE("module:CLIPPreprocessor:scanLineSegments:Lower",
-        (seg->endPointInImage.x()-2),seg->endPointInImage.y(),
-        (seg->endPointInImage.x()+2),seg->endPointInImage.y(),
-        1,Drawings::solidPen,ColorRGBA::black);
-      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower",
-        (seg->endPointInImage.x()-2),seg->endPointInImage.y(),
-        (seg->endPointInImage.x()+2),seg->endPointInImage.y(),
-        1,Drawings::solidPen,ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegments:Lower", (seg->endPointInImage.x() - 2), seg->endPointInImage.y(), (seg->endPointInImage.x() + 2), seg->endPointInImage.y(), 1, Drawings::solidPen, ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower", (seg->endPointInImage.x() - 2), seg->endPointInImage.y(), (seg->endPointInImage.x() + 2), seg->endPointInImage.y(), 1, Drawings::solidPen, ColorRGBA::black);
     }
     else
     {
-      LINE("module:CLIPPreprocessor:scanLineSegments:Lower",
-        seg->endPointInImage.x(),(seg->endPointInImage.y()-2),
-        seg->endPointInImage.x(),(seg->endPointInImage.y()+2),
-        1,Drawings::solidPen,ColorRGBA::black);
-      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower",
-        seg->endPointInImage.x(),(seg->endPointInImage.y()-2),
-        seg->endPointInImage.x(),(seg->endPointInImage.y()+2),
-        1,Drawings::solidPen,ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegments:Lower", seg->endPointInImage.x(), (seg->endPointInImage.y() - 2), seg->endPointInImage.x(), (seg->endPointInImage.y() + 2), 1, Drawings::solidPen, ColorRGBA::black);
+      LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower", seg->endPointInImage.x(), (seg->endPointInImage.y() - 2), seg->endPointInImage.x(), (seg->endPointInImage.y() + 2), 1, Drawings::solidPen, ColorRGBA::black);
     }
   }
   // draw segments in different colors
@@ -1630,42 +1533,24 @@ void CLIPPreprocessor::drawSegment(std::vector<ScanLineSegment>::const_iterator 
   }
   if (upper)
   {
-    LINE("module:CLIPPreprocessor:scanLineSegments:Upper",
-      seg->startPointInImage.x(),seg->startPointInImage.y(),
-      seg->endPointInImage.x(),seg->endPointInImage.y(),
-      1,Drawings::solidPen,color);
-    LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper",
-      seg->startPointInImage.x(),seg->startPointInImage.y(),
-      seg->endPointInImage.x(),seg->endPointInImage.y(),
-      1,Drawings::solidPen,color);
+    LINE("module:CLIPPreprocessor:scanLineSegments:Upper", seg->startPointInImage.x(), seg->startPointInImage.y(), seg->endPointInImage.x(), seg->endPointInImage.y(), 1, Drawings::solidPen, color);
+    LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Upper", seg->startPointInImage.x(), seg->startPointInImage.y(), seg->endPointInImage.x(), seg->endPointInImage.y(), 1, Drawings::solidPen, color);
   }
   else
   {
-    LINE("module:CLIPPreprocessor:scanLineSegments:Lower",
-      seg->startPointInImage.x(),seg->startPointInImage.y(),
-      seg->endPointInImage.x(),seg->endPointInImage.y(),
-      1,Drawings::solidPen,color);
-    LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower",
-      seg->startPointInImage.x(),seg->startPointInImage.y(),
-      seg->endPointInImage.x(),seg->endPointInImage.y(),
-      1,Drawings::solidPen,color);
+    LINE("module:CLIPPreprocessor:scanLineSegments:Lower", seg->startPointInImage.x(), seg->startPointInImage.y(), seg->endPointInImage.x(), seg->endPointInImage.y(), 1, Drawings::solidPen, color);
+    LINE("module:CLIPPreprocessor:scanLineSegmentsRaw:Lower", seg->startPointInImage.x(), seg->startPointInImage.y(), seg->endPointInImage.x(), seg->endPointInImage.y(), 1, Drawings::solidPen, color);
   }
 }
 
-void CLIPPreprocessor::drawFieldHull(const bool &upper)
+void CLIPPreprocessor::drawFieldHull(const bool& upper)
 {
   for (int i = 0; i < (int)fieldHull.size() - 1; i++)
   {
     if (upper)
-      LINE("module:CLIPPreprocessor:fieldHull:Upper",
-        fieldHull[i].x(), fieldHull[i].y(),
-        fieldHull[i + 1].x(), fieldHull[i + 1].y(),
-        5, Drawings::solidPen, ColorRGBA::yellow);
+      LINE("module:CLIPPreprocessor:fieldHull:Upper", fieldHull[i].x(), fieldHull[i].y(), fieldHull[i + 1].x(), fieldHull[i + 1].y(), 5, Drawings::solidPen, ColorRGBA::yellow);
     else
-      LINE("module:CLIPPreprocessor:fieldHull:Lower", 
-        fieldHull[i].x(), fieldHull[i].y(),
-      fieldHull[i + 1].x(), fieldHull[i + 1].y(),
-      5, Drawings::solidPen, ColorRGBA::yellow);
+      LINE("module:CLIPPreprocessor:fieldHull:Lower", fieldHull[i].x(), fieldHull[i].y(), fieldHull[i + 1].x(), fieldHull[i + 1].y(), 5, Drawings::solidPen, ColorRGBA::yellow);
   }
 }
 

@@ -29,13 +29,13 @@ class IntSpinBox : public QSpinBox
 protected:
   QValidator::State validate(QString& input, int& pos) const
   {
-    for(;;)
+    for (;;)
     {
       int index = input.indexOf('.');
-      if(index == -1)
+      if (index == -1)
         break;
       input = input.left(index) + input.mid(index + 1);
-      if(pos > index)
+      if (pos > index)
         --pos;
     }
     return QSpinBox::validate(input, pos);
@@ -59,21 +59,18 @@ protected:
   QString textFromValue(double value) const
   {
     QString text = QString("%1").arg(value, 0, 'f', 5); // avoid exponents
-    while(text.size() > 1 && text.contains('.') && (text.endsWith('0') || text.endsWith('.'))) // remove trailing '0's
+    while (text.size() > 1 && text.contains('.') && (text.endsWith('0') || text.endsWith('.'))) // remove trailing '0's
       text = text.left(text.size() - 1);
     return text;
   }
 
-  double valueFromText(const QString& text) const
-  {
-    return text.toFloat();
-  }
+  double valueFromText(const QString& text) const { return text.toFloat(); }
 
   /** Accept numbers such as ".17" */
   QValidator::State validate(QString& input, int& pos) const
   {
     QValidator::State state = QDoubleSpinBox::validate(input, pos);
-    if(state != QValidator::Invalid || input.isEmpty() || input[0] != '.')
+    if (state != QValidator::Invalid || input.isEmpty() || input[0] != '.')
       return state;
     QString temp = "0" + input;
     return QDoubleSpinBox::validate(temp, pos);
@@ -92,7 +89,7 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
   QWidget* pReturnWidget = nullptr;
   QWidget* pFilterWidget = nullptr;
   //FIXME copy&paste code
-  if(TypeDescriptor::getTypeId<unsigned int>() == pManager->propertyType(pProperty))
+  if (TypeDescriptor::getTypeId<unsigned int>() == pManager->propertyType(pProperty))
   {
     QSpinBox* pBox = new IntSpinBox(pParent);
     pBox->setKeyboardTracking(false); //This is done to avoid changed updates on every keypress
@@ -106,11 +103,12 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     connect(pBox, SIGNAL(valueChanged(int)), this, SLOT(slotSpinBoxValueChanged(int)));
     connect(pBox, SIGNAL(destroyed(QObject*)), this, SLOT(slotEditorDestroyed(QObject*)));
   }
-  else if(TypeDescriptor::getTypeId<float>() == pManager->propertyType(pProperty))
+  else if (TypeDescriptor::getTypeId<float>() == pManager->propertyType(pProperty))
   {
     FloatSpinBox* pBox = new FloatSpinBox(pParent);
     pBox->setKeyboardTracking(false);
     pBox->setDecimals(5);
+    pBox->setSingleStep(0.1);
     propertyToDoubleSpinBox[pProperty] = pBox;
     doubleSpinBoxToProperty[pBox] = pProperty;
     pBox->setMinimum(-std::numeric_limits<float>::max());
@@ -120,7 +118,7 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     connect(pBox, SIGNAL(valueChanged(double)), this, SLOT(slotFloatSpinBoxValueChanged(double)));
     connect(pBox, SIGNAL(destroyed(QObject*)), this, SLOT(slotEditorDestroyed(QObject*)));
   }
-  else if(TypeDescriptor::getTypeId<short>() == pManager->propertyType(pProperty))
+  else if (TypeDescriptor::getTypeId<short>() == pManager->propertyType(pProperty))
   {
     QSpinBox* pBox = new IntSpinBox(pParent);
     pBox->setKeyboardTracking(false);
@@ -133,7 +131,7 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     connect(pBox, SIGNAL(valueChanged(int)), this, SLOT(slotSpinBoxValueChanged(int)));
     connect(pBox, SIGNAL(destroyed(QObject*)), this, SLOT(slotEditorDestroyed(QObject*)));
   }
-  else if(TypeDescriptor::getTypeId<unsigned short>() == pManager->propertyType(pProperty))
+  else if (TypeDescriptor::getTypeId<unsigned short>() == pManager->propertyType(pProperty))
   {
     QSpinBox* pBox = new IntSpinBox(pParent);
     pBox->setKeyboardTracking(false);
@@ -146,7 +144,7 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     connect(pBox, SIGNAL(valueChanged(int)), this, SLOT(slotSpinBoxValueChanged(int)));
     connect(pBox, SIGNAL(destroyed(QObject*)), this, SLOT(slotEditorDestroyed(QObject*)));
   }
-  else if(TypeDescriptor::getTypeId<unsigned char>() == pManager->propertyType(pProperty))
+  else if (TypeDescriptor::getTypeId<unsigned char>() == pManager->propertyType(pProperty))
   {
     QSpinBox* pBox = new IntSpinBox(pParent);
     pBox->setKeyboardTracking(false);
@@ -159,7 +157,7 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     connect(pBox, SIGNAL(valueChanged(int)), this, SLOT(slotSpinBoxValueChanged(int)));
     connect(pBox, SIGNAL(destroyed(QObject*)), this, SLOT(slotEditorDestroyed(QObject*)));
   }
-  else if(TypeDescriptor::getTypeId<AngleWithUnity>() == pManager->propertyType(pProperty))
+  else if (TypeDescriptor::getTypeId<AngleWithUnity>() == pManager->propertyType(pProperty))
   {
     AngleEditor* aEdit = new AngleEditor(pParent);
     pFilterWidget = aEdit->fBox;
@@ -167,7 +165,6 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     angleEditorToProperty[aEdit] = pProperty;
     AngleWithUnity angle = pManager->value(pProperty).value<AngleWithUnity>();
     aEdit->setValue(angle);
-
     connect(aEdit, SIGNAL(valueChanged(float)), this, SLOT(slotAngleEditorValueChanged(float)));
     connect(aEdit, SIGNAL(unityChanged(int)), this, SLOT(slotAngleEditorUnityChanged(int)));
     connect(aEdit, SIGNAL(destroyed(QObject*)), this, SLOT(slotEditorDestroyed(QObject*)));
@@ -179,9 +176,9 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
     pReturnWidget = QtVariantEditorFactory::createEditor(pManager, pProperty, pParent);
   }
 
-  if(nullptr != pReturnWidget)
+  if (nullptr != pReturnWidget)
   {
-    if(!pFilterWidget)
+    if (!pFilterWidget)
       pFilterWidget = pReturnWidget;
 
     //The event filter is used to forward all events to the DataView
@@ -191,7 +188,7 @@ QWidget* PropertyEditorFactory::createEditor(QtVariantPropertyManager* pManager,
   {
     //In case of error return a label containing an error message
     QLabel* l = new QLabel(pParent);
-    if(TypeDescriptor::getGroupType() != pManager->propertyType(pProperty))
+    if (TypeDescriptor::getGroupType() != pManager->propertyType(pProperty))
       l->setText("Failed to create an editor for this type");
     pReturnWidget = l;
   }
@@ -238,7 +235,7 @@ void PropertyEditorFactory::slotFloatSpinBoxValueChanged(double newValue)
   ASSERT(doubleSpinBoxToProperty.contains(pCaller));
   ASSERT(nullptr != pTheManager);
 
-  float val = static_cast<float>(newValue);//this is ok because the spinBox was limited to float ranges
+  float val = static_cast<float>(newValue); //this is ok because the spinBox was limited to float ranges
   pTheManager->setValue(doubleSpinBoxToProperty[pCaller], QVariant::fromValue(val));
 }
 
@@ -277,9 +274,9 @@ void PropertyEditorFactory::slotEditorDestroyed(QObject* pObject)
   //note: qobject_cast does not work. Casting pObject to QSpinBox always returns nullptr, even if it is a QSpinBox ...
 
   QMap<QSpinBox*, QtProperty*>::ConstIterator itEditor = spinBoxToProperty.constBegin();
-  while(itEditor != spinBoxToProperty.constEnd())
+  while (itEditor != spinBoxToProperty.constEnd())
   {
-    if(itEditor.key() == pObject)
+    if (itEditor.key() == pObject)
     {
       QSpinBox* editor = itEditor.key();
       QtProperty* property = itEditor.value();
@@ -291,9 +288,9 @@ void PropertyEditorFactory::slotEditorDestroyed(QObject* pObject)
   }
 
   QMap<QDoubleSpinBox*, QtProperty*>::ConstIterator itEditorDouble = doubleSpinBoxToProperty.constBegin();
-  while(itEditorDouble != doubleSpinBoxToProperty.constEnd())
+  while (itEditorDouble != doubleSpinBoxToProperty.constEnd())
   {
-    if(itEditorDouble.key() == pObject)
+    if (itEditorDouble.key() == pObject)
     {
       QDoubleSpinBox* editor = itEditorDouble.key();
       QtProperty* property = itEditorDouble.value();
@@ -305,9 +302,9 @@ void PropertyEditorFactory::slotEditorDestroyed(QObject* pObject)
   }
 
   QMap<AngleEditor*, QtProperty*>::ConstIterator itEditorAngle = angleEditorToProperty.constBegin();
-  while(itEditorAngle != angleEditorToProperty.constEnd())
+  while (itEditorAngle != angleEditorToProperty.constEnd())
   {
-    if(itEditorAngle.key() == pObject)
+    if (itEditorAngle.key() == pObject)
     {
       AngleEditor* editor = itEditorAngle.key();
       QtProperty* property = itEditorAngle.value();
@@ -319,8 +316,7 @@ void PropertyEditorFactory::slotEditorDestroyed(QObject* pObject)
   }
 }
 
-AngleEditor::AngleEditor(QWidget* parent) :
-  QWidget(parent)
+AngleEditor::AngleEditor(QWidget* parent) : QWidget(parent)
 {
   QGridLayout* layout = new QGridLayout();
   setLayout(layout);
@@ -328,7 +324,7 @@ AngleEditor::AngleEditor(QWidget* parent) :
   unityBox = new QComboBox();
   layout->addWidget(fBox, 0, 0);
 
-#ifdef OSX
+#ifdef MACOS
   setAttribute(Qt::WA_MacShowFocusRect);
   QWidget* w = new QWidget();
   w->setLayout(new QHBoxLayout);
@@ -362,16 +358,16 @@ AngleEditor::AngleEditor(QWidget* parent) :
 void AngleEditor::setValue(const AngleWithUnity& value)
 {
   unityBox->setCurrentIndex(value.deg ? 0 : 1);
-  if(value.deg)
+  if (value.deg)
   {
     // round to two decimals. Using the setDecimals() of the Spinbox
     // triggers another valueChanged witch leads to some problems..
     fBox->setValue(round(value.toDegrees() * 100) / 100);
-    fBox->setSingleStep(1.f);
+    fBox->setSingleStep(0.1f);
   }
   else
   {
     fBox->setValue(value);
-    fBox->setSingleStep(1_deg);
+    fBox->setSingleStep(0.1_deg);
   }
 }

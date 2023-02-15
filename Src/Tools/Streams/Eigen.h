@@ -18,7 +18,7 @@
  * @tparam T The element type of the row or column.
  * @tparam N The number of elements in the row or column.
  */
-template<typename T, int N> class EigenMatrixRow
+template <typename T, int N> class EigenMatrixRow
 {
 public:
   T elems[N]; /**< The elements of the row or column. */
@@ -31,8 +31,7 @@ public:
  * @param stream The stream to write to.
  * @param row The row or column to write.
  */
-template<typename T, int N>
-Out& operator<<(Out& stream, const EigenMatrixRow<T, N>& row)
+template <typename T, int N> Out& operator<<(Out& stream, const EigenMatrixRow<T, N>& row)
 {
   STREAM_REGISTER_BEGIN_EXT(row);
   STREAM_EXT(stream, row.elems);
@@ -47,8 +46,7 @@ Out& operator<<(Out& stream, const EigenMatrixRow<T, N>& row)
  * @param stream The stream to read from.
  * @param row The row or column to read.
  */
-template<typename T, int N>
-In& operator>>(In& stream, EigenMatrixRow<T, N>& row)
+template <typename T, int N> In& operator>>(In& stream, EigenMatrixRow<T, N>& row)
 {
   STREAM_REGISTER_BEGIN_EXT(row);
   STREAM_EXT(stream, row.elems);
@@ -67,23 +65,21 @@ In& operator>>(In& stream, EigenMatrixRow<T, N>& row)
  * @param stream The stream to write to.
  * @param matrix The matrix to write.
  */
-template<typename T, int ROWS, int COLS, int OPTIONS, int MAX_ROWS, int MAX_COLS>
+template <typename T, int ROWS, int COLS, int OPTIONS, int MAX_ROWS, int MAX_COLS>
 Out& operator<<(Out& stream, const Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROWS, MAX_COLS>& matrix)
 {
-  static_assert(ROWS != Eigen::Dynamic && COLS != Eigen::Dynamic,
-                "Streaming dynamic Eigen matrix not supported yet");
-  static_assert(ROWS == MAX_ROWS && COLS == MAX_COLS,
-                "Setting _MaxRows or _MaxCols is not supported yet");
+  static_assert(ROWS != Eigen::Dynamic && COLS != Eigen::Dynamic, "Streaming dynamic Eigen matrix not supported yet");
+  static_assert(ROWS == MAX_ROWS && COLS == MAX_COLS, "Setting _MaxRows or _MaxCols is not supported yet");
 
   STREAM_REGISTER_BEGIN_EXT(matrix);
-  if(OPTIONS & Eigen::RowMajor)
+  if (OPTIONS & Eigen::RowMajor)
   {
-    EigenMatrixRow<T, COLS> (*const rows)[ROWS] = (EigenMatrixRow<T, COLS> (*const)[ROWS]) matrix.data();
+    EigenMatrixRow<T, COLS>(*const rows)[ROWS] = (EigenMatrixRow<T, COLS>(*const)[ROWS])matrix.data();
     STREAM_EXT(stream, rows);
   }
   else
   {
-    EigenMatrixRow<T, COLS> (*const cols)[ROWS] = (EigenMatrixRow<T, COLS> (*const)[ROWS]) matrix.data();
+    EigenMatrixRow<T, COLS>(*const cols)[ROWS] = (EigenMatrixRow<T, COLS>(*const)[ROWS])matrix.data();
     STREAM_EXT(stream, cols);
   }
   STREAM_REGISTER_FINISH;
@@ -100,15 +96,12 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROW
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
-template<typename T, int ELEMS, int OPTIONS, int MAX_ELEMS>
-Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, ELEMS, OPTIONS, 1, MAX_ELEMS>& vector)
+template <typename T, int ELEMS, int OPTIONS, int MAX_ELEMS> Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, ELEMS, OPTIONS, 1, MAX_ELEMS>& vector)
 {
-  static_assert(ELEMS != Eigen::Dynamic,
-                "Streaming dynamic Eigen matrix not supported yet");
-  static_assert(ELEMS == MAX_ELEMS,
-                "Setting _MaxCols is not supported yet");
+  static_assert(ELEMS != Eigen::Dynamic, "Streaming dynamic Eigen matrix not supported yet");
+  static_assert(ELEMS == MAX_ELEMS, "Setting _MaxCols is not supported yet");
 
-  T (*const elems)[ELEMS] = (T (*const)[ELEMS]) vector.data();
+  T(*const elems)[ELEMS] = (T(*const)[ELEMS])vector.data();
 
   STREAM_REGISTER_BEGIN_EXT(vector);
   STREAM_EXT(stream, elems);
@@ -124,8 +117,7 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, ELEMS, OPTIONS, 1, MAX_EL
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
-template<typename T, int OPTIONS>
-Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 2, OPTIONS, 1, 2>& vector)
+template <typename T, int OPTIONS> Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 2, OPTIONS, 1, 2>& vector)
 {
   const T& x = vector.x();
   const T& y = vector.y();
@@ -145,8 +137,7 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 2, OPTIONS, 1, 2>& vector
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
-template<typename T, int OPTIONS>
-Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector)
+template <typename T, int OPTIONS> Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector)
 {
   const T& x = vector.x();
   const T& y = vector.y();
@@ -170,15 +161,12 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
-template<typename T, int ELEMS, int OPTIONS, int MAX_ELEMS>
-Out& operator<<(Out& stream, const Eigen::Matrix<T, ELEMS, 1, OPTIONS, MAX_ELEMS, 1>& vector)
+template <typename T, int ELEMS, int OPTIONS, int MAX_ELEMS> Out& operator<<(Out& stream, const Eigen::Matrix<T, ELEMS, 1, OPTIONS, MAX_ELEMS, 1>& vector)
 {
-  static_assert(ELEMS != Eigen::Dynamic,
-                "Streaming dynamic Eigen matrix not supported yet");
-  static_assert(ELEMS == MAX_ELEMS,
-                "Setting _MaxRows is not supported yet");
+  static_assert(ELEMS != Eigen::Dynamic, "Streaming dynamic Eigen matrix not supported yet");
+  static_assert(ELEMS == MAX_ELEMS, "Setting _MaxRows is not supported yet");
 
-  T (*const elems)[ELEMS] = (T (*const)[ELEMS]) vector.data();
+  T(*const elems)[ELEMS] = (T(*const)[ELEMS])vector.data();
 
   STREAM_REGISTER_BEGIN_EXT(vector);
   STREAM_EXT(stream, elems);
@@ -194,8 +182,7 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, ELEMS, 1, OPTIONS, MAX_ELEMS
  * @param stream The stream to write to.
  * @param array The array to write.
  */
-template<typename T, int OPTIONS>
-Out& operator<<(Out& stream, const Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
+template <typename T, int OPTIONS> Out& operator<<(Out& stream, const Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
 {
   const T& x = array.x();
   const T& y = array.y();
@@ -215,8 +202,7 @@ Out& operator<<(Out& stream, const Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
-template<typename T, int OPTIONS>
-Out& operator<<(Out& stream, const Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector)
+template <typename T, int OPTIONS> Out& operator<<(Out& stream, const Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector)
 {
   const T& x = vector.x();
   const T& y = vector.y();
@@ -236,8 +222,7 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector
  * @param stream The stream to write to.
  * @param vector The vector to write.
  */
-template<typename T, int OPTIONS>
-Out& operator<<(Out& stream, const Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector)
+template <typename T, int OPTIONS> Out& operator<<(Out& stream, const Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector)
 {
   const T& x = vector.x();
   const T& y = vector.y();
@@ -263,23 +248,20 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector
  * @param stream The stream to read from.
  * @param matrix The matrix to read.
  */
-template<typename T, int ROWS, int COLS, int OPTIONS, int MAX_ROWS, int MAX_COLS>
-In& operator>>(In& stream, Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROWS, MAX_COLS>& matrix)
+template <typename T, int ROWS, int COLS, int OPTIONS, int MAX_ROWS, int MAX_COLS> In& operator>>(In& stream, Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROWS, MAX_COLS>& matrix)
 {
-  static_assert(ROWS != Eigen::Dynamic && COLS != Eigen::Dynamic,
-                "Streaming dynamic Eigen matrix not supported yet");
-  static_assert(ROWS == MAX_ROWS && COLS == MAX_COLS,
-                "Setting _MaxRows or _MaxCols is not supported yet");
+  static_assert(ROWS != Eigen::Dynamic && COLS != Eigen::Dynamic, "Streaming dynamic Eigen matrix not supported yet");
+  static_assert(ROWS == MAX_ROWS && COLS == MAX_COLS, "Setting _MaxRows or _MaxCols is not supported yet");
 
   STREAM_REGISTER_BEGIN_EXT(matrix);
-  if(OPTIONS & Eigen::RowMajor)
+  if (OPTIONS & Eigen::RowMajor)
   {
-    EigenMatrixRow<T, COLS> (*rows)[ROWS] = (EigenMatrixRow<T, COLS> (*)[ROWS]) matrix.data();
+    EigenMatrixRow<T, COLS>(*rows)[ROWS] = (EigenMatrixRow<T, COLS>(*)[ROWS])matrix.data();
     STREAM_EXT(stream, rows);
   }
   else
   {
-    EigenMatrixRow<T, COLS> (*cols)[ROWS] = (EigenMatrixRow<T, COLS> (*)[ROWS]) matrix.data();
+    EigenMatrixRow<T, COLS>(*cols)[ROWS] = (EigenMatrixRow<T, COLS>(*)[ROWS])matrix.data();
     STREAM_EXT(stream, cols);
   }
   STREAM_REGISTER_FINISH;
@@ -296,15 +278,12 @@ In& operator>>(In& stream, Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROWS, MAX_C
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
-template<typename T, int ELEMS, int OPTIONS, int MAX_ELEMS>
-In& operator>>(In& stream, Eigen::Matrix<T, 1, ELEMS, OPTIONS, 1, MAX_ELEMS>& vector)
+template <typename T, int ELEMS, int OPTIONS, int MAX_ELEMS> In& operator>>(In& stream, Eigen::Matrix<T, 1, ELEMS, OPTIONS, 1, MAX_ELEMS>& vector)
 {
-  static_assert(ELEMS != Eigen::Dynamic,
-                "Streaming dynamic Eigen matrix not supported yet");
-  static_assert(ELEMS == MAX_ELEMS,
-                "Setting _MaxCols is not supported yet");
+  static_assert(ELEMS != Eigen::Dynamic, "Streaming dynamic Eigen matrix not supported yet");
+  static_assert(ELEMS == MAX_ELEMS, "Setting _MaxCols is not supported yet");
 
-  T (*elems)[ELEMS] = (T (*)[ELEMS]) vector.data();
+  T(*elems)[ELEMS] = (T(*)[ELEMS])vector.data();
 
   STREAM_REGISTER_BEGIN_EXT(vector);
   STREAM_EXT(stream, elems);
@@ -320,8 +299,7 @@ In& operator>>(In& stream, Eigen::Matrix<T, 1, ELEMS, OPTIONS, 1, MAX_ELEMS>& ve
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
-template<typename T, int OPTIONS>
-In& operator>>(In& stream, Eigen::Matrix<T, 1, 2, OPTIONS, 1, 2>& vector)
+template <typename T, int OPTIONS> In& operator>>(In& stream, Eigen::Matrix<T, 1, 2, OPTIONS, 1, 2>& vector)
 {
   T& x = vector.x();
   T& y = vector.y();
@@ -341,8 +319,7 @@ In& operator>>(In& stream, Eigen::Matrix<T, 1, 2, OPTIONS, 1, 2>& vector)
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
-template<typename T, int OPTIONS>
-In& operator>>(In& stream, Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector)
+template <typename T, int OPTIONS> In& operator>>(In& stream, Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector)
 {
   T& x = vector.x();
   T& y = vector.y();
@@ -366,15 +343,12 @@ In& operator>>(In& stream, Eigen::Matrix<T, 1, 3, OPTIONS, 1, 3>& vector)
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
-template<typename T, int ELEMS, int OPTIONS, int MAX_ELEMS>
-In& operator>>(In& stream, Eigen::Matrix<T, ELEMS, 1, OPTIONS, MAX_ELEMS, 1>& vector)
+template <typename T, int ELEMS, int OPTIONS, int MAX_ELEMS> In& operator>>(In& stream, Eigen::Matrix<T, ELEMS, 1, OPTIONS, MAX_ELEMS, 1>& vector)
 {
-  static_assert(ELEMS != Eigen::Dynamic,
-                "Streaming dynamic Eigen matrix not supported yet");
-  static_assert(ELEMS == MAX_ELEMS,
-                "Setting _MaxRows is not supported yet");
+  static_assert(ELEMS != Eigen::Dynamic, "Streaming dynamic Eigen matrix not supported yet");
+  static_assert(ELEMS == MAX_ELEMS, "Setting _MaxRows is not supported yet");
 
-  T (*elems)[ELEMS] = (T (*)[ELEMS]) vector.data();
+  T(*elems)[ELEMS] = (T(*)[ELEMS])vector.data();
 
   STREAM_REGISTER_BEGIN_EXT(vector);
   STREAM_EXT(stream, elems);
@@ -390,8 +364,7 @@ In& operator>>(In& stream, Eigen::Matrix<T, ELEMS, 1, OPTIONS, MAX_ELEMS, 1>& ve
  * @param stream The stream to read from.
  * @param array The array to read.
  */
-template<typename T, int OPTIONS>
-In& operator>>(In& stream, Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
+template <typename T, int OPTIONS> In& operator>>(In& stream, Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
 {
   T& x = array.x();
   T& y = array.y();
@@ -411,8 +384,7 @@ In& operator>>(In& stream, Eigen::Array<T, 2, 1, OPTIONS, 2, 1>& array)
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
-template<typename T, int OPTIONS>
-In& operator>>(In& stream, Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector)
+template <typename T, int OPTIONS> In& operator>>(In& stream, Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector)
 {
   T& x = vector.x();
   T& y = vector.y();
@@ -432,8 +404,7 @@ In& operator>>(In& stream, Eigen::Matrix<T, 2, 1, OPTIONS, 2, 1>& vector)
  * @param stream The stream to read from.
  * @param vector The vector to read.
  */
-template<typename T, int OPTIONS>
-In& operator>>(In& stream, Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector)
+template <typename T, int OPTIONS> In& operator>>(In& stream, Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector)
 {
   T& x = vector.x();
   T& y = vector.y();
@@ -448,8 +419,7 @@ In& operator>>(In& stream, Eigen::Matrix<T, 3, 1, OPTIONS, 3, 1>& vector)
   return stream;
 }
 
-template<typename T, int OPTIONS>
-In& operator>>(In& stream, Eigen::Quaternion<T, OPTIONS>& quaternion)
+template <typename T, int OPTIONS> In& operator>>(In& stream, Eigen::Quaternion<T, OPTIONS>& quaternion)
 {
   T& x = quaternion.x();
   T& y = quaternion.y();
@@ -466,8 +436,7 @@ In& operator>>(In& stream, Eigen::Quaternion<T, OPTIONS>& quaternion)
   return stream;
 }
 
-template<typename T, int OPTIONS>
-Out& operator<<(Out& stream, const Eigen::Quaternion<T, OPTIONS>& quaternion)
+template <typename T, int OPTIONS> Out& operator<<(Out& stream, const Eigen::Quaternion<T, OPTIONS>& quaternion)
 {
   const T& x = quaternion.x();
   const T& y = quaternion.y();

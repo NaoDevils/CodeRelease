@@ -16,7 +16,6 @@
 #include "Representations/Infrastructure/CameraInfo.h"
 
 MODULE(LowFrameRateImageProvider,
-{,
   REQUIRES(Image),
   REQUIRES(ImageUpper),
   REQUIRES(CameraInfo),
@@ -24,13 +23,12 @@ MODULE(LowFrameRateImageProvider,
   REQUIRES(FrameInfo),
   PROVIDES_WITHOUT_MODIFY(LowFrameRateImage),
   PROVIDES_WITHOUT_MODIFY(LowFrameRateImageUpper),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float) frameRate, /**< Frames per second. */
     (bool) perceptsOnly, /**<If true only images containing percepts will be logged */
-    (bool) logGoalPercept, /**< If true images containing goal percepts will be logged. Only if perceptsOnly is true as well */
-  }),
-});
+    (bool) logGoalPercept /**< If true images containing goal percepts will be logged. Only if perceptsOnly is true as well */
+  )
+);
 
 class LowFrameRateImageProvider : public LowFrameRateImageProviderBase
 {

@@ -25,7 +25,8 @@ class PerceptsPerSecond
 private:
   /// First element: timestamp of the percept (in ms)
   /// Second element: validity of the percept (in range [0,1])
-  struct pps_entry : std::pair<unsigned, float> {
+  struct pps_entry : std::pair<unsigned, float>
+  {
     pps_entry(unsigned timestamp, float validity)
     {
       first = timestamp;
@@ -61,10 +62,7 @@ public:
    *                      \c duration milliseconds (see method \c meanPerceptValidity).
    *                      Default value: 1
    */
-  void addPercept(unsigned timestamp, float validity = 1.f)
-  {
-    addPercept(pps_entry(timestamp, validity));
-  }
+  void addPercept(unsigned timestamp, float validity = 1.f) { addPercept(pps_entry(timestamp, validity)); }
 
   /**
    * Copy all percepts from \c source to \c *this.
@@ -73,7 +71,8 @@ public:
   void addPercepts(const PerceptsPerSecond& source)
   {
     //typename pps_deque::iterator it = ringBuffer.begin();
-    for (auto it_s = source.ringBuffer.cbegin(); it_s != source.ringBuffer.cend(); ++it_s) {
+    for (auto it_s = source.ringBuffer.cbegin(); it_s != source.ringBuffer.cend(); ++it_s)
+    {
       // TODO: Verify: This could be very slow.
       addPercept(*it_s);
     }
@@ -110,10 +109,12 @@ public:
   float meanPerceptValidity() const
   {
     // Prevent division by 0.
-    if (ringBuffer.size() == 0) return 0.f;
+    if (ringBuffer.size() == 0)
+      return 0.f;
 
     float validitySum = 0.f;
-    for (typename pps_deque::const_iterator it = ringBuffer.begin(); it != ringBuffer.end(); ++it) {
+    for (typename pps_deque::const_iterator it = ringBuffer.begin(); it != ringBuffer.end(); ++it)
+    {
       validitySum += it->validity();
     }
     return validitySum / static_cast<float>(ringBuffer.size());
@@ -148,7 +149,8 @@ private:
   {
     // Search for the first timestamp smaller than the new one. Start at the end
     typename pps_deque::const_iterator it = ringBuffer.cbegin();
-    while (it != ringBuffer.cend() && it->timestamp() > entry.timestamp()) ++it;
+    while (it != ringBuffer.cend() && it->timestamp() > entry.timestamp())
+      ++it;
     ringBuffer.insert(it, entry);
 
     auto first = ringBuffer.cbegin();
@@ -164,7 +166,8 @@ private:
   void cleanUp(unsigned currentTimestamp)
   {
     // Do nothing if the current time is less than the duration which should be saved.
-    if (currentTimestamp <= duration) return;
+    if (currentTimestamp <= duration)
+      return;
 
     while (ringBuffer.size() > 0 && ringBuffer.back().timestamp() <= currentTimestamp - duration)
       // Remove last element until it is not any more older than duration.

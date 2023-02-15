@@ -10,27 +10,25 @@
 
 #include "Representations/Configuration/MassCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/Infrastructure/JointAngles.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Tools/Module/Module.h"
 
 MODULE(RobotModelProvider,
-{,
-  REQUIRES(JointAngles),
+  REQUIRES(JointSensorData),
   REQUIRES(MassCalibration),
   REQUIRES(RobotDimensions),
-  PROVIDES(RobotModel),
-});
+  PROVIDES(RobotModel)
+);
 
 /**
  * @class RobotModelProvider
  *
  * A module for computing the current state of the robot's limbs
  */
-class RobotModelProvider: public RobotModelProviderBase
+class RobotModelProvider : public RobotModelProviderBase
 {
 private:
-
   /** Executes this module
    * @param robotModel The data structure that is filled by this module
    */

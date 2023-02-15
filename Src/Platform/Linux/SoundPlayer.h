@@ -11,7 +11,7 @@
 #include "Thread.h"
 #include "Semaphore.h"
 
-class SoundPlayer: Thread<SoundPlayer>
+class SoundPlayer : Thread<SoundPlayer>
 {
 public:
   /**
@@ -50,7 +50,7 @@ private:
    */
   void start();
 
-  std::deque< std::string > queue;
+  std::deque<std::string> queue;
   std::string filePrefix;
   DECLARE_SYNC;
   bool started;

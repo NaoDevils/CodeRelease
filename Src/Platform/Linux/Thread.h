@@ -11,7 +11,7 @@
 #pragma once
 
 #include <pthread.h>
-#ifdef OSX
+#ifdef MACOS
 #include <sched.h>
 #endif
 #include <unistd.h>
@@ -53,13 +53,13 @@ public:
   /**
   * Default constructor.
   */
-  Thread() : handle(0), running(false) {setPriority(0);}
+  Thread() : handle(0), running(false) { setPriority(0); }
 
   /**
   * Destructor.
   * Stops the thread, if it is still running.
   */
-  virtual ~Thread() {stop();}
+  virtual ~Thread() { stop(); }
 
   /**
   * The function starts a member function as a new thread.
@@ -68,12 +68,12 @@ public:
   */
   void start(T* o, void (T::*f)())
   {
-    if(running)
+    if (running)
       stop();
     function = f;
     object = o;
     running = true;
-    VERIFY(!pthread_create(&handle, 0, (void * (*)(void*)) &Thread<T>::threadStart, this));
+    VERIFY(!pthread_create(&handle, 0, (void* (*)(void*)) & Thread<T>::threadStart, this));
     setPriority(priority);
   }
 
@@ -84,10 +84,10 @@ public:
   */
   void stop()
   {
-    if(handle)
+    if (handle)
     {
       running = false;
-      if(!terminated.wait(10000))
+      if (!terminated.wait(10000))
         pthread_cancel(handle);
       pthread_join(handle, 0);
       handle = 0;
@@ -95,10 +95,47 @@ public:
   }
 
   /**
+   * The function tries to stop the thread without blocking.
+   * It first signals its end by setting running to false. If the thread
+   * did not terminate yet, the function returns false.
+   */
+  bool tryStop()
+  {
+    if (!handle)
+      return false;
+
+    running = false;
+    terminated.wait(0);
+
+    if (pthread_tryjoin_np(handle, 0) == 0)
+    {
+      handle = 0;
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  /**
+   * The function force stops the thread.
+   */
+  void forceStop()
+  {
+    if (handle)
+    {
+      running = false;
+      pthread_cancel(handle);
+      pthread_join(handle, 0);
+    }
+  }
+
+  /**
   * The function announces that the thread shall terminate.
   * It will not try to kill the thread.
   */
-  virtual void announceStop() {running = false;}
+  virtual void announceStop() { running = false; }
 
   /**
   * The function sets the priority of the thread.
@@ -108,7 +145,7 @@ public:
   {
     ASSERT(prio == 0 || (prio > 0 && prio <= sched_get_priority_max(SCHED_FIFO)));
     priority = prio;
-    if(handle)
+    if (handle)
     {
       sched_param param;
       param.sched_priority = priority;
@@ -120,20 +157,20 @@ public:
   * The function determines whether the thread should still be running.
   * @return Should it continue?
   */
-  bool isRunning() const {return running;}
+  bool isRunning() const { return running; }
 
   /**
   * The function returns the thread id.
   * @return The thread id. Only valid after the thread was started.
   */
-  size_t getId() const {return (size_t) handle;}
+  size_t getId() const { return (size_t)handle; }
 
   /**
    * Sets thread name
    */
   static void setName(const std::string& name)
   {
-#ifdef LINUX
+#if defined(LINUX) && !defined(MACOS)
     char cname[16];
     size_t len = name.copy(cname, 15);
     cname[len] = '\0';
@@ -147,18 +184,17 @@ public:
   * The function returns the id of the calling thread.
   * @return The id of the calling thread.
   */
-  static size_t getCurrentId() {return (size_t) pthread_self();}
+  static size_t getCurrentId()
+  {
+    return (size_t)pthread_self();
+  }
 
   /**
     * Causes the calling thread to relinquish the CPU.
     */
   static void yield()
   {
-#ifdef OSX
     sched_yield();
-#else
-    pthread_yield();
-#endif
   }
 };
 
@@ -186,28 +222,19 @@ public:
   /**
   * Destructor
   */
-  ~SyncObject()
-  {
-    VERIFY(!pthread_mutex_destroy(&mutex));
-  }
+  ~SyncObject() { VERIFY(!pthread_mutex_destroy(&mutex)); }
 
   /**
   * The function enters the critical section.
   * It suspends the current thread, until the critical section
   * was left by all other threads.
   */
-  void enter()
-  {
-    VERIFY(!pthread_mutex_lock(&mutex));
-  }
+  void enter() { VERIFY(!pthread_mutex_lock(&mutex)); }
 
   /**
   * The function leaves the critical section.
   */
-  void leave()
-  {
-    VERIFY(!pthread_mutex_unlock(&mutex));
-  }
+  void leave() { VERIFY(!pthread_mutex_unlock(&mutex)); }
 };
 
 /**
@@ -224,13 +251,13 @@ public:
   * @param s A reference to a sync object representing a critical
   *          section. The section is entered.
   */
-  Sync(SyncObject& s) : syncObject(s) {syncObject.enter();}
+  Sync(SyncObject& s) : syncObject(s) { syncObject.enter(); }
 
   /**
   * Destructor.
   * The critical section is left.
   */
-  ~Sync() {syncObject.leave();}
+  ~Sync() { syncObject.leave(); }
 };
 
 /**

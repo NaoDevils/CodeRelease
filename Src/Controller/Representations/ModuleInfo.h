@@ -39,7 +39,7 @@ public:
     * @param other The module name this one is compared to.
     * @return Are the module names the same?
     */
-    bool operator==(const std::string& other) const {return name == other;}
+    bool operator==(const std::string& other) const { return name == other; }
 
     /**
     * Comparison operator. Uses the process identifier, the category and the
@@ -49,8 +49,10 @@ public:
     */
     bool operator<(const Module& other) const
     {
-      return processIdentifier != other.processIdentifier ? processIdentifier < other.processIdentifier :
-             category != other.category ? category < other.category : name < other.name;
+      return processIdentifier != other.processIdentifier ? processIdentifier < other.processIdentifier
+          : category != other.category
+          ? category < other.category
+          : name < other.name;
     }
   };
 
@@ -68,6 +70,16 @@ public:
   * The method clears all tables.
   */
   void clear();
+
+  /**
+   * The method clears modules table for given process identifier.
+   */
+  void clearModules(char processIdentifier);
+
+  /**
+   * The method fills representations table using current modules table.
+   */
+  void fillRepresentations();
 
   /**
   * The function handles a module table message.

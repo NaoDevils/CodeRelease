@@ -1,0 +1,204 @@
+keyFrameID = wideStanceWithStandUp;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  { // crouch and arms to side 
+    headAngles = [0,30deg];
+    armsAngles = [120deg,30deg,0,90deg,-90deg,0, 120deg,-30deg,0,-90deg,90deg,0];
+    legsAngles = [-67.4deg,5.6deg,-67.8deg,82.2deg,-0.3deg,5.5deg, -67.4deg,-19.3deg,-67.1deg,91deg,-9.8deg,6.4deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 200;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // endposition
+    headAngles = [0,30deg];
+    armsAngles = [120deg,4deg,-81deg,22deg,-90deg,0, 122deg,-0deg,87.5deg,22deg,90deg,0];
+    legsAngles = [-68deg,18.5deg,-91.5deg,75.5deg,51.5deg,-5deg, -68deg,-21deg,-91deg,73deg,52deg,7.5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 150;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // hold endposition for 1 sec; todo: leave this if robot is not stable!
+    headAngles = [0,30deg];
+    armsAngles = [120deg,4deg,-81deg,22deg,-90deg,0, 122deg,-0deg,87.5deg,22deg,90deg,0];
+    legsAngles = [-68deg,18.5deg,-91.5deg,75.5deg,51.5deg,-5deg, -68deg,-21deg,-91deg,73deg,52deg,7.5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 1000;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // begin stand up
+    headAngles = [0,30deg];
+    armsAngles = [120deg,8deg,-71deg,-31deg,-90deg,0, 122deg,-0deg,87.5deg,22deg,90deg,0];
+    legsAngles = [-56deg,16deg,-50deg,-7deg,9deg,-12.5deg, -56deg,-19deg,-49deg,-7deg,16deg,-5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 500;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // pull legs in
+    headAngles = [0,30deg];
+    armsAngles = [120deg,-5deg,-85deg,-19deg,-90deg,0, 122deg,-1deg,87.5deg,22deg,90deg,0];
+    legsAngles = [-65deg,42deg,-80deg,76.5deg,49deg,-7deg, -65deg,-32.5deg,-84deg,82deg,47deg,1deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 300;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // lean on left leg
+    headAngles = [0,30deg];
+    armsAngles = [116deg,-8deg,-85deg,-16deg,-90deg,0, 121deg,-40deg,99.5deg,8deg,90deg,0];
+    legsAngles = [-69deg,12deg,-30deg,124.5deg,-41deg,-19deg, -69deg,-20deg,-89.5deg,48deg,52.5deg,-1deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 500;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // lean on left leg copy, todo: use waitForStable instead
+    headAngles = [0,30deg];
+    armsAngles = [116deg,-8deg,-85deg,-16deg,-90deg,0, 121deg,-40deg,99.5deg,8deg,90deg,0];
+    legsAngles = [-69deg,12deg,-30deg,124.5deg,-41deg,-19deg, -69deg,-20deg,-89.5deg,48deg,52.5deg,-1deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 100;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // lean on left leg #2, stretch right leg
+    headAngles = [0,30deg];
+    armsAngles = [100deg,21deg,-85deg,-15deg,-90deg,0, 107deg,-20deg,99deg,9deg,90deg,0];
+    legsAngles = [-65deg,4deg,-33deg,124.5deg,-58deg,10deg, -65deg,-15deg,-18deg,-6deg,62.5deg,4deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 500;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // pull right leg in, legs together a little
+    headAngles = [0,30deg];
+    armsAngles = [90deg,21deg,-85deg,-15deg,-90deg,0, 99deg,-0deg,99deg,8.5deg,90deg,0];
+    legsAngles = [-43.5deg,12.5deg,-55deg,124.5deg,-56deg,9deg, -43.5deg,-13.5deg,-44deg,95deg,-16deg,15deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 500;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // pull right leg in, legs together a little
+    headAngles = [0,30deg];
+    armsAngles = [87deg,19deg,-85deg,-14deg,-90deg,0, 81deg,-11deg,99deg,8deg,90deg,0];
+    legsAngles = [-33deg,-7.5deg,-60deg,124.5deg,-49deg,7.5deg, -33deg,9deg,-57deg,124.5deg,-51deg,-9deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 550;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // legs together, sitting pose
+    headAngles = [0,30deg];
+    armsAngles = [82deg,13deg,-84deg,-12deg,-90deg,0, 75deg,-7deg,99deg,7deg,90deg,0];
+    legsAngles = [0deg,-4deg,-53deg,124.5deg,-70deg,2deg, -0deg,6deg,-52deg,124.5deg,-70deg,-5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 350;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // wait for 250 ms, todo: replace with waitForStable
+    headAngles = [0,30deg];
+    armsAngles = [82deg,13deg,-84deg,-12deg,-90deg,0, 75deg,-7deg,99deg,7deg,90deg,0];
+    legsAngles = [0deg,-4deg,-53deg,124.5deg,-70deg,2deg, -0deg,6deg,-52deg,124.5deg,-70deg,-5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 350;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { // stand up copy. was different in mof!!
+    headAngles = [0,20deg];
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 600;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    stabilize = true;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  }
+];

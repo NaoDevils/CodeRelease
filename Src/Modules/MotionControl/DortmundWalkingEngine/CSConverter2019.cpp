@@ -1,7 +1,6 @@
 #include "CSConverter2019.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Math/BHMath.h"
-#include "Tools/Math/interpolator.h"
 #include "Tools/Motion/ForwardKinematic.h"
 
 //#define LOGGING
@@ -33,12 +32,10 @@ void CSConverter2019::reset()
 
   resetSensorControl();
 }
-CSConverter2019::~CSConverter2019()
-{
 
-}
+CSConverter2019::~CSConverter2019() {}
 
-void CSConverter2019::update(KinematicRequest &kinematicRequest)
+void CSConverter2019::update(KinematicRequest& kinematicRequest)
 {
   updateKinematicRequest(kinematicRequest);
 
@@ -59,24 +56,23 @@ void CSConverter2019::update(KinematicRequest &kinematicRequest)
   DECLARE_PLOT("module:CSConverter2019:xOffset");
 };
 
-void CSConverter2019::clearKinematicRequest(KinematicRequest & kinematicRequest)
+void CSConverter2019::clearKinematicRequest(KinematicRequest& kinematicRequest)
 {
-  for(int i = 2; i < Joints::numOfJoints; i++)
+  for (int i = 2; i < Joints::numOfJoints; i++)
   {
     kinematicRequest.offsets.angles[i] = 0;
   }
-  for(int i = 0; i < 6; i++)
+  for (int i = 0; i < 6; i++)
   {
     kinematicRequest.leftFoot[i] = JointAngles::ignore;
     kinematicRequest.rightFoot[i] = JointAngles::ignore;
   }
   kinematicRequest.kinematicType = KinematicRequest::feet;
-
 }
 
 KinematicRequest::KinematicType CSConverter2019::determineKinematicType()
 {
-  if(currentStep.onFloor[LEFT_FOOT] && currentStep.onFloor[RIGHT_FOOT])
+  if (currentStep.onFloor[LEFT_FOOT] && currentStep.onFloor[RIGHT_FOOT])
   {
     return KinematicRequest::feet;
   }
@@ -87,7 +83,7 @@ KinematicRequest::KinematicType CSConverter2019::determineKinematicType()
   else if (!currentStep.onFloor[LEFT_FOOT] && currentStep.onFloor[RIGHT_FOOT])
   {
     return KinematicRequest::bodyAndRightFoot;
-  } 
+  }
   else
   {
     return KinematicRequest::feet;
@@ -96,55 +92,48 @@ KinematicRequest::KinematicType CSConverter2019::determineKinematicType()
 
 void CSConverter2019::determineRunningState()
 {
-  if(!isRunning &&
-     theFootpositions.running &&
-     theFootpositions.currentState != goingToReady &&
-     theFootpositions.currentState != goingToStandby)
+  if (!isRunning && theFootpositions.running && theFootpositions.currentState != goingToReady && theFootpositions.currentState != goingToStandby)
   {
     isRunning = true;
   }
 
-  if(isRunning &&
-    (!theFootpositions.running ||
-     theFootpositions.currentState == goingToReady ||
-     theFootpositions.currentState == goingToStandby))
+  if (isRunning && (!theFootpositions.running || theFootpositions.currentState == goingToReady || theFootpositions.currentState == goingToStandby))
   {
     reset();
     isRunning = false;
   }
 }
 
-void CSConverter2019::applySpeedDependentTilt(Footpositions & fp)
+void CSConverter2019::applySpeedDependentTilt(Footpositions& fp)
 {
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  const WalkingEngineParams& curparams = theWalkingEngineParams;
   // Apply speed dependent tilt
-  float xFactor = std::abs(fp.speed.x * 1000) / (fp.speed.x >= 0 ? curparams.speedLimits.xForward : curparams.speedLimits.xBackward);
-  speedDependentTilt = xFactor * (fp.speed.x >= 0 ? curparams.comOffsets.tiltSpeedDependent[0] : curparams.comOffsets.tiltSpeedDependent[1]);
+  float xFactor = std::abs(fp.speed.translation.x() * 1000)
+      / (fp.speed.translation.x() >= 0 ? curparams.speedLimits.xForward * curparams.speedLimits.speedFactor : curparams.speedLimits.xBackward * curparams.speedLimits.speedFactor);
+  speedDependentTilt = xFactor * (fp.speed.translation.x() >= 0 ? curparams.comOffsets.tiltSpeedDependent[0] : curparams.comOffsets.tiltSpeedDependent[1]);
 
   fp.pitch += speedDependentTilt;
   fp.roll += 0;
 }
 
-void CSConverter2019::applyComShift(float &xOffset, float &yOffset)
+void CSConverter2019::applyComShift(float& xOffset, float& yOffset)
 {
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  float baseXOffset = xOffset;
   Vector3f rotAcc;
-  if(true) // TODO Parameter
+  //if(true) // TODO Parameter
   {
-    RotationMatrix rot(theInertialSensorData.angle.x(), theInertialSensorData.angle.y(), 0_deg);
-    rotAcc = rot * theInertialSensorData.acc;
-  } 
-  else
-  {
-    rotAcc = theInertialSensorData.acc;
+    RotationMatrix rot(theJoinedIMUData.imuData[anglesource].angle.x(), theJoinedIMUData.imuData[anglesource].angle.y(), 0_deg);
+    rotAcc = rot * (theJoinedIMUData.imuData[anglesource].acc);
   }
-
-  xOffset = curparams.comOffsets.xFixed;
+  //else
+  //{
+  //  rotAcc = theJoinedIMUData.imuData[anglesource].acc;
+  //}
 
   static int zerocount = 0;
-  if (theFootpositions.speed == Point() && zerocount <= 100) 
+  if (theFootpositions.speed == Pose2f() && zerocount <= 100)
     zerocount++;
-  else if (!(theFootpositions.speed == Point())) 
+  else if (!(theFootpositions.speed == Pose2f()))
     zerocount = 0;
 
   if (zerocount < 100)
@@ -153,33 +142,19 @@ void CSConverter2019::applyComShift(float &xOffset, float &yOffset)
     accXBuffer.push_front(rotAcc.x() * -0.01558f);
     float avgAccX = accXBuffer.average();
     float accFactor = std::abs(accXBuffer[0]) / 0.3f;
-    float alphaFactor = comShiftParameters.accXAlpha*accFactor;
-    avgAccX = sgn(avgAccX)*std::min<float>(std::abs(avgAccX), 0.03f) - curparams.comOffsets.xFixed;
-    xOffset = (curparams.comOffsets.xFixed * (1 - alphaFactor) - avgAccX*alphaFactor);
+    float alphaFactor = comShiftParameters.accXAlpha * accFactor;
+    avgAccX = sgn(avgAccX) * std::min<float>(std::abs(avgAccX), 0.03f) - baseXOffset;
+    xOffset = (baseXOffset * (1 - alphaFactor) - avgAccX * alphaFactor);
     // end of accXAlpha code
-    // added 3.2019: gyro influence on x offset
-    {
-      xOffset -= sgn(gyroYBuffer.average()) * std::min(0.05f, std::abs(gyroYBuffer.average() * comShiftParameters.gyroYAlpha));
-    }
-    // added 3.2019: angle influence on x offset
-    {
-      xOffset -= sgn(angleYBuffer.average()) * std::min(0.05f, std::abs(angleYBuffer.average() * comShiftParameters.angleYAlpha));
-    }
-    // added 4.2019: y offset shift
-    yOffset = (curparams.comOffsets.yFixed);
-    yOffset -= sgn(gyroXBuffer.average()) * std::min(0.05f, std::abs(gyroXBuffer.average() * comShiftParameters.gyroXAlpha));
-    yOffset -= sgn(angleXBuffer.average()) * std::min(0.05f, std::abs(angleXBuffer.average() * comShiftParameters.angleXAlpha));
-    
   }
 
   // addded 4.2019: x offset shift trough actual step acceleration
-  float speedX = theFootpositions.speed.x;
+  float speedX = theFootpositions.speed.translation.x();
   float stepAccX = lastSpeedX - speedX;
-  if ((theFootpositions.phase == WalkingPhase::firstSingleSupport || theFootpositions.phase == WalkingPhase::secondSingleSupport) &&
-    theFootpositions.frameInPhase == 0)
+  if ((theFootpositions.phase == WalkingPhase::firstSingleSupport || theFootpositions.phase == WalkingPhase::secondSingleSupport) && theFootpositions.frameInPhase == 0)
     interpolStartTime = theFrameInfo.time;
-    
-  if (theFootpositions.phase != WalkingPhase::firstSingleSupport && theFootpositions.phase != WalkingPhase::secondSingleSupport) 
+
+  if (theFootpositions.phase != WalkingPhase::firstSingleSupport && theFootpositions.phase != WalkingPhase::secondSingleSupport)
   {
     lastStepAccX = stepAccX;
     lastSpeedX = speedX;
@@ -190,38 +165,29 @@ void CSConverter2019::applyComShift(float &xOffset, float &yOffset)
     xOffset -= sgn(stepAccX) * std::min(std::abs((lastStepAccX * (1 - interpolRatio) + stepAccX * interpolRatio) * comShiftParameters.stepAccAlpha), 0.05f);
 
   PLOT("module:CSConverter2019:xOffset", xOffset);
+  PLOT("module:CSConverter2019:yOffset", yOffset);
 }
 
 Point CSConverter2019::handleArmContactState()
 {
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  const WalkingEngineParams& curparams = theWalkingEngineParams;
 
   ArmContact::ArmContactState stateLeftArm = theArmContact.armContactStateLeft;
   ArmContact::ArmContactState stateRightArm = theArmContact.armContactStateRight;
   Point comShift;
-  comShift = 0.f;
 
-  if ((stateLeftArm == ArmContact::ArmContactState::Back || 
-       stateLeftArm == ArmContact::ArmContactState::Front) 
-      && 
-      stateRightArm == ArmContact::ArmContactState::None)
+  if ((stateLeftArm == ArmContact::ArmContactState::Back || stateLeftArm == ArmContact::ArmContactState::Front) && stateRightArm == ArmContact::ArmContactState::None)
   {
     comShift.y = curparams.comOffsets.yArmContact[0];
     comShift.x = curparams.comOffsets.xArmContact;
   }
-  else if ((stateRightArm == ArmContact::ArmContactState::Back || 
-            stateRightArm == ArmContact::ArmContactState::Front)
-           && 
-           stateLeftArm == ArmContact::ArmContactState::None)
+  else if ((stateRightArm == ArmContact::ArmContactState::Back || stateRightArm == ArmContact::ArmContactState::Front) && stateLeftArm == ArmContact::ArmContactState::None)
   {
     comShift.y = curparams.comOffsets.yArmContact[1];
     comShift.x = curparams.comOffsets.xArmContact;
   }
-  else if ((stateRightArm == ArmContact::ArmContactState::Back && 
-            stateLeftArm == ArmContact::ArmContactState::Back)
-           || 
-           (stateRightArm == ArmContact::ArmContactState::Front && 
-            stateLeftArm == ArmContact::ArmContactState::Front)) 
+  else if ((stateRightArm == ArmContact::ArmContactState::Back && stateLeftArm == ArmContact::ArmContactState::Back)
+      || (stateRightArm == ArmContact::ArmContactState::Front && stateLeftArm == ArmContact::ArmContactState::Front))
   {
     comShift.y = 0.f;
     comShift.x = curparams.comOffsets.xArmContact;
@@ -232,31 +198,31 @@ Point CSConverter2019::handleArmContactState()
 
 void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
 {
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  const WalkingEngineParams& curparams = theWalkingEngineParams;
 
-  if (currentStep.onFloor[LEFT_FOOT] && !currentStep.onFloor[RIGHT_FOOT])
+  if (footInAir == RIGHT_FOOT)
   {
     for (int i = 0; i < 6; i++)
     {
       kinematicRequest.offsets.angles[i + (int)Joints::lHipYawPitch] = curparams.jointCalibration.offsetLeft[i];
     }
   }
-  if (!currentStep.onFloor[LEFT_FOOT] && currentStep.onFloor[RIGHT_FOOT])
+  if (footInAir == LEFT_FOOT)
   {
-    for (int i = 0; i<6; i++)
+    for (int i = 0; i < 6; i++)
     {
       kinematicRequest.offsets.angles[i + (int)Joints::rHipYawPitch] = curparams.jointCalibration.offsetRight[i];
     }
   }
 
-  if (useLegJointBalancing)
+  if (useLegJointBalancing && !theWalkCalibration.deactivateSensorControl)
   {
-    if (theFallDownState.state != FallDownState::upright)
+    if (theFallDownState.state != FallDownState::upright || !isRunning)
     {
       resetSensorControl();
       return;
     }
-      
+
     float newComX = theRobotModel.centerOfMass.x();
 
     for (int i = Joints::lHipYawPitch; i <= Joints::rAnkleRoll; i++)
@@ -266,86 +232,94 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
         return;
       }
 
-    Angle angleX = useAngleBuffer ? angleXBuffer.average() : angleXBuffer[0];
-    Angle angleY = useAngleBuffer ? angleYBuffer.average() : angleYBuffer[0];
-
-    float gyroX = useGyroBuffer ? gyroXBuffer.average() : gyroXBuffer[0];
-    float gyroY = useGyroBuffer ? gyroYBuffer.average() : gyroYBuffer[0];
-
-    const Angle &angleYDiffAnkleMax =
-      (angleY < legJointBalanceParams.targetAngleY) ?
-      (legJointBalanceParams.ankleParams.deltaAngleBack) : (legJointBalanceParams.ankleParams.deltaAngleFront);
-    const Angle &angleYDiffHipMax =
-      (angleY < legJointBalanceParams.targetAngleY) ?
-      (legJointBalanceParams.hipParams.deltaAngleBack) : (legJointBalanceParams.hipParams.deltaAngleFront);
     {
       Angle angleErrorX = (legJointBalanceParams.targetAngleX - angleX);
       Angle angleErrorY = (legJointBalanceParams.targetAngleY - angleY);
 
-      float influenceFactorAnkleY = (angleYDiffAnkleMax == 0.f) ? 1.f : std::sin(pi_2*std::min<Angle>(std::abs(angleErrorY), angleYDiffAnkleMax)/angleYDiffAnkleMax);
-      float influenceFactorAnkleX = (legJointBalanceParams.hipParams.deltaAngleX == 0.f) ? 1.f : std::sin(pi_2*std::min<Angle>(std::abs(angleErrorX), 
-        legJointBalanceParams.hipParams.deltaAngleX)/legJointBalanceParams.hipParams.deltaAngleX);
-      float influenceFactorHipY = (angleYDiffHipMax == 0.f) ? 1.f : std::sin(pi_2*std::min<Angle>(std::abs(angleErrorY), angleYDiffHipMax)/angleYDiffHipMax);
-      float influenceFactorHipX = (legJointBalanceParams.hipParams.deltaAngleX == 0.f) ? 1.f : std::sin(pi_2*std::min<Angle>(std::abs(angleErrorX), 
-        legJointBalanceParams.hipParams.deltaAngleX)/legJointBalanceParams.hipParams.deltaAngleX);
+      Angle angleErrorXAnkle = angleErrorX * legJointBalanceParams.ankleHipRatioX;
+      Angle angleErrorXHip = angleErrorX * (1.f - legJointBalanceParams.ankleHipRatioX);
+      Angle angleErrorYAnkle = angleErrorY * legJointBalanceParams.ankleHipRatioY;
+      Angle angleErrorYHip = angleErrorY * (1.f - legJointBalanceParams.ankleHipRatioX);
 
-      pidGyroX_sum += gyroX;
-      pidAngleX_sum += angleErrorX;
-      pidGyroY_sum += gyroY;
-      pidAngleY_sum += angleErrorY;
+      pidAngleXAnkle_sum += angleErrorXAnkle;
+      pidAngleXHip_sum += angleErrorXHip;
+      pidAngleYAnkle_sum += angleErrorYAnkle;
+      pidAngleYHip_sum += angleErrorYHip;
 
-      const float& ankleRatioX = legJointBalanceParams.ankleParams.angleGyroRatioX;
-      const float& ankleRatioY = legJointBalanceParams.ankleParams.angleGyroRatioY;
-      const float& hipRatioX = legJointBalanceParams.hipParams.angleGyroRatioX;
-      const float& hipRatioY = legJointBalanceParams.hipParams.angleGyroRatioY;
+      /*     float anklePIDMultiplicatorX = theMotionRequest.walkRequest.isZeroSpeed() ? 0.f : legJointBalanceParams.ankleParams.pidMultiplicatorX;
+      float anklePIDMultiplicatorY = theMotionRequest.walkRequest.isZeroSpeed() ? 0.f : legJointBalanceParams.ankleParams.pidMultiplicatorY;
+      float hipPIDMultiplicatorX = theMotionRequest.walkRequest.isZeroSpeed() ? 0.f : legJointBalanceParams.hipParams.pidMultiplicatorX;
+      float hipPIDMultiplicatorY = theMotionRequest.walkRequest.isZeroSpeed() ? 0.f : legJointBalanceParams.hipParams.pidMultiplicatorY;*/
+      float anklePIDMultiplicatorX, anklePIDMultiplicatorY, hipPIDMultiplicatorX, hipPIDMultiplicatorY;
+      if (theSpeedRequest.translation.norm() == 0 && theSpeedRequest.rotation == 0)
+      {
+        if (angleErrorX < (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0]) || angleErrorX > (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1])
+            || (angleErrorY < theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0] + 1_deg) || angleErrorY > (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1] - 1_deg))
+        {
+          anklePIDMultiplicatorX = legJointBalanceParams.ankleParams.pidMultiplicatorX;
+          anklePIDMultiplicatorY = legJointBalanceParams.ankleParams.pidMultiplicatorY;
+          hipPIDMultiplicatorX = legJointBalanceParams.hipParams.pidMultiplicatorX;
+          hipPIDMultiplicatorY = legJointBalanceParams.hipParams.pidMultiplicatorY;
+        }
+        else
+        {
+          anklePIDMultiplicatorX = 0.f;
+          anklePIDMultiplicatorY = 0.f;
+          hipPIDMultiplicatorX = 0.f;
+          hipPIDMultiplicatorY = 0.f;
+        }
+      }
+      else
+      {
+        anklePIDMultiplicatorX = legJointBalanceParams.ankleParams.pidMultiplicatorX;
+        anklePIDMultiplicatorY = legJointBalanceParams.ankleParams.pidMultiplicatorY;
+        hipPIDMultiplicatorX = legJointBalanceParams.hipParams.pidMultiplicatorX;
+        hipPIDMultiplicatorY = legJointBalanceParams.hipParams.pidMultiplicatorY;
+      }
+      float filteredErrorX_Ankle = angleErrorXAnkle * legJointBalanceParams.ankleParams.p_x * anklePIDMultiplicatorX + pidAngleXAnkle_sum * legJointBalanceParams.ankleParams.i_x * anklePIDMultiplicatorX
+          + (pidAngleXAnkle_last - angleErrorXAnkle) * legJointBalanceParams.ankleParams.d_x * anklePIDMultiplicatorX;
+      float filteredErrorY_Ankle = angleErrorYAnkle * legJointBalanceParams.ankleParams.p_y * anklePIDMultiplicatorY + pidAngleYAnkle_sum * legJointBalanceParams.ankleParams.i_y * anklePIDMultiplicatorY
+          + (pidAngleYAnkle_last - angleErrorYAnkle) * legJointBalanceParams.ankleParams.d_y * anklePIDMultiplicatorY;
 
-      float filteredErrorX_Ankle =
-        (gyroX * ankleRatioX + angleErrorX * (1 - ankleRatioX)) * legJointBalanceParams.ankleParams.p_x * legJointBalanceParams.ankleParams.pidMultiplicator +
-        (pidGyroX_sum * ankleRatioX + pidAngleX_sum * (1 - ankleRatioX)) * legJointBalanceParams.ankleParams.i_x * legJointBalanceParams.ankleParams.pidMultiplicator +
-        ((pidGyroX_last - gyroX) * ankleRatioX + (pidAngleX_last - angleErrorX) * (1 - ankleRatioX)) * legJointBalanceParams.ankleParams.d_x * legJointBalanceParams.ankleParams.pidMultiplicator;
-      float filteredErrorY_Ankle =
-        (gyroY * ankleRatioY + angleErrorY * (1 - ankleRatioY)) * legJointBalanceParams.ankleParams.p_y * legJointBalanceParams.ankleParams.pidMultiplicator +
-        (pidGyroY_sum * ankleRatioY + pidAngleY_sum * (1 - ankleRatioY)) * legJointBalanceParams.ankleParams.i_y * legJointBalanceParams.ankleParams.pidMultiplicator +
-        ((pidGyroY_last - gyroY) * ankleRatioY + (pidAngleY_last - angleErrorY) * (1 - ankleRatioY)) * legJointBalanceParams.ankleParams.d_y * legJointBalanceParams.ankleParams.pidMultiplicator;
+      float filteredErrorX_Hip = angleErrorXHip * legJointBalanceParams.hipParams.p_x * hipPIDMultiplicatorX + pidAngleXHip_sum * legJointBalanceParams.hipParams.i_x * hipPIDMultiplicatorX
+          + (pidAngleXHip_last - angleErrorXHip) * legJointBalanceParams.hipParams.d_x * hipPIDMultiplicatorX;
+      float filteredErrorY_Hip = angleErrorYHip * legJointBalanceParams.hipParams.p_y * hipPIDMultiplicatorY + pidAngleYHip_sum * legJointBalanceParams.hipParams.i_y * hipPIDMultiplicatorY
+          + (pidAngleYHip_last - angleErrorYHip) * legJointBalanceParams.hipParams.d_y * hipPIDMultiplicatorY;
 
-      float filteredErrorX_Hip =
-        (gyroX * hipRatioX + angleErrorX * (1 - hipRatioX)) * legJointBalanceParams.hipParams.p_x * legJointBalanceParams.hipParams.pidMultiplicator +
-        (pidGyroX_sum * hipRatioX + pidAngleX_sum * (1 - hipRatioX)) * legJointBalanceParams.hipParams.i_x * legJointBalanceParams.hipParams.pidMultiplicator +
-        ((pidGyroX_last - gyroX) * hipRatioX + (pidAngleX_last - angleErrorX) * (1 - hipRatioX)) * legJointBalanceParams.hipParams.d_x * legJointBalanceParams.hipParams.pidMultiplicator;
-      float filteredErrorY_Hip =
-        (gyroY * hipRatioY + angleErrorY * (1 - hipRatioY)) * legJointBalanceParams.hipParams.p_y * legJointBalanceParams.hipParams.pidMultiplicator +
-        (pidGyroY_sum * hipRatioY + pidAngleY_sum * (1 - hipRatioY)) * legJointBalanceParams.hipParams.i_y * legJointBalanceParams.hipParams.pidMultiplicator+
-        ((pidGyroY_last - gyroY) * hipRatioY + (pidAngleY_last - angleErrorY) * (1 - hipRatioY)) * legJointBalanceParams.hipParams.d_y * legJointBalanceParams.hipParams.pidMultiplicator;
+      PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Ankle", filteredErrorX_Ankle);
+      PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Ankle", filteredErrorY_Ankle);
+      PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Hip", filteredErrorX_Hip);
+      PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Hip", filteredErrorY_Hip);
 
-      PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Ankle",filteredErrorX_Ankle);
-      PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Ankle",filteredErrorY_Ankle);
-      PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Hip",filteredErrorX_Hip);
-      PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Hip",filteredErrorY_Hip);
+      pidAngleXAnkle_last = angleErrorXAnkle;
+      pidAngleYAnkle_last = angleErrorYAnkle;
+      pidAngleXHip_last = angleErrorXHip;
+      pidAngleYHip_last = angleErrorYHip;
 
-      pidAngleX_last = angleErrorX;
-      pidGyroX_last = gyroX;
-      pidAngleY_last = angleErrorY;
-      pidGyroY_last = gyroY;
-
-      kinematicRequest.offsets.angles[Joints::lHipPitch] += influenceFactorHipY * filteredErrorY_Hip;
-      kinematicRequest.offsets.angles[Joints::rHipPitch] += influenceFactorHipY * filteredErrorY_Hip;
-    
-      kinematicRequest.offsets.angles[Joints::lAnklePitch] += influenceFactorAnkleY * filteredErrorY_Ankle;
-      kinematicRequest.offsets.angles[Joints::rAnklePitch] += influenceFactorAnkleY * filteredErrorY_Ankle;
-
-      kinematicRequest.offsets.angles[Joints::lHipRoll] += influenceFactorHipX * filteredErrorX_Hip;
-      kinematicRequest.offsets.angles[Joints::rHipRoll] += influenceFactorHipX * filteredErrorX_Hip;
-      kinematicRequest.offsets.angles[Joints::lAnkleRoll] += influenceFactorAnkleX * filteredErrorX_Ankle;
-      kinematicRequest.offsets.angles[Joints::rAnkleRoll] += influenceFactorAnkleX * filteredErrorX_Ankle;
+      // TODO: interpolate towards offsets?
+      if (!balanceSupportLegOnly || footInAir == RIGHT_FOOT)
+      {
+        kinematicRequest.offsets.angles[Joints::lHipPitch] -= filteredErrorY_Hip;
+        kinematicRequest.offsets.angles[Joints::lHipRoll] += filteredErrorX_Hip;
+        kinematicRequest.offsets.angles[Joints::lAnklePitch] -= filteredErrorY_Ankle;
+        kinematicRequest.offsets.angles[Joints::lAnkleRoll] += filteredErrorX_Ankle;
+      }
+      if (!balanceSupportLegOnly || footInAir == LEFT_FOOT)
+      {
+        kinematicRequest.offsets.angles[Joints::rHipPitch] -= filteredErrorY_Hip;
+        kinematicRequest.offsets.angles[Joints::rHipRoll] += filteredErrorX_Hip;
+        kinematicRequest.offsets.angles[Joints::rAnklePitch] -= filteredErrorY_Ankle;
+        kinematicRequest.offsets.angles[Joints::rAnkleRoll] += filteredErrorX_Ankle;
+      }
 
       if (!kinematicRequest.offsets.isValid())
       {
         kinematicRequest.offsets = JointAngles();
         {
           std::string logDir = "";
-    #ifdef TARGET_ROBOT
+#ifdef TARGET_ROBOT
           logDir = "../logs/";
-    #endif
+#endif
           OutMapFile stream(logDir + "balancing.log");
           stream << filteredErrorX_Hip << "\n";
           stream << filteredErrorY_Hip << "\n";
@@ -356,29 +330,18 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
       lastComX = newComX;
     }
   }
-  if (footInAir == LEFT_FOOT)
-  {
-    sensorError.x() += ankleOffsetInfluenceOnSensorError * kinematicRequest.offsets.angles[Joints::rAnklePitch];
-    sensorError.y() += ankleOffsetInfluenceOnSensorError * kinematicRequest.offsets.angles[Joints::rAnkleRoll];
-  }
-  else
-  {
-    sensorError.x() += ankleOffsetInfluenceOnSensorError * kinematicRequest.offsets.angles[Joints::lAnklePitch];
-    sensorError.y() += ankleOffsetInfluenceOnSensorError * kinematicRequest.offsets.angles[Joints::lAnkleRoll];
-  }
-
 }
 
 void CSConverter2019::resetSensorControl()
 {
-  pidGyroX_last = pidGyroY_last = 0.f;
-  pidGyroX_sum = pidGyroY_sum = 0.f;
-  pidAngleX_last = pidAngleY_last = 0.f;
-  pidAngleX_sum = pidAngleY_sum = 0.f;
-  gyroXBuffer.fill(0.f);
-  gyroYBuffer.fill(0.f);
-  angleXBuffer.fill(0.f);
-  angleYBuffer.fill(0.f);
+  pidAngleXAnkle_sum = 0.f;
+  pidAngleXHip_sum = 0.f;
+  pidAngleYAnkle_sum = 0.f;
+  pidAngleYHip_sum = 0.f;
+  pidAngleXAnkle_last = 0.f;
+  pidAngleYAnkle_last = 0.f;
+  pidAngleXHip_last = 0.f;
+  pidAngleYHip_last = 0.f;
   accXBuffer.fill(0);
   lastSpeedX = 0.f;
   lastStepAccX = 0.f;
@@ -386,26 +349,26 @@ void CSConverter2019::resetSensorControl()
   interpolStartTime = theFrameInfo.time;
 }
 
-void CSConverter2019::updateKinematicRequest(KinematicRequest & kinematicRequest)
+void CSConverter2019::updateKinematicRequest(KinematicRequest& kinematicRequest)
 {
   Point targetCoM = theTargetCoM;
   Footpositions fp = theFootpositions;
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  const WalkingEngineParams& curparams = theWalkingEngineParams;
 
   clearKinematicRequest(kinematicRequest);
   determineRunningState();
-  
-  if(isRunning)
+  determineFootInAir(fp);
+
+  gyroX = theJoinedIMUData.imuData[anglesource].gyro.x();
+  gyroY = theJoinedIMUData.imuData[anglesource].gyro.y();
+  angleX = theJoinedIMUData.imuData[anglesource].angle.x();
+  angleY = theJoinedIMUData.imuData[anglesource].angle.y();
+
+  if (isRunning)
   {
-    gyroXBuffer.push_front(theInertialSensorData.gyro.x());
-    gyroYBuffer.push_front(theInertialSensorData.gyro.y());
-    
-    angleXBuffer.push_front(useIMUModel ? theIMUModel.orientation.x() : theInertialSensorData.angle.x());
-    angleYBuffer.push_front(useIMUModel ? theIMUModel.orientation.y() : theInertialSensorData.angle.y());
-  
     applySpeedDependentTilt(fp);
     isInstantKickRunning = fp.customStepRunning;
-    
+
     toRobotCoords(&currentStep, targetCoM, fp, theActualCoMRCS);
 
     LOG("WalkingEngine", "WCS left Foot x", fp.footPos[LEFT_FOOT].x);
@@ -445,31 +408,27 @@ void CSConverter2019::updateKinematicRequest(KinematicRequest & kinematicRequest
   lastSpeed = speed;
 
   kinematicRequest.kinematicType = determineKinematicType();
-  sensorError = Vector2f::Zero();
-  float xOffset = theWalkingEngineParams.comOffsets.xFixed;
-  float yOffset = theWalkingEngineParams.comOffsets.yFixed;
+  float xOffset = theWalkingEngineParams.comOffsets.xFixed + theWalkCalibration.comOffset.x();
+  float yOffset = theWalkingEngineParams.comOffsets.yFixed + theWalkCalibration.comOffset.y();
   if (isRunning)
   {
-    float baseXOffset = xOffset;
-    float baseYOffset = yOffset;
-    applyComShift(xOffset, yOffset);
-    sensorError.x() += comShiftInfluenceOnSensorError * (xOffset - baseXOffset);
-    sensorError.y() += comShiftInfluenceOnSensorError * (yOffset - baseYOffset);
-    if (fp.speed.x > 0)
-      xOffset += curparams.comOffsets.xSpeedDependent * fp.speed.x * 1000 / curparams.speedLimits.xForward;
-    yOffset += curparams.comOffsets.ySpeedDependent[fp.speed.y < 0] * std::abs(fp.speed.y * 1000) / curparams.speedLimits.y;
+    if (!theWalkCalibration.deactivateSensorControl)
+      applyComShift(xOffset, yOffset);
+    if (fp.speed.translation.x() > 0)
+      xOffset += curparams.comOffsets.xSpeedDependent * fp.speed.translation.x() * 1000 / (curparams.speedLimits.xForward * curparams.speedLimits.speedFactor);
+    yOffset += curparams.comOffsets.ySpeedDependent[fp.speed.translation.y() < 0] * std::abs(fp.speed.translation.y() * 1000) / (curparams.speedLimits.y * curparams.speedLimits.speedFactor);
   }
   Point comShift = handleArmContactState();
 
 
   // position left foot
   kinematicRequest.leftFoot[0] = (float)(currentStep.footPos[LEFT_FOOT].x * 1000 - xOffset * 1000 - comShift.x * 1000);
-  kinematicRequest.leftFoot[1] = (float)(currentStep.footPos[LEFT_FOOT].y * 1000 - yOffset * 1000 - comShift.y* 1000) ;
+  kinematicRequest.leftFoot[1] = (float)(currentStep.footPos[LEFT_FOOT].y * 1000 - yOffset * 1000 - comShift.y * 1000);
   kinematicRequest.leftFoot[2] = (float)(currentStep.footPos[LEFT_FOOT].z * 1000);
 
   // position right foot
   kinematicRequest.rightFoot[0] = (float)(currentStep.footPos[RIGHT_FOOT].x * 1000 - xOffset * 1000 - comShift.x * 1000);
-  kinematicRequest.rightFoot[1] = (float)(currentStep.footPos[RIGHT_FOOT].y * 1000 - yOffset * 1000 - comShift.y* 1000) ;
+  kinematicRequest.rightFoot[1] = (float)(currentStep.footPos[RIGHT_FOOT].y * 1000 - yOffset * 1000 - comShift.y * 1000);
   kinematicRequest.rightFoot[2] = (float)(currentStep.footPos[RIGHT_FOOT].z * 1000);
 
   // rotation left food
@@ -490,41 +449,56 @@ void CSConverter2019::updateKinematicRequest(KinematicRequest & kinematicRequest
     ASSERT(kinematicRequest.leftFoot[i] == kinematicRequest.leftFoot[i]);
 }
 
-void CSConverter2019::determineFootInAir(const Footposition & curPos)
+void CSConverter2019::determineFootInAir(const Footposition& curPos)
 {
   // is a foot not on ground? If yes, which one?
   footInAir = -1;
-  if(!curPos.onFloor[LEFT_FOOT])
+  if (determineSupportFootByFSR)
+  {
+    if (theFsrSensorData.calcSupportFoot() >= 0.f)
+      footInAir = LEFT_FOOT;
+    else
+      footInAir = RIGHT_FOOT;
+    return;
+  }
+  if (!curPos.onFloor[LEFT_FOOT])
     footInAir = LEFT_FOOT;
-  else if(!curPos.onFloor[RIGHT_FOOT])
+  else if (!curPos.onFloor[RIGHT_FOOT])
     footInAir = RIGHT_FOOT;
 }
 
-void CSConverter2019::applyFootPitchRollPD(Footposition & curPos)
+void CSConverter2019::applyFootPitchRollPD(Footposition& curPos)
 {
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  const WalkingEngineParams& curparams = theWalkingEngineParams;
 
   // PD controller for footpitch using body angle
-  float roll = curparams.footMovement.footPitchPD[0] * theInertialSensorData.angle.x() +
-    curparams.footMovement.footPitchPD[1] * theInertialSensorData.gyro.x() * 0.0075f;
-  float pitch = curparams.footMovement.footPitchPD[0] * theInertialSensorData.angle.y() +
-    curparams.footMovement.footPitchPD[1] * theInertialSensorData.gyro.y() * 0.0075f;
+  // Vector2f angleg = theJoinedIMUData.imuData[anglesource].angle;
+  float roll = curparams.footMovement.footPitchPD[0] * (theJoinedIMUData.imuData[anglesource].angle.x())
+      + curparams.footMovement.footPitchPD[1] * (theJoinedIMUData.imuData[anglesource].gyro.x()) * 0.0075f;
+  float pitch = curparams.footMovement.footPitchPD[0] * (theJoinedIMUData.imuData[anglesource].angle.y())
+      + curparams.footMovement.footPitchPD[1] * (theJoinedIMUData.imuData[anglesource].gyro.y()) * 0.0075f;
   PLOT("module:CSConverter2019:rollPD", roll);
   PLOT("module:CSConverter2019:pitchPD", pitch);
 
+  // TODO: apply only for support foot?
   // add roll, pitch to both foot rotation
-  curPos.footPos[LEFT_FOOT].ry -= pitch;
-  curPos.footPos[LEFT_FOOT].rx -= roll;
-  curPos.footPos[RIGHT_FOOT].ry -= pitch;
-  curPos.footPos[RIGHT_FOOT].rx -= roll;
-
-  if(rotateLegWithBody)
+  if (footInAir == RIGHT_FOOT)
   {
-    determineFootInAir(curPos);
-    if(footInAir != -1) // So yes, there is one not on ground
+    curPos.footPos[RIGHT_FOOT].ry -= pitch;
+    curPos.footPos[RIGHT_FOOT].rx -= roll;
+  }
+  else if (footInAir == LEFT_FOOT)
+  {
+    curPos.footPos[LEFT_FOOT].ry -= pitch;
+    curPos.footPos[LEFT_FOOT].rx -= roll;
+  }
+
+  if (rotateLegWithBody)
+  {
+    if (footInAir != -1) // So yes, there is one not on ground
     {
-      float yFactor = std::abs(curPos.speed.y) / curparams.speedLimits.y; // fraction of current speed and maximum speed in y-directon
-      float xStepHeight = curPos.speed.x > 0 ? curparams.footMovement.stepHeight[0] : curparams.footMovement.stepHeight[1];
+      float yFactor = std::abs(curPos.speed.translation.y()) / (curparams.speedLimits.y * curparams.speedLimits.speedFactor); // fraction of current speed and maximum speed in y-directon
+      float xStepHeight = curPos.speed.translation.x() > 0 ? curparams.footMovement.stepHeight[0] : curparams.footMovement.stepHeight[1];
       float yStepHeight = curparams.footMovement.stepHeight[2];
 
       float walkStepHeight = (1 - yFactor) * xStepHeight + yFactor * yStepHeight; // actual walkStepHeight resulting from xStepHeight and yStepHeight
@@ -533,7 +507,7 @@ void CSConverter2019::applyFootPitchRollPD(Footposition & curPos)
       float scaledRoll = heightOverGroundFactor * roll;
       float scaledPitch = heightOverGroundFactor * pitch;
 
-      // rotate vector from stand foot to swing foot around scaledRoll, scaledPitch 
+      // rotate vector from stand foot to swing foot around scaledRoll, scaledPitch
       // and add to stand footPos to get adjusted swing foot position
       // similar to z and rotation adaption due to roll/tiltController activated with steppingRotSpeedCapture
       // ------------ DONT USE BOTH! ---------------
@@ -552,12 +526,12 @@ void CSConverter2019::applyFootPitchRollPD(Footposition & curPos)
   }
 }
 
-void CSConverter2019::calculateOdometry(const Footposition & curPos)
+void CSConverter2019::calculateOdometry(const Footposition& curPos)
 {
   Point positionBetweenFeet = (curPos.footPos[RIGHT_FOOT] + curPos.footPos[LEFT_FOOT]) * 0.5;
   positionBetweenFeet.r = robotPosition.r;
 
-  if (odometryVariant == Odometry::ODOMETRY_FROM_WALKING_ENGINE)
+  if (odometryVariant == Parameters::OdometryVariant::ODOMETRY_FROM_WALKING_ENGINE)
   {
     offsetToRobotPoseAfterPreview = theFootSteps.robotPoseAfterStep - positionBetweenFeet;
     offsetToRobotPoseAfterPreview.rotate2D(-positionBetweenFeet.r);
@@ -569,20 +543,17 @@ void CSConverter2019::calculateOdometry(const Footposition & curPos)
 
     lastPositionBetweenFeet = positionBetweenFeet;
   }
-  else if (odometryVariant == Odometry::ODOMETRY_FROM_INERTIA_MATRIX)
+  else if (odometryVariant == Parameters::OdometryVariant::ODOMETRY_FROM_INERTIA_MATRIX)
   {
     // Using the odometry calculated by the TorsoMatrixProvider we have to use the vector
     // from a foot on the ground to the origin given by the Provider. Then we can add this
     // vector to the foot positions in world coordinate system to get the origin in the
-    // coordinate system used here. This way we can calculate the offset from the current origin 
+    // coordinate system used here. This way we can calculate the offset from the current origin
     // to the final position of the robot.
 
     // First, convert the fromOriginToFoot from RCS to WCS
     Limbs::Limb limb = (theTorsoMatrix.leftSupportFoot ? Limbs::footLeft : Limbs::footRight);
-    Point fromOriginToFoot(theRobotModel.limbs[limb].translation.x() / 1000,
-                           theRobotModel.limbs[limb].translation.y() / 1000,
-                           0,
-                           theRobotModel.limbs[limb].rotation.getZAngle());
+    Point fromOriginToFoot(theRobotModel.limbs[limb].translation.x() / 1000, theRobotModel.limbs[limb].translation.y() / 1000, 0, theRobotModel.limbs[limb].rotation.getZAngle());
 
     fromOriginToFoot.rotate2D(positionBetweenFeet.r);
 
@@ -615,7 +586,6 @@ void CSConverter2019::calculateOdometry(const Footposition & curPos)
 
       odometry.x = odometryOffset3D.translation.x() / 1000;
       odometry.y = odometryOffset3D.translation.y() / 1000;
-
     }
     (Pose3f&)lastTorsoMatrix = theTorsoMatrix;
   }
@@ -632,9 +602,9 @@ void CSConverter2019::calculateOdometry(const Footposition & curPos)
   LOG("WalkingEngine", "offsetToRobotPoseAfterPreview r", offsetToRobotPoseAfterPreview.r);
 }
 
-void CSConverter2019::toRobotCoords(StepData * requiredOffset, Point & newCoMTarget, Footposition & curPos, Point CoM)
+void CSConverter2019::toRobotCoords(StepData* requiredOffset, Point& newCoMTarget, Footposition& curPos, Point CoM)
 {
-  if(!curPos.customStepRunning)
+  if (!curPos.customStepRunning)
   {
     applyFootPitchRollPD(curPos);
   }
@@ -684,14 +654,14 @@ void CSConverter2019::toRobotCoords(StepData * requiredOffset, Point & newCoMTar
   calculateOdometry(curPos);
 }
 
-void CSConverter2019::update(WalkingInfo &walkingInfo)
+void CSConverter2019::update(WalkingInfo& walkingInfo)
 {
   updateWalkingInfo(walkingInfo);
 };
 
-void CSConverter2019::updateWalkingInfo(WalkingInfo & walkingInfo)
+void CSConverter2019::updateWalkingInfo(WalkingInfo& walkingInfo)
 {
-  const WalkingEngineParams &curparams = theWalkingEngineParams;
+  const WalkingEngineParams& curparams = theWalkingEngineParams;
 
   walkingInfo.robotPosition.translation.x() = robotPosition.x;
   walkingInfo.robotPosition.translation.y() = robotPosition.y;
@@ -703,7 +673,6 @@ void CSConverter2019::updateWalkingInfo(WalkingInfo & walkingInfo)
   walkingInfo.desiredBodyRot.y() = speedDependentTilt;
   walkingInfo.onFloor[RIGHT_FOOT] = currentStep.onFloor[RIGHT_FOOT];
   walkingInfo.onFloor[LEFT_FOOT] = currentStep.onFloor[LEFT_FOOT];
-  walkingInfo.stabilityError = sensorError;
 
   Pose3f limbs[Limbs::numOfLimbs];
   JointAngles jA;
@@ -720,7 +689,7 @@ void CSConverter2019::updateWalkingInfo(WalkingInfo & walkingInfo)
   else
     l = limbs[Limbs::footRight];
 
-  walkingInfo.desiredBodyRot.y() -= l.rotation.getYAngle();  // Maybe that's a problem
+  walkingInfo.desiredBodyRot.y() -= l.rotation.getYAngle(); // Maybe that's a problem
   // TODO Check if right
   //walkingInfo.desiredBodyRot.y() -= l.rotation.inverse().getYAngle();
 

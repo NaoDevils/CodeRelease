@@ -4,77 +4,53 @@
 * \author Colin Graf
 */
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #ifdef WINDOWS
 #include <Shlwapi.h>
-#pragma comment(lib,"shlwapi.lib")
+#pragma comment(lib, "shlwapi.lib")
 #else
 #include <unistd.h>
 #include <fnmatch.h>
 #endif
-#include <dirent.h>
-#include <cerrno>
 
 #include "Directory.h"
 #include "Platform/BHAssert.h"
 
-Directory::Directory() : dp(0)
-{
-}
-
-Directory::~Directory()
-{
-  if(dp)
-    closedir((DIR*)dp);
-}
 
 bool Directory::open(const std::string& pattern)
 {
-  if(dp)
-  {
-    closedir((DIR*)dp);
-    dp = 0;
-  }
-
   size_t end = pattern.find_last_of("/\\");
-  if(end == std::string::npos)
+  if (end == std::string::npos)
     return false;
   filepattern = pattern.substr(end + 1);
   dirname = pattern.substr(0, end);
 
-  dp = opendir(dirname.c_str());
-  return dp != 0;
+  try
+  {
+    di = std::filesystem::directory_iterator(dirname);
+    return true;
+  }
+  catch (...)
+  {
+    return false;
+  }
 }
 
 bool Directory::read(std::string& name, bool& isDir)
 {
-  if(!dp)
-    return false;
-
-  for(;;)
+  while (di != std::filesystem::directory_iterator())
   {
-    struct dirent* dent = readdir((DIR*)dp);
-    if(!dent)
-    {
-      closedir((DIR*)dp);
-      dp = 0;
-      return false;
-    }
 #ifdef WINDOWS
-    if(PathMatchSpec(dent->d_name, filepattern.c_str()))
+    if (PathMatchSpec(di->path().filename().string().c_str(), filepattern.c_str()))
 #else
-    if(fnmatch(filepattern.c_str(), dent->d_name, 0) == 0)
+    if (fnmatch(filepattern.c_str(), di->path().filename().string().c_str(), 0) == 0)
 #endif
     {
-      name = dirname + "/" + dent->d_name;
-      isDir = false;
-      struct stat buff;
-      if(stat(name.c_str(), &buff) == 0)
-        if(S_ISDIR(buff.st_mode))
-          isDir = true;
+      name = di->path().string();
+      isDir = di->is_directory();
+
+      ++di;
       return true;
     }
   }
-  return false; // unreachable
+  return false;
 }

@@ -12,7 +12,6 @@
 // file is included in many other files.
 class AnnotationManager;
 class OutMessage;
-class TeamDataOut;
 struct Settings;
 class DebugRequestTable;
 class DebugDataTable;
@@ -21,7 +20,6 @@ class DrawingManager;
 class DrawingManager3D;
 class ReleaseOptions;
 class TimingManager;
-class NTP;
 
 /**
  * @class Global
@@ -30,19 +28,23 @@ class NTP;
 class Global
 {
 private:
-  static PROCESS_LOCAL AnnotationManager* theAnnotationManager;
-  static PROCESS_LOCAL OutMessage* theDebugOut;
-  static PROCESS_LOCAL TeamDataOut* theTeamOut;
-  static PROCESS_LOCAL Settings* theSettings;
-  static PROCESS_LOCAL DebugRequestTable* theDebugRequestTable;
-  static PROCESS_LOCAL DebugDataTable* theDebugDataTable;
-  static PROCESS_LOCAL StreamHandler* theStreamHandler;
-  static PROCESS_LOCAL DrawingManager* theDrawingManager;
-  static PROCESS_LOCAL DrawingManager3D* theDrawingManager3D;
-  static PROCESS_LOCAL TimingManager* theTimingManager;
-  static PROCESS_LOCAL NTP* theNTP;
+  static thread_local AnnotationManager* theAnnotationManager;
+  static thread_local OutMessage* theDebugOut;
+  static thread_local Settings* theSettings;
+  static thread_local DebugRequestTable* theDebugRequestTable;
+  static thread_local DebugDataTable* theDebugDataTable;
+  static thread_local StreamHandler* theStreamHandler;
+  static thread_local DrawingManager* theDrawingManager;
+  static thread_local DrawingManager3D* theDrawingManager3D;
+  static thread_local TimingManager* theTimingManager;
 
 public:
+  /**
+   * The method returns if there is a valid reference to the process wide instance.
+   * @return If there is an instance of the annotation manager in this process.
+   */
+  static bool hasAnnotationManager() { return theAnnotationManager; }
+
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the annotation manager in this process.
@@ -53,55 +55,49 @@ public:
    * The method returns a reference to the process wide instance.
    * @return The instance of the outgoing debug message queue in this process.
    */
-  static OutMessage& getDebugOut() {return *theDebugOut;}
-
-  /**
-   * The method returns a reference to the process wide instance.
-   * @return The instance of the outgoing team message queue in this process.
-   */
-  static TeamDataOut& getTeamOut() {return *theTeamOut;}
+  static OutMessage& getDebugOut() { return *theDebugOut; }
 
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the settings in this process.
    */
-  static Settings& getSettings() {return *theSettings;}
+  static Settings& getSettings() { return *theSettings; }
 
   /**
    * The method returns whether the settings have already been instantiated.
    * @return Is it safe to use getSettings()?
    */
-  static bool settingsExist() {return theSettings != nullptr;}
+  static bool settingsExist() { return theSettings != nullptr; }
 
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the debug request table in this process.
    */
-  static DebugRequestTable& getDebugRequestTable() {return *theDebugRequestTable;}
+  static DebugRequestTable& getDebugRequestTable() { return *theDebugRequestTable; }
 
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the debug data table in this process.
    */
-  static DebugDataTable& getDebugDataTable() {return *theDebugDataTable;}
+  static DebugDataTable& getDebugDataTable() { return *theDebugDataTable; }
 
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the stream handler in this process.
    */
-  static StreamHandler& getStreamHandler() {return *theStreamHandler;}
+  static StreamHandler& getStreamHandler() { return *theStreamHandler; }
 
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the drawing manager in this process.
    */
-  static DrawingManager& getDrawingManager() {return *theDrawingManager;}
+  static DrawingManager& getDrawingManager() { return *theDrawingManager; }
 
   /**
    * The method returns a reference to the process wide instance.
    * @return The instance of the 3-D drawing manager in this process.
    */
-  static DrawingManager3D& getDrawingManager3D() {return *theDrawingManager3D;}
+  static DrawingManager3D& getDrawingManager3D() { return *theDrawingManager3D; }
 
   /**
    * The method returns a reference to the process wide instance.
@@ -109,16 +105,12 @@ public:
    */
   static TimingManager& getTimingManager() { return *theTimingManager; }
 
-  /**
-   * The method returns a reference to the process wide instance.
-   * @return the instance of the NTP in this process.
-   */
-  static NTP& getNTP() { return *theNTP; }
-
   friend class Process; // The class Process can set these pointers.
+  friend class SubThread; // The class Process can set these pointers.
   friend class Cognition; // The class Cognition can set theTeamOut.
   friend struct Settings; // The class Settings can set a default StreamHandler.
   friend class ConsoleRoboCupCtrl; // The class ConsoleRoboCupCtrl can set theStreamHandler.
   friend class RobotConsole; // The class RobotConsole can set theDebugOut.
   friend class Framework;
+  friend class ModuleManager;
 };

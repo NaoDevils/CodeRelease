@@ -26,7 +26,7 @@ public:
   RotationMatrix(const Matrix3f& other) : Matrix3f(other) {}
   RotationMatrix(const AngleAxisf& angleAxis) : Matrix3f(angleAxis.toRotationMatrix()) {}
   RotationMatrix(const Quaternionf& quat) : Matrix3f(quat.toRotationMatrix()) {}
-  RotationMatrix(const float &yaw, const float &pitch, const float &roll);
+  RotationMatrix(const float& yaw, const float& pitch, const float& roll);
 
   RotationMatrix& operator=(const Matrix3f& other)
   {
@@ -51,10 +51,7 @@ public:
   * @param  vector  The vector this one is multiplied by
   * @return         A new vector containing the result
   */
-  Vector3f operator*(const Vector3f& vector) const
-  {
-    return Matrix3f::operator*(vector);
-  }
+  Vector3f operator*(const Vector3f& vector) const { return Matrix3f::operator*(vector); }
 
   /**
    * Multiplication of this rotation matrix by another rotation matrix.
@@ -62,10 +59,7 @@ public:
    * @return        A new matrix containing the result
    *                of the calculation.
    */
-  RotationMatrix operator*(const RotationMatrix& other) const
-  {
-    return RotationMatrix(Base::operator*(other));
-  }
+  RotationMatrix operator*(const RotationMatrix& other) const { return RotationMatrix(Base::operator*(other)); }
 
   RotationMatrix& operator*=(const AngleAxisf& rot)
   {
@@ -96,20 +90,11 @@ public:
     return *this;
   }
 
-  RotationMatrix inverse() const
-  {
-    return RotationMatrix(transpose());
-  }
+  RotationMatrix inverse() const { return RotationMatrix(transpose()); }
 
-  void normalize()
-  {
-    *this = Quaternionf(*this).normalized();
-  }
+  void normalize() { *this = Quaternionf(*this).normalized(); }
 
-  RotationMatrix normalized() const
-  {
-    return Quaternionf(*this).normalized();
-  }
+  RotationMatrix normalized() const { return Quaternionf(*this).normalized(); }
 
   /**
    * Converts the rotation matrix into an angleAxis.

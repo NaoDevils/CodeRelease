@@ -16,15 +16,15 @@
 #include "Representations/MotionControl/MotionInfo.h"
 
 MODULE(Predictor,
-{,
   REQUIRES(FrameInfo),
   REQUIRES(MotionInfo),
   REQUIRES(RobotPose),
   REQUIRES(BallModel),
+  REQUIRES(MultipleBallModel),
   PROVIDES(RobotPoseAfterPreview),
   PROVIDES(BallModelAfterPreview),
-});
-
+  PROVIDES(MultipleBallModelAfterPreview)
+);
 
 
 /**
@@ -34,14 +34,15 @@ class Predictor : public PredictorBase
 {
 public:
   /** Default constructor. */
-  Predictor() {
-    correctedOdometryOffset = Pose2f(); 
-    positionAfterPreview = Pose2f();
+  Predictor()
+  {
+    correctedOdometryOffset = Pose2f();
+    robotPoseAfterPreview = Pose2f();
     lastExecutionTimeStamp = 0;
   }
 
   /** Destructor */
-  ~Predictor(){}
+  ~Predictor() {}
 
   /** 
   * The method provides the robot pose after preview.
@@ -55,13 +56,19 @@ public:
   */
   void update(BallModelAfterPreview& ballModelAfterPreview);
 
+  /**
+  * The method provides the multiple ball model after preview.
+  * @param multipleBallModelAfterPreview The multiple ball model representation that is updated by this module.
+  */
+  void update(MultipleBallModelAfterPreview& multipleBallModelAfterPreview);
+
   /*
   * calculate the corrected odometry offset for preview only once
   */
   void execute();
 
   Pose2f correctedOdometryOffset;
-  Pose2f positionAfterPreview;
+  Pose2f robotPoseAfterPreview;
   unsigned lastExecutionTimeStamp;
 };
 

@@ -16,7 +16,6 @@ struct JointCalibration : public Streamable
 {
 public:
   STREAMABLE(JointInfo,
-  {
     /**
      * Default constructor.
      */
@@ -26,8 +25,8 @@ public:
 
     (Angle) offset, /**< An offset added to the angle. */
     (Angle) minAngle, /** the minmal angle */
-    (Angle) maxAngle, /** the maximal angle */
-  });
+    (Angle) maxAngle /** the maximal angle */
+  );
 
   std::array<JointInfo, Joints::numOfJoints> joints; /**< Information on the calibration of all joints. */
 
@@ -35,9 +34,7 @@ private:
   virtual void serialize(In* in, Out* out);
 };
 
-inline JointCalibration::JointInfo::JointInfo() :
-  offset(0), minAngle(150_deg), maxAngle(150_deg)
-{}
+inline JointCalibration::JointInfo::JointInfo() : offset(0), minAngle(150_deg), maxAngle(150_deg) {}
 
 inline bool JointCalibration::JointInfo::isMissing() const
 {
@@ -47,7 +44,7 @@ inline bool JointCalibration::JointInfo::isMissing() const
 inline void JointCalibration::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN
-  for(int i = 0; i < Joints::numOfJoints; ++i)
+  for (int i = 0; i < Joints::numOfJoints; ++i)
     Streaming::streamIt(in, out, Joints::getName(static_cast<Joints::Joint>(i)), joints[i], nullptr);
   STREAM_REGISTER_FINISH
 }

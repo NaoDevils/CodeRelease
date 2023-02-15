@@ -6,6 +6,7 @@
 #pragma once
 
 #include "Tools/Module/ModulePackage.h"
+#include "Tools/ProcessFramework/SubThread.h"
 #include "Tools/ProcessFramework/Process.h"
 #include "Tools/Module/Logger.h"
 
@@ -13,7 +14,7 @@
  * @class Motion
  * A class that represents the process that sends commands to the robot at 100Hz.
  */
-class Motion : public Process
+class Motion : public SuperThread
 {
 private:
   DEBUGGING;
@@ -21,9 +22,8 @@ private:
   SENDER(MotionToCognition);
   int numberOfMessages;
   ModuleManager moduleManager; /**< The solution manager handles the execution of modules. */
-  void(*waitForFrameData)() = 0;
-  void(*finishFrame)() = 0;
-  Logger logger;
+  void (*waitForFrameData)() = 0;
+  void (*finishFrame)() = 0;
 
 public:
   Motion();

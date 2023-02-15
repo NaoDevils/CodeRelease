@@ -12,6 +12,9 @@
 #include "MessageQueueBase.h"
 #include "InMessage.h"
 #include "OutMessage.h"
+#include <functional>
+
+class File;
 
 /**
  * @class MessageQueue
@@ -44,8 +47,10 @@ protected:
 public:
   InMessage in; /**< An interface for reading messages from the queue. */
   OutMessage out; /**< An interface for writing messages to the queue. */
+  std::unique_ptr<File> mappedFile;
 
-  MessageQueue() : in(queue), out(queue) {}
+  MessageQueue();
+  ~MessageQueue();
 
   /**
    * The method sets the size of memory which is allocated for the queue.
@@ -54,13 +59,13 @@ public:
    * @param reserveForInfrastructure Non-infrastructure messages will be rejected if
    *                                 less than this number of bytes is free.
    */
-  void setSize(unsigned size, unsigned reserveForInfrastructure = 0) {queue.setSize(size, reserveForInfrastructure);}
+  void setSize(size_t size, size_t reserveForInfrastructure = 0) { queue.setSize(size, reserveForInfrastructure); }
 
   /**
    * The method returns the size of memory which is needed to write the queue to a stream.
    * @return The number of bytes required.
    */
-  unsigned getStreamedSize() const {return MessageQueueBase::queueHeaderSize + queue.usedSize;}
+  size_t getStreamedSize() const { return MessageQueueBase::queueHeaderSize + queue.usedSize; }
 
   /**
    * The method returns the queue in streamed format. It runs in constant time.
@@ -75,6 +80,13 @@ public:
    * @param handler A reference to a message handler.
    */
   void handleAllMessages(MessageHandler& handler);
+
+  /**
+   * The method calls a given std::function for all messages in the queue. Note that the messages
+   * still remain in the queue and have to be removed manually with clear().
+   * @param function A std::function message handler.
+   */
+  void handleAllMessages(std::function<void(InMessage&)> func);
 
   /**
    * The method copies all messages from this queue to another queue.
@@ -93,37 +105,37 @@ public:
    * are already in the queue. However, some message types remain untouched.
    * This method should not be called during message handling.
    */
-  void removeRepetitions() {queue.removeRepetitions();}
+  void removeRepetitions() { queue.removeRepetitions(); }
 
   /**
    * The method removes all messages from the queue.
    */
-  void clear() {queue.clear();}
+  void clear();
 
   /**
    * The method returns whether the queue is empty.
    * @return Aren't there any messages in the queue?
    */
-  bool isEmpty() const {return queue.numberOfMessages == 0;}
+  bool isEmpty() const { return queue.numberOfMessages == 0; }
 
   /**
    * The method returns the number of messages in the queue.
    * @return The number of messages.
    */
-  int getNumberOfMessages() const {return queue.numberOfMessages;}
+  int getNumberOfMessages() const { return queue.numberOfMessages; }
 
   /**
    * The method removes a message from the queue.
    * @param message The number of the message.
    */
-  void removeMessage(int message) {queue.removeMessage(message);}
+  void removeMessage(int message) { queue.removeMessage(message); }
 
   /**
    * The method removes a message from the queue.
    */
   void removeLastMessage()
   {
-    if(!isEmpty())
+    if (!isEmpty())
       removeMessage(getNumberOfMessages() - 1);
   }
 
@@ -152,14 +164,14 @@ public:
    * @param stream The stream to write to.
    * @param numOfMessageIDs The number of message ids to write. They always start with the first one.
    */
-  void writeMessageIDs(Out& stream, MessageID numOfMessageIDs = ::numOfDataMessageIDs) const {queue.writeMessageIDs(stream, numOfMessageIDs);}
+  void writeMessageIDs(Out& stream, MessageID numOfMessageIDs = ::numOfDataMessageIDs) const { queue.writeMessageIDs(stream, numOfMessageIDs); }
 
   /**
    * Create a message id mapping from a stream. The stream contains the message ids as text.
    * The mapping associates these string with the ids that currently use that name.
    * @param stream The stream to read from.
    */
-  void readMessageIDMapping(In& stream) {queue.readMessageIDMapping(stream);}
+  void readMessageIDMapping(In& stream) { queue.readMessageIDMapping(stream); }
 
 protected:
   /**
@@ -180,6 +192,8 @@ protected:
    * @param stream The stream that is read from.
    */
   void append(In& stream);
+
+  void mapFile(InBinaryFile& file);
 
   friend In& operator>>(In& stream, MessageQueue& messageQueue); /**< Gives the streaming operator access to append(). */
   friend Out& operator<<(Out& stream, const MessageQueue& messageQueue); /**< Gives the streaming operator access to write(). */

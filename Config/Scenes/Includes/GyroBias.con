@@ -1,0 +1,8 @@
+vp GyroBias 415 -0.3 0.3
+vpd GyroBias module:NaoProviderV6:gyroXBias red
+vpd GyroBias module:NaoProviderV6:gyroYBias green
+vpd GyroBias module:NaoProviderV6:gyroZBias blue
+
+vp GyroBiasErrSum 415 0.0 0.25
+vpd GyroBiasErrSum module:NaoProviderV6:errSum green
+vpd GyroBiasErrSum module:NaoProviderV6:errSumThreshold red

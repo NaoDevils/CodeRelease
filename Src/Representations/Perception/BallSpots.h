@@ -16,7 +16,6 @@
  * A struct that represents a spot that might be an indication of a ball.
  */
 STREAMABLE(BallSpots,
-{
   BallSpots()
   {
     ballSpots.reserve(50);
@@ -52,37 +51,8 @@ STREAMABLE(BallSpots,
   },
 
   (std::vector<BallSpot>) ballSpots,
-  (std::vector<BallSpot>) ballSpotsUpper,
-});
-
-/**
-* Ball Hypotheses are the filtered version of the BallSpots for further verification
-*/
-struct BallHypotheses : public BallSpots
-{
-  /** The method draws all ball spots. */
-  void draw() const
-  {
-    DECLARE_DEBUG_DRAWING("representation:BallHypotheses:Image:Lower", "drawingOnImage"); // Draws the ballspots to the image
-    DECLARE_DEBUG_DRAWING("representation:BallHypotheses:Image:Upper", "drawingOnImage"); // Draws the ballspots to the image
-    COMPLEX_DRAWING("representation:BallHypotheses:Image:Lower")
-    {
-      for (std::vector<BallSpot>::const_iterator i = ballSpots.begin(); i != ballSpots.end(); ++i)
-      {
-        CIRCLE("representation:BallHypotheses:Image:Lower", i->position.x(), i->position.y(), i->radiusInImage, 
-          3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
-      }
-    }
-    COMPLEX_DRAWING("representation:BallHypotheses:Image:Upper")
-    {
-      for (std::vector<BallSpot>::const_iterator i = ballSpotsUpper.begin(); i != ballSpotsUpper.end(); ++i)
-      {
-        CIRCLE("representation:BallHypotheses:Image:Upper", i->position.x(), i->position.y(), i->radiusInImage,
-          3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
-      }
-    }
-  }
-};
+  (std::vector<BallSpot>) ballSpotsUpper
+);
 
 struct BallHypothesesYolo : public BallSpots
 {
@@ -90,16 +60,26 @@ struct BallHypothesesYolo : public BallSpots
   void draw() const
   {
     DECLARE_DEBUG_DRAWING("representation:BallHypothesesYolo:Image:Lower", "drawingOnImage"); // Draws the ballspots to the image
+    DECLARE_DEBUG_DRAWING("representation:BallHypothesesYolo:Image:Upper", "drawingOnImage"); // Draws the ballspots to the image
+
     char buffer[10];
     COMPLEX_DRAWING("representation:BallHypothesesYolo:Image:Lower")
     {
       for (std::vector<BallSpot>::const_iterator i = ballSpots.begin(); i != ballSpots.end(); ++i)
       {
-        CIRCLE("representation:BallHypothesesYolo:Image:Lower", i->position.x(), i->position.y(), i->radiusInImage,
-          3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
-        
+        CIRCLE("representation:BallHypothesesYolo:Image:Lower", i->position.x(), i->position.y(), i->radiusInImage, 3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
+
         sprintf(buffer, "%.1f", i->validity * 100.f);
-        DRAWTEXT("representation:BallHypothesesYolo:Image:Lower", i->position.x(), i->position.y(), 13, ColorRGBA::orange, buffer << "%");
+        DRAWTEXT("representation:BallHypothesesYolo:Image:Lower", i->position.x() + i->radiusInImage, i->position.y(), 13, ColorRGBA::orange, buffer << "%");
+      }
+    }
+    COMPLEX_DRAWING("representation:BallHypothesesYolo:Image:Upper")
+    {
+      for (std::vector<BallSpot>::const_iterator i = ballSpotsUpper.begin(); i != ballSpotsUpper.end(); ++i)
+      {
+        CIRCLE("representation:BallHypothesesYolo:Image:Upper", i->position.x(), i->position.y(), i->radiusInImage, 3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
+        sprintf(buffer, "%.1f", i->validity * 100.f);
+        DRAWTEXT("representation:BallHypothesesYolo:Image:Upper", i->position.x() + i->radiusInImage, i->position.y(), 13, ColorRGBA::orange, buffer << "%");
       }
     }
   }
@@ -116,8 +96,7 @@ struct BallHypothesesYoloUpper : public BallSpots
     {
       for (std::vector<BallSpot>::const_iterator i = ballSpotsUpper.begin(); i != ballSpotsUpper.end(); ++i)
       {
-        CIRCLE("representation:BallHypothesesYolo:Image:Upper", i->position.x(), i->position.y(), i->radiusInImage,
-          3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
+        CIRCLE("representation:BallHypothesesYolo:Image:Upper", i->position.x(), i->position.y(), i->radiusInImage, 3, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::yellow);
         sprintf(buffer, "%.1f", i->validity * 100.f);
         DRAWTEXT("representation:BallHypothesesYolo:Image:Upper", i->position.x(), i->position.y(), 13, ColorRGBA::orange, buffer << "%");
       }

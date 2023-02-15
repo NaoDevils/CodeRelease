@@ -8,7 +8,6 @@
 
 #pragma once
 
-#define NOMINMAX
 #include <windows.h>
 #include <string>
 #include <vector>
@@ -17,7 +16,7 @@
 /**
  * The class encapsulates a Windows thread.
  */
-template<class T> class Thread
+template <class T> class Thread
 {
 private:
   HANDLE handle; /**< The Windows handle of the thread. */
@@ -56,7 +55,7 @@ public:
    * Destructor.
    * Stops the thread in case it is still running.
    */
-  virtual ~Thread() {stop();}
+  virtual ~Thread() { stop(); }
 
   /**
    * The function starts a member function as a new thread.
@@ -65,11 +64,12 @@ public:
    */
   void start(T* o, void (T::*f)())
   {
-    if(running) stop();
+    if (running)
+      stop();
     function = f;
     object = o;
     running = true;
-    handle = CreateThread(0, 0, (unsigned long(__stdcall*)(void*)) threadStart, this, 0, &id);
+    handle = CreateThread(0, 0, (unsigned long(__stdcall*)(void*))threadStart, this, 0, &id);
     SetThreadPriority(handle, priority);
   }
 
@@ -81,7 +81,28 @@ public:
   void stop()
   {
     running = false;
-    if(handle && WaitForSingleObject(handle, 10000) == WAIT_TIMEOUT)
+    if (handle && WaitForSingleObject(handle, 10000) == WAIT_TIMEOUT)
+      TerminateThread(handle, 0);
+  }
+
+  /**
+   * The function tries to stop the thread without blocking.
+   * It first signals its end by setting running to false. If the thread
+   * did not terminate yet, the function returns false.
+   */
+  bool tryStop()
+  {
+    running = false;
+    return handle && WaitForSingleObject(handle, 0) != WAIT_TIMEOUT;
+  }
+
+  /**
+   * The function force stops the thread.
+   */
+  void forceStop()
+  {
+    running = false;
+    if (handle)
       TerminateThread(handle, 0);
   }
 
@@ -89,17 +110,17 @@ public:
    * The function announces that the thread shall terminate.
    * It will not try to kill the thread.
    */
-  virtual void announceStop() {running = false;}
+  virtual void announceStop() { running = false; }
 
   /**
    * The function suspends a thread.
    */
-  void suspend() {SuspendThread(handle);}
+  void suspend() { SuspendThread(handle); }
 
   /**
    * The function resumes a suspended thread.
    */
-  void resume() {ResumeThread(handle);}
+  void resume() { ResumeThread(handle); }
 
   /**
    * The function sets the priority of the thread.
@@ -108,7 +129,7 @@ public:
   void setPriority(int prio)
   {
     priority = prio + THREAD_PRIORITY_NORMAL;
-    if(handle)
+    if (handle)
       SetThreadPriority(handle, priority);
   }
 
@@ -116,18 +137,18 @@ public:
    * The function determines whether the thread should still be running.
    * @return Should it continue?
    */
-  bool isRunning() const {return running;}
+  bool isRunning() const { return running; }
 
   /**
    * The function returns the thread id.
    * @return The thread id. Only valid after the thread was started.
    */
-  unsigned getId() const {return id;}
+  unsigned getId() const { return id; }
 
   /**
    * Sets thread name
    */
-  static void Thread::setName(const std::string& name)
+  static void setName(const std::string& name)
   {
     // https://stackoverflow.com/a/27296
     int slength = static_cast<int>(name.length()) + 1;
@@ -143,12 +164,12 @@ public:
    * The function returns the id of the calling thread.
    * @return The id of the calling thread.
    */
-  static unsigned getCurrentId() {return GetCurrentThreadId();}
+  static unsigned getCurrentId() { return GetCurrentThreadId(); }
 
   /**
    * Causes the calling thread to relinquish the CPU.
    */
-  static void yield() {Sleep(0);}
+  static void yield() { Sleep(0); }
 };
 
 /**
@@ -163,24 +184,24 @@ public:
   /**
    * Constructor.
    */
-  SyncObject() {InitializeCriticalSection(&section);}
+  SyncObject() { InitializeCriticalSection(&section); }
 
   /**
    * Destructor.
    */
-  ~SyncObject() {DeleteCriticalSection(&section);}
+  ~SyncObject() { DeleteCriticalSection(&section); }
 
   /**
    * The function enters the critical section.
    * It suspends the current thread, until the critical section
    * was left by all other threads.
    */
-  void enter() {EnterCriticalSection(&section);}
+  void enter() { EnterCriticalSection(&section); }
 
   /**
    * The function leaves the critical section.
    */
-  void leave() {LeaveCriticalSection(&section);}
+  void leave() { LeaveCriticalSection(&section); }
 };
 
 /**
@@ -197,13 +218,13 @@ public:
    * @param s A reference to a sync object representing a critical
    *          section. The section is entered.
    */
-  Sync(SyncObject& s) : syncObject(s) {syncObject.enter();}
+  Sync(SyncObject& s) : syncObject(s) { syncObject.enter(); }
 
   /**
    * Destructor.
    * The critical section is left.
    */
-  ~Sync() {syncObject.leave();}
+  ~Sync() { syncObject.leave(); }
 };
 
 /**

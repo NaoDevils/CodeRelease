@@ -34,12 +34,12 @@ private:
   enum class ValueType
   {
     acceleration, // m/s^2
-    angle,        // °
+    angle, // °
     angularSpeed, // °/s^2
-    current,      // A
-    pressure,     // g
-    ratio,        // %
-    temperatur    // °C
+    current, // A
+    pressure, // g
+    ratio, // %
+    temperatur // °C
   };
 
   SensorView& sensorView;
@@ -65,6 +65,7 @@ public:
 
   void update();
   void paintEvent(QPaintEvent* event);
+  virtual void saveLayout();
 
 private:
   void paintFsrSensorData();
@@ -88,28 +89,27 @@ public:
   SensorHeaderedWidget(SensorView& sensorView, RobotConsole& console);
 
 private:
-  virtual QWidget* getWidget() {return this;}
-  virtual void update() {sensorWidget->update();}
+  virtual QWidget* getWidget() { return this; }
+  virtual void update() { sensorWidget->update(); }
 };
 
-SensorView::SensorView(const QString& fullName, RobotConsole& robotConsole, const FsrSensorData& fsrSensorData,
-                       const InertialSensorData& inertialSensorData, const KeyStates& keyStates,
-                       const SystemSensorData& systemSensorData) :
-  fullName(fullName), icon(":/Icons/tag_green.png"), console(robotConsole), fsrSensorData(fsrSensorData),
-  inertialSensorData(inertialSensorData), keyStates(keyStates), systemSensorData(systemSensorData)
-{}
+SensorView::SensorView(
+    const QString& fullName, RobotConsole& robotConsole, const FsrSensorData& fsrSensorData, const InertialSensorData& inertialSensorData, const KeyStates& keyStates, const SystemSensorData& systemSensorData)
+    : fullName(fullName), icon(":/Icons/tag_green.png"), console(robotConsole), fsrSensorData(fsrSensorData), inertialSensorData(inertialSensorData), keyStates(keyStates),
+      systemSensorData(systemSensorData)
+{
+}
 
 SimRobot::Widget* SensorView::createWidget()
 {
   return new SensorHeaderedWidget(*this, console);
 }
 
-SensorWidget::SensorWidget(SensorView& sensorView, QHeaderView* headerView, QWidget* parent) :
-  QWidget(parent), sensorView(sensorView), headerView(headerView), noPen(Qt::NoPen)
+SensorWidget::SensorWidget(SensorView& sensorView, QHeaderView* headerView, QWidget* parent) : QWidget(parent), sensorView(sensorView), headerView(headerView), noPen(Qt::NoPen)
 {
   setFocusPolicy(Qt::StrongFocus);
   setBackgroundRole(QPalette::Base);
-  const QFontMetrics& fontMetrics(QApplication::fontMetrics());
+  const QFontMetricsF fontMetrics(QGuiApplication::font());
   lineSpacing = fontMetrics.lineSpacing() + 2;
   textOffset = fontMetrics.descent() + 1;
 
@@ -128,6 +128,11 @@ SensorWidget::SensorWidget(SensorView& sensorView, QHeaderView* headerView, QWid
 }
 
 SensorWidget::~SensorWidget()
+{
+  //saveLayout();
+}
+
+void SensorWidget::saveLayout()
 {
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(sensorView.fullName);
@@ -236,34 +241,34 @@ void SensorWidget::paintSystemSensorData()
 
 QString SensorWidget::printValue(ValueType valueType, float value) const
 {
-  if(value == SensorData::off)
+  if (value == SensorData::off)
     return "off";
   else
   {
     QString text;
-    switch(valueType)
+    switch (valueType)
     {
-      case ValueType::acceleration:
-        text = QString::number(value, 'f', 2) + QString::fromUtf8(" m/s²");
-        break;
-      case ValueType::angle:
-        text = QString::number(toDegrees(value), 'f', 1) + "°";
-        break;
-      case ValueType::angularSpeed:
-        text = QString::number(toDegrees(value), 'f', 1) + " °/s";
-        break;
-      case ValueType::current:
-        text = QString::number(value, 'f', 2) + " A";
-        break;
-      case ValueType::pressure:
-        text = QString::number(value * 1000.f, 'f', 0) + " g";
-        break;
-      case ValueType::ratio:
-        text = QString::number(value * 100.f, 'f', 1) + " %";
-        break;
-      case ValueType::temperatur:
-        text = QString::number(value, 'f', 1) + " °C";
-        break;
+    case ValueType::acceleration:
+      text = QString::number(value, 'f', 2) + QString::fromUtf8(" m/s²");
+      break;
+    case ValueType::angle:
+      text = QString::number(toDegrees(value), 'f', 1) + "°";
+      break;
+    case ValueType::angularSpeed:
+      text = QString::number(toDegrees(value), 'f', 1) + " °/s";
+      break;
+    case ValueType::current:
+      text = QString::number(value, 'f', 2) + " A";
+      break;
+    case ValueType::pressure:
+      text = QString::number(value * 1000.f, 'f', 0) + " g";
+      break;
+    case ValueType::ratio:
+      text = QString::number(value * 100.f, 'f', 1) + " %";
+      break;
+    case ValueType::temperatur:
+      text = QString::number(value, 'f', 1) + " °C";
+      break;
     }
     return text;
   }
@@ -281,7 +286,7 @@ QString SensorWidget::printButton(bool pressed) const
 
 void SensorWidget::print(const QString& name, const QString& value)
 {
-  if(fillBackground)
+  if (fillBackground)
   {
     painter.setPen(noPen);
     painter.drawRect(paintRect.left(), paintRectField1.top(), paintRect.width(), paintRectField1.height());
@@ -306,7 +311,8 @@ void SensorWidget::newSection()
 SensorHeaderedWidget::SensorHeaderedWidget(SensorView& sensorView, RobotConsole& console)
 {
   QStringList headerLabels;
-  headerLabels << "Sensor" << "Value";
+  headerLabels << "Sensor"
+               << "Value";
   setHeaderLabels(headerLabels, "lr");
   QHeaderView* headerView = getHeaderView();
   headerView->setMinimumSectionSize(50);

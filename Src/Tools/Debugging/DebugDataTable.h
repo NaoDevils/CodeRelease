@@ -14,6 +14,7 @@
 #include "Tools/Streams/InStreams.h"
 #include <string>
 #include <unordered_map>
+#include <atomic>
 
 class Framework;
 class InMessage;
@@ -26,7 +27,7 @@ class InMessage;
 class DebugDataTable
 {
 private:
-  std::unordered_map<std::string, char*> table;
+  std::unordered_map<std::string, std::atomic<char*>> table;
 
   friend class Process; /**< A process is allowed to create the instance. */
   friend class Framework; /**< A framework is allowed to create the instance. */
@@ -45,22 +46,34 @@ public:
    * Registers the object with the debug data table and updates the object if the
    * respective entry in the table has been modified through RobotControl.
    */
-  template<class T> void updateObject(const char* name, T& t, bool once);
+  template <class T> void updateObject(const char* name, T& t, bool once);
   void processChangeRequest(InMessage& in);
 };
 
-template<class T> void DebugDataTable::updateObject(const char* name, T& t, bool once)
+template <class T> void DebugDataTable::updateObject(const char* name, T& t, bool once)
 {
   // Find entry in debug data table
-  std::unordered_map<std::string, char*>::iterator iter = table.find(name);
-  if(iter != table.end())
+  std::unordered_map<std::string, std::atomic<char*>>::iterator iter = table.find(name);
+  if (iter != table.end())
   {
-    InBinaryMemory stream(iter->second);
-    stream >> t;
-    if(once)
+    if (once)
     {
-      delete[] iter->second;
-      table.erase(iter);
+      char* data = iter->second.exchange(nullptr, std::memory_order_acquire);
+      if (data)
+      {
+        InBinaryMemory stream(data);
+        stream >> t;
+        delete[] data;
+      }
+    }
+    else
+    {
+      char* data = iter->second.load(std::memory_order_acquire);
+      if (data)
+      {
+        InBinaryMemory stream(data);
+        stream >> t;
+      }
     }
   }
 }

@@ -5,6 +5,7 @@
 #include "Utils/dorsh/models/Team.h"
 #include "Platform/File.h"
 #include "Utils/dorsh/tools/Platform.h"
+#include "Tools/Build.h"
 
 CompileCmd CompileCmd::theCompileCmd;
 
@@ -27,35 +28,29 @@ std::vector<std::string> CompileCmd::complete(const std::string& cmdLine) const
 {
   std::vector<std::string> commandWithArgs = split(cmdLine);
 
-  if(commandWithArgs.size() == 1)
+  if (commandWithArgs.size() == 1)
     return getBuildConfigs();
-  else if(commandWithArgs.size() == 2 && *--cmdLine.end() != ' ')
+  else if (commandWithArgs.size() == 2 && *--cmdLine.end() != ' ')
     return getBuildConfigs(commandWithArgs[1]);
-  else if(commandWithArgs.size() == 2)
-    return Filesystem::getProjects("");
   else
-    return Filesystem::getProjects(commandWithArgs[2]);
+    return {};
 }
 
-CompileCmd::CompileTask::CompileTask(Context &context,
-                                     const std::string &label,
-                                     const QString &command,
-                                     const QStringList &args)
-  : Task(context),
-    r(context, command, args),
-    label(label)
-{}
+CompileCmd::CompileTask::CompileTask(Context& context, const std::string& label, const QString& command, const QStringList& args)
+    : Task(context), r(context, command, args), label(label)
+{
+}
 
 bool CompileCmd::CompileTask::execute()
 {
   r.run();
-  if(context().isCanceled())
+  if (context().isCanceled())
   {
     context().cleanupFinished();
     return true;
   }
   bool status = true;
-  if(r.error())
+  if (r.error())
   {
     context().errorLine("Failed to compile.");
     status = false;
@@ -68,7 +63,7 @@ void CompileCmd::CompileTask::cancel()
   r.stop();
 }
 
-void CompileCmd::CompileTask::setContext(Context *context)
+void CompileCmd::CompileTask::setContext(Context* context)
 {
   r.setContext(*context);
   Task::setContext(context);
@@ -79,35 +74,23 @@ std::string CompileCmd::CompileTask::getLabel()
   return label;
 }
 
-#ifdef LINUX
-  #define LABEL "make"
-#else
-  #ifdef OSX
-    #define LABEL "xcodebuild"
-  #else
-    #ifdef WINDOWS
-      #define LABEL "vcxproj"
-    #endif
-  #endif
-#endif
-
-bool CompileCmd::execute(Context &context, const std::vector<std::string> &params)
+bool CompileCmd::execute(Context& context, const std::vector<std::string>& params)
 {
   QString command;
   QStringList args;
 
-  if(params.size() > 2)
+  if (params.size() > 2)
   {
     context.errorLine("Too many parameters specified.");
     return false;
   }
-  else if(params.empty())
+  else if (params.empty())
   {
     Team* team = context.getSelectedTeam();
     if (team && team->buildConfig.length() > 0)
     {
       command = getCommand("Nao");
-      args = getParams(fromString(team->buildConfig), "Nao");
+      args = getParams(QString::fromStdString(team->buildConfig), "Nao");
     }
     else
     {
@@ -118,65 +101,70 @@ bool CompileCmd::execute(Context &context, const std::vector<std::string> &param
   else if (params.size() == 1)
   {
     command = getCommand("Nao");
-    args = getParams(fromString(params[0]), "Nao");
+    args = getParams(QString::fromStdString(params[0]), "Nao");
   }
   else
   {
-    command = getCommand(fromString(params[1]));
-    args = getParams(fromString(params[0]), fromString(params[1]));
+    command = getCommand(QString::fromStdString(params[1]));
+    args = getParams(QString::fromStdString(params[0]), QString::fromStdString(params[1]));
   }
 
-  context.executeDetached(new CompileTask(context,
-                                          LABEL,
-                                          command,
-                                          args));
+  context.executeDetached(new CompileTask(context, "Build", command, args));
   return context.waitForChildren();
 }
 
-#ifdef WINDOWS
 QString CompileCmd::getCommand(const QString& project)
 {
-  if (project == "Nao")
+  if constexpr (Build::platformWindows())
   {
-    return fromString(std::string(File::getBHDir())) + "/Make/VS2019/bashexec.exe";
+    if (project == "Nao")
+      return "bash";
+    else
+      return QString(File::getBHDir()) + "/Make/Windows/compile.bat";
   }
   else
   {
-    if (vsPath == "")
-    {
-      QProcess vswhere;
-      QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-      QString programfiles = env.value("ProgramFiles(x86)");
-      vswhere.start(programfiles + "\\Microsoft Visual Studio\\Installer\\vswhere.exe",
-        QStringList() << "-version" << "16.0" << "-requires" << "Microsoft.Component.MSBuild" << "-find" << "MSBuild\\**\\Bin\\MSBuild.exe");
-
-      if (!vswhere.waitForStarted()) return "";
-      if (!vswhere.waitForFinished()) return "";
-
-      vsPath = std::string(vswhere.readAll().data());
-
-      if (vsPath.length() < 2)
-      {
-        vsPath = "";
-      }
-      else
-      {
-        // remove \r\n
-        vsPath = vsPath.substr(0, vsPath.length() - 2);
-      }
-    }
-    return QString(vsPath.c_str());
+    return QString(File::getBHDir()) + "/Make/Linux/compile.sh";
   }
 }
 
-QString CompileCmd::wslpath(QString path)
+QStringList CompileCmd::getParams(const QString& config, const QString& project)
+{
+  QStringList args;
+
+  if (project == "Nao")
+  {
+    if constexpr (Build::platformWindows())
+      args << "-l" << wslpath(QString(File::getBHDir()) + "/Make/Linux/compile.sh");
+
+    args << "nao-" + config.toLower() << "Nao";
+  }
+  else
+  {
+    const bool isMultiConfig = Filesystem::isMultiConfig();
+    args << (isMultiConfig ? "simulator-multiconfig-" : "simulator-") + config.toLower() << "SimRobot";
+
+    // Compile using the same VS version that Dorsh was compiled with.
+#ifdef _MSC_VER
+#if (_MSC_VER < 1930)
+    args << "16";
+#else
+    args << "17";
+#endif
+#endif
+  }
+
+  return args;
+}
+
+QString CompileCmd::wslpath(const QString& path)
 {
   QString tempPath = "";
   for (int i = 0; i < path.length(); i++)
   {
     if (i == 0)
     {
-      tempPath = fromString("/mnt/") + path.at(i);
+      tempPath = QString("/mnt/") + path.at(i);
       continue;
     }
     if (i == 1)
@@ -186,58 +174,3 @@ QString CompileCmd::wslpath(QString path)
 
   return tempPath;
 }
-
-QStringList CompileCmd::getParams(const QString& config, const QString& project)
-{
-  QStringList args;
-
-  if (project == "Nao")
-  {
-    QString mke = "make -C \"" + wslpath(fromString(std::string(File::getBHDir())) + "/Make/Linux\"");
-    mke += fromString(" CONFIG=") + config + " " + project;
-
-    args << mke;
-  }
-  else
-  {
-    const QString makeDir(fromString(makeDirectory()));
-    args << fromString(std::string(File::getBHDir())).replace("/", "\\") + "\\Make\\" + makeDir + "\\NDevils.sln";
-    args << QString("/t:" + project) << QString("/p:Configuration=" + config)
-      << QString("/nologo") // Do not show MSBuild version and copyright information
-      << QString("/m")  // Use as many parallel processes as possible
-      << QString("/v:m"); // Set logging verbosity to minimal
-  }
-
-  return args;
-}
-#elif defined(OSX)
-QString CompileCmd::getCommand(const QString& project)
-{
-  return fromString(std::string(File::getBHDir())) + "/Make/OSX/compileFromDorsh";
-}
-
-QStringList CompileCmd::getParams(const QString& config, const QString& project)
-{
-  QStringList args;
-  args << project << config;
-  return args;
-}
-#else
-QString CompileCmd::getCommand(const QString& project)
-{
-  return fromString("bash"); // hack for those who use 64bit systems and bash functions to set right CFLAGS
-}
-
-QStringList CompileCmd::getParams(const QString& config, const QString& project)
-{
-  QStringList args;
-  args << "-c";
-
-  QString mke = "make -C " + fromString(std::string(File::getBHDir()) + "/Make/Linux");
-  mke += fromString(" CONFIG=") + config + " " + project;
-
-  args << mke;
-
-  return args;
-}
-#endif // WINDOWS

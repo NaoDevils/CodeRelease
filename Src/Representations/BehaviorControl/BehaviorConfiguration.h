@@ -3,17 +3,17 @@
  * Declaration of class BehaviorConfiguration
  *
  * @author Ingmar Schwarz
- */ 
+ */
 
 #pragma once
 
 #include <string>
 #include <vector>
 #include "Tools/Streams/AutoStreamable.h"
-#include "Modules/BehaviorControl/BehaviorControl2015/Behavior2015Parameters.h"
+#include "Modules/BehaviorControl/CABSL/Options/PenaltyShootout/PenaltyShootout2017Parameters.h"
+#include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
 
-STREAMABLE(BehaviorConfiguration,
-{ ,
+STREAMABLE(BehaviorConfiguration,,
 
   (float)(1000) gotoThreshMaxTime,
   (float)(80) gotoBaseThresh,
@@ -23,11 +23,16 @@ STREAMABLE(BehaviorConfiguration,
   (bool)(false) noWLAN,
   (float)(190.f) optDistanceToBallX,
   (float)(55.f) optDistanceToBallY,
+  (float)(190.f) optLongkickDistanceToBallX,
+  (float)(55.f) optLongkickDistanceToBallY,
+  (float)(210.f) optKickoffDistanceToBallX,
+  (float)(43.f) optKickoffDistanceToBallY,
 
   (float) targetDistRobotToTargetAngleFactor,
   (float) targetDistanceRobotRotFactor,
   (float) targetDistanceObstacleFactor,
 
-  (Behavior2015Parameters) behavior2015Parameters,
+  (BehaviorParameters) behaviorParameters,
+  (PenaltyShootout2017Parameters) penaltyShootout2017Parameters
 
-});
+);

@@ -22,7 +22,7 @@ void SphereGeometry::drawPhysics(unsigned int flags) const
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  if(flags & SimRobotCore2::Renderer::showPhysics)
+  if (flags & SimRobotCore2::Renderer::showPhysics)
   {
     glColor4fv(color);
     GLUquadricObj* q = gluNewQuadric();

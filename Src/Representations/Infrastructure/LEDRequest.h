@@ -15,10 +15,8 @@
  * This describes a LEDRequest
  */
 STREAMABLE(LEDRequest,
-{
   /** ids for all LEDs */
   ENUM(LED,
-  {,
     faceLeftRed0Deg,
     faceLeftRed45Deg,
     faceLeftRed90Deg,
@@ -107,17 +105,16 @@ STREAMABLE(LEDRequest,
     footLeftBlue,
     footRightRed,
     footRightGreen,
-    footRightBlue,
-  });
+    footRightBlue
+  );
 
   ENUM(LEDState,
-  {,
     off,
     on,
     blinking,
     fastBlinking,
-    half,
-  });
+    half
+  );
 
   LEDRequest()
   {
@@ -138,5 +135,5 @@ STREAMABLE(LEDRequest,
     return !(*this == other);
   }
   ,
-  (LEDState[numOfLEDs]) ledStates, /**< The intended states of the LEDs (use type State). */
-});
+  (LEDState[numOfLEDs]) ledStates /**< The intended states of the LEDs (use type State). */
+);

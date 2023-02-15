@@ -23,13 +23,13 @@ public:
    */
   enum Behavior
   {
-    sendImmediately = 0,  // Send messages as fast as possible
-    sendAfter       = 1,  // Send messages after n milliseconds (and then discard new messages)
-    sendEvery       = 2,  // Send messages every n milliseconds
-    collect         = 4,  // Collect messages
-    sendCollected   = 5,  // Send collected messages (and discard new messages)
-    discardNew      = 6,  // Keep collected messages, but discard new ones
-    discardAll      = 7   // Discard all messages
+    sendImmediately = 0, // Send messages as fast as possible
+    sendAfter = 1, // Send messages after n milliseconds (and then discard new messages)
+    sendEvery = 2, // Send messages every n milliseconds
+    collect = 4, // Collect messages
+    sendCollected = 5, // Send collected messages (and discard new messages)
+    discardNew = 6, // Keep collected messages, but discard new ones
+    discardAll = 7 // Discard all messages
   };
 
   /**
@@ -37,8 +37,8 @@ public:
    */
   enum Filter
   {
-    sendEverything = 0,  // Send all messages, no matter how long it takes
-    latestOnly     = 1   // Only send latest message(s) per message type (more precisely, apply removeRepetitions)
+    sendEverything = 0, // Send all messages, no matter how long it takes
+    latestOnly = 1 // Only send latest message(s) per message type (more precisely, apply removeRepetitions)
   };
 
   /**
@@ -46,12 +46,11 @@ public:
    */
   enum Target
   {
-    sendViaNetwork  = 0,  // Actually send messages via the network
-    writeToStick    = 1   // Don't send messages but write them onto the stick
+    sendViaNetwork = 0, // Actually send messages via the network
+    writeToStick = 1 // Don't send messages but write them onto the stick
   };
 
 public: // members
-
   /** Queue fill and send timing behaviour. */
   Behavior behavior = sendImmediately;
 

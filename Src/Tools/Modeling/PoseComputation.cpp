@@ -11,8 +11,7 @@
 #include "Tools/Math/BHMath.h"
 #include "Tools/Math/Geometry.h"
 
-Pose2f PoseComputation::computePoseFromTwoGoalposts(const Vector2f& pl, const Vector2f& pr,
-                                                    const Vector2f& plWorld, const Vector2f& prWorld, float goalpostRadius)
+Pose2f PoseComputation::computePoseFromTwoGoalposts(const Vector2f& pl, const Vector2f& pr, const Vector2f& plWorld, const Vector2f& prWorld, float goalpostRadius)
 {
   // Determine x-coordinate by computing the distance to the ground line (i.e. the line that connects both posts)
   const Vector2f lineDirection = pr - pl;
@@ -21,15 +20,15 @@ Pose2f PoseComputation::computePoseFromTwoGoalposts(const Vector2f& pl, const Ve
   result.translation.x() = plWorld.x() > 0.f ? plWorld.x() - distanceToGroundLine : plWorld.x() + distanceToGroundLine;
 
   // text ...
-  const float absYOffsetToLeft  = std::sqrt(sqr(pl.norm()) - sqr(plWorld.x() - result.translation.x()));
+  const float absYOffsetToLeft = std::sqrt(sqr(pl.norm()) - sqr(plWorld.x() - result.translation.x()));
   const float absYOffsetToRight = std::sqrt(sqr(pr.norm()) - sqr(prWorld.x() - result.translation.x()));
   const float goalWidth = std::abs(plWorld.y()) * 2.f;
 
   // y between goalposts
   float y1, y2;
-  if(absYOffsetToLeft < goalWidth && absYOffsetToRight < goalWidth)
+  if (absYOffsetToLeft < goalWidth && absYOffsetToRight < goalWidth)
   {
-    if(plWorld.y() < 0.f)
+    if (plWorld.y() < 0.f)
     {
       y1 = plWorld.y() + absYOffsetToLeft;
       y2 = prWorld.y() - absYOffsetToRight;
@@ -41,9 +40,9 @@ Pose2f PoseComputation::computePoseFromTwoGoalposts(const Vector2f& pl, const Ve
     }
   }
   // y on the right side
-  else if(absYOffsetToLeft > absYOffsetToRight)
+  else if (absYOffsetToLeft > absYOffsetToRight)
   {
-    if(plWorld.y() < 0.f)
+    if (plWorld.y() < 0.f)
     {
       y1 = plWorld.y() + absYOffsetToLeft;
       y2 = prWorld.y() + absYOffsetToRight;
@@ -57,7 +56,7 @@ Pose2f PoseComputation::computePoseFromTwoGoalposts(const Vector2f& pl, const Ve
   // y on the left side
   else // if(absYOffsetToLeft < absYOffsetToRight)
   {
-    if(plWorld.y() < 0.f)
+    if (plWorld.y() < 0.f)
     {
       y1 = plWorld.y() - absYOffsetToLeft;
       y2 = prWorld.y() - absYOffsetToRight;
@@ -67,7 +66,6 @@ Pose2f PoseComputation::computePoseFromTwoGoalposts(const Vector2f& pl, const Ve
       y1 = plWorld.y() + absYOffsetToLeft;
       y2 = prWorld.y() + absYOffsetToRight;
     }
-
   }
   result.translation.y() = (y1 + y2) / 2.f;
 

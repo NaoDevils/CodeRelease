@@ -10,31 +10,22 @@
 #include "Tools/Math/Approx.h"
 
 
- //MARK: Kalman filter related methods
+//MARK: Kalman filter related methods
 
 void KalmanPositionHypothesis::initialize(const Vector2f& position, const Vector2f& velocity)
 {
   // Create initial covariance matrix.
   Eigen::Matrix4d covarianceMatrix;
-  covarianceMatrix <<
-    1.0, 0.0, 10.0, 0.0,
-    0.0, 1.0, 0.0, 10.0,
-    10.0, 0.0, 10000.0, 0.0,
-    0.0, 10.0, 0.0, 10000.0;
+  covarianceMatrix << 1.0, 0.0, 10.0, 0.0, 0.0, 1.0, 0.0, 10.0, 10.0, 0.0, 10000.0, 0.0, 0.0, 10.0, 0.0, 10000.0;
   // Initialize kalman filter.
   kalman.initialize(position, velocity, covarianceMatrix);
 }
 
-void KalmanPositionHypothesis::initialize(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-  const Vector2f& position, const Vector2f& velocity)
+void KalmanPositionHypothesis::initialize(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices, const Vector2f& position, const Vector2f& velocity)
 {
   // Create initial covariance matrix.
   Eigen::Matrix4d covarianceMatrix;
-  covarianceMatrix <<
-    1.0, 0.0, 10.0, 0.0,
-    0.0, 1.0, 0.0, 10.0,
-    10.0, 0.0, 10000.0, 0.0,
-    0.0, 10.0, 0.0, 10000.0;
+  covarianceMatrix << 1.0, 0.0, 10.0, 0.0, 0.0, 1.0, 0.0, 10.0, 10.0, 0.0, 10000.0, 0.0, 0.0, 10.0, 0.0, 10000.0;
   // Initialize kalman filter.
   kalman.initialize(position, velocity, covarianceMatrix, kalmanNoiseMatrices);
 }
@@ -47,7 +38,7 @@ void KalmanPositionHypothesis::removeOdometry(const KalmanPositionTracking2D<dou
 void KalmanPositionHypothesis::motionUpdate(unsigned currentTimestamp, float friction)
 {
   // Calculate time since last motionUpdate.
-  float timeOffset = static_cast<float>(currentTimestamp - m_lastMotionUpdateTimeStamp) * 0.001f; // in seconds
+  float timeOffset = static_cast<float>(currentTimestamp - m_lastMotionUpdateTimeStamp) / 1000.f; // in seconds
   // Save current timestamp for next iteration.
   m_lastMotionUpdateTimeStamp = currentTimestamp;
 
@@ -64,18 +55,17 @@ void KalmanPositionHypothesis::motionUpdate(unsigned currentTimestamp, float fri
   m_perceptsPerSecond.updateCurrentTime(currentTimestamp);
 }
 
-void KalmanPositionHypothesis::sensorUpdate(const Vector2f & position,
-  unsigned timestamp, float perceptValidity,
-  float measurementNoiseFactor)
+void KalmanPositionHypothesis::sensorUpdate(const Vector2f& position, unsigned timestamp, float perceptValidity, float measurementNoiseFactor)
 {
   // Increase number of sensor updates (even if the percept is older than timeWhenLastSeen).
   m_numberOfSensorUpdates++;
   // Don't update when the timestamp is older than timeWhenLastSeen. This can
   // occur for remote hypotheses due to transmission times.
-  if (timestamp < timeWhenLastSeen) return;
+  if (timestamp < timeWhenLastSeen)
+    return;
 
   // Calculate time since last sensor update.
-  float timeOffset = static_cast<float>(timestamp - timeWhenLastSeen) * 0.001f; // in seconds
+  float timeOffset = static_cast<float>(timestamp - timeWhenLastSeen) / 1000.f; // in seconds
 
   // Run correction.
   kalman.correct(position, timeOffset, measurementNoiseFactor);
@@ -86,17 +76,19 @@ void KalmanPositionHypothesis::sensorUpdate(const Vector2f & position,
   m_perceptsPerSecond.addPercept(timestamp, perceptValidity);
   // Save unfiltered percept.
   lastPerception = position;
+
+  if (mergeFactor != 1.f && kalman.velocity().norm() < 20.f)
+    mergeFactor = 1.f;
 }
 
-void KalmanPositionHypothesis::sensorUpdate(const Vector2f & position, const Vector2f & velocity,
-  unsigned timestamp, float perceptValidity,
-  float measurementNoiseFactor)
+void KalmanPositionHypothesis::sensorUpdate(const Vector2f& position, const Vector2f& velocity, unsigned timestamp, float perceptValidity, float measurementNoiseFactor)
 {
   // Increase number of sensor updates (even if the percept is older than timeWhenLastSeen).
   m_numberOfSensorUpdates++;
   // Don't update when the timestamp is older than timeWhenLastSeen. This can
   // occur for remote hypotheses due to transmission times.
-  if (timestamp < timeWhenLastSeen) return;
+  if (timestamp < timeWhenLastSeen)
+    return;
 
   // Run correction with position and velocity.
   kalman.correct(position, velocity, measurementNoiseFactor);
@@ -107,6 +99,9 @@ void KalmanPositionHypothesis::sensorUpdate(const Vector2f & position, const Vec
   m_perceptsPerSecond.addPercept(timestamp, perceptValidity);
   // Save unfiltered percept.
   lastPerception = position;
+
+  if (mergeFactor != 1.f && kalman.velocity().norm() < 20.f)
+    mergeFactor = 1.f;
 }
 
 
@@ -143,9 +138,7 @@ void KalmanPositionHypothesis::updateValidity(float maxPerceptsPerSecond, float 
   // Increase validity instant if the percepts/s count is higher. => Fast increase, slow decrease.
   validity = std::max(validity, ppsValidity);
   // Cut validity to interval [0,1].
-  validity = validity > 1.f ? 1.f :
-    validity < 0.f ? 0.f :
-    validity;
+  validity = validity > 1.f ? 1.f : validity < 0.f ? 0.f : validity;
 }
 
 void KalmanPositionHypothesis::increaseFilterCovariance(double factor)
@@ -171,10 +164,15 @@ void KalmanPositionHypothesis::increaseFilterCovariance(double positionFactor, d
   }
 }
 
+void KalmanPositionHypothesis::updateMaxMeasurementNoise(double maxMeasurementNoise)
+{
+  kalman.matrices.noise.maxMeasurementNoise = maxMeasurementNoise;
+}
+
 
 //MARK: Helper methods
 
-void KalmanPositionHypothesis::merge(const KalmanPositionHypothesis & source)
+void KalmanPositionHypothesis::merge(const KalmanPositionHypothesis& source)
 {
   if (source.timeWhenLastSeen > timeWhenLastSeen)
   {

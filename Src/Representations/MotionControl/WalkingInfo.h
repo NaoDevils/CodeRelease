@@ -10,7 +10,7 @@
 #include "Representations/Modeling/RobotPose.h"
 #ifndef WALKING_SIMULATOR
 #include "Tools/Debugging/DebugDrawings.h"
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Enum.h"
 #include "Tools/Debugging/Watch.h"
 #else
@@ -22,38 +22,30 @@
 * @class WalkingInfo
 * Gives some information about the walk.
 */
-class WalkingInfo : public Streamable {
-public:
-
-  WalkingInfo() : isLeavingPossible(true), isRunning(false), bodyTiltApplied(false) {};
-
-  Pose2f odometryOffset; /**< Distancte between last odometry position and current */
-  Pose2f robotPosition; /**< Current position of body in world coordinate system of the walking engine */
-  Pose2f offsetToRobotPoseAfterPreview; /**< Future position of robot after the preview phase */
-  Vector2f expectedAcc; /**< Expected acceleration of the body */
-  bool isLeavingPossible; /**< Is is possible to leave the walking engine without falling? */
+STREAMABLE(WalkingInfo,
   StepData lastUsedFootPositions;
-  bool isCustomStepRunning;
-  Vector2f desiredBodyRot;
-  bool isRunning;
-  bool bodyTiltApplied;
+  bool isRunning = false;
+  bool bodyTiltApplied = false;
   bool onFloor[2];
-  Vector2f stabilityError = Vector2f::Zero(); // error in x/y -n..n calculated by sensor fusion of fsr, angle, gyro, acc
 
   Vector2f ballCSinWEWCS;
 
   void drawFoot(Point s, int t) const
   {
-    Vector2f bodyPoints[4] = { Vector2f(45, 25), Vector2f(45, -25),
-      Vector2f(-45, -25), Vector2f(-45, 25) };
+    Vector2f bodyPoints[4];
+    bodyPoints[0] = Vector2f(45, 25);
+    bodyPoints[1] = Vector2f(45, -25);
+    bodyPoints[2] = Vector2f(-45, -25);
+    bodyPoints[3] = Vector2f(-45, 25);
+
     //Point s = f.footPos[ZMP::phaseToZMPFootMap[f.phase]];
-    Pose2f p = s;
+    Pose2f p(s);
     p.translation *= 1000;
     p = walkingCStoSelfLocRCS(p);
     for (int i = 0; i < 4; i++)
       bodyPoints[i] = p * bodyPoints[i];
     POLYGON("module:SwingLegController:steps", 4, bodyPoints, 4, Drawings::dashedPen,
-      ColorRGBA::black, Drawings::solidBrush, ColorRGBA((t % 9) * 255/9, 255 - (t % 9) * 255 / 9, (t % 9) * 255 / 9));
+      ColorRGBA::black, Drawings::solidBrush, ColorRGBA(static_cast<unsigned char>((t % 9) * 255/9), static_cast<unsigned char>(255 - (t % 9) * 255 / 9), static_cast<unsigned char>((t % 9) * 255 / 9)));
   }
 
   Pose2f walkingCStoSelfLocRCS(Pose2f p) const
@@ -148,23 +140,12 @@ public:
     rcs.rotate2D(-rp.r);
     return rcs;
   }
-
-protected:
-  virtual void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-    STREAM(odometryOffset);
-    STREAM(robotPosition);
-    STREAM(offsetToRobotPoseAfterPreview);
-    STREAM(expectedAcc);
-    STREAM(isLeavingPossible);
-    STREAM(isCustomStepRunning);
-    STREAM(desiredBodyRot);
-    STREAM(stabilityError);
-    STREAM_REGISTER_FINISH;
-  }
-};
-
-
-
-
+  ,
+  (Pose2f) odometryOffset, /**< Distancte between last odometry position and current */
+  (Pose2f) robotPosition, /**< Current position of body in world coordinate system of the walking engine */
+  (Pose2f) offsetToRobotPoseAfterPreview, /**< Future position of robot after the preview phase */
+  (Vector2f)(Vector2f::Zero()) expectedAcc, /**< Expected acceleration of the body */
+  (bool)(true) isLeavingPossible, /**< Is is possible to leave the walking engine without falling? */
+  (bool)(false) isCustomStepRunning,
+  (Vector2f)(Vector2f::Zero()) desiredBodyRot
+);

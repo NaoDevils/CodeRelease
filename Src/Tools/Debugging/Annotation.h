@@ -20,10 +20,12 @@
  * ANNOTATION("TacticProvider", "Changed Tactic from " << oldTactic << " to " << newTactic << ".");
  * </pre>
  */
-#define ANNOTATION(name, message) \
-  do \
-  { \
-    Global::getAnnotationManager().addAnnotation(); \
+#define ANNOTATION(name, message)                                        \
+  do                                                                     \
+  {                                                                      \
+    if (!Global::hasAnnotationManager())                                 \
+      break;                                                             \
+    Global::getAnnotationManager().addAnnotation();                      \
     Global::getAnnotationManager().getOut().out.text << name << message; \
-    Global::getAnnotationManager().getOut().out.finishMessage(idAnnotation); \
-  } while(false)
+    Global::getAnnotationManager().endAnnotation();                      \
+  } while (false)

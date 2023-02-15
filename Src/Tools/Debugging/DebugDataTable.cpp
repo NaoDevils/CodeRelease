@@ -14,8 +14,12 @@
 
 DebugDataTable::~DebugDataTable()
 {
-  for(std::unordered_map< std::string, char*>::iterator iter = table.begin(); iter != table.end(); ++iter)
-    delete[] iter->second;
+  for (std::unordered_map<std::string, std::atomic<char*>>::iterator iter = table.begin(); iter != table.end(); ++iter)
+  {
+    char* data = iter->second.load(std::memory_order_acquire);
+    if (data)
+      delete[] data;
+  }
 }
 
 void DebugDataTable::processChangeRequest(InMessage& in)
@@ -23,23 +27,26 @@ void DebugDataTable::processChangeRequest(InMessage& in)
   std::string name;
   char change;
   in.bin >> name >> change;
-  std::unordered_map<std::string, char*>::iterator iter = table.find(name);
-  if(change)
+  std::unordered_map<std::string, std::atomic<char*>>::iterator iter = table.find(name);
+  if (change)
   {
     int size = in.getBytesLeft();
     char* buffer = new char[size];
     in.bin.read(buffer, size);
-    if(iter == table.end())
-      table[name] = buffer;
+    if (iter == table.end())
+      table[name].store(buffer, std::memory_order_release);
     else
     {
-      delete[] iter->second;
-      iter->second = buffer;
+      char* data = iter->second.exchange(buffer, std::memory_order_acq_rel);
+      if (data)
+        delete[] data;
     }
   }
-  else if(iter != table.end())
+  else if (iter != table.end())
   {
-    delete[] iter->second;
+    char* data = iter->second.load(std::memory_order_acquire);
+    if (data)
+      delete[] data;
     table.erase(iter);
   }
 }

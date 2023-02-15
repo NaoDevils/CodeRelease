@@ -12,12 +12,14 @@
 
 void OutMessageQueue::open(MessageQueueBase* q)
 {
-  if(queue == 0) queue = q;
+  if (queue == 0)
+    queue = q;
 }
 
 void OutMessageQueue::writeToStream(const void* p, size_t size)
 {
-  if(queue != 0) queue->write(p, size);
+  if (queue != 0)
+    queue->write(p, size);
 }
 
 OutBinaryMessage::OutBinaryMessage(MessageQueueBase* q)
@@ -35,9 +37,7 @@ OutTextRawMessage::OutTextRawMessage(MessageQueueBase* q)
   open(q);
 }
 
-OutMessage::OutMessage(MessageQueueBase& queue) :
-  queue(queue), bin(&queue), text(&queue), textRaw(&queue)
-{}
+OutMessage::OutMessage(MessageQueueBase& queue) : queue(queue), bin(&queue), text(&queue), textRaw(&queue) {}
 
 bool OutMessage::finishMessage(MessageID id)
 {

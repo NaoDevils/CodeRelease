@@ -1,0 +1,23 @@
+name: Build on Windows
+
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'Make/CMake/**'
+      - 'Src/**'
+      - 'Util/**'
+
+jobs:
+  build:
+    name: Build framework
+    runs-on: self-hosted
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v1
+    - name: compile
+      shell: cmd
+      run: "Make\\Windows\\compile.bat"

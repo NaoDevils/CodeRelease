@@ -1,0 +1,112 @@
+ballOffset = {
+	x = 0.17;
+	y = 0.05;
+};
+kickAngle = 0;
+kickDistance = [0, inf];
+translationThresholdXFront = 0.015;
+translationThresholdXBack = 0.03;
+translationThresholdY = 0.015;
+rotationThreshold = 4deg;
+
+timeUntilKickHackHip = 0;
+kickHackDurationHip = 0;
+kickHackHipAngle = 0deg;
+
+timeUntilKickHackKnee = 150;
+kickHackDurationKnee = 40;
+kickHackKneeAngle = -5deg;
+
+steps = [
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0.065; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = 0; y = 0;};
+      }
+    ];
+    duration = 300;
+    onFloor = [false, true];
+    kick = true;
+    swingFootTraj = [
+      {x = 0; y = 0; z = 0;},
+      {x = -0.05; y = 0.00; z = 0.02;},
+      {x = 0.03; y = 0.00; z = 0.035;},
+      {x = 0; y = 0; z = 0;}
+    ];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = 0; y = 0;};
+      }
+    ];
+    duration = 10;
+    onFloor = [true, true];
+    kick = false;
+    swingFootTraj = [
+    ];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = -0.065; y = -0.02;};
+      }
+    ];
+    duration = 250;
+    onFloor = [true, false];
+    kick = false;
+    swingFootTraj = [
+      {x = 0; y = 0; z = 0;},
+    ];
+  },
+     {
+       footPos = [
+         {
+           rotation = 0;
+           translation = {x = 0; y = 0;};
+         },
+         {
+           rotation = 0;
+           translation = {x = 0; y = 0;};
+         }
+       ];
+       duration = 10;
+       onFloor = [true, true];
+       kick = false;
+       swingFootTraj = [
+       ];
+     },
+     {
+       footPos = [
+         {
+           rotation = 0;
+           translation = {x = 0; y = 0;};
+         },
+         {
+           rotation = 0;
+           translation = {x = 0.0; y = 0.05;};
+         }
+       ];
+       duration = 300;
+       onFloor = [false, true];
+       kick = false;
+       swingFootTraj = [
+         {x = 0; y = 0; z = 0;},
+       ];
+     }
+];

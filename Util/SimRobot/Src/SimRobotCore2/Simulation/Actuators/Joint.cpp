@@ -1,7 +1,7 @@
 /**
 * @file Simulation/Joints/Joint.cpp
 * Implementation of class Joint
-* @author <A href="mailto:Tim.Laue@dfki.de">Tim Laue</A>
+* @author <A href="mailto:tlaue@uni-bremen.de">Tim Laue</A>
 * @author <A href="mailto:kspiess@informatik.uni-bremen.de">Kai Spiess</A>
 * @author Colin Graf
 * @author Thomas Röfer
@@ -19,16 +19,8 @@
 
 Joint::~Joint()
 {
-  if(joint)
+  if (joint)
     dJointDestroy(joint);
-}
-
-void Joint::assembleAppearances() const
-{
-  glPushMatrix();
-  glMultMatrixf(transformation);
-  GraphicalObject::assembleAppearances();
-  glPopMatrix();
 }
 
 void Joint::drawPhysics(unsigned int flags) const
@@ -36,13 +28,13 @@ void Joint::drawPhysics(unsigned int flags) const
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  if(flags & SimRobotCore2::Renderer::showPhysics)
+  if (flags & SimRobotCore2::Renderer::showPhysics)
   {
     glBegin(GL_LINES);
-      glNormal3f(0, 0, 1.f);
-      glColor3f(std::abs(axis->x), std::abs(axis->y), std::abs(axis->z));
-      glVertex3f(axis->x * -0.05f, axis->y * -0.05f, axis->z * -0.05f);
-      glVertex3f(axis->x * 0.05f, axis->y * 0.05f, axis->z * 0.05f);
+    glNormal3f(0, 0, 1.f);
+    glColor3f(std::abs(axis->x), std::abs(axis->y), std::abs(axis->z));
+    glVertex3f(axis->x * -0.05f, axis->y * -0.05f, axis->z * -0.05f);
+    glVertex3f(axis->x * 0.05f, axis->y * 0.05f, axis->z * 0.05f);
     glEnd();
 
     GLUquadricObj* q = gluNewQuadric();
@@ -58,7 +50,7 @@ void Joint::drawPhysics(unsigned int flags) const
 void Joint::registerObjects()
 {
   // add sensors and actuators
-  if(axis->motor)
+  if (axis->motor)
     axis->motor->registerObjects();
 
   // add children

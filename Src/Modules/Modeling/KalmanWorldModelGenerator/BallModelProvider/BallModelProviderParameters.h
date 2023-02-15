@@ -21,7 +21,6 @@
  * \see ValidityParameters
  */
 STREAMABLE(BallModelProviderParameters,
-{
   /**
    * \class ValidityParameters
    * 
@@ -31,7 +30,6 @@ STREAMABLE(BallModelProviderParameters,
    * \see BallModelProviderParameters::local, BallModelProviderParameters::remote
    */
   STREAMABLE(ValidityParameters,
-  {
     /**
      * Computes the minimum validity for a valid hypothesis from the parameters 
      * \c Validity_minPerceptsPerSecond and \c Validity_maxPerceptsPerSecond.
@@ -53,6 +51,10 @@ STREAMABLE(BallModelProviderParameters,
     /// hypotheses, a new hypothesis is created with position from ball percept 
     /// (distance in mm).
     (float) Hypotheses_minDistanceForNewHypothesis,
+    /// If a ball percept has at least this distance to all existing ball 
+    /// hypotheses, a new hypothesis is created with position from ball percept 
+    /// (distance in mm).
+    (Vector2a) Hypotheses_mergeAngleDiff,
     /// Use this validity for new ball hypotheses.
     (float) Hypotheses_initialValidityForNewHypotheses,
   
@@ -74,8 +76,8 @@ STREAMABLE(BallModelProviderParameters,
     (float) Validity_weightOfPreviousValidity,
     /// Same as \c Validity_weightOfPreviousValidity for hypotheses with at least
     /// \c Validity_goodPerceptsPerSecond.
-    (float) Validity_weightOfPreviousValidity_goodHypotheses,
-  });
+    (float) Validity_weightOfPreviousValidity_goodHypotheses
+  );
   ,
   /// Specific parameters for the local ball model (\c BallModel) which differs
   /// from the \c remote parameters.
@@ -105,6 +107,7 @@ STREAMABLE(BallModelProviderParameters,
   /// Only hypotheses which had at least this amount of sensor updates are
   /// allowed to become the \c bestHypothesis.
   (int) Hypotheses_minNumberOfSensorUpdatesForBestHypothesis,
+  (int) Hypotheses_minNumberOfSensorUpdatesForBestHypothesisRemote,
   /// If the best hypothesis changes, the last ones validity is decreased by this value.
   (float) Hypotheses_decreaseValidityOnChangingBestHypothesis,
   
@@ -113,9 +116,12 @@ STREAMABLE(BallModelProviderParameters,
   (bool) State_SetToPlaying_addKickOffHypothesis,
 
   /// If \c true add a hypothesis at the defined set play points when set play state changes
-  /// to either \c SET_PLAY_CORNER_KICK or to \c SET_PLAY_GOAL_FREE_KICK
+  /// to either \c SET_PLAY_CORNER_KICK or to \c SET_PLAY_GOAL_KICK
   (bool) State_SetPlay_addSetPlayHypothesis,
+
+  /// Maximum time that can pass since ball model update to add fake hypthesis on SET_PLAY
+  (int) State_SetPlay_maxTimeSinceBallSeen,
   
   /// If \c true all ball hypotheses are removed after a penalty.
-  (bool) State_Penalty_removeAllHypotheses,
-});
+  (bool) State_Penalty_removeAllHypotheses
+);

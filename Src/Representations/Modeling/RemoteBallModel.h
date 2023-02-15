@@ -20,7 +20,6 @@
  * hypothesis with the best validity is used to fill this \c RemoteBallModel.
  */
 STREAMABLE(RemoteBallModel,
-{
   void draw() const,
 
   (Vector2f)(Vector2f::Zero()) position, /**< The position of the ball in global field coordinates (in mm) */
@@ -29,9 +28,9 @@ STREAMABLE(RemoteBallModel,
   (unsigned)(0) timeWhenLastSeenByGoalie, /**< The last timestamp when the goalie (by playernumber) has seen this ball hypothesis. */
   (float)(0.f) validity, /**< The validity of the ball hypothesis used as remote ball model in range [0,1]. */
   (std::string)("") teammates, /**< Stores the player numbers of all teammates which updated this ball hypothesis (e.g. "1,2,5"). */ 
-});
+  (unsigned)(0) timeWhenBallInGoalBox
+);
 
 struct RemoteBallModelAfterPreview : public RemoteBallModel
 {
-
 };

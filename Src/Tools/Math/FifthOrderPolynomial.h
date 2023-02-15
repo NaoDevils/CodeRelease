@@ -32,8 +32,7 @@ public:
    * @param fx1d f'(x1)
    * @param fx1dd f''(x1)
    */
-  FifthOrderPolynomial(const float x0, const float fx0, const float fx0d, const float fx0dd,
-                       const float x1, const float fx1, const float fx1d, const float fx1dd);
+  FifthOrderPolynomial(const float x0, const float fx0, const float fx0d, const float fx0dd, const float x1, const float fx1, const float fx1d, const float fx1dd);
 
   /**
    * Evaluates the polynomial at the specified x.

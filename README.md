@@ -1,123 +1,149 @@
-Nao Devils Code Release 2019
-=================
+# Nao Devils Code Release 2022
 
-This is the 2019 Nao Devils Code Release based on the [B-Human code release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
+This is the Nao Devils Code Release 2022, originally based on [B-Human Code Release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
 
-Getting started
----------------
+## Installation
 
-Please refer to the original B-Human Code Release pdf for additional information.
+[Windows 10/11](#windows-1011), Linux (e.g., [Ubuntu 22.04](#ubuntu-2204)) and [macOS](#mac) (experimental) are supported natively.
 
-### Building
+Build dependencies:
+* Microsoft Visual C++ >= 14.34 (Visual Studio 2022 17.4)
+* Clang >= 14
+* CMake >= 3.20
+* [Conan](https://conan.io/) >= 1.52
 
-Make sure to download the NAOqi C++ SDK for Linux from [Aldebaran/Softbank](https://community.ald.softbankrobotics.com/) (account required!), which is required to communicate with the Nao V5. There is a script available, that extracts and copies the various header files to their required directories (`Install/installAlcommon`).
-The project uses a custom build tool called [mare](https://github.com/craflin/mare), all marefiles are in the directory `Make/Common`.
+### Windows 10/11
 
-Available build targets:
-- Nao
-  - libbhuman (for V5)
-  - libgamectrl (for V5)
-  - ndevilsbase (for V6)
-  - sensorReader (for V6)
-- SimRobot
-  - SimRobotCore2
-  - SimRobotEditor
-  - SimRobotHelp
-  - SimulatedNao
-    - Controller
-    - qtpropertybrowser
-    - libqxt
-- dorsh
+#### Notes
 
-Available build configurations:
-- Debug
-- Develop
-- Relese
+* [Visual Studio](https://visualstudio.microsoft.com/de/vs/) is the recommended IDE on Windows. Other CMake compatible IDEs such as [JetBrains CLion](https://www.jetbrains.com/de-de/clion/) and [VS Code](https://code.visualstudio.com/) (and possibly more) are also supported. Nevertheless, at least the Microsoft Visual C++ compiler included in [Visual Studio build tools](https://visualstudio.microsoft.com/de/downloads/) is required in this case to build on Windows.
+* We recommend at least 40 GiB of free disk space.
 
+#### Installation
 
-It is enough to build the three main targets as they depend on all other ones. `Nao` (cross) compiles the robot's code, `SimRobot` compiles the Simulator and `dorsh` is the deployement tool.
+You can choose between
+* a **[basic installation](#basic-installation)** that includes the robot framework and everything you need to develop and run the simulation and
+* a **[full installation](#full-installation)** that also allows to cross-compile the framework for NAO and requires the installation and configuration of *Windows Subsystem for Linux* (WSL).
 
-#### Windows
+##### Basic installation
 
-Required software:
-  - Windows 10
-  - Visual Studio 2019
-  - Windows Subsystem for Linux with Ubuntu 18.04 and the following packages:
-    - clang-6.0 (later versions upto Clang 9 should also work)
-    - ccache
-    - make
+* Install [Python](https://www.python.org/downloads/) and **make sure to check "Add Python to PATH" during setup**.
 
-Mare includes exporting a native project to Visual Studio. You can run the `Make/VS2019/generate.cmd` batch file to generate a Visual Studio solution `NDevils.sln` that can be opened afterwards. Remember to generate new project files each time you add or remove a file from the project, e.g. if you are switching branches.
+* Install [Conan](https://conan.io/downloads.html) package manager using `pip install conan` on the command line.
 
-#### Linux
+* Install Microsoft Visual Studio:
+  * Download [Visual Studio Community 2022 from Microsoft](https://visualstudio.microsoft.com/de/vs/).
+  * During setup, **select "Desktop development with C++"**!
 
-Required software packages (for Ubuntu 18.04, packages for other distributions may be called different):
-- libqt4-dev
-- libqt4-opengl-dev
-- libqt4-dev-bin
-- qt4-dev-tools
-- libglew-dev
-- libxml2
-- libxml2-dev
-- glew-utils
-- libjpeg-dev
-- clang-6.0 (later versions upto Clang 9 should also work)
-- cmake
+* Start VisualStudio and choose "Clone a repository".
+  * Repository location: <https://github.com/NaoDevils/CodeRelease.git>
+* After that, check the console output at the bottom of the window (may be minimized) and wait until message "CMake generation finished" appears.
+* Build simulator. (Menu Build => Build All)
+* In the upper toolbar, select **SimRobot.exe** as startup item and run the application.
+* See [Testing](#Testing) section on how to load a scene and run the simulation.
 
-You have multiple options to export the marefiles to project files. You may use your own editor and simple invoke
-```
-make <target> CONFIG=<config>
-```
-inside the directory `Make/Linux`, where `<target>` is one of the targets and `<config>` is one of the build configurations.
+##### Full installation
 
-The generate script in the directory `Make/LinuxQtCreator` will copy a CMakeLists.txt file to the root directoy. After that you may load the project with any CMake compatible IDE. The `CMakeLists.txt` simply grabs all cpp and header files and puts them into a dummy target, so that the IDE will show these files as project files. For each target of the framework, there is a custom target that simply invokes the above make commands as custom commands. We recommend QTCreator in connection with cmake.
+* Complete the basic installation steps above.
 
-### Setting up the Nao
+* Install Windows Subsystem for Linux (**WSL 1**) running Ubuntu 22.04:
+  * The exact steps vary depending on your system version and its previous state.
+  * Open a command prompt and execute:
+    ```
+    wsl --set-default-version 1
+    wsl --install -d Ubuntu-22.04
+    ```
+  * **Notes**:
+    * For the first installation, it may not be possible to set the default WSL version to 1 beforehand. In this case, execute the install command first to enable the Windows feature and try it again afterwards.
+    * The first WSL installation may require a system reboot. After rebooting, execute the install command again to continue the installation.
+    * WSL1 and WSL2 both work, however WSL1 is highly recommended due to frequent Windows file system acccess.
+    * You can check the currently used WSL version using `wsl --list --verbose`.
+    * You can also convert an existing distribution from WSL 2 to WSL 1 afterwards using `wsl --set-version Ubuntu-22.04 1`.
+* Open Ubuntu bash if not opened automatically (type `bash` in command line).
+* Update system and install packages:
 
-### V5 
+  ```
+  sudo apt update
+  sudo apt dist-upgrade
+    
+  sudo apt install --no-install-recommends clang clang-14 ccache cmake make git ninja-build python3-pip pkg-config clang-format dos2unix
+  pip3 install conan
+  ```
+* In Visual Studio, select **Dorsh.exe** as startup item and run the application.
+* Select the checkbox of any robot and click "deploy" in the lower toolbar.
+* Check the console output and make sure everything compiles correctly.
+* If you are not connected to a robot yet, the command will fail at the end with an error message "Antman is not reachable".
 
-Please refer to the B-Human Code Release report, as the process is the same.
-Note that we've enabled connecting to the Nao V5 via ssh as root.
-If you do not wish to do this, remove lines 48 to 50 in `Install/Files/install`, but be careful, this will break the NTP synchronization while deploying, since root is required to set the time.
-Also, the ssh keys provided in this code release are the ones provided by the B-Human Code Release, for security reasons you might want to change these as well.
+### Ubuntu 22.04
 
-### V6
+#### Notes
 
-Using the Nao V6 requires the RoboCup-only version of the operating system (currently version 2.8.5.11) offering a direct communication to LoLA that is used by our software. Installation instructions can be found in the [documentation](http://doc.aldebaran.com/2-8/software/naoflasher/naoflasher.html).
+* You can use any CMake compatible IDE you want. [JetBrains CLion](https://www.jetbrains.com/de-de/clion/) is recommended, but others will probably also work.
 
-The install-script for the NAO V6 now requires a valid python3 installation and additionally the python3-pip package paramiko (to handle the ssh connection).
-The new install-script simplifies the installation process and managing of the robots. Therefore, it is now possible to add new robots to our infrastructure on the fly while starting the installation process.  
-It is also possible to take a look at the robots which are already known by our infrastructure and removing them. This is done all by the same script so that you don't have to switch between some scripts like you have to do for the NAO V5. 
-Here are some examples to show you how to use the new install-script and how to fully install our framework infrastucture on the NAO V6.
+#### Installation
 
-#### Installation of the framework infrastructure (on a new/unknown robot)
-##### Interactive
-- Example #1: `python installRobot.py --ip <IpOfTheRobot>`
-- Example #2: `py installRobot.py --ip <IpOfTheRobot>`
+* Install required packages:
 
-During the installation process it is recognized that the robot is new or unknown and asked whether the configuration files for this robot should be created and which name the new robot should have.
-
-##### Manual / non-interactive
-- Example #1: `python installRobot.py --ip <IpOfTheRobot> --add <NameOfTheRobot>`
-- Example #2: `py installRobot.py -ip <IpOfTheRobot> -a <NameOfTheRobot>`
+  ```
+  sudo apt install --no-install-recommends clang clang-14 ccache cmake make git ninja-build python3-pip pkg-config clang-format dos2unix libgl-dev libglu1-mesa-dev libopengl-dev libegl-dev libasound-dev
+  pip3 install conan
   
-During the installation process it is recognized that the robot is new or unknown and the configuration files for the robot with the given name are created.
-  
-#### Managing robots
-##### Show all known robots
-- Example #1: `python installRobot.py --list`
-- Example #2: `py installRobot.py -l`
+  # make conan available in path (login again should also work)
+  source ~/.profile
+  ```
 
-This shows a list of all known robots ordered by name. The shown list includes the head ID, body ID, the last octet of the IP (robot ID) and the NAO version.
 
-##### Remove an existing robot
-- Example #1: `python installRobot.py --delete <NameOfTheRobot>`
-- Example #2: `py installRobot.py -d <NameOfTheRobot>`
+* Afterwards, you can open `CMakeLists.txt` in the repository's root directory using your preferred IDE. Modern IDEs like CLion are able to import configure and build options from `CMakePresets.json`.
+* If you would like to compile using the command line, change to the repository's root directory and execute:
 
-This will delete all corresponding files and entries of the given robot in our infrastructure.
+  ```
+  export CC=clang CXX=clang++ # use Clang compiler if not system default
+  cmake --preset "simulator-develop"
+  cmake --build --preset "simulator-develop"
+  ```
+* The initial configuration may take some time depending on the number of Conan packages that are not available precompiled for your platform and have to be compiled from source.
+* After compilation, you can start the **SimRobot** binary in `Build/simulator-develop`.
+* See [Testing](#Testing) section on how to load a scene and run the simulation.
+* To cross-compile for Nao, execute:
 
-### Copying the compiled files
+  ```
+  cmake --preset "nao-develop"
+  cmake --build --preset "nao-develop"
+  ```
 
-You should use `dorsh` (which is based on B-Human's `bush`) as preferred deploy tool that copies the required data and settings to the robot. (Detailed usage see B-Human Code Release.)
+### Mac
 
-Please note that after a fresh installation, the Nao will not appear as available in dorsh and the LAN device must be manually selected in the upper right corner. During the first transmission, our SensorReader is copied to the Nao, which broadcasts the current status of the robot to dorsh. 
+Mac support (Intel and Apple M1/M2) is in an experimental state and has been tested using VSCode and CLion, other IDEs may or may not work. Cross compilation for Nao is currently not supported!
+
+* First, install [Homebrew](https://brew.sh). 
+* Then, installed some basic requirements for development:
+
+```
+brew install cmake conan ninja
+```
+
+* You are now ready to build SimRobot as described for Linux using CMake.
+
+### Testing
+
+* Run SimRobot and click *Open*.
+* Change to the framework directory and open `Config/Scenes/TwoPlayers.ros2`.
+* In *Scene Graph* window, double click on *RoboCup* and on *Console* and arrange both windows as you like.
+* Focus the console window and enter `gc playing`.
+* Two robots should start playing against each other now.
+
+## Flash a robot
+
+Create a [Nao Devils system image](https://github.com/NaoDevils/NaoImage) using the `generate_naodevils.sh` script. You can either
+  * generate a ready-to-run version of our robot software (pass this framework directory using the `-f` parameter) or
+  * generate a base version that only contain the Ubuntu base image and has to be deployed using Dorsh later (omit the `-f` parameter).
+
+## Deploy a robot
+
+If you want to deploy/update a robot without re-flashing it everytime, you have to configure it first:
+1. Connect the robot to a DHCP enabled network via Ethernet.
+2. The robot should say its IP address automatically.
+3. Call `Install/addRobot.sh <IP address> <Name> <Robot ID> <Team ID>` from a Linux (e.g., WSL) command prompt and replace the placeholders accordingly. This will change the robot's IP address to `10.0.<Team ID>.<Robot ID>` and `10.1.<Team ID>.<Robot ID>` for LAN and WLAN, respectively.
+4. Open Dorsh, move the robot to any player number, select it, and click deploy. (Note: If the robot does not contain our robot software yet and was flashed using the base image, select "Device: LAN" in the upper right corner manually for the first time.)
+
+Steps 1-3 are only required for unknown robots that are not listed in `Config/robots.cfg`.

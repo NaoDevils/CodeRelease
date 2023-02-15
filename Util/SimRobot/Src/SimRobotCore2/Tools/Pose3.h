@@ -13,7 +13,6 @@
 template <class V = float> class Pose3
 {
 public:
-
   /** rotation as a Matrix3x3*/
   Matrix3x3<V> rotation;
 
@@ -32,12 +31,12 @@ public:
   /** constructor from rotation
    * \param rot Rotation
    */
-  Pose3<V>(const Matrix3x3<V>& rot): rotation(rot) {}
+  Pose3<V>(const Matrix3x3<V>& rot) : rotation(rot) {}
 
   /** constructor from translation
    * \param trans Translation
    */
-  Pose3<V>(const Vector3<V>& trans): translation(trans) {}
+  Pose3<V>(const Vector3<V>& trans) : translation(trans) {}
 
   /** constructor from three translation values
    * \param x translation x component
@@ -65,28 +64,19 @@ public:
   /** Multiplication with Point
   *\param point (Vector3&lt;float&gt;)
   */
-  Vector3<V> operator*(const Vector3<V>& point) const
-  {
-    return rotation * point + translation;
-  }
+  Vector3<V> operator*(const Vector3<V>& point) const { return rotation * point + translation; }
 
   /** Comparison of another vector with this one.
   *\param other The other vector that will be compared to this one
   *\return Whether the two vectors are equal.
   */
-  bool operator==(const Pose3<V>& other) const
-  {
-    return translation == other.translation && rotation == other.rotation;
-  }
+  bool operator==(const Pose3<V>& other) const { return translation == other.translation && rotation == other.rotation; }
 
   /** Comparison of another vector with this one.
   *\param other The other vector that will be compared to this one
   *\return Whether the two vectors are unequal.
   */
-  bool operator!=(const Pose3<V>& other) const
-  {
-    return translation != other.translation || rotation != other.rotation;
-  }
+  bool operator!=(const Pose3<V>& other) const { return translation != other.translation || rotation != other.rotation; }
 
   /**Concatenation of this pose with another pose
   *\param other The other pose that will be concatenated to this one.

@@ -9,8 +9,10 @@
 #pragma once
 
 #include "Tools/ProcessFramework/ProcessFramework.h"
+#include <memory>
 
 class RobotConsole;
+class Logger;
 
 /**
 * The class implements a robot as a list of processes.
@@ -28,6 +30,8 @@ public:
   */
   Robot(const char* name);
 
+  ~Robot();
+
   /**
   * The function updates all sensors and sends motor commands to SimRobot.
   */
@@ -37,13 +41,13 @@ public:
   * The function returns the name of the robot.
   * @return The name of the robot.
   */
-  const char* getName() const {return name.c_str();}
+  const char* getName() const { return name.c_str(); }
 
   /**
   * The function returns a pointer to the process that simulates the physical robots.
   * @return The pointer to the process.
   */
-  RobotConsole* getRobotProcess() const {return robotProcess;}
+  RobotConsole* getRobotProcess() const { return robotProcess; }
 
   /**
   * The function connects a sender and a receiver.
@@ -68,4 +72,6 @@ private:
   * @return A pointer to the receiver or 0 if no receiver exists with the specified name.
   */
   ReceiverList* getReceiver(const std::string& receiverName);
+
+  std::unique_ptr<Logger> logger;
 };

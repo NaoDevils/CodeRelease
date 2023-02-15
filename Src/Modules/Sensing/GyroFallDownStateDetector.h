@@ -8,31 +8,32 @@
 
 #pragma once
 
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Modeling/IMUModel.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Tools/Module/Module.h"
 #include "Tools/RingBufferWithSum.h"
+#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 
 
 MODULE(GyroFallDownStateDetector,
-{ ,
-  REQUIRES(InertialSensorData),
-  REQUIRES(IMUModel),
+  REQUIRES(JoinedIMUData),
   USES(MotionInfo),
   REQUIRES(FrameInfo),
+  REQUIRES(FsrSensorData),
+  REQUIRES(RobotInfo),
   PROVIDES(FallDownState),
-  DEFINES_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (bool)(true) uprightAfterSpecialAction,
-    (bool)(false) useIMUModel,
-    (bool)(false) useGyroSpeed,
+    (bool)(true) useGyroSpeed,
+    (Vector2a)(Vector2a(20_deg,24_deg)) fallDownAngle,
     (Angle)(5_deg) maxGyroForStandup,
     (Angle)(60_deg) uprightAngleThreshold,
-  }),
-});
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+  )
+);
 
 
 /**
@@ -40,11 +41,12 @@ MODULE(GyroFallDownStateDetector,
 *
 * A module for computing the current body state from sensor data
 */
-class GyroFallDownStateDetector: public GyroFallDownStateDetectorBase
+class GyroFallDownStateDetector : public GyroFallDownStateDetectorBase
 {
 public:
   /** Default constructor */
   GyroFallDownStateDetector();
+
 private:
   /** Executes this module
   * @param fallDownState The data structure that is filled by this module
@@ -56,7 +58,10 @@ private:
 
   unsigned fallenFinishedTime;
 
-  RingBufferWithSum<Angle, 50> gyroXBuffer;
-  RingBufferWithSum<Angle, 50> gyroYBuffer;
+  unsigned lastFallDownState;
 
+  RingBufferWithSum<Angle, 30> gyroXBuffer;
+  RingBufferWithSum<Angle, 30> gyroYBuffer;
+  float fsrMin = INFINITY;
+  float fsrMax = -INFINITY;
 };

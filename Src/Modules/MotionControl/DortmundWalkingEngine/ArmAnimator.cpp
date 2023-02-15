@@ -11,17 +11,14 @@ ArmAnimator::ArmAnimator()
 }
 
 
-ArmAnimator::~ArmAnimator()
-{
-
-}
+ArmAnimator::~ArmAnimator() {}
 
 void ArmAnimator::update(ArmMovement& armMovement)
 {
-  WalkingEngineParams curparams = (WalkingEngineParams &)theWalkingEngineParams;
-  
+  WalkingEngineParams curparams = (WalkingEngineParams&)theWalkingEngineParams;
+
   armMovement.angles[Joints::lShoulderPitch] = 0;
-  armMovement.angles[Joints::lShoulderRoll] = Angle::fromDegrees(curparams.arms1);
+  armMovement.angles[Joints::lShoulderRoll] = armsAngle;
   armMovement.angles[Joints::lElbowRoll] = 0;
   armMovement.angles[Joints::lElbowYaw] = pi_2;
   //BEMBLECUP Changed Wrist Direction from wristOffset to -wristOffset
@@ -29,31 +26,29 @@ void ArmAnimator::update(ArmMovement& armMovement)
   armMovement.angles[Joints::lHand] = handOffset;
 
   armMovement.angles[Joints::rShoulderPitch] = 0;
-  armMovement.angles[Joints::rShoulderRoll] = Angle::fromDegrees(-curparams.arms1);
+  armMovement.angles[Joints::rShoulderRoll] = -armsAngle;
   armMovement.angles[Joints::rElbowRoll] = 0;
   armMovement.angles[Joints::rElbowYaw] = -pi_2;
   armMovement.angles[Joints::rWristYaw] = wristOffset;
   armMovement.angles[Joints::rHand] = handOffset;
 
 
-
   float xOffset = (theKinematicRequest.leftFoot[0] + theKinematicRequest.rightFoot[0]) / 2;
   float leftArm, rightArm;
 
-  leftArm = Angle::fromDegrees(90) + curparams.armFactor*(theKinematicRequest.leftFoot[0] - xOffset);
-  rightArm = Angle::fromDegrees(90) + curparams.armFactor*(theKinematicRequest.rightFoot[0] - xOffset);
-  leftArm = leftArm<0 ? 0 : (leftArm>pi ? pi : leftArm);
-  rightArm = rightArm<0 ? 0 : (rightArm>pi ? pi : rightArm);
+  leftArm = Angle::fromDegrees(90) + armFactor * (theKinematicRequest.leftFoot[0] - xOffset);
+  rightArm = Angle::fromDegrees(90) + armFactor * (theKinematicRequest.rightFoot[0] - xOffset);
+  leftArm = leftArm < 0 ? 0 : (leftArm > pi ? pi : leftArm);
+  rightArm = rightArm < 0 ? 0 : (rightArm > pi ? pi : rightArm);
 
   armMovement.angles[Joints::lShoulderPitch] = leftArm;
   armMovement.angles[Joints::rShoulderPitch] = rightArm;
 
-  if (useBodyTiltForArmMovement
-    && fabs(theBodyTilt.y) < theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1]
-	  && fabs(theBodyTilt.y) > theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0])
+  if (useBodyTiltForArmMovement && theJoinedIMUData.imuData[anglesource].angle.y() < curparams.walkTransition.fallDownAngleMinMaxY[1]
+      && theJoinedIMUData.imuData[anglesource].angle.y() > curparams.walkTransition.fallDownAngleMinMaxY[0])
   {
-	  armMovement.angles[Joints::lShoulderPitch] -= theBodyTilt.y;
-	  armMovement.angles[Joints::rShoulderPitch] -= theBodyTilt.y;
+    armMovement.angles[Joints::lShoulderPitch] -= theJoinedIMUData.imuData[anglesource].angle.y();
+    armMovement.angles[Joints::rShoulderPitch] -= theJoinedIMUData.imuData[anglesource].angle.y();
   }
 
   armMovement.usearms = true;
@@ -82,7 +77,6 @@ void ArmAnimator::update(ArmMovement& armMovement)
         }
         else if (theArmContact.armContactStateLeft == ArmContact::ArmContactState::None)
         {
-
         }
       }
       if (theArmContact.armContactStateLeft != ArmContact::ArmContactState::None)
@@ -99,7 +93,6 @@ void ArmAnimator::update(ArmMovement& armMovement)
         }
         else if (theArmContact.armContactStateLeft == ArmContact::ArmContactState::None)
         {
-
         }
       }
       if (theArmContact.armContactStateRight != ArmContact::ArmContactState::None)
@@ -107,10 +100,9 @@ void ArmAnimator::update(ArmMovement& armMovement)
 
       lastContactStateLeft = theArmContact.armContactStateLeft;
       lastContactStateRight = theArmContact.armContactStateRight;
-
     }
 
-    if (lastMotion == MotionRequest:: walk && theMotionRequest.motion != MotionRequest::walk)
+    if (lastMotion == MotionRequest::walk && theMotionRequest.motion != MotionRequest::walk)
     {
       rightTimeWhenNoContact = std::min(theFrameInfo.time - timeToMoveArm, rightTimeWhenNoContact);
       leftTimeWhenNoContact = std::min(theFrameInfo.time - timeToMoveArm, leftTimeWhenNoContact);
@@ -131,28 +123,25 @@ void ArmAnimator::update(ArmMovement& armMovement)
       if (timeSinceNoContact >= 0 && timeSinceNoContact < timeToMoveArm)
       {
         float alpha = std::min((float)(timeSinceNoContact) / timeToPullArmIn, 1.0f);
-        armMovement.angles[Joints::lElbowRoll] = (1 - alpha)*armBackElbowRoll;
+        armMovement.angles[Joints::lElbowRoll] = (1 - alpha) * armBackElbowRoll;
         if (alpha < 1.f)
           armMovement.angles[Joints::lShoulderRoll] = Angle::normalize((alpha)*armToFrontShoulderRoll + (1 - alpha) * -armBackShoulderRoll);
-        alpha = (timeSinceNoContact > timeToPullArmIn) ?
-          (float)(timeSinceNoContact - timeToPullArmIn) / timeToPullPitch : 0;
+        alpha = (timeSinceNoContact > timeToPullArmIn) ? (float)(timeSinceNoContact - timeToPullArmIn) / timeToPullPitch : 0;
         alpha = std::min(alpha, 1.f);
         // to get to an angle in constant time, take standard from walk (90 degree) as best guess
-        armMovement.angles[Joints::lShoulderPitch] = Angle::normalize((alpha) * Angle::fromDegrees(90)
-          + (1 - alpha)*armBackPitch);
+        armMovement.angles[Joints::lShoulderPitch] = Angle::normalize((alpha)*Angle::fromDegrees(90) + (1 - alpha) * armBackPitch);
         if (alpha > 0)
-          armMovement.angles[Joints::lShoulderRoll] = Angle::normalize((alpha)*Angle::fromDegrees(curparams.arms1) + (1 - alpha) * armToFrontShoulderRoll);
+          armMovement.angles[Joints::lShoulderRoll] = Angle::normalize((alpha)*armsAngle + (1 - alpha) * armToFrontShoulderRoll);
       }
       // pull in
       else if (timeSinceContact >= 0 && timeSinceContact < (int)leftTimeWhenNoContact - (int)leftTimeWhenContact)
       {
         float alpha = std::min((float)timeSinceContact / timeToPullPitch, 1.0f);
-        armMovement.angles[Joints::lShoulderPitch] = Angle::normalize((1 - alpha)*leftPitchWhenContactStateChanged
-          + alpha*armBackPitch);
+        armMovement.angles[Joints::lShoulderPitch] = Angle::normalize((1 - alpha) * leftPitchWhenContactStateChanged + alpha * armBackPitch);
         alpha = (timeSinceContact > time4_5) ? (float)(timeSinceContact - time4_5) / timeToPullArmIn : 0;
         alpha = std::min(alpha, 1.f);
-        armMovement.angles[Joints::lElbowRoll] = alpha*armBackElbowRoll;
-        armMovement.angles[Joints::lShoulderRoll] = Angle::normalize((1 - alpha)*Angle::fromDegrees(curparams.arms1) + (alpha)* -armBackShoulderRoll);
+        armMovement.angles[Joints::lElbowRoll] = alpha * armBackElbowRoll;
+        armMovement.angles[Joints::lShoulderRoll] = Angle::normalize((1 - alpha) * armsAngle + (alpha) * -armBackShoulderRoll);
       }
     }
 
@@ -167,26 +156,23 @@ void ArmAnimator::update(ArmMovement& armMovement)
         float alpha = std::min((float)(timeSinceNoContact) / timeToPullArmIn, 1.0f);
         armMovement.angles[Joints::rElbowRoll] = (1 - alpha) * (-armBackElbowRoll);
         if (alpha < 1.f)
-          armMovement.angles[Joints::rShoulderRoll] = Angle::normalize((alpha)*-armToFrontShoulderRoll + (1 - alpha) * armBackShoulderRoll);
-        alpha = (timeSinceNoContact > timeToPullArmIn) ?
-          (float)(timeSinceNoContact - timeToPullArmIn) / timeToPullPitch : 0;
+          armMovement.angles[Joints::rShoulderRoll] = Angle::normalize((alpha) * -armToFrontShoulderRoll + (1 - alpha) * armBackShoulderRoll);
+        alpha = (timeSinceNoContact > timeToPullArmIn) ? (float)(timeSinceNoContact - timeToPullArmIn) / timeToPullPitch : 0;
         alpha = std::min(alpha, 1.f);
         // to get to an angle in constant time, take standard from walk (90 degree) as best guess
-        armMovement.angles[Joints::rShoulderPitch] = Angle::normalize((alpha) * Angle::fromDegrees(90)
-          + (1 - alpha)*armBackPitch);
+        armMovement.angles[Joints::rShoulderPitch] = Angle::normalize((alpha)*Angle::fromDegrees(90) + (1 - alpha) * armBackPitch);
         if (alpha > 0)
-          armMovement.angles[Joints::rShoulderRoll] = Angle::normalize((alpha)*Angle::fromDegrees(-curparams.arms1) + (1 - alpha) * -armToFrontShoulderRoll);
+          armMovement.angles[Joints::rShoulderRoll] = Angle::normalize((alpha) * -armsAngle + (1 - alpha) * -armToFrontShoulderRoll);
       }
       // pull in
       else if (timeSinceContact >= 0 && timeSinceContact < (int)rightTimeWhenNoContact - (int)rightTimeWhenContact)
       {
         float alpha = std::min((float)timeSinceContact / timeToPullPitch, 1.0f);
-        armMovement.angles[Joints::rShoulderPitch] = Angle::normalize((1 - alpha)*rightPitchWhenContactStateChanged
-          + alpha*armBackPitch);
+        armMovement.angles[Joints::rShoulderPitch] = Angle::normalize((1 - alpha) * rightPitchWhenContactStateChanged + alpha * armBackPitch);
         alpha = (timeSinceContact > time4_5) ? (float)(timeSinceContact - time4_5) / timeToPullArmIn : 0;
         alpha = std::min(alpha, 1.f);
         armMovement.angles[Joints::rElbowRoll] = alpha * (-armBackElbowRoll);
-        armMovement.angles[Joints::rShoulderRoll] = Angle::normalize((1 - alpha)*Angle::fromDegrees(-curparams.arms1) + (alpha)* armBackShoulderRoll);
+        armMovement.angles[Joints::rShoulderRoll] = Angle::normalize((1 - alpha) * -armsAngle + (alpha)*armBackShoulderRoll);
       }
     }
   }

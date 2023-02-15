@@ -9,6 +9,7 @@
 #pragma once
 
 #include <algorithm>
+#include <vector>
 
 #include "Tools/Module/Module.h"
 #include "Representations/Perception/CenterCirclePercept.h"
@@ -23,23 +24,20 @@
 //#include <math.h>
 
 
-
 MODULE(LineMatcher,
-{,
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(CLIPCenterCirclePercept),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
-  PROVIDES_WITHOUT_MODIFY(LineMatchingResult),
-});
+  PROVIDES_WITHOUT_MODIFY(LineMatchingResult)
+);
 
 
 class LineMatcher : public LineMatcherBase
 {
 public:
-  
   LineMatcher();
   ~LineMatcher();
 
@@ -49,31 +47,15 @@ public:
 
 
 private:
+  int numberOfFieldLinesX = 10;
+  int numberOfFieldLinesY = 9;
+  int numberOfFieldLinesTotal = numberOfFieldLinesX + numberOfFieldLinesY;
 
-  enum
-  {
-    numberOfFieldLinesX = 6,
-    numberOfFieldLinesY = 7,
-    numberOfFieldLinesTotal = numberOfFieldLinesX+numberOfFieldLinesY
-  };
-
-  class Parameters : public Streamable
-  {
-  public:
-    Parameters();
-    double relativeAllowedDistanceErrorForLineClustering;
-    double absoluteAllowedDistanceErrorForLineClustering; // for very close lines, the relative distance might be only millimeters
-    bool allowPosesOutsideOfCarpet;
-    
-    virtual void serialize(In* in, Out* out)
-    {
-      STREAM_REGISTER_BEGIN;
-      STREAM( relativeAllowedDistanceErrorForLineClustering);
-      STREAM( absoluteAllowedDistanceErrorForLineClustering);
-      STREAM( allowPosesOutsideOfCarpet);
-      STREAM_REGISTER_FINISH;
-    }
-  };
+  STREAMABLE(Parameters,,
+    (double)(0.15) relativeAllowedDistanceErrorForLineClustering,
+    (double)(200.0) absoluteAllowedDistanceErrorForLineClustering, // for very close lines, the relative distance might be only millimeters
+    (bool)(false) allowPosesOutsideOfCarpet
+  );
 
   Parameters parameters;
 
@@ -91,8 +73,8 @@ private:
     inline void mirrorCoordinates()
     {
       offset *= -1;
-      double temp = -1*min;
-      min = -1*max;
+      double temp = -1 * min;
+      min = -1 * max;
       max = temp;
     };
   };
@@ -110,8 +92,8 @@ private:
 
   void buildLineClusters(LineMatchingResult& theLineMatchingResult);
 
-  void findPossiblePositions(LineMatchingResult & theLineMatchingResult);
-  void findPossiblePoseIntervals(LineMatchingResult & theLineMatchingResult);
+  void findPossiblePositions(LineMatchingResult& theLineMatchingResult);
+  void findPossiblePoseIntervals(LineMatchingResult& theLineMatchingResult);
 
   inline void resetToStartingCorrespondences();
   inline void resetToStartingCorrespondencesForIntervals();
@@ -120,24 +102,27 @@ private:
 
   inline bool getNextCorrespondenceCombination(int totalNumberOfObservedLines, int conflictingPosition);
 
-  inline bool checkCombinatorialValidityOfCorrespondences(int totalNumberOfObservedLines, int & conflictingPosition);
-  
-  inline bool checkGeometricValidityOfCorrespondences(int totalNumberOfObservedLines, int &conflictingPosition, Pose2f& poseHypothesis);
-  inline bool checkGeometricValidityOfCorrespondencesForIntervals(int totalNumberOfObservedLines, int &conflictingPosition, Pose2f& poseIntervalHypothesisStart, Pose2f& poseIntervalHypothesisEnd);
+  inline bool checkCombinatorialValidityOfCorrespondences(int totalNumberOfObservedLines, int& conflictingPosition);
 
-  inline bool doesObservationFitModel(const AbstractLine & observationInRelativeCoords, const AbstractLine & modelInRelativeCoords);
-  inline bool doesObservationFitModelForInterval(const AbstractLine & observationInRelativeCoords, const AbstractLine & modelInRelativeCoords, double & minPositionInLineDirection, double & maxPositionInLineDirection);
+  inline bool checkGeometricValidityOfCorrespondences(int totalNumberOfObservedLines, int& conflictingPosition, Pose2f& poseHypothesis);
+  inline bool checkGeometricValidityOfCorrespondencesForIntervals(int totalNumberOfObservedLines, int& conflictingPosition, Pose2f& poseIntervalHypothesisStart, Pose2f& poseIntervalHypothesisEnd);
 
-  inline void addPoseToLineMatchingResult(const Pose2f & pose, LineMatchingResult & theLineMatchingResult);
-  inline void addPoseIntervalToLineMatchingResult(const Pose2f & start, const Pose2f & end, LineMatchingResult & theLineMatchingResult);
-  
+  inline bool doesObservationFitModel(const AbstractLine& observationInRelativeCoords, const AbstractLine& modelInRelativeCoords);
+  inline bool doesObservationFitModelForInterval(
+      const AbstractLine& observationInRelativeCoords, const AbstractLine& modelInRelativeCoords, double& minPositionInLineDirection, double& maxPositionInLineDirection);
+
+  inline void addPoseToLineMatchingResult(const Pose2f& pose, LineMatchingResult& theLineMatchingResult);
+  inline void addPoseIntervalToLineMatchingResult(const Pose2f& start, const Pose2f& end, LineMatchingResult& theLineMatchingResult);
+
+  unsigned int lastFieldDimensionsUpdate = 0;
+
   // helpful variables
   double mainDirection;
-  int correspondences[numberOfFieldLinesTotal]{ 0 };
-  bool correspondenceInMainDirectionClass[numberOfFieldLinesTotal]{ 0 }; // true for mainDirection
-  int correspondenceIndexOfOrigin[numberOfFieldLinesTotal]{ 0 };
-  bool alreadyAssignedFieldLinesX[numberOfFieldLinesX]{ 0 };
-  bool alreadyAssignedFieldLinesY[numberOfFieldLinesY]{ 0 };
+  std::vector<int> correspondences;
+  std::vector<bool> correspondenceInMainDirectionClass; // true for mainDirection
+  std::vector<int> correspondenceIndexOfOrigin;
+  std::vector<bool> alreadyAssignedFieldLinesX;
+  std::vector<bool> alreadyAssignedFieldLinesY;
   std::vector<AbstractLine> linesInMainDirection;
   std::vector<AbstractLine> lines90DegreeToMainDirection;
   std::vector<AbstractLine> tempLines;
@@ -145,12 +130,11 @@ private:
   std::vector<AbstractLine> fieldLinesY;
 
   // stuff for mapping the original observations to the associated field line correspondences
-  int observationMapToInternalIndex[numberOfFieldLinesTotal]{ 0 };
-  bool observationMapToInternalMainDirectionClass[numberOfFieldLinesTotal]{ 0 }; // true for mainDirection
-  int mainDirectionClassIndex2correspondenceIndex[numberOfFieldLinesTotal]{ 0 };
-  int notMainDirectionClassIndex2correspondenceIndex[numberOfFieldLinesTotal]{ 0 };
+  std::vector<int> observationMapToInternalIndex;
+  std::vector<bool> observationMapToInternalMainDirectionClass; // true for mainDirection
+  std::vector<int> mainDirectionClassIndex2correspondenceIndex;
+  std::vector<int> notMainDirectionClassIndex2correspondenceIndex;
 
   // variables for debugging
   int counterForDrawing;
 };
-

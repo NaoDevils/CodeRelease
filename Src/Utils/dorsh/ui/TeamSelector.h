@@ -4,6 +4,7 @@
 #include <QString>
 #include <map>
 #include <vector>
+#include <memory>
 
 class Team;
 struct RobotConfigDorsh;
@@ -16,24 +17,22 @@ class TeamSelector : public QTabWidget
 {
   Q_OBJECT
 
-  std::vector<Team*> teams;
+  std::vector<std::unique_ptr<Team>> teams;
   std::map<unsigned short, Team*> teamsMap;
   std::map<unsigned short, int> teamPages;
   std::map<unsigned short, TeamView*> teamViews;
   std::vector<QAction*> selectActions;
   void generateRobotViews(Team& team, QFrame* teamPage);
+
 public:
   TeamSelector();
-  void addTeam(Team* team);
-  /** Deletes delivered team.
-   * Do not use the pointer after a call of removeTeam if it pointed to the same
-   * memory as the pointer in teams.
-   */
-  void removeTeam(Team* team);
+  void addTeam(const Team& team);
+  void removeTeam(unsigned short number);
   Team* getSelectedTeam() const;
   std::vector<RobotConfigDorsh*> getSelectedRobots() const;
   void loadTeams(const QString& filename = "", bool overwrite = true);
   void saveTeams(const QString& filename);
+
 private:
   bool upperRowSelected;
   bool lowerRowSelected;

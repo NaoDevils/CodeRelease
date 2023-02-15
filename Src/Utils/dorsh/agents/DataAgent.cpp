@@ -14,254 +14,156 @@
 #include "Utils/dorsh/models/Robot.h"
 #include "Tools/Network/UdpComm.h"
 #include "Utils/dorsh/ui/MainWindow.h"
-
-#define UPDATE_TIME 5000
+#include <nlohmann/json.hpp>
 
 DataAgent::DataAgent()
 {
   //binds to Port and listens for new Data
-  udpSocket.bind(QHostAddress::Any, 55555, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
-  connect(&udpSocket, SIGNAL(readyRead()), this, SLOT(updateData()));
-  wifiSocket.bind(QHostAddress::Any, 10000 + teamNumber, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
-  connect(&wifiSocket, SIGNAL(readyRead()), this, SLOT(updateWifiConnection()));
-  //starts timer for disabeling powerbar/pingbar
+  dataSocket.bind(QHostAddress::AnyIPv4, 55555, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+  connect(&dataSocket, SIGNAL(readyRead()), this, SLOT(updateData()));
+  tcSocket.bind(QHostAddress::AnyIPv4, 10000 + teamNumber, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+  connect(&tcSocket, SIGNAL(readyRead()), this, SLOT(updateTC()));
+  gcSocket.bind(QHostAddress::AnyIPv4, 3838, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+  connect(&gcSocket, SIGNAL(readyRead()), this, SLOT(updateGC()));
+
+  // start timer to send keep-alives
   timer.setSingleShot(false);
-  connect(&timer, SIGNAL(timeout()), this, SLOT(teamObserver()));
-  timer.start(UPDATE_TIME);
+  connect(&timer, SIGNAL(timeout()), this, SLOT(sendKeepAlive()));
+  timer.start(updateTime);
 }
 
-DataAgent::~DataAgent()
-{
-}
-
-//initialize every robot with an empty Map, no power and no Wifi connection
-void DataAgent::initialize(std::map<std::string, RobotConfigDorsh*>& robotsByName)
-{
-  for(auto it = robotsByName.cbegin(), end = robotsByName.cend(); it != end; ++it)
-  {
-    timeOfLastUpdate[it->first] = -UPDATE_TIME;
-    timeOfLastUpdateWifi[it->first] = -UPDATE_TIME;
-    std::map<std::string, std::string> emptyMap;
-    emptyMap[it->first] = 1;
-    emptyMap["battery_charge"] = "0.000000";
-    emptyMap["battery_status"] = "-32708.000000";
-    emptyMap["state"] = "0";
-    emit newSensorData(emptyMap);
-    emit wifiConnection(it->first, false);
-  }
-}
+DataAgent::~DataAgent() {}
 
 bool DataAgent::isLANReachable(const RobotConfigDorsh* robot)
 {
+  const auto data = lastData.find(robot->name);
+  if (data == lastData.end())
+    return false;
+
+  if (!data->second.contains("lan"))
+    return false;
+
   const unsigned currentTime = SystemCall::getRealSystemTime();
-  auto iter = timeOfLastUpdate.find(robot->name);
-  if (iter != timeOfLastUpdate.cend())
-  {
-    if (currentTime - iter->second <= UPDATE_TIME)
-    {
-      return true;
-    }
-    else
-    {
-      return false;
-    }
-  }
-  return false;
+  return currentTime - data->second["lan"].get<unsigned>() < dataTimeout;
 }
 
 bool DataAgent::isWLANReachable(const RobotConfigDorsh* robot)
 {
+  const auto data = lastData.find(robot->name);
+  if (data == lastData.end())
+    return false;
+
   const unsigned currentTime = SystemCall::getRealSystemTime();
-  auto iter = timeOfLastUpdateWifi.find(robot->name);
-  if (iter != timeOfLastUpdateWifi.cend())
-  {
-    if (currentTime - iter->second <= UPDATE_TIME)
-    {
-      return true;
-    }
-    else
-    {
-      return false;
-    }
-  }
+  if (data->second.contains("wlan") && currentTime - data->second["wlan"].get<unsigned>() < dataTimeout)
+    return true;
+
+  if (data->second.contains("tc") && currentTime - data->second["tc"].get<unsigned>() < dataTimeout)
+    return true;
+
   return false;
 }
 
-void DataAgent::teamObserver()
+void DataAgent::sendKeepAlive()
 {
-  unsigned  short newTeamNumber = *Session::getInstance().teamNumber;
-  if ( 10000 + newTeamNumber != wifiSocket.localPort() )
+  const unsigned short newTeamNumber = *Session::getInstance().teamNumber;
+  if (10000 + newTeamNumber != tcSocket.localPort())
   {
-    wifiSocket.flush();
-    wifiSocket.close();
-    bool succ = wifiSocket.bind(QHostAddress::Any, 10000 + teamNumber);
-    if ( succ )
-    {
+    tcSocket.flush();
+    tcSocket.close();
+    if (tcSocket.bind(QHostAddress::AnyIPv4, 10000 + teamNumber))
       teamNumber = newTeamNumber;
-    }
   }
 
-  updateRobot();
+  if (lastGCMessage == 0 || SystemCall::getRealSystemTime() - lastGCMessage > gcTimeout)
+  {
+    emit updateGCStatus(false);
+    dataSocket.writeDatagram(keepAliveData.data(), keepAliveData.size(), QHostAddress("10.0.255.255"), 55555);
+  }
 }
 
 //updates the Map with received SensorData package
 void DataAgent::updateData()
 {
-  if (udpSocket.hasPendingDatagrams())
+  if (dataSocket.hasPendingDatagrams())
   {
     QByteArray datagram;
-    datagram.resize(udpSocket.pendingDatagramSize());
+    datagram.resize(dataSocket.pendingDatagramSize());
     QHostAddress sender;
     quint16 senderPort;
 
-    udpSocket.readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
+    dataSocket.readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
 
-    receivedMap = stringToMap(datagram.data());
+    // skip keep-alive packages
+    if (static_cast<size_t>(datagram.size()) >= keepAliveData.size() && strncmp(datagram.data(), keepAliveData.data(), keepAliveData.size()) == 0)
+      return;
 
-    //Print map for debug
-    /*for ( auto it = receivedMap.cbegin(), end = receivedMap.cend(); it != end; ++it)
+    try
     {
-      printf("%s %s\n", it->first.c_str(), it->second.c_str());
-    }*/
+      nlohmann::json j = nlohmann::json::from_msgpack(datagram.begin(), datagram.end());
 
-    const unsigned currentTime = SystemCall::getRealSystemTime();
+      const unsigned currentTime = SystemCall::getRealSystemTime();
 
-    if (!receivedMap.empty())
-    {
-      std::string robotName;
-      for (auto it = Session::getInstance().robotsByName.cbegin(), end = Session::getInstance().robotsByName.cend(); it != end; ++it)
-      {
-        auto iter = receivedMap.find(it->second->name);
-        if (iter != receivedMap.cend())
-        {
-          robotName = it->second->name;
-          timeOfLastUpdate[it->second->name] = currentTime;
-          break;
-        }
-      }
-      receivedMap["lan_connection"] = "1.000000";
+      if ((sender.toIPv4Address() & 0xFFFF0000) == 0x0A000000) // ip == 10.0.*.*
+        j["wlan"] = currentTime;
+      else
+        j["lan"] = currentTime;
+
+      nlohmann::json& data = lastData[j.at("name").get<std::string>()];
+      data.merge_patch(j);
+
+      emit newData(data);
     }
-    emit newSensorData(receivedMap);
-
-    //Disable powerbar if no package is received
-    updateRobot();
+    catch (...)
+    {
+      return;
+    }
   }
 }
 
 //updates the Wifi conncetion with received TeamData package
-void DataAgent::updateWifiConnection()
+void DataAgent::updateTC()
 {
-  if (wifiSocket.hasPendingDatagrams())
+  if (tcSocket.hasPendingDatagrams())
   {
     QByteArray datagram;
-    datagram.resize(wifiSocket.pendingDatagramSize());
+    datagram.resize(tcSocket.pendingDatagramSize());
     QHostAddress sender;
     quint16 senderPort;
 
-    wifiSocket.readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
+    tcSocket.readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
 
-    const unsigned currentTime = SystemCall::getRealSystemTime();
-
-    std::string robotName;
-    for (auto it = Session::getInstance().robotsByName.cbegin(), end = Session::getInstance().robotsByName.cend(); it != end; ++it)
+    const auto sameIP = [&](const auto& elem)
     {
-      if (it->second->wlan == sender.toString().toLatin1().data())
-      {
-        robotName = it->second->name;
-        timeOfLastUpdateWifi[robotName] = currentTime;
-        break;
-      }
-    }
-    emit wifiConnection(robotName, true);
+      const auto& [first, second] = elem;
+      return second->wlan == sender.toString().toStdString();
+    };
 
-    //Disable powerbar if no package is received
-    updateRobot();
-  } 
-}
+    const auto& robots = Session::getInstance().robotsByName;
+    const auto robot = std::find_if(robots.begin(), robots.end(), sameIP);
 
-//Disable sensorReader map, powerbar and pingbar if packages are expired
-void DataAgent::updateRobot()
-{
-  const unsigned currentTime = SystemCall::getRealSystemTime();
-  for (auto it = timeOfLastUpdate.cbegin(), end = timeOfLastUpdate.cend(); it != end; ++it)
-  {
-    if (currentTime - it->second > UPDATE_TIME)
+    if (robot != robots.end())
     {
-      std::map<std::string, std::string> emptyMap;
-      emptyMap[it->first] = 1;
-      emptyMap["battery_charge"] = "0.000000";
-      emptyMap["battery_status"] = "-32708.000000";
-      emptyMap["lan_connection"] = "0.000000";
-      emptyMap["state"] = "0";
-      emptyMap["wifi_state"] = "";
-      emptyMap["wifi_name"] = "";
-      emit newSensorData(emptyMap);
-    }
-  }
-
-  for (auto it = timeOfLastUpdateWifi.cbegin(), end = timeOfLastUpdateWifi.cend(); it != end; ++it)
-  {
-    if (currentTime - it->second > UPDATE_TIME)
-    {
-      emit wifiConnection(it->first, false);
+      auto& data = lastData[robot->second->name];
+      data["name"] = robot->second->name;
+      data["tc"] = SystemCall::getRealSystemTime();
+      emit newData(data);
     }
   }
 }
 
-//resets the robot with an empty Map, no power and no Wifi connection
-void DataAgent::reset(RobotConfigDorsh* robot)
+void DataAgent::updateGC()
 {
-  if(robot)
+  if (gcSocket.hasPendingDatagrams())
   {
-    std::map<std::string, std::string> emptyMap;
-    emptyMap[robot->name] = 1;
-    emptyMap["battery_charge"] = "0.000000";
-    emptyMap["battery_status"] = "-32708.000000";
-    emptyMap["lan_connection"] = "0.000000";
-    emptyMap["state"] = "0";
-    emit newSensorData(emptyMap);
+    QByteArray datagram;
+    datagram.resize(gcSocket.pendingDatagramSize());
 
-    std::string empty;
-    emit wifiConnection(empty, false);
+    gcSocket.readDatagram(datagram.data(), datagram.size());
+
+    static constexpr std::string_view expBuf = "RGme";
+    if (static_cast<size_t>(datagram.size()) >= expBuf.size() && strncmp(datagram.data(), expBuf.data(), expBuf.size()) == 0)
+      lastGCMessage = SystemCall::getRealSystemTime();
+
+    emit updateGCStatus(true);
   }
-}
-
-//converts the sensorReader package String to Map
-std::map<std::string, std::string> DataAgent::stringToMap(char mapCharArray[])
-{
-  std::map<std::string, std::string> receivedMap;
-  std::string name;
-  std::string val;
-  bool secondVal = false;
-
-  for (int i = 0; i < 4096; i++)
-  {
-    if (mapCharArray[i] == '@')
-    {
-      break;
-    }
-    if (mapCharArray[i] == ':')
-    {
-      secondVal = true;
-    }
-    else if (mapCharArray[i] == ',')
-    {
-      secondVal = false;
-      receivedMap[name] = val;
-      name = "";
-      val = "";
-    }
-    else
-    {
-      if (secondVal)
-      {
-        val += mapCharArray[i];
-      }
-      else
-      {
-        name += mapCharArray[i];
-      }
-    }
-  }
-  return receivedMap;
 }

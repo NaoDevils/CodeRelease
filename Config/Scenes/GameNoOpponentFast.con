@@ -1,4 +1,0 @@
-call Includes/Fast
-
-dr debugDrawing3d:representation:RobotPose
-call Includes/Behavior3D

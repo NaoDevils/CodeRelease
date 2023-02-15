@@ -18,55 +18,48 @@ Vector2f HeadLimits::getTiltBound(float pan) const
   const std::vector<float>::const_iterator end = intervals.end();
   const std::vector<float>::const_iterator it = std::lower_bound(begin, end, pan);
 
-  if(it == end)
+  if (it == end)
     return Vector2f(JointAngles::off, JointAngles::off); // Unreachable pan angle
 
   const size_t index = it - begin;
-  const float xe = intervals[index];   // Interval end
+  const float xe = intervals[index]; // Interval end
   const float le = lowerBounds[index]; // Lower bound at interval end
   const float ue = upperBounds[index]; // Upper bound at interval end
-  if(pan == xe)
+  if (pan == xe)
     return Vector2f(ue, le);
 
-  if(index == 0)
+  if (index == 0)
     return Vector2f(JointAngles::off, JointAngles::off); // Unreachable pan angle (smaller than begin of first interval)
 
-  const float xs = intervals[index - 1];   // Interval start
+  const float xs = intervals[index - 1]; // Interval start
   const float ls = lowerBounds[index - 1]; // Lower bound at interval start.
   const float us = upperBounds[index - 1]; // Upper bound at interval start
 
   const float lowerSlope = (le - ls) / (xe - xs);
   const float upperSlope = (ue - us) / (xe - xs);
-  return Vector2f(us + upperSlope * (pan - xs),
-                  ls + lowerSlope * (pan - xs));
+  return Vector2f(us + upperSlope * (pan - xs), ls + lowerSlope * (pan - xs));
 }
 
-bool HeadLimits::imageCenterHiddenByShoulder(const RobotCameraMatrix& robotCameraMatrix,
-    const Vector3f& shoulderInOrigin,
-    const float imageTilt, const float hysteresis) const
+bool HeadLimits::imageCenterHiddenByShoulder(const RobotCameraMatrix& robotCameraMatrix, const Vector3f& shoulderInOrigin, const float imageTilt, const float hysteresis) const
 {
   Vector3f intersection = Vector3f::Zero();
-  if(!intersectionWithShoulderPlane(robotCameraMatrix, shoulderInOrigin, imageTilt, intersection))
+  if (!intersectionWithShoulderPlane(robotCameraMatrix, shoulderInOrigin, imageTilt, intersection))
     return false; // No intersection with shoulder plane and therefore no intersection with circle.
   return intersection.norm() <= shoulderRadius + hysteresis;
 }
 
-bool HeadLimits::intersectionWithShoulderEdge(const RobotCameraMatrix& robotCameraMatrix,
-    const Vector3f& shoulderInOrigin,
-    Vector3f& intersection) const
+bool HeadLimits::intersectionWithShoulderEdge(const RobotCameraMatrix& robotCameraMatrix, const Vector3f& shoulderInOrigin, Vector3f& intersection) const
 {
-  if(!intersectionWithShoulderPlane(robotCameraMatrix, shoulderInOrigin, 0.0f, intersection))
+  if (!intersectionWithShoulderPlane(robotCameraMatrix, shoulderInOrigin, 0.0f, intersection))
     return false; // No intersection with the plane.
-  if(std::abs(intersection.x()) > shoulderRadius)
+  if (std::abs(intersection.x()) > shoulderRadius)
     return false; // No intersection with the shoulder circle.
   intersection.z() = shoulderRadius * std::sin(std::acos(intersection.x() / shoulderRadius));
   intersection += shoulderInOrigin;
   return true;
 }
 
-bool HeadLimits::intersectionWithShoulderPlane(const RobotCameraMatrix& robotCameraMatrix,
-    const Vector3f& shoulderInOrigin,
-    const float imageTilt, Vector3f& intersection) const
+bool HeadLimits::intersectionWithShoulderPlane(const RobotCameraMatrix& robotCameraMatrix, const Vector3f& shoulderInOrigin, const float imageTilt, Vector3f& intersection) const
 {
   static const Vector3f normal(0.0, 1.0f, 0.0f);
   Pose3f camera2Shoulder(-shoulderInOrigin);
@@ -74,7 +67,7 @@ bool HeadLimits::intersectionWithShoulderPlane(const RobotCameraMatrix& robotCam
   Vector3f line(std::cos(-imageTilt), 0.0f, std::sin(-imageTilt));
   line = camera2Shoulder * line - camera2Shoulder.translation;
   const float denominator = normal.dot(line);
-  if(denominator == 0.0f)
+  if (denominator == 0.0f)
     return false; // Line is parallel to the shoulder plane
   const float scale = (normal.dot(camera2Shoulder.translation)) / denominator;
   intersection = camera2Shoulder.translation - line * scale;

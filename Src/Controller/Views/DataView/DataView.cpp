@@ -13,27 +13,20 @@
 
 #include <QEvent>
 
-DataView::DataView(const QString& fullName,
-                                       const std::string& repName,
-                                       RobotConsole& console,
-                                       StreamHandler& streamHandler) :
-  theFullName(fullName), theIcon(":/Icons/tag_green.png"),
-  theConsole(console), theName(repName), pTheWidget(nullptr),
-  theStreamHandler(streamHandler),
-  lastUpdated(0),
-  theAutoSetModeIsEnabled(true),
-  theUpdateTime(100) //10 times per second
-{} //FIXME destructor
+DataView::DataView(const QString& fullName, const std::string& repName, RobotConsole& console, StreamHandler& streamHandler)
+    : theFullName(fullName), theIcon(":/Icons/tag_green.png"), theConsole(console), theName(repName), pTheWidget(nullptr), theStreamHandler(streamHandler), theAutoSetModeIsEnabled(false)
+{
+} //FIXME destructor
 
 bool DataView::handleMessage(InMessage& msg, const std::string& type, const std::string& repName)
 {
   SYNC;
 
-  if(nullptr != pTheWidget && //do nothing if no widget is associated with this view.
-     !theIgnoreUpdatesFlag && //Or updates should be ignored.
-     SystemCall::getRealTimeSince(lastUpdated) > theUpdateTime)
+  if (nullptr != pTheWidget && //do nothing if no widget is associated with this view.
+      !theIgnoreUpdatesFlag && //Or updates should be ignored.
+      update)
   {
-    lastUpdated = SystemCall::getRealSystemTime();
+    update = false;
     PropertyTreeCreator creator(*this);
     DebugDataStreamer streamer(theStreamHandler, msg.bin, type, "value");
     creator << streamer;
@@ -62,7 +55,7 @@ QtVariantProperty* DataView::getProperty(const std::string& fqn, int propertyTyp
   QtVariantProperty* pProp = nullptr;
   PropertiesMapType::iterator propIt = theProperties.find(fqn);
 
-  if(propIt == theProperties.end())
+  if (propIt == theProperties.end())
   {
     //This is a new property.
     pProp = theVariantManager.addProperty(propertyType, name);
@@ -75,7 +68,7 @@ QtVariantProperty* DataView::getProperty(const std::string& fqn, int propertyTyp
   }
 
   //add to parent if there is one.
-  if(nullptr != pParent)
+  if (nullptr != pParent)
   {
     pParent->addSubProperty(pProp);
   }
@@ -105,7 +98,9 @@ void DataView::setUnchanged()
 
   theConsole.sendDebugMessage(tempQ.in);
 
+  pTheWidget->setSetButtonEnabled(false);
   pTheWidget->setUnchangedButtonEnabled(false);
+  setIgnoreUpdates(false);
 }
 
 void DataView::set()
@@ -114,7 +109,7 @@ void DataView::set()
   MessageQueue tempQ; //temp queue used to build the message
   {
     SYNC;
-    if(nullptr != pTheCurrentRootNode)
+    if (nullptr != pTheCurrentRootNode)
     {
       tempQ.out.bin << debugRequest << char(1);
 
@@ -124,7 +119,7 @@ void DataView::set()
       tempQ.out.finishMessage(idDebugDataChangeRequest);
     }
   }
-  if(tempQ.getNumberOfMessages() > 0)
+  if (tempQ.getNumberOfMessages() > 0)
     theConsole.sendDebugMessage(tempQ.in);
 
   pTheWidget->setSetButtonEnabled(false);
@@ -146,20 +141,21 @@ bool DataView::handlePropertyEditorEvent(QWidget* pEditor, QtProperty* pProperty
    * and LayoutRequest when the user changed a value.
    * Property updating is interrupted until the user presses set (or until the user finishes his input in case of auto-set)
    */
-  if(pEvent->type() == QEvent::FocusIn || pEvent->type() == QEvent::Paint)
+  if (pEvent->type() == QEvent::FocusIn || pEvent->type() == QEvent::Paint)
   {
     setIgnoreUpdates(true);
   }
-  else if(pEvent->type() == QEvent::FocusOut || pEvent->type() == QEvent::LayoutRequest)
+  else if (pEvent->type() == QEvent::FocusOut || pEvent->type() == QEvent::LayoutRequest)
   {
-    if(theAutoSetModeIsEnabled)
+    if (theAutoSetModeIsEnabled)
     {
-      set();//set current values
+      set(); //set current values
     }
     else
     {
       //enable the set button
       pTheWidget->setSetButtonEnabled(true);
+      pTheWidget->setUnchangedButtonEnabled(true);
     }
   }
 

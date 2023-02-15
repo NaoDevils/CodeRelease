@@ -21,12 +21,13 @@ public:
   static const ColorRGBA orange;
   static const ColorRGBA violet;
   static const ColorRGBA gray;
+  static const ColorRGBA purple;
+  static const ColorRGBA brown;
+  static const ColorRGBA darkgreen;
 
   ColorRGBA() = default;
 
-  ColorRGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255) :
-    r(r), g(g), b(b), a(a)
-  {}
+  ColorRGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255) : r(r), g(g), b(b), a(a) {}
 
   ColorRGBA operator*(float scale) const
   {
@@ -35,6 +36,37 @@ public:
     unsigned char b2 = static_cast<unsigned char>(scale * b);
     unsigned char a2 = static_cast<unsigned char>(scale * a);
     return ColorRGBA(r2, g2, b2, a2);
+  }
+
+  bool operator<(ColorRGBA second) const
+  {
+    if (r < second.r)
+    {
+      return true;
+    }
+    else
+    {
+      if (r == second.r)
+      {
+        if (g < second.g)
+        {
+          return true;
+        }
+        else
+        {
+          if (g == second.g)
+          {
+            if (b < second.b)
+            {
+              return true;
+            }
+            return false;
+          }
+          return false;
+        }
+      }
+      return false;
+    }
   }
 };
 

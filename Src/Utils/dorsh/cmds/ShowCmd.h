@@ -10,8 +10,8 @@ class ShowCmd : public RobotCommand
   virtual std::string getName() const;
   virtual std::string getDescription() const;
   virtual std::vector<std::string> complete(const std::string& cmdLine) const;
-  virtual bool preExecution(Context &context, const std::vector<std::string> &params);
-  virtual Task* perRobotExecution(Context &context, RobotConfigDorsh &robot);
+  virtual bool preExecution(Context& context, const std::vector<std::string>& params);
+  virtual Task* perRobotExecution(Context& context, RobotConfigDorsh& robot);
 
   static ShowCmd theShowCmd;
 };

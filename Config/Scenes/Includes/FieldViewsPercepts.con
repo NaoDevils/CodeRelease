@@ -1,0 +1,16 @@
+# views relative to robot
+# from now, relative to estimated robot pose
+vfd worldState origin:RobotPose
+
+vfd worldState representation:BallPercept:Field
+vfd worldState representation:CLIPCenterCirclePercept:Field
+vfd worldState representation:CLIPFieldLinesPercept:Field
+vfd worldState representation:PenaltyCrossPercept:Field
+#vfd worldState representation:CLIPGoalPercept:Field
+vfd worldState representation:RobotsPercept:Field
+vfd worldState origin:RobotPoseAfterPreview
+vfd worldState representation:MotionRequest
+
+# back to global coordinates
+vfd worldState origin:Reset
+

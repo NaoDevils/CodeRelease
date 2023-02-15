@@ -17,7 +17,7 @@ int PolynomialSolver::isZero(float x)
 
 int PolynomialSolver::solveLinear(float c[2], float s[1])
 {
-  if(isZero(c[1]))
+  if (isZero(c[1]))
     return 0;
   s[0] = -c[0] / c[1];
   return 1;
@@ -28,7 +28,7 @@ int PolynomialSolver::solveQuadric(float c[3], float s[2])
   float p, q, D;
 
   // make sure we have a d2 equation
-  if(isZero(c[2]))
+  if (isZero(c[2]))
     return solveLinear(c, s);
 
   // normal for: x^2 + px + q
@@ -36,14 +36,14 @@ int PolynomialSolver::solveQuadric(float c[3], float s[2])
   q = c[0] / c[2];
   D = p * p - q;
 
-  if(isZero(D))
+  if (isZero(D))
   {
     // one float root
     s[0] = s[1] = -p;
     return 1;
   }
 
-  if(D < 0.0)// no real root
+  if (D < 0.0) // no real root
     return 0;
   else
   {
@@ -72,9 +72,9 @@ int PolynomialSolver::solveCubic(float c[4], float s[3])
   const float D = q * q + cb_p;
 
   int num;
-  if(isZero(D))
+  if (isZero(D))
   {
-    if(isZero(q))
+    if (isZero(q))
     {
       // one triple solution
       s[0] = 0.0f;
@@ -89,7 +89,7 @@ int PolynomialSolver::solveCubic(float c[4], float s[3])
       num = 2;
     }
   }
-  else if(D < 0.0)
+  else if (D < 0.0)
   {
     // casus irreductibilis: three real solutions
     const float phi = 1.0f / 3.0f * std::acos(-q / std::sqrt(-cb_p));
@@ -104,7 +104,7 @@ int PolynomialSolver::solveCubic(float c[4], float s[3])
     // one real solution
     const float sqrt_D = std::sqrt(D);
     const float u = cbrtf(sqrt_D + std::abs(q));
-    if(q > 0.0f)
+    if (q > 0.0f)
       s[0] = -u + p / u;
     else
       s[0] = u - p / u;
@@ -113,17 +113,14 @@ int PolynomialSolver::solveCubic(float c[4], float s[3])
 
   // resubstitute
   const float sub = 1.0f / 3.0f * A;
-  for(int i = 0; i < num; i++)
+  for (int i = 0; i < num; i++)
     s[i] -= sub;
   return num;
 }
 
 int PolynomialSolver::solveQuartic(float c[5], float s[4])
 {
-  float coeffs[4],
-        z, u, v, sub,
-        A, B, C, D,
-        sq_A, p, q, r;
+  float coeffs[4], z, u, v, sub, A, B, C, D, sq_A, p, q, r;
 
   // normalize the equation:x ^ 4 + Ax ^ 3 + Bx ^ 2 + Cx + D = 0
   A = c[3] / c[4];
@@ -138,7 +135,7 @@ int PolynomialSolver::solveQuartic(float c[5], float s[4])
   r = -3.0f / 256.0f * sq_A * sq_A + 1.0f / 16.0f * sq_A * B - 1.0f / 4.0f * A * C + D;
 
   int num;
-  if(isZero(r))
+  if (isZero(r))
   {
     // no absolute term:y(y ^ 3 + py + q) = 0
     coeffs[0] = q;
@@ -165,16 +162,16 @@ int PolynomialSolver::solveQuartic(float c[5], float s[4])
     u = z * z - r;
     v = 2.0f * z - p;
 
-    if(isZero(u))
+    if (isZero(u))
       u = 0.0;
-    else if(u > 0.0f)
+    else if (u > 0.0f)
       u = std::sqrt(u);
     else
       return 0;
 
-    if(isZero(v))
+    if (isZero(v))
       v = 0;
-    else if(v > 0.0f)
+    else if (v > 0.0f)
       v = std::sqrt(v);
     else
       return 0;
@@ -194,7 +191,7 @@ int PolynomialSolver::solveQuartic(float c[5], float s[4])
 
   // resubstitute
   sub = 1.0f / 4 * A;
-  for(int i = 0; i < num; i++)
+  for (int i = 0; i < num; i++)
     s[i] -= sub;
 
   return num;

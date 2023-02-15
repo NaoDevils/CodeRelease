@@ -11,9 +11,8 @@
 #include "Representations/Infrastructure/RobotHealth.h"
 
 MODULE(MotionRobotHealthProvider,
-{,
-  PROVIDES(MotionRobotHealth),
-});
+  PROVIDES(MotionRobotHealth)
+);
 
 /**
 * @class MotionRobotHealthProvider
@@ -27,7 +26,7 @@ private:
   */
   void update(MotionRobotHealth& motionRobotHealth);
 
-  RingBufferWithSum<unsigned, 30> timeBuffer;        /** Buffered timestamps of previous executions */
+  RingBufferWithSum<unsigned, 30> timeBuffer; /** Buffered timestamps of previous executions */
   unsigned lastExecutionTime;
 
 public:

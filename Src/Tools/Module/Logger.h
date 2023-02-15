@@ -28,34 +28,44 @@
 #include "Platform/Thread.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/MotionControl/MotionRequest.h"
-#include "Tools/Cabsl.h"
+#include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/SensorData/KeyStates.h"
+#include "Representations/Infrastructure/USBStatus.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
+#include <mutex>
+#include <memory>
+#include <deque>
+#include <atomic>
 
-class Logger : public Cabsl<Logger>
+class Logger
 {
 private:
   STREAMABLE(Parameters,
-  {,
+    STREAMABLE(Cycle,,
+      (std::string)("") cycle,
+      (std::vector<std::string>) representations
+    );
+    ,
     (bool)(false) enabled, /**< Determines whether the logger is enabled or disabled. */
     (std::string) logFilePath, /**< Where to write the log file. */
-    (int) maxBufferSize, /**< Max size of the buffer in bytes. */
-    (int) blockSize, /**< Size per frame in bytes. */
-    (std::vector<std::string>) representations, /**< Contains the representations that should be logged. */
+    (int) numBuffers, /**< Max size of the buffer in bytes. */
+    (int) bufferSize, /**< Size per frame in bytes. */
+    (std::vector<Cycle>) representations, /**< Contains the representations that should be logged. */
+    (std::vector<Cycle>) activeRepresentations, /**< Contains the representations that should be logged only when active. */
     (int) writePriority,
-    (bool) debugStatistics,
     (unsigned) minFreeSpace, /**< Minimum free space left on the device in MB. */
-  });
+    (bool) compression, /**< Enable snappy compression. */
+    (bool) verboseTTS /**< Enable verbose text-to-speech output. */
+  );
 
   STREAMABLE(TeamList,
-  {
-    STREAMABLE(Team,
-    {,
+    STREAMABLE(Team,,
       (uint8_t) number,
-      (std::string) name,
-    }),
+      (std::string) name
+    ),
 
-    (std::vector<Team>) teams,
-  });
+    (std::vector<Team>) teams
+  );
 
 
   class Loggable
@@ -68,26 +78,53 @@ private:
     Loggable(Streamable* representation, MessageID id) : representation(representation), id(id) {}
   };
 
+  struct Cycle
+  {
+    int blackboardVersion = 0;
+    std::vector<Loggable> loggables;
+    std::vector<Loggable> activeLoggables;
+    std::vector<char> streamSpecification;
+    std::atomic_bool streamSpecificationDone = false;
+  };
+
   Parameters parameters;
   TeamList teamList; /**< The list of all teams for naming the log file after the opponent. */
-  int blackboardVersion = 0; /**< The blackboard version the logger is currently configured for. */
-  std::vector<Loggable> loggables; /**< The representations that should be logged. */
-  std::vector<MessageQueue*> buffer; /**< Ring buffer of message queues. Shared with the writer thread. */
-  std::string logFilename; /**< Path and name of the log file. Set in initial state. */
-  bool receivedGameControllerPacket = false; /**< Ever received a packet from the GameController? */
-  volatile int readIndex = 0; /**< The first index of the buffer that should be read by the writer thread. */
-  volatile int writeIndex = 0; /**< Index of the buffer that is currently used for writing. */
-  int frameCounter = 0; /**< Number of frames that are already in the current message queue. */
-  Thread<Logger> writerThread;/**< Used to write the buffer to disk in the background */
-  Semaphore framesToWrite; /**< How many frames the writer thread should write? */
-  volatile bool writerIdle = true; /**< Is true if the writer thread has nothing to do. */
-  volatile unsigned writerIdleStart = 0; /**< The system time at which the writer thread went idle. */
-  OutBinaryFile* file = nullptr; /**< The stream that writes the log file. */
-  std::vector<char> streamSpecification; /**< Streamed specification created in main thread and used in logger thread. */
-  std::string processName; /**< The name of the process this logger is part of. */
-  char processIdentifier; /**< The identifier of the logged process. */
-  int framesPerSecond; /**< The (average) number of frames per second of the logged process. */
 
+  std::unordered_map<char, Cycle> cycles;
+
+  std::vector<std::unique_ptr<MessageQueue>> buffer; /**< Ring buffer of message queues. Shared with the writer thread. */
+  std::deque<MessageQueue*> freeBuffers;
+  std::deque<MessageQueue*> fullBuffers;
+  std::mutex bufferMutex;
+
+  std::string logFilename; /**< Path and name of the log file. Set in initial state. */
+  std::string systemLogFilename; /**< Path and name of the system log file. Set in initial state. */
+  bool receivedGameControllerPacket = false; /**< Ever received a packet from the GameController? */
+  Thread<Logger> writerThread; /**< Used to write the buffer to disk in the background */
+  Semaphore framesToWrite; /**< How many frames the writer thread should write? */
+  std::atomic_bool writerIdle = true; /**< Is true if the writer thread has nothing to do. */
+  unsigned writerIdleStart = 0; /**< The system time at which the writer thread went idle. */
+  OutBinaryFile* file = nullptr; /**< The stream that writes the log file. */
+
+  enum class State
+  {
+    waitForTransitionZero,
+    initial,
+    start,
+    waiting,
+    complain,
+    prepareWriting,
+    running,
+    delayStopping,
+    stopping,
+    forceStop,
+    finished,
+    error,
+    aborted
+  };
+
+  std::atomic<State> state = State::waitForTransitionZero;
+  unsigned stateBegin = 0;
 
   /**
    * Generate a filename containing the robot's player number, its name, and the current
@@ -95,160 +132,25 @@ private:
    * @return A log file name that starts with the path defined in the parameters.
    */
   std::string generateFilename() const;
+  std::string getPath() const;
 
-  /** Create streamed data type specification to be used in the logger thread. */
-  void createStreamSpecification();
+  void runStateMachine(char processIdentifier);
+
+  /** Get streamed data type specification to be used in the logger thread. */
+  std::vector<char> getStreamSpecification();
 
   /** Write all loggable representations to a buffer. */
-  void logFrame();
+  void logFrame(char processIdentifier);
 
   /** Write contents of buffers to disk in the background. */
   void writeThread();
 
-
-
-  /** Minimal behavior to handle logging. */
-  option(Root)
-  {
-    ASSERT(Blackboard::getInstance().exists("GameInfo"));
-    const GameInfo& gameInfo = static_cast<const GameInfo&>(Blackboard::getInstance()["GameInfo"]);
-    receivedGameControllerPacket |= static_cast<const RoboCup::RoboCupGameControlData&>(gameInfo).packetNumber != 0 || gameInfo.secsRemaining != 0;
-
-    ASSERT(Blackboard::getInstance().exists("RobotInfo"));
-    const RobotInfo& robotInfo = static_cast<const RobotInfo&>(Blackboard::getInstance()["RobotInfo"]);
-    ASSERT(Blackboard::getInstance().exists("MotionInfo"));
-    const MotionRequest& motionInfo = static_cast<const MotionRequest&>(Blackboard::getInstance()["MotionInfo"]);
-
-    const bool isInactive =
-      robotInfo.penalty != PENALTY_NONE
-      || (motionInfo.motion == MotionRequest::Motion::specialAction && motionInfo.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::playDead)
-      || robotInfo.transitionToBhuman == 0.f;
-
-    initial_state(initial)
-    {
-      transition
-      {
-        goto start;
-      }
-    }
-
-    state(start)
-    {
-      transition
-      {
-        goto waiting;
-      }
-      action
-      {
-        writerThread.start(this, &Logger::writeThread);
-      }
-    }
-
-    state(waiting)
-    {
-      transition
-      {
-        if(gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING)
-          goto prepareWriting;
-      }
-    }
-
-    state(prepareWriting)
-    {
-      transition
-      {
-        goto running;
-      }
-      action
-      {
-        logFilename = generateFilename();
-        logFrame(); // Stream all data once and theerby create stream specification for them
-        createStreamSpecification(); // Serialize stream specification
-      }
-    }
-
-    state(running)
-    {
-      transition
-      {
-        if (gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
-          goto delayPlaySound;
-        else if (isInactive)
-          goto paused;
-        else if(file && SystemCall::getFreeDiskSpace(logFilename.c_str()) >> 20 < parameters.minFreeSpace)
-          goto error;
-      }
-      action
-      {
-        logFrame();
-      }
-    }
-
-    state(paused)
-    {
-      transition
-      {
-        if (gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
-          goto delayPlaySound;
-        else if (!isInactive)
-          goto running;
-        else if (file && SystemCall::getFreeDiskSpace(logFilename.c_str()) >> 20 < parameters.minFreeSpace)
-          goto error;
-      }
-    }
-
-    state(delayPlaySound)
-    {
-      transition
-      {
-        if(gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING)
-          goto running;
-        else if(writerIdle && SystemCall::getTimeSince(writerIdleStart) > 5000 && state_time > 500)
-          goto playSound;
-      }
-    }
-
-    state(playSound)
-    {
-      transition
-      {
-        goto idle;
-      }
-      action
-      {
-        SystemCall::playSound("logWritten.wav");
-      }
-    }
-
-    state(idle)
-    {
-      transition
-      {
-        if(gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING)
-          goto running;
-      }
-    }
-
-    state(error)
-    {
-      transition
-      {
-        goto aborted;
-      }
-      action
-      {
-        writerThread.announceStop();
-        OUTPUT_WARNING("Logger: Disk full, logging aborted.");
-      }
-    }
-
-    aborted_state(aborted) {}
-  }
+  void dumpSystemLog();
 
 public:
-  Logger(const std::string& processName, char processIdentifier, int framesPerSecond);
+  Logger(std::initializer_list<char> cycles);
   ~Logger();
 
   /** Has to be called in each cycle. */
-  void execute();
+  void execute(const char processIdentifier);
 };

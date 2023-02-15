@@ -6,40 +6,46 @@
 
 #include <map>
 #include <string>
+#include <memory>
 #include "Tools/Network/UdpComm.h"
 
 #include "Utils/dorsh/models/Power.h"
 #include "Utils/dorsh/Session.h"
+#include <nlohmann/json_fwd.hpp>
+
+#include <QFloat16> // see https://github.com/nlohmann/json/issues/2650
 
 struct RobotConfigDorsh;
 
 class DataAgent : public QObject
 {
   Q_OBJECT
-  std::map<std::string, std::string> receivedMap;
-  std::map<std::string, int> timeOfLastUpdate;
-  std::map<std::string, int> timeOfLastUpdateWifi;
-  QUdpSocket udpSocket;
-  QUdpSocket wifiSocket;
+  std::map<std::string, nlohmann::json> lastData;
+  QUdpSocket dataSocket;
+  QUdpSocket tcSocket;
+  QUdpSocket gcSocket;
   QTimer timer;
   unsigned short teamNumber = 12;
+
+  static constexpr std::string_view keepAliveData = "sendData";
+  static constexpr unsigned updateTime = 5000;
+  static constexpr unsigned dataTimeout = 10000;
+  static constexpr unsigned gcTimeout = 60000;
+  unsigned lastGCMessage = 0;
 
 public:
   DataAgent();
   ~DataAgent();
-  void initialize(std::map<std::string, RobotConfigDorsh*>& robotsByName);
-  void reset(RobotConfigDorsh* robot);
-  void updateRobot();
   bool isLANReachable(const RobotConfigDorsh* robot);
   bool isWLANReachable(const RobotConfigDorsh* robot);
 
 private slots:
-  std::map<std::string, std::string> stringToMap(char mapCharArray[]);
   void updateData();
-  void updateWifiConnection();
-  void teamObserver();
+  void updateTC();
+  void updateGC();
+  void sendKeepAlive();
 
 signals:
-  void newSensorData(std::map<std::string, std::string>);
-  void wifiConnection(std::string, bool);
+  void newData(const nlohmann::json&);
+  void updateGCStatus(bool);
 };

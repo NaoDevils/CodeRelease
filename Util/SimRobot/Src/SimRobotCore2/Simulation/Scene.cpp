@@ -4,23 +4,20 @@
 * @author Colin Graf
 */
 
+#include "CoreModule.h"
 #include "Platform/OpenGL.h"
-#ifndef WINDOWS
-#include <alloca.h>
-#endif
-
+#include "Platform/Assert.h"
 #include "Simulation/Simulation.h"
 #include "Simulation/Scene.h"
 #include "Simulation/Body.h"
 #include "Simulation/Actuators/Actuator.h"
-#include "Platform/Assert.h"
-#include "CoreModule.h"
+#include "Tools/Math/Constants.h"
 
 void Scene::updateTransformations()
 {
-  if(lastTransformationUpdateStep != Simulation::simulation->simulationStep)
+  if (lastTransformationUpdateStep != Simulation::simulation->simulationStep)
   {
-    for(std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
+    for (std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
       (*iter)->updateTransformation();
     lastTransformationUpdateStep = Simulation::simulation->simulationStep;
   }
@@ -28,7 +25,7 @@ void Scene::updateTransformations()
 
 void Scene::updateActuators()
 {
-  for(std::list<Actuator::Port*>::const_iterator iter = actuators.begin(), end = actuators.end(); iter != end; ++iter)
+  for (std::list<Actuator::Port*>::const_iterator iter = actuators.begin(), end = actuators.end(); iter != end; ++iter)
     (*iter)->act();
 }
 
@@ -53,13 +50,16 @@ void Scene::createGraphics(bool isShared)
   // setup lights
   glEnable(GL_COLOR_MATERIAL);
   GLfloat data[4];
-  data[0] = 0.2f; data[1] = 0.2f; data[2] = 0.2f; data[3] = 1.f;
+  data[0] = 0.2f;
+  data[1] = 0.2f;
+  data[2] = 0.2f;
+  data[3] = 1.f;
   glLightModelfv(GL_LIGHT_MODEL_AMBIENT, data);
   //glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);
   glLightModelf(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
 
   int i = 0;
-  for(std::list<Light*>::const_iterator iter = lights.begin(), end = lights.end(); iter != end; ++iter, ++i)
+  for (std::list<Light*>::const_iterator iter = lights.begin(), end = lights.end(); iter != end; ++iter, ++i)
   {
     const Light& light = *(*iter);
     glLightfv(GL_LIGHT0 + i, GL_AMBIENT, light.ambientColor);
@@ -69,39 +69,39 @@ void Scene::createGraphics(bool isShared)
     glLightfv(GL_LIGHT0 + i, GL_CONSTANT_ATTENUATION, &light.constantAttenuation);
     glLightfv(GL_LIGHT0 + i, GL_LINEAR_ATTENUATION, &light.linearAttenuation);
     glLightfv(GL_LIGHT0 + i, GL_QUADRATIC_ATTENUATION, &light.quadraticAttenuation);
-    float spotCutoff = light.spotCutoff * (180.f / float(M_PI));
+    float spotCutoff = light.spotCutoff * (180.f / pi);
     glLightfv(GL_LIGHT0 + i, GL_SPOT_CUTOFF, &spotCutoff);
-    glLightfv(GL_LIGHT0 + i, GL_SPOT_DIRECTION, &light.spotDirection.x);
+    glLightfv(GL_LIGHT0 + i, GL_SPOT_DIRECTION, light.spotDirection.data());
     glLightfv(GL_LIGHT0 + i, GL_SPOT_EXPONENT, &light.spotExponent);
     glEnable(GL_LIGHT0 + i);
   }
 
   // load display lists and textures
-  if(!isShared)
+  if (!isShared)
   {
-    for(std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
+    for (std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
       (*iter)->createGraphics();
     GraphicalObject::createGraphics();
 
-    if(!textures.empty())
+    if (!textures.empty())
     {
-      for(std::unordered_map<std::string, Texture>::iterator iter = textures.begin(), end = textures.end(); iter != end; ++iter)
+      for (std::unordered_map<std::string, Texture>::iterator iter = textures.begin(), end = textures.end(); iter != end; ++iter)
         iter->second.createGraphics();
       glBindTexture(GL_TEXTURE_2D, 0);
     }
   }
 }
 
-void Scene::drawAppearances() const
+void Scene::drawAppearances(SurfaceColor color, bool drawControllerDrawings) const
 {
-  for(std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
-    (*iter)->drawAppearances();
-  GraphicalObject::drawAppearances();
+  for (std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
+    (*iter)->drawAppearances(color, drawControllerDrawings);
+  GraphicalObject::drawAppearances(color, drawControllerDrawings);
 }
 
 void Scene::drawPhysics(unsigned int flags) const
 {
-  for(std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
+  for (std::list<Body*>::const_iterator iter = bodies.begin(), end = bodies.end(); iter != end; ++iter)
     (*iter)->drawPhysics(flags);
   ::PhysicalObject::drawPhysics(flags);
 }
@@ -129,7 +129,7 @@ unsigned int Scene::getFrameRate() const
 Texture* Scene::loadTexture(const std::string& file)
 {
   std::unordered_map<std::string, Texture>::iterator iter = textures.find(file);
-  if(iter != textures.end())
+  if (iter != textures.end())
   {
     Texture& texture = iter->second;
     return texture.imageData ? &texture : 0;
@@ -139,7 +139,7 @@ Texture* Scene::loadTexture(const std::string& file)
   return texture.imageData ? &texture : 0;
 }
 
-Scene::Light::Light() : constantAttenuation(1.f), linearAttenuation(0.f), quadraticAttenuation(0.f), spotCutoff(float(M_PI)), spotDirection(0.f, 0.f, -1.f), spotExponent(0.f)
+Scene::Light::Light() : constantAttenuation(1.f), linearAttenuation(0.f), quadraticAttenuation(0.f), spotCutoff(pi), spotDirection(0.f, 0.f, -1.f), spotExponent(0.f)
 {
   diffuseColor[0] = diffuseColor[1] = diffuseColor[2] = diffuseColor[3] = 1.f;
   ambientColor[0] = ambientColor[1] = ambientColor[2] = 0.f;

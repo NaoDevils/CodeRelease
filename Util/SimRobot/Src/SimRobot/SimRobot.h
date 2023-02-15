@@ -6,8 +6,7 @@
 
 #pragma once
 
-class QString;
-template <typename T> class QVector;
+#include <qcontainerfwd.h>
 class QIcon;
 class QMenu;
 class QSettings;
@@ -22,11 +21,12 @@ namespace SimRobot
     virtual ~Widget() = default;
     virtual QWidget* getWidget() = 0;
     virtual void update() {}
-    virtual bool canClose() {return true;}
-    virtual QMenu* createFileMenu() const {return 0;}
-    virtual QMenu* createEditMenu() const {return 0;}
-    virtual QMenu* createUserMenu() const {return 0;}
+    virtual bool canClose() { return true; }
+    virtual QMenu* createFileMenu() const { return 0; }
+    virtual QMenu* createEditMenu() const { return 0; }
+    virtual QMenu* createUserMenu() const { return 0; }
     virtual void paint(QPainter& painter) {}
+    virtual void saveLayout() {}
   };
 
   /**
@@ -36,15 +36,15 @@ namespace SimRobot
   {
   public:
     virtual ~Object() = default;
-    virtual Widget* createWidget() {return 0;}
+    virtual Widget* createWidget() { return 0; }
 
     /** Accesses pathname to the object in the scene graph
     * @return The pathname
     */
     virtual const QString& getFullName() const = 0;
 
-    virtual const QIcon* getIcon() const {return 0;}
-    virtual int getKind() const {return 0;}
+    virtual const QIcon* getIcon() const { return 0; }
+    virtual int getKind() const { return 0; }
   };
 
   /**
@@ -58,13 +58,12 @@ namespace SimRobot
     virtual void update() {}
   };
 
- /**
+  /**
   * Flags that can be used for registering modules and objects
   */
   class Flag
   {
   public:
-
     // flags for registerObject
     static const int hidden = 0x0001; /**< The object will not be listed in the scene graph */
     static const int verticalTitleBar = 0x0002; /**< The object's dock widget has a vertical title bar */
@@ -83,7 +82,6 @@ namespace SimRobot
   class Module
   {
   public:
-
     /** Virtual destructor */
     virtual ~Module() = default;
 
@@ -94,7 +92,7 @@ namespace SimRobot
     *   - suggest or load further modules (using \c Application::registerModule, \c Application::loadModule)
     * @return Whether an error occurred while initializing the module or not
     */
-    virtual bool compile() {return true;}
+    virtual bool compile() { return true; }
 
     /**
     * Called after all modules have been compiled. In this phase the module can update references to scene graph objects of other modules. (using \c resolveObject)
@@ -119,7 +117,7 @@ namespace SimRobot
     /**
     * Create a menu for this module. If 0 is returned, there is no menu.
     */
-    virtual QMenu* createUserMenu() const {return 0;}
+    virtual QMenu* createUserMenu() const { return 0; }
   };
 
   /**
@@ -152,7 +150,7 @@ namespace SimRobot
     virtual void simStep() = 0;
     virtual void simStop() = 0;
   };
-}
+} // namespace SimRobot
 
 #ifdef WINDOWS
 #define DLL_EXPORT __declspec(dllexport)

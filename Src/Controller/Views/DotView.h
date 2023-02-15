@@ -51,13 +51,13 @@ private:
   * Accesses path name to the object in the scene graph
   * @return The path name
   */
-  virtual const QString& getFullName() const {return fullName;}
+  virtual const QString& getFullName() const { return fullName; }
 
   /**
   * Accesses the icon used to list this view in the scene graph
   * @return The icon
   */
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QIcon* getIcon() const { return &icon; }
 
   friend class DotViewWidget;
 };
@@ -75,6 +75,8 @@ public:
   * @param dotViewObject The DotViewObject that created this widget
   */
   DotViewWidget(DotViewObject& dotViewObject);
+
+  virtual void saveLayout();
 
 private:
   DotViewObject& dotViewObject; /**< The DotViewObject that created this widget */
@@ -94,7 +96,7 @@ private:
   * Returns this widget casted to a QWidget
   * @return Teh widget
   */
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
 
   /**
   * Updates the displayed content of the widget

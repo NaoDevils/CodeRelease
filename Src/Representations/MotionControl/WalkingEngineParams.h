@@ -14,254 +14,118 @@
 
 //#include "Modules/MotionControl/DortmundWalkingEngine/StepData.h"
 
+#define MAX_DELAY_FRAMES 6
+
 /**
 * @class WalkingEngineParams
 * Contains the parameters of the walking engine. See the "Nao Devils Team Report 2010" for a detailed description.
 */
-struct COMOffsets
-{
-  // translational
-  float xFixed; // was xOffset
-  float yFixed; // was fixedYOffset
-  float xSpeedDependent; // was dynXOffset
-  float ySpeedDependent[2]; // 0 = left, 1 = right, was yOffset
-  // rotational
-  float tiltFixed; // new 25_04_17
-  float tiltSpeedDependent[2]; // Min/Max, was speedDependentBodyTilt
-  // special case: arm contact
-  float xArmContact; // was armContactCoMShiftX
-  float yArmContact[2]; // 0 = left, 1 = right, was armContactCoMShift
-  
-};
 
-struct SpeedLimits
-{
-  float xForward; // was maxSpeedXForward
-  float xForwardArmContact; // was maxSpeedArmContact
-  float xForwardOmni; // was maxSpeedXForwardOmni
-  float xBackward; // was maxSpeedXBack
-  float y; // was maxSpeedY
-  float yArmContact; // new 25_04_17 
-  Angle r; // was maxSpeedR
-  Angle rOnly = 90_deg; // new 07_07_19
-};
+STREAMABLE(Acceleration,,
+  (Angle)(60_deg) maxAccR, // in rad / s^2
+  (float)(0.15f) maxAccXForward, // in m/s^2
+  (float)(0.08f) maxAccXBackward, // in m/s^2
+  (float)(0.15f) maxAccY // in m/s^2
+);
 
-struct Acceleration
-{
-  float maxAccXForward; // in m/s
-  float maxAccXBackward; // in m/s
-  float maxAccY; // in m/s
-  float maxAccR; // in rad / s
-};
+STREAMABLE(COMOffsets,,
+  (float)(0.f) tiltFixed, // new 25_04_17
+  (float[2]) tiltSpeedDependent, // Min/Max, was speedDependentBodyTilt
+  (float)(0.f) xArmContact, // was armContactCoMShiftX
+  (float)(0.f) xFixed, // was xOffset
+  (float)(0.f) xSpeedDependent, // was dynXOffset
+  (float[2]) yArmContact, // 0 = left, 1 = right, was armContactCoMShift
+  (float)(0.f) yFixed, // was fixedYOffset
+  (float[2]) ySpeedDependent // 0 = left, 1 = right, was yOffset
+);
 
-struct SensorControl
-{
-  unsigned int halSensorDelay; // in frames
-  unsigned int sensorDelay; // in frames
-  float accXAlpha; // changing comOffsets.xFixed using acc.x sensor
-  float sensorControlRatio[2]; // 0 = com, 1 = zmp
-  // tilt control
-  float tiltControllerParams[3]; // p, i, d
-  float tiltFactor; // rotate com around Y: inertialData * tiltFactor
-  float steppingRotSpeedUprect;
-  float steppingRotSpeedCapture;
-
-  // roll control
-  float rollControllerParams[3]; // p, i, d
-  float rollFactor; // rotate com around X: inertialData * rollFactor
-};
-
-struct FootMovement
-{
+STREAMABLE(FootMovement,,
+  (float)(0.f) doubleSupportRatio,
+  (Angle)(0_deg) footPitch,
+  (Angle)(0_deg) footRoll,
   // pitch control
-  Angle footPitch;
-  float footPitchPD[2];
-  Angle footRoll;
-  float stepHeight[3]; // first: front, second: back, third: sidwards
-  float doubleSupportRatio;
-  float maxStepDuration;
-  float minStepDuration;
-  float footYDistance;
-  float leadingSideStepSpeedUp; // how much faster the leading step for side steps is. <1 means slower
-  float polygonLeft[4];
-  float polygonRight[4];
-  float forwardPolygon[5];
-  float sideStepPolygon[5];
-  float rotPolygon[5];
-  float heightPolygon[5];
-};
+  (float[2]) footPitchPD,
+  (float)(0.f) footYDistance,
+  (float)(0.f) leadingSideStepSpeedUp, // how much faster the leading step for side steps is. <1 means slower
+  (float[5]) forwardPolygon,
+  (float[5]) sideStepPolygon,
+  (float[5]) rotPolygon,
+  (float[5]) heightPolygon,
+  (float[4]) polygonLeft,
+  (float[4]) polygonRight,
+  (float)(0.f) maxStepDuration,
+  (float)(0.f) minStepDuration,
+  (float[3]) stepHeight // first: front, second: back, third: sidwards
+);
 
-struct WalkTransition
-{
-  int crouchingDownPhaseLength; // in frames
-  int startingPhaseLength; // in frames
-  int stoppingPhaseLength; // in frames
+STREAMABLE(WEJointCalibration,
+  Angle * jointCalibration = jointCalibrationLeft;
+  ,                                 // HipYawPitch,
+  (Angle[6]) jointCalibrationLeft,  // HipRoll,
+  (Angle[6]) jointCalibrationRight, // HipPitch,
+  (int[6]) legJointHardness,        // KneePitch,
+  (float[6]) offsetLeft,            // AnklePitch,
+  (float[6]) offsetRight            // AnkleRoll
+);
 
-  float stopPosThresholdX; // in m
-  float stopPosThresholdY; // in m
-  float stopSpeedThresholdX; // in m/s
-  float stopSpeedThresholdY; // in m/s
-  Angle fallDownAngleMinMaxX[2]; // in rad
-  Angle fallDownAngleMinMaxY[2]; // in rad
-  float unstableGyroY; // If gyroY is above this limit the robot is assumed
-                       // to be unstable
-  int zmpSmoothPhase; // in frames
-};
+STREAMABLE(SpeedLimits,,
+  (float)(0.f) speedFactor,
+  (Angle)(0_deg) r, // was maxSpeedR
+  (Angle)(90_deg) rOnly, // new 07_07_19
+  (float)(0.f) xBackward, // was maxSpeedXBack
+  (float)(0.f) xForward, // was maxSpeedXForward
+  (float)(0.f) xForwardArmContact, // was maxSpeedArmContact
+  (float)(0.f) xForwardOmni, // was maxSpeedXForwardOmni
+  (float)(0.f) y, // was maxSpeedY
+  (float)(0.f) yArmContact // new 25_04_17 
+);
 
-struct WEJointCalibration
-{
-  union
-  {
-    struct
-    {
-      float jointCalibrationLeft[6];
-      float jointCalibrationRight[6];
-    };
-    float jointCalibration[12];
-  };
-  float offsetLeft[6];
-  float offsetRight[6];
-  int legJointHardness[6];
-};
+STREAMABLE(WalkTransition,,
+  (int)(0) crouchingDownPhaseLength, // in frames
+  (Angle[2]) fallDownAngleMinMaxX, // in rad
+  (Angle[2]) fallDownAngleMinMaxY, // in rad
+  (float)(0.f) stopSpeedThresholdX, // in m/s
+  (float)(0.f) stopSpeedThresholdY // in m/s
+);
 
-struct WalkingEngineParams : public Streamable
-{
-  Acceleration acceleration;
-  COMOffsets comOffsets;
-  FootMovement footMovement;
-  SensorControl sensorControl;
-  SpeedLimits speedLimits;
-  WalkTransition walkTransition;
-  float armFactor;
-  float arms1;
-  // float maxLegLength; // unused
-  int outFilterOrder; // walkingEngineOutput angles are average of ringbuffer (with kinematicoutput) of this size
-  
-  // Sidestep settings
-  float maxSidestep[2];
+STREAMABLE(WalkingEngineParams,,
+  (Acceleration) acceleration,
+  (COMOffsets) comOffsets,
+  (FootMovement) footMovement,
+  (WEJointCalibration) jointCalibration,
+  (unsigned int)(5) jointSensorDelayFrames, // in frames
+  (unsigned int)(3) imuSensorDelayFrames, // in frames
+  (int)(5) outFilterOrder, // walkingEngineOutput angles are average of ringbuffer (with kinematicoutput) of this size
+  (SpeedLimits) speedLimits,
+  (WalkTransition) walkTransition
+  // (float)(0.f) maxLegLength // unused
+);
 
-  WEJointCalibration jointCalibration;
-
-  /** Constructor */
-  WalkingEngineParams() {}
-
-  void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-      STREAM(acceleration.maxAccR)
-      STREAM(acceleration.maxAccXForward)
-      STREAM(acceleration.maxAccXBackward)
-      STREAM(acceleration.maxAccY)
-      STREAM(armFactor)
-      STREAM(arms1)
-      STREAM(comOffsets.tiltFixed)
-      STREAM(comOffsets.tiltSpeedDependent)
-      STREAM(comOffsets.xArmContact)
-      STREAM(comOffsets.xFixed)
-      STREAM(comOffsets.xSpeedDependent)
-      STREAM(comOffsets.yArmContact)
-      STREAM(comOffsets.yFixed)
-      STREAM(comOffsets.ySpeedDependent)
-      STREAM(footMovement.doubleSupportRatio)
-      STREAM(footMovement.footPitch)
-      STREAM(footMovement.footPitchPD)
-      STREAM(footMovement.footRoll)
-      STREAM(footMovement.footYDistance)
-      STREAM(footMovement.leadingSideStepSpeedUp)
-      STREAM(footMovement.forwardPolygon)
-      STREAM(footMovement.sideStepPolygon)
-      STREAM(footMovement.rotPolygon)
-      STREAM(footMovement.heightPolygon)
-      STREAM(footMovement.polygonLeft)
-      STREAM(footMovement.polygonRight)
-      STREAM(footMovement.maxStepDuration)
-      STREAM(footMovement.minStepDuration)
-      STREAM(footMovement.stepHeight)
-      STREAM(jointCalibration.jointCalibrationLeft)
-      STREAM(jointCalibration.jointCalibrationRight)
-      STREAM(jointCalibration.legJointHardness)
-      STREAM(jointCalibration.offsetLeft)
-      STREAM(jointCalibration.offsetRight)
-      STREAM(maxSidestep)
-      STREAM(outFilterOrder)
-      STREAM(sensorControl.accXAlpha)
-      STREAM(sensorControl.halSensorDelay)
-      STREAM(sensorControl.rollControllerParams)
-      STREAM(sensorControl.rollFactor)
-      STREAM(sensorControl.sensorControlRatio)
-      STREAM(sensorControl.sensorDelay)
-      STREAM(sensorControl.steppingRotSpeedCapture)
-      STREAM(sensorControl.steppingRotSpeedUprect)
-      STREAM(sensorControl.tiltControllerParams)
-      STREAM(sensorControl.tiltFactor)
-      STREAM(speedLimits.r)
-      STREAM(speedLimits.rOnly)
-      STREAM(speedLimits.xBackward)
-      STREAM(speedLimits.xForward)
-      STREAM(speedLimits.xForwardArmContact)
-      STREAM(speedLimits.xForwardOmni)
-      STREAM(speedLimits.y)
-      STREAM(speedLimits.yArmContact)
-      STREAM(walkTransition.crouchingDownPhaseLength)
-      STREAM(walkTransition.fallDownAngleMinMaxX)
-      STREAM(walkTransition.fallDownAngleMinMaxY)
-      STREAM(walkTransition.startingPhaseLength)
-      STREAM(walkTransition.stoppingPhaseLength)
-      STREAM(walkTransition.stopPosThresholdX)
-      STREAM(walkTransition.stopPosThresholdY)
-      STREAM(walkTransition.stopSpeedThresholdX)
-      STREAM(walkTransition.stopSpeedThresholdY)
-      STREAM(walkTransition.unstableGyroY)
-      STREAM(walkTransition.zmpSmoothPhase)
-      STREAM_REGISTER_FINISH;
-  };
-  /** Descructor */
-  ~WalkingEngineParams()
-  {};
-
-};
-
-STREAMABLE(JointControlParameters,
-{,
-  (float)(1.f) pidMultiplicator,
-  (Angle)(0_deg) deltaAngleX,
-  (Angle)(0_deg) deltaAngleBack,
-  (Angle)(0_deg) deltaAngleFront,
+STREAMABLE(JointControlParameters,,
+  (float)(1.f) pidMultiplicatorX,
   (float)(0.f) p_x,
   (float)(0.f) i_x,
   (float)(0.f) d_x,
+  (float)(1.f) pidMultiplicatorY,
   (float)(0.f) p_y,
   (float)(0.f) i_y,
   (float)(0.f) d_y,
-  (float)(0.f) comX_p,
-  (float)(0.8f) angleGyroRatioX,
-  (float)(0.9f) angleGyroRatioY,
-});
+  (float)(0.f) comX_p
+);
 
-STREAMABLE(BalanceParameters,
-{ ,
+STREAMABLE(BalanceParameters,,
   (Angle)(0_deg) targetAngleX,
   (Angle)(2_deg) targetAngleY,
   (JointControlParameters) ankleParams,
   (JointControlParameters) hipParams,
-});
+  (float)(0.7f) ankleHipRatioX,
+  (float)(0.7f) ankleHipRatioY
+);
 
-STREAMABLE(LegJointSensorControlParameters,
-{,
-  (BalanceParameters) walkBalanceParams,
-  (BalanceParameters) specialActionBalanceParams,
-});
-
-STREAMABLE(COMShiftParameters,
-{,
+STREAMABLE(COMShiftParameters,,
   (float)(0.f) accXAlpha,
-  (float)(0.f) gyroYAlpha,
-  (float)(0.f) angleYAlpha,
-  (float)(0.f) gyroXAlpha,
-  (float)(0.f) angleXAlpha,
   (float)(0.f) stepAccAlpha,
-  (int)(200) accInterpolTime,
-});
+  (int)(200) accInterpolTime
+);
 
 //struct FreeLegPhaseParams : public WalkingEngineParams { };
-

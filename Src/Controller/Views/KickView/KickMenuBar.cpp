@@ -7,6 +7,7 @@
 */
 
 #include "KickMenuBar.h"
+#include <QActionGroup>
 
 KickMenuBar::KickMenuBar()
 {

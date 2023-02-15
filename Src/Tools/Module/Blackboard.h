@@ -7,6 +7,11 @@
  */
 
 #pragma once
+#include "Platform/BHAssert.h"
+#include <memory>
+#include <typeinfo>
+#include <string>
+#include <stdexcept>
 
 class Streamable;
 
@@ -16,13 +21,22 @@ private:
   /** A single entry of the blackboard. */
   struct Entry
   {
-    Streamable* data = nullptr; /**< The representation. */
+    std::unique_ptr<Streamable> data = nullptr; /**< The representation. */
     int counter = 0; /**< How many modules requested its existance? */
+  };
+
+  struct CopyEntry
+  {
+    Streamable* original = nullptr;
+    Streamable* copy = nullptr;
   };
 
   class Entries; /**< Type of the map for all entries. */
   Entries& entries; /**< All entries of the blackboard. */
   int version = 0; /**< A version that is increased with each configuration change. */
+
+  class CopyEntries;
+  CopyEntries& copyEntries;
 
   /**
    * Set the blackboard instance of a process.
@@ -31,6 +45,8 @@ private:
    */
   static void setInstance(Blackboard& instance);
   friend class Process;
+  friend class SuperThread;
+  friend class SubThread;
 
   /**
    * Retrieve the blackboard entry for the name of a representation.
@@ -40,6 +56,11 @@ private:
    */
   Entry& get(const char* representation);
   const Entry& get(const char* representation) const;
+
+  void addCopyEntry(const char* representation);
+  void copyUsedRepresentations();
+
+  static std::string demangle(const char* name);
 
 public:
   /**
@@ -69,15 +90,17 @@ public:
    * @param representation The name of the representation.
    * @return The representation.
    */
-  template<typename T> T& alloc(const char* representation)
+  template <typename T> T& alloc(const char* representation)
   {
     Entry& entry = get(representation);
-    if(entry.counter++ == 0)
+    if (entry.counter++ == 0)
     {
-      entry.data = new T;
+      entry.data = std::make_unique<T>();
       ++version;
+
+      addCopyEntry(representation);
     }
-    return *dynamic_cast<T*>(entry.data);
+    return *dynamic_cast<T*>(entry.data.get());
   }
 
   /**
@@ -98,13 +121,33 @@ public:
   const Streamable& operator[](const char* representation) const;
 
   /**
+   * Access a representation of a certain type in current process's blackboard.
+   * The representation must already exist.
+   * @tparam T The type of the representation.
+   * @param copy Return copied representation for USES() dependencies.
+   * @return The instance of the representation in the blackboard.
+  */
+  template <typename T> static const T& get(bool copy = false)
+  {
+    const char* const name = typeid(T).name();
+    const std::string demangledName = demangle(name) + (copy ? "-Copy" : "");
+
+    const Blackboard& bb = getInstance();
+
+    if (!bb.exists(demangledName.c_str()))
+      throw std::out_of_range("Representation " + demangledName + " does not exist!");
+
+    return static_cast<const T&>(bb[demangledName.c_str()]);
+  }
+
+  /**
    * Return the current version.
    * It can be used to determine whether the configuration of the
    * blackboard changed.
    * @return The current version. It starts with 0 and might
    *         be increased in larger steps.
    */
-  int getVersion() const {return version;}
+  int getVersion() const { return version; }
 
   /**
    * Access the blackboard of this process.

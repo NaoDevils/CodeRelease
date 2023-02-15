@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../SimRobot/SimRobot.h"
+#include <SimRobot.h>
 
 namespace SimRobotEditor
 {
@@ -32,4 +32,4 @@ namespace SimRobotEditor
     */
     virtual Editor* addFolder(const QString& name) = 0;
   };
-}
+} // namespace SimRobotEditor

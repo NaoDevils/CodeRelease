@@ -13,7 +13,7 @@
 #include <vector>
 #include <memory>
 
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "KalmanPositionHypothesis.h"
 
 #include "Representations/Configuration/FieldDimensions.h" // field dimensions
@@ -38,8 +38,7 @@
  *                       a single model (e.g. ball) not (e.g. robot map)
  */
 template <typename hypothesis_t = KalmanPositionHypothesis, bool towardsOneModel = true>
-class MultiKalmanModel : public Streamable
-{
+STREAMABLE(MultiKalmanModel,
   // Check at compile-time that hypothesis_t is derived from class KalmanPositionHypothesis.
   static_assert(std::is_base_of<KalmanPositionHypothesis, hypothesis_t>::value,
                 "hypothesis_t not derived from class KalmanPositionHypothesis");
@@ -50,38 +49,23 @@ public:
    */
   using HypothesisType = hypothesis_t;
 
-  /** 
+  /**
    * Default constructor creates a new and empty \c MultiKalmanModel object.
    * The default perceptDuration is 1000ms.
    */
-  MultiKalmanModel()
-    : m_bestHypothesisIndex(-1)
-    , m_lastBestHypothesisIndex(m_bestHypothesisIndex)
-    , minValidityForChangingBestHypothesis(0.f)
-    , minNumberOfSensorUpdatesForBestHypothesis(1)
-    , decreaseValidityOnChangingBestHypothesis(0.f)
-    , m_perceptDuration(1000) {}
+  MultiKalmanModel() {}
 
-  /** 
+  /**
    * Constructor setting the perceptDuration.
    * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
    *
    * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
    */
   MultiKalmanModel(unsigned perceptDuration)
-    : m_bestHypothesisIndex(-1)
-    , m_lastBestHypothesisIndex(m_bestHypothesisIndex)
-    , minValidityForChangingBestHypothesis(0.f)
-    , minNumberOfSensorUpdatesForBestHypothesis(1)
-    , decreaseValidityOnChangingBestHypothesis(0.f)
-    , m_perceptDuration(perceptDuration) {}
-
-  /**
-   * Destructor.
-   */
-  ~MultiKalmanModel() {}
+  {
+    m_perceptDuration = perceptDuration;
+  }
   
-
   //MARK: Kalman filter related methods
 
   /**
@@ -260,16 +244,18 @@ private:
   
 public:
   /**
-   * Increase the velocity part of the Kalman filter covariance by the given
+   * Increase both part of the Kalman filter covariance by the given
    * factor. This can be used to improve the kalman filter behavior on predictable
    * sudden movement changes.
-   * \param [in] factor The velocity part of the covariance matrix is multiplied 
+   * \param [in] positionFactor The position part of the covariance matrix is multiplied
+   *                    by this factor.
+   * \param [in] velocityFactor The velocity part of the covariance matrix is multiplied 
    *                    by this factor.
    * \param [in] onlyBestHypothesis If \c true  only the covariance matrix of
    *                                the best hypothesis is changed.
    *                                Otherwise all hypotheses are changed.
    */
-  void increaseVelocityUncertainty(double factor, bool onlyBestHypothesis);
+  void increaseUncertainty(double positionFactor, double velocityFactor, bool onlyBestHypothesis);
   
   /**
    * This method removes all hypotheses which are outside of the field (with
@@ -382,34 +368,26 @@ public:
    */
   virtual unsigned getPerceptDuration() const { return m_perceptDuration; }
 
-protected:
-  /// Stores a set of kalman hypotheses.
-  std::vector<hypothesis_t> m_hypotheses;
-  
 private:
   /// Stores the index of the best hypothesis.
   /// This is updated by the method \c updateBestHypothesis().
-  mutable std::size_t m_bestHypothesisIndex;
+  mutable std::size_t m_bestHypothesisIndex = -1;
   /// Stores the index of the best hypothesis from the last iteration.
-  std::size_t m_lastBestHypothesisIndex;
+  std::size_t m_lastBestHypothesisIndex = m_bestHypothesisIndex;
   
   /// Parameter for \c updateBestHypothesis().
-  float minValidityForChangingBestHypothesis;
+  float minValidityForChangingBestHypothesis = 0.f;
   /// Parameter for \c updateBestHypothesis().
-  std::size_t minNumberOfSensorUpdatesForBestHypothesis;
+  std::size_t minNumberOfSensorUpdatesForBestHypothesis = 1;
   /// Parameter for \c updateBestHypothesis().
-  float decreaseValidityOnChangingBestHypothesis;
+  float decreaseValidityOnChangingBestHypothesis = 0.f;
   /// The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
-  unsigned m_perceptDuration;
+  unsigned m_perceptDuration = 1000;
 
 public:
-  /** Streaming */
-  virtual void serialize(In *in, Out *out)
-  {
-    STREAM_REGISTER_BEGIN;
-    STREAM(m_hypotheses);
-    STREAM_REGISTER_FINISH;
-  }
-};
+  ,
+  /// Stores a set of kalman hypotheses.
+  (std::vector<hypothesis_t>) m_hypotheses
+);
 
 #include "MultiKalmanModel_impl.h"

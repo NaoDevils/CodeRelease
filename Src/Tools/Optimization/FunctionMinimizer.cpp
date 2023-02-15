@@ -17,9 +17,9 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
 
     void setPos(float val, float min, float max)
     {
-      if(val < min)
+      if (val < min)
         this->val = min;
-      else if(val > max)
+      else if (val > max)
         this->val = max;
       else
         this->val = val;
@@ -28,7 +28,7 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
 
   ASSERT(minVal <= maxVal);
 
-  if(minVal == maxVal)
+  if (minVal == maxVal)
   {
     clipped = true;
     return minVal;
@@ -43,18 +43,18 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
   point[0].setPos(start, minVal, maxVal);
   start = point[0].val;
   point[0].error = function.evaluate(point[0].val);
-  if(point[0].error < terminationCriterion)
+  if (point[0].error < terminationCriterion)
     return point[0].val;
 
   point[1].setPos(start + startDelta, minVal, maxVal);
-  if(point[0].val == point[1].val)
+  if (point[0].val == point[1].val)
     point[1].setPos(start - startDelta, minVal, maxVal);
   point[1].error = function.evaluate(point[1].val);
-  if(point[1].error < terminationCriterion)
+  if (point[1].error < terminationCriterion)
     return point[1].val;
 
-  Point* smallest, *largest, *free = &point[2];
-  if(point[0].error < point[1].error)
+  Point *smallest, *largest, *free = &point[2];
+  if (point[0].error < point[1].error)
   {
     smallest = &point[0];
     largest = &point[1];
@@ -65,10 +65,10 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
     smallest = &point[1];
   }
 
-  for(;;)
+  for (;;)
   {
     float delta = (smallest->val - largest->val);
-    if(std::abs(delta) <= 0.0001f)
+    if (std::abs(delta) <= 0.0001f)
     {
       clipped = true;
       return smallest->val;
@@ -78,13 +78,13 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
     reflection->setPos(smallest->val + delta, minVal, maxVal);
     reflection->error = reflection->val == smallest->val ? largest->error : function.evaluate(reflection->val);
 
-    if(reflection->error < smallest->error)
+    if (reflection->error < smallest->error)
     {
       Point* expansion = largest;
       expansion->setPos(reflection->val + delta, minVal, maxVal);
       expansion->error = expansion->val == reflection->val ? reflection->error : function.evaluate(expansion->val);
 
-      if(expansion->error < reflection->error)
+      if (expansion->error < reflection->error)
       {
         free = reflection;
         largest = smallest;
@@ -104,13 +104,13 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
       contraction->setPos(smallest->val + delta, minVal, maxVal);
       contraction->error = contraction->val == smallest->val ? largest->error : function.evaluate(contraction->val);
 
-      if(contraction->error < smallest->error)
+      if (contraction->error < smallest->error)
       {
         free = largest;
         largest = smallest;
         smallest = contraction;
       }
-      else if(contraction->error < largest->error)
+      else if (contraction->error < largest->error)
       {
         free = largest;
         largest = contraction;
@@ -121,7 +121,7 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
         reduction->setPos(smallest->val - delta, minVal, maxVal);
         reduction->error = reduction->val == smallest->val ? largest->error : function.evaluate(reduction->val);
 
-        if(reduction->error < smallest->error)
+        if (reduction->error < smallest->error)
         {
           free = largest;
           largest = smallest;
@@ -135,7 +135,7 @@ float FunctionMinimizer::minimize(Function& function, float minVal, float maxVal
       }
     }
 
-    if(smallest->error < terminationCriterion)
+    if (smallest->error < terminationCriterion)
       return smallest->val;
   }
 }

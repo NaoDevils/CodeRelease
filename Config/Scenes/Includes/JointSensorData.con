@@ -1,0 +1,336 @@
+vp headYaw.angle 200 -120.0 120
+vpd headYaw.angle representation:JointSensorData:headYaw:angle red
+
+vp headYaw.current 200 -10.0 100.0
+vpd headYaw.current representation:JointSensorData:headYaw:current red
+
+vp headYaw.temperature 200 0.0 100.0
+vpd headYaw.temperature representation:JointSensorData:headYaw:temperature red
+
+vp headYaw.status 200 0.0 3.1
+vpd headYaw.status representation:JointSensorData:headYaw:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp headPitch.angle 200 -120.0 120
+vpd headPitch.angle representation:JointSensorData:headPitch:angle red
+
+vp headPitch.current 200 -10.0 100.0
+vpd headPitch.current representation:JointSensorData:headPitch:current red
+
+vp headPitch.temperature 200 0.0 100.0
+vpd headPitch.temperature representation:JointSensorData:headPitch:temperature red
+
+vp headPitch.status 200 0.0 3.1
+vpd headPitch.status representation:JointSensorData:headPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lShoulderPitch.angle 200 -120.0 120
+vpd lShoulderPitch.angle representation:JointSensorData:lShoulderPitch:angle red
+
+vp lShoulderPitch.current 200 -10.0 100.0
+vpd lShoulderPitch.current representation:JointSensorData:lShoulderPitch:current red
+
+vp lShoulderPitch.temperature 200 0.0 100.0
+vpd lShoulderPitch.temperature representation:JointSensorData:lShoulderPitch:temperature red
+
+vp lShoulderPitch.status 200 0.0 3.1
+vpd lShoulderPitch.status representation:JointSensorData:lShoulderPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lShoulderRoll.angle 200 -120.0 120
+vpd lShoulderRoll.angle representation:JointSensorData:lShoulderRoll:angle red
+
+vp lShoulderRoll.current 200 -10.0 100.0
+vpd lShoulderRoll.current representation:JointSensorData:lShoulderRoll:current red
+
+vp lShoulderRoll.temperature 200 0.0 100.0
+vpd lShoulderRoll.temperature representation:JointSensorData:lShoulderRoll:temperature red
+
+vp lShoulderRoll.status 200 0.0 3.1
+vpd lShoulderRoll.status representation:JointSensorData:lShoulderRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lElbowYaw.angle 200 -120.0 120
+vpd lElbowYaw.angle representation:JointSensorData:lElbowYaw:angle red
+
+vp lElbowYaw.current 200 -10.0 100.0
+vpd lElbowYaw.current representation:JointSensorData:lElbowYaw:current red
+
+vp lElbowYaw.temperature 200 0.0 100.0
+vpd lElbowYaw.temperature representation:JointSensorData:lElbowYaw:temperature red
+
+vp lElbowYaw.status 200 0.0 3.1
+vpd lElbowYaw.status representation:JointSensorData:lElbowYaw:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lElbowRoll.angle 200 -120.0 120
+vpd lElbowRoll.angle representation:JointSensorData:lElbowRoll:angle red
+
+vp lElbowRoll.current 200 -10.0 100.0
+vpd lElbowRoll.current representation:JointSensorData:lElbowRoll:current red
+
+vp lElbowRoll.temperature 200 0.0 100.0
+vpd lElbowRoll.temperature representation:JointSensorData:lElbowRoll:temperature red
+
+vp lElbowRoll.status 200 0.0 3.1
+vpd lElbowRoll.status representation:JointSensorData:lElbowRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lWristYaw.angle 200 -120.0 120
+vpd lWristYaw.angle representation:JointSensorData:lWristYaw:angle red
+
+vp lWristYaw.current 200 -10.0 100.0
+vpd lWristYaw.current representation:JointSensorData:lWristYaw:current red
+
+vp lWristYaw.temperature 200 0.0 100.0
+vpd lWristYaw.temperature representation:JointSensorData:lWristYaw:temperature red
+
+vp lWristYaw.status 200 0.0 3.1
+vpd lWristYaw.status representation:JointSensorData:lWristYaw:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lHand.angle 200 -120.0 120
+vpd lHand.angle representation:JointSensorData:lHand:angle red
+
+vp lHand.current 200 -10.0 100.0
+vpd lHand.current representation:JointSensorData:lHand:current red
+
+vp lHand.temperature 200 0.0 100.0
+vpd lHand.temperature representation:JointSensorData:lHand:temperature red
+
+vp lHand.status 200 0.0 3.1
+vpd lHand.status representation:JointSensorData:lHand:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rShoulderPitch.angle 200 -120.0 120
+vpd rShoulderPitch.angle representation:JointSensorData:rShoulderPitch:angle red
+
+vp rShoulderPitch.current 200 -10.0 100.0
+vpd rShoulderPitch.current representation:JointSensorData:rShoulderPitch:current red
+
+vp rShoulderPitch.temperature 200 0.0 100.0
+vpd rShoulderPitch.temperature representation:JointSensorData:rShoulderPitch:temperature red
+
+vp rShoulderPitch.status 200 0.0 3.1
+vpd rShoulderPitch.status representation:JointSensorData:rShoulderPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rShoulderRoll.angle 200 -120.0 120
+vpd rShoulderRoll.angle representation:JointSensorData:rShoulderRoll:angle red
+
+vp rShoulderRoll.current 200 -10.0 100.0
+vpd rShoulderRoll.current representation:JointSensorData:rShoulderRoll:current red
+
+vp rShoulderRoll.temperature 200 0.0 100.0
+vpd rShoulderRoll.temperature representation:JointSensorData:rShoulderRoll:temperature red
+
+vp rShoulderRoll.status 200 0.0 3.1
+vpd rShoulderRoll.status representation:JointSensorData:rShoulderRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rElbowYaw.angle 200 -120.0 120
+vpd rElbowYaw.angle representation:JointSensorData:rElbowYaw:angle red
+
+vp rElbowYaw.current 200 -10.0 100.0
+vpd rElbowYaw.current representation:JointSensorData:rElbowYaw:current red
+
+vp rElbowYaw.temperature 200 0.0 100.0
+vpd rElbowYaw.temperature representation:JointSensorData:rElbowYaw:temperature red
+
+vp rElbowYaw.status 200 0.0 3.1
+vpd rElbowYaw.status representation:JointSensorData:rElbowYaw:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rElbowRoll.angle 200 -120.0 120
+vpd rElbowRoll.angle representation:JointSensorData:rElbowRoll:angle red
+
+vp rElbowRoll.current 200 -10.0 100.0
+vpd rElbowRoll.current representation:JointSensorData:rElbowRoll:current red
+
+vp rElbowRoll.temperature 200 0.0 100.0
+vpd rElbowRoll.temperature representation:JointSensorData:rElbowRoll:temperature red
+
+vp rElbowRoll.status 200 0.0 3.1
+vpd rElbowRoll.status representation:JointSensorData:rElbowRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rWristYaw.angle 200 -120.0 120
+vpd rWristYaw.angle representation:JointSensorData:rWristYaw:angle red
+
+vp rWristYaw.current 200 -10.0 100.0
+vpd rWristYaw.current representation:JointSensorData:rWristYaw:current red
+
+vp rWristYaw.temperature 200 0.0 100.0
+vpd rWristYaw.temperature representation:JointSensorData:rWristYaw:temperature red
+
+vp rWristYaw.status 200 0.0 3.1
+vpd rWristYaw.status representation:JointSensorData:rWristYaw:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rHand.angle 200 -120.0 120
+vpd rHand.angle representation:JointSensorData:rHand:angle red
+
+vp rHand.current 200 -10.0 100.0
+vpd rHand.current representation:JointSensorData:rHand:current red
+
+vp rHand.temperature 200 0.0 100.0
+vpd rHand.temperature representation:JointSensorData:rHand:temperature red
+
+vp rHand.status 200 0.0 3.1
+vpd rHand.status representation:JointSensorData:rHand:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lHipYawPitch.angle 200 -120.0 120
+vpd lHipYawPitch.angle representation:JointSensorData:lHipYawPitch:angle red
+
+vp lHipYawPitch.current 200 -10.0 100.0
+vpd lHipYawPitch.current representation:JointSensorData:lHipYawPitch:current red
+
+vp lHipYawPitch.temperature 200 0.0 100.0
+vpd lHipYawPitch.temperature representation:JointSensorData:lHipYawPitch:temperature red
+
+vp lHipYawPitch.status 200 0.0 3.1
+vpd lHipYawPitch.status representation:JointSensorData:lHipYawPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lHipRoll.angle 200 -120.0 120
+vpd lHipRoll.angle representation:JointSensorData:lHipRoll:angle red
+
+vp lHipRoll.current 200 -10.0 100.0
+vpd lHipRoll.current representation:JointSensorData:lHipRoll:current red
+
+vp lHipRoll.temperature 200 0.0 100.0
+vpd lHipRoll.temperature representation:JointSensorData:lHipRoll:temperature red
+
+vp lHipRoll.status 200 0.0 3.1
+vpd lHipRoll.status representation:JointSensorData:lHipRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lHipPitch.angle 200 -120.0 120
+vpd lHipPitch.angle representation:JointSensorData:lHipPitch:angle red
+
+vp lHipPitch.current 200 -10.0 100.0
+vpd lHipPitch.current representation:JointSensorData:lHipPitch:current red
+
+vp lHipPitch.temperature 200 0.0 100.0
+vpd lHipPitch.temperature representation:JointSensorData:lHipPitch:temperature red
+
+vp lHipPitch.status 200 0.0 3.1
+vpd lHipPitch.status representation:JointSensorData:lHipPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lKneePitch.angle 200 -120.0 120
+vpd lKneePitch.angle representation:JointSensorData:lKneePitch:angle red
+
+vp lKneePitch.current 200 -10.0 100.0
+vpd lKneePitch.current representation:JointSensorData:lKneePitch:current red
+
+vp lKneePitch.temperature 200 0.0 100.0
+vpd lKneePitch.temperature representation:JointSensorData:lKneePitch:temperature red
+
+vp lKneePitch.status 200 0.0 3.1
+vpd lKneePitch.status representation:JointSensorData:lKneePitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lAnklePitch.angle 200 -120.0 120
+vpd lAnklePitch.angle representation:JointSensorData:lAnklePitch:angle red
+
+vp lAnklePitch.current 200 -10.0 100.0
+vpd lAnklePitch.current representation:JointSensorData:lAnklePitch:current red
+
+vp lAnklePitch.temperature 200 0.0 100.0
+vpd lAnklePitch.temperature representation:JointSensorData:lAnklePitch:temperature red
+
+vp lAnklePitch.status 200 0.0 3.1
+vpd lAnklePitch.status representation:JointSensorData:lAnklePitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp lAnkleRoll.angle 200 -120.0 120
+vpd lAnkleRoll.angle representation:JointSensorData:lAnkleRoll:angle red
+
+vp lAnkleRoll.current 200 -10.0 100.0
+vpd lAnkleRoll.current representation:JointSensorData:lAnkleRoll:current red
+
+vp lAnkleRoll.temperature 200 0.0 100.0
+vpd lAnkleRoll.temperature representation:JointSensorData:lAnkleRoll:temperature red
+
+vp lAnkleRoll.status 200 0.0 3.1
+vpd lAnkleRoll.status representation:JointSensorData:lAnkleRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rHipYawPitch.angle 200 -120.0 120
+vpd rHipYawPitch.angle representation:JointSensorData:rHipYawPitch:angle red
+
+vp rHipYawPitch.current 200 -10.0 100.0
+vpd rHipYawPitch.current representation:JointSensorData:rHipYawPitch:current red
+
+vp rHipYawPitch.temperature 200 0.0 100.0
+vpd rHipYawPitch.temperature representation:JointSensorData:rHipYawPitch:temperature red
+
+vp rHipYawPitch.status 200 0.0 3.1
+vpd rHipYawPitch.status representation:JointSensorData:rHipYawPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rHipRoll.angle 200 -120.0 120
+vpd rHipRoll.angle representation:JointSensorData:rHipRoll:angle red
+
+vp rHipRoll.current 200 -10.0 100.0
+vpd rHipRoll.current representation:JointSensorData:rHipRoll:current red
+
+vp rHipRoll.temperature 200 0.0 100.0
+vpd rHipRoll.temperature representation:JointSensorData:rHipRoll:temperature red
+
+vp rHipRoll.status 200 0.0 3.1
+vpd rHipRoll.status representation:JointSensorData:rHipRoll:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rHipPitch.angle 200 -120.0 120
+vpd rHipPitch.angle representation:JointSensorData:rHipPitch:angle red
+
+vp rHipPitch.current 200 -10.0 100.0
+vpd rHipPitch.current representation:JointSensorData:rHipPitch:current red
+
+vp rHipPitch.temperature 200 0.0 100.0
+vpd rHipPitch.temperature representation:JointSensorData:rHipPitch:temperature red
+
+vp rHipPitch.status 200 0.0 3.1
+vpd rHipPitch.status representation:JointSensorData:rHipPitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rKneePitch.angle 200 -120.0 120
+vpd rKneePitch.angle representation:JointSensorData:rKneePitch:angle red
+
+vp rKneePitch.current 200 -10.0 100.0
+vpd rKneePitch.current representation:JointSensorData:rKneePitch:current red
+
+vp rKneePitch.temperature 200 0.0 100.0
+vpd rKneePitch.temperature representation:JointSensorData:rKneePitch:temperature red
+
+vp rKneePitch.status 200 0.0 3.1
+vpd rKneePitch.status representation:JointSensorData:rKneePitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rAnklePitch.angle 200 -120.0 120
+vpd rAnklePitch.angle representation:JointSensorData:rAnklePitch:angle red
+
+vp rAnklePitch.current 200 -10.0 100.0
+vpd rAnklePitch.current representation:JointSensorData:rAnklePitch:current red
+
+vp rAnklePitch.temperature 200 0.0 100.0
+vpd rAnklePitch.temperature representation:JointSensorData:rAnklePitch:temperature red
+
+vp rAnklePitch.status 200 0.0 3.1
+vpd rAnklePitch.status representation:JointSensorData:rAnklePitch:status red
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+vp rAnkleRoll.angle 200 -120.0 120
+vpd rAnkleRoll.angle representation:JointSensorData:rAnkleRoll:angle red
+
+vp rAnkleRoll.current 200 -10.0 100.0
+vpd rAnkleRoll.current representation:JointSensorData:rAnkleRoll:current red
+
+vp rAnkleRoll.temperature 200 0.0 100.0
+vpd rAnkleRoll.temperature representation:JointSensorData:rAnkleRoll:temperature red
+
+vp rAnkleRoll.status 200 0.0 3.1
+vpd rAnkleRoll.status representation:JointSensorData:rAnkleRoll:status red

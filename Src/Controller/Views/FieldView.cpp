@@ -28,8 +28,7 @@
 class FieldWidget : public QWidget, public SimRobot::Widget
 {
 public:
-  FieldWidget(FieldView& fieldView) :
-    fieldView(fieldView), lastDrawingsTimeStamp(0), zoom(1.f)
+  FieldWidget(FieldView& fieldView) : fieldView(fieldView), lastDrawingsTimeStamp(0), zoom(1.f)
   {
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
@@ -45,6 +44,11 @@ public:
   }
 
   virtual ~FieldWidget()
+  {
+    //saveLayout();
+  }
+
+  virtual void saveLayout()
   {
     QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
     settings.beginGroup(fieldView.fullName);
@@ -80,7 +84,7 @@ private:
     float yScale = float(size.height()) / viewHeight;
     scale = xScale < yScale ? xScale : yScale;
     scale *= zoom;
-    painter.setTransform(QTransform(scale, 0, 0, -scale, size.width() / 2. - offset.x()*scale, size.height() / 2. - offset.y()*scale));
+    painter.setTransform(QTransform(scale, 0, 0, -scale, size.width() / 2. - offset.x() * scale, size.height() / 2. - offset.y() * scale));
 
     {
       SYNC_WITH(fieldView.console);
@@ -92,16 +96,16 @@ private:
   {
     const QTransform baseTrans(painter.transform());
     const std::list<std::string>& drawings(fieldView.console.fieldViews[fieldView.name]);
-    for(std::list<std::string>::const_iterator i = drawings.begin(), end = drawings.end(); i != end; ++i)
+    for (std::list<std::string>::const_iterator i = drawings.begin(), end = drawings.end(); i != end; ++i)
     {
       const DebugDrawing& debugDrawingCam(fieldView.console.camFieldDrawings[*i]);
       PaintMethods::paintDebugDrawing(painter, debugDrawingCam, baseTrans);
-      if(debugDrawingCam.timeStamp > lastDrawingsTimeStamp)
+      if (debugDrawingCam.timeStamp > lastDrawingsTimeStamp)
         lastDrawingsTimeStamp = debugDrawingCam.timeStamp;
 
       const DebugDrawing& debugDrawingMotion(fieldView.console.motionFieldDrawings[*i]);
       PaintMethods::paintDebugDrawing(painter, debugDrawingMotion, baseTrans);
-      if(debugDrawingMotion.timeStamp > lastDrawingsTimeStamp)
+      if (debugDrawingMotion.timeStamp > lastDrawingsTimeStamp)
         lastDrawingsTimeStamp = debugDrawingMotion.timeStamp;
     }
 
@@ -112,13 +116,12 @@ private:
   {
     SYNC_WITH(fieldView.console);
     const std::list<std::string>& drawings(fieldView.console.fieldViews[fieldView.name]);
-    for(std::list<std::string>::const_iterator i = drawings.begin(), end = drawings.end(); i != end; ++i)
+    for (std::list<std::string>::const_iterator i = drawings.begin(), end = drawings.end(); i != end; ++i)
     {
       const DebugDrawing& debugDrawingCam(fieldView.console.camFieldDrawings[*i]);
       const DebugDrawing& debugDrawingMotion(fieldView.console.motionFieldDrawings[*i]);
 
-      if(debugDrawingCam.timeStamp > lastDrawingsTimeStamp
-         || debugDrawingMotion.timeStamp > lastDrawingsTimeStamp)
+      if (debugDrawingCam.timeStamp > lastDrawingsTimeStamp || debugDrawingMotion.timeStamp > lastDrawingsTimeStamp)
         return true;
     }
     return false;
@@ -127,14 +130,14 @@ private:
   void window2viewport(QPoint& point)
   {
     const QSize& size(this->size());
-    point = QPoint((int) ((point.x() - size.width() / 2) / scale), (int) ((point.y() - size.height() / 2) / scale));
+    point = QPoint((int)((point.x() - size.width() / 2) / scale), (int)((point.y() - size.height() / 2) / scale));
     point += offset;
     point.ry() = -point.ry();
   }
 
   void mouseMoveEvent(QMouseEvent* event)
   {
-    if(dragStart.x() > 0)
+    if (dragStart.x() > 0)
     {
       const QPoint& dragPos(event->pos());
       offset = dragStartOffset + (dragStart - dragPos) / scale;
@@ -147,16 +150,16 @@ private:
       window2viewport(pos);
       const char* text = 0;
       const std::list<std::string>& drawings(fieldView.console.fieldViews[fieldView.name]);
-      for(std::list<std::string>::const_iterator i = drawings.begin(), end = drawings.end(); i != end; ++i)
+      for (std::list<std::string>::const_iterator i = drawings.begin(), end = drawings.end(); i != end; ++i)
       {
         text = fieldView.console.camFieldDrawings[*i].getTip(pos.rx(), pos.ry());
-        if(text)
+        if (text)
           break;
         text = fieldView.console.motionFieldDrawings[*i].getTip(pos.rx(), pos.ry());
-        if(text)
+        if (text)
           break;
       }
-      if(text)
+      if (text)
         setToolTip(QString(text));
       else
         setToolTip(QString());
@@ -165,75 +168,73 @@ private:
 
   void keyPressEvent(QKeyEvent* event)
   {
-    switch(event->key())
+    switch (event->key())
     {
-      case Qt::Key_PageUp:
-      case Qt::Key_Plus:
-        event->accept();
-        if(zoom >= 1.f)
-          zoom *= 1.1f;
-        else
-          zoom += MINZOOM;
-        if(zoom >= MAXZOOM)
-          zoom = MAXZOOM;
-        QWidget::update();
-        break;
-      case Qt::Key_PageDown:
-      case Qt::Key_Minus:
-        event->accept();
-        if(zoom >= 1.f)
-          zoom /= 1.1f;
-        else if(zoom > MINZOOM)
-          zoom -= 0.1f;
-        if(zoom <= MINZOOM)
-          zoom = MINZOOM;
-        QWidget::update();
-        break;
-      case Qt::Key_Down:
-        event->accept();
-        offset += QPoint(0, 100);
-        QWidget::update();
-        break;
-      case Qt::Key_Up:
-        event->accept();
-        offset += QPoint(0, -100);
-        QWidget::update();
-        break;
-      case Qt::Key_Left:
-        event->accept();
-        offset += QPoint(-100, 0);
-        QWidget::update();
-        break;
-      case Qt::Key_Right:
-        event->accept();
-        offset += QPoint(100, 0);
-        QWidget::update();
-        break;
-      default:
-        QWidget::keyPressEvent(event);
-        break;
+    case Qt::Key_PageUp:
+    case Qt::Key_Plus:
+      event->accept();
+      if (zoom >= 1.f)
+        zoom *= 1.1f;
+      else
+        zoom += MINZOOM;
+      if (zoom >= MAXZOOM)
+        zoom = MAXZOOM;
+      QWidget::update();
+      break;
+    case Qt::Key_PageDown:
+    case Qt::Key_Minus:
+      event->accept();
+      if (zoom >= 1.f)
+        zoom /= 1.1f;
+      else if (zoom > MINZOOM)
+        zoom -= 0.1f;
+      if (zoom <= MINZOOM)
+        zoom = MINZOOM;
+      QWidget::update();
+      break;
+    case Qt::Key_Down:
+      event->accept();
+      offset += QPoint(0, 100);
+      QWidget::update();
+      break;
+    case Qt::Key_Up:
+      event->accept();
+      offset += QPoint(0, -100);
+      QWidget::update();
+      break;
+    case Qt::Key_Left:
+      event->accept();
+      offset += QPoint(-100, 0);
+      QWidget::update();
+      break;
+    case Qt::Key_Right:
+      event->accept();
+      offset += QPoint(100, 0);
+      QWidget::update();
+      break;
+    default:
+      QWidget::keyPressEvent(event);
+      break;
     }
   }
 
   bool event(QEvent* event)
   {
-    if(event->type() == QEvent::Gesture)
+    if (event->type() == QEvent::Gesture)
     {
       QPinchGesture* pinch = static_cast<QPinchGesture*>(static_cast<QGestureEvent*>(event)->gesture(Qt::PinchGesture));
-      if(pinch && (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged))
+      if (pinch && (pinch->changeFlags() & QPinchGesture::ScaleFactorChanged))
       {
-        QPoint before(static_cast<int>(pinch->centerPoint().x()),
-                      static_cast<int>(pinch->centerPoint().y()));
+        QPoint before(static_cast<int>(pinch->centerPoint().x()), static_cast<int>(pinch->centerPoint().y()));
         window2viewport(before);
         scale /= zoom;
         zoom *= static_cast<float>(pinch->scaleFactor() / pinch->lastScaleFactor());
-        if(zoom >= MAXZOOM)
+        if (zoom >= MAXZOOM)
           zoom = MAXZOOM;
-        else if(zoom <= MINZOOM)
+        else if (zoom <= MINZOOM)
           zoom = MINZOOM;
         scale *= zoom;
-        QPoint after(static_cast<int>(pinch->centerPoint().x()),
-                     static_cast<int>(pinch->centerPoint().y()));
+        QPoint after(static_cast<int>(pinch->centerPoint().x()), static_cast<int>(pinch->centerPoint().y()));
         window2viewport(after);
         QPoint diff = before - after;
         diff.ry() *= -1;
@@ -249,26 +250,19 @@ private:
   {
     QWidget::wheelEvent(event);
 
-#ifndef OSX
-    zoom += 0.1f * event->delta() / 120.f;
-    if(zoom >= MAXZOOM)
+    zoom += 0.1f * event->angleDelta().y() / 120.f;
+    if (zoom >= MAXZOOM)
       zoom = MAXZOOM;
-    else if(zoom <= MINZOOM)
+    else if (zoom <= MINZOOM)
       zoom = MINZOOM;
     QWidget::update();
-#else
-    int step = -static_cast<int>(event->delta() / (scale * 2.f));
-    offset += event->orientation() == Qt::Horizontal ? QPoint(step, 0) : QPoint(0, step);
-    if(step)
-      QWidget::update();
-#endif
   }
 
   void mousePressEvent(QMouseEvent* event)
   {
     QWidget::mousePressEvent(event);
 
-    if(event->button() == Qt::LeftButton || event->button() == Qt::MidButton)
+    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton)
     {
       dragStart = event->pos();
       dragStartOffset = offset;
@@ -292,20 +286,19 @@ private:
 
   QSize sizeHint() const { return QSize(int(fieldDimensions.xPosOpponentFieldBorder * 0.2f), int(fieldDimensions.yPosLeftFieldBorder * 0.2f)); }
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
 
   void update()
   {
-    if(needsRepaint())
+    if (needsRepaint())
       QWidget::update();
   }
-  virtual QMenu* createUserMenu() const {return new QMenu(tr("&Field"));}
+  virtual QMenu* createUserMenu() const { return new QMenu(tr("&Field")); }
 
   friend class FieldView;
 };
 
-FieldView::FieldView(const QString& fullName, RobotConsole& console, const std::string& name) :
-  fullName(fullName), icon(":/Icons/tag_green.png"), console(console), name(name) {}
+FieldView::FieldView(const QString& fullName, RobotConsole& console, const std::string& name) : fullName(fullName), icon(":/Icons/tag_green.png"), console(console), name(name) {}
 
 SimRobot::Widget* FieldView::createWidget()
 {

@@ -16,19 +16,17 @@
 
 
 MODULE(CoPProvider,
-{ ,
   REQUIRES(FsrSensorData),
   REQUIRES(RobotModel),
   USES(WalkingInfo),
-  PROVIDES(ZMPModel),
-});
+  PROVIDES(ZMPModel)
+);
 
-class CoPProvider: public CoPProviderBase
+class CoPProvider : public CoPProviderBase
 {
 public:
-
 private:
-	void update(ZMPModel &zmpModel);
+  void update(ZMPModel& zmpModel);
 };
 
 

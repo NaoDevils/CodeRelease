@@ -9,10 +9,9 @@
 #include <array>
 
 STREAMABLE(JointAngles,
-{
 public:
-  enum {off = SensorData::off}; /**< Special value that indicates that the joint is turned off. */ // TODO replace with constexpr
-  enum {ignore = 20000}; /**< Special angle for not overwriting the previous setting. */ // TODO replace with constexpr
+  static constexpr Angle off = SensorData::off; /**< Special value that indicates that the joint is turned off. */
+  static constexpr Angle ignore = 20000.f; /**< Special angle for not overwriting the previous setting. */
 
   JointAngles();
 
@@ -39,8 +38,8 @@ private:
 public:
   ,
   (std::array<Angle, Joints::numOfJoints>) angles, /**< The angles of all joints. */
-  (unsigned)(0) timestamp, /**< The time when the jointangles were received*/
-});
+  (unsigned)(0) timestamp /**< The time when the jointangles were received*/
+);
 
 inline JointAngles::JointAngles()
 {

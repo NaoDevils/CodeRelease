@@ -10,8 +10,7 @@
 
 #include "Tools/Streams/AutoStreamable.h"
 
-STREAMABLE(TeamBallModelParameters,
-{,
+STREAMABLE(TeamBallModelParameters,,
   /// This Validity (in range [0,1]) is at least required for the local 
   /// ball model to believe it is correct.
   (float)(0.35f) minValidityForLocalBallModel,
@@ -20,5 +19,5 @@ STREAMABLE(TeamBallModelParameters,
   /// ball model (only other teammates) to believe it is correct.
   /// The remote ball model is only used, if the local ball models 
   /// validity is below \c minValidityForLocalBallModel.
-  (float)(0.5f) minValidityForRemoteBallModel,
-});
+  (float)(0.5f) minValidityForRemoteBallModel
+);

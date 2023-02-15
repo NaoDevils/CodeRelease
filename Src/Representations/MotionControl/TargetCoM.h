@@ -7,7 +7,7 @@
 #include "Modules/MotionControl/DortmundWalkingEngine/Point.h"
 
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Debugging/Watch.h"
 #else
 #include "bhumanstub.h"
@@ -18,9 +18,8 @@
 * @class TargetCoM 
 * Representing the target position of center of mass.
 */
-class TargetCoM : public Streamable, public Point, public Watch
-{
-public :
+STREAMABLE_WITH_BASE(TargetCoM, TranslationPoint,
+
 	void watch()
 	{
 		WATCH(x);
@@ -28,19 +27,7 @@ public :
 		WATCH(z);
 	}
 
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-		STREAM(x)
-		STREAM(y)
-		STREAM(z)
-    STREAM(state_x)
-    STREAM(state_y)
-		STREAM_REGISTER_FINISH;
-	};
-    
-    double state_x[6], state_y[6];
-    bool isRunning;
+	bool isRunning = false;
 
 	/** Constructor */
 	TargetCoM()
@@ -53,10 +40,10 @@ public :
     }
     
 	};
-
-	/** Desctructor */
-	~TargetCoM(){};
-};
+	,
+	(double[6]) state_x,
+	(double[6]) state_y
+);
 
 //struct TargetCoMFLIPM : public TargetCoM {};
 //struct TargetCoMLIPM : public TargetCoM {};

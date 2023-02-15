@@ -16,7 +16,6 @@
  * The torso coordinate frame is considert to be in the middle between the hip joints.
  */
 STREAMABLE(RobotDimensions,
-{
   /**
    * x-offset between the neck joint and current camera.
    * @param lowerCamera true, if lower camera is in use, false otherwise.
@@ -60,9 +59,12 @@ STREAMABLE(RobotDimensions,
 
   (Vector3f) imuOffset,             //!< The offset of the imu relative to the torso coordinate frame.
 
+  (std::vector<Vector2f>) leftFsrPositions,   //!< The positions of the fsr on the left foot. --> fl, fr, bl, br
+  (std::vector<Vector2f>) rightFsrPositions,  //!< The positions of the fsr on the right foot. --> fl, fr, bl, br
+
   // for NDD kinematic
   (float) footFront,               //!< The offset of the foot joints to the foot tip.
   (float) footBack,                //!< The offset of the foot joints to the back of the foot.
   (float) footOuter,               //!< The offset of the foot joints to the outer end of the foot.
-  (float) footInner,               //!< The offset of the foot joints to the inner end of the foot.
-});
+  (float) footInner               //!< The offset of the foot joints to the inner end of the foot.
+);

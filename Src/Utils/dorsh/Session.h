@@ -3,8 +3,10 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <memory>
 #include <QObject>
 #include <Utils/dorsh/models/Team.h>
+#include <QScopedPointer>
 
 class Context;
 class DataAgent;
@@ -39,15 +41,15 @@ class Session : public QObject
   IConsole* console;
   LogLevel logLevel;
 
-  DataAgent* dataAgent;
+  QScopedPointer<DataAgent> dataAgent;
 
   Session();
+  ~Session();
 
-  ENetwork getBestNetwork(const RobotConfigDorsh* robot);
 
 public:
   unsigned short* teamNumber;
-  std::map<std::string, RobotConfigDorsh*> robotsByName;
+  std::map<std::string, std::unique_ptr<RobotConfigDorsh>> robotsByName;
 
   static Session& getInstance();
 
@@ -59,12 +61,12 @@ public:
   std::string getBestIP(const Context& context, const RobotConfigDorsh* robot);
   void setTeamNumber(Team* team);
   bool isReachable(const Context& context, const RobotConfigDorsh* robot);
+  ENetwork getBestNetwork(const RobotConfigDorsh* robot);
 
   void registerDataListener(QObject* qObject, RobotConfigDorsh* robot = nullptr);
   void removeDataListener(QObject* qObject, RobotConfigDorsh* robot = nullptr);
-
-  void registerWifiListener(QObject* qObject, RobotConfigDorsh* robot = nullptr);
-  void removeWifiListener(QObject* qObject, RobotConfigDorsh* robot = nullptr);
+  void registerGCStatusListener(QObject* qObject);
+  void removeGCStatusListener(QObject* qObject);
 
   std::vector<std::string> sendDebugRequest(const Context& context, const RobotConfigDorsh* robot, const std::string& command);
 

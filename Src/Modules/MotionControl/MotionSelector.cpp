@@ -12,18 +12,18 @@
 
 MAKE_MODULE(MotionSelector, motionControl)
 
-PROCESS_LOCAL MotionSelector* MotionSelector::theInstance = 0;
+CycleLocal<MotionSelector*> MotionSelector::theInstance(nullptr);
 
 void MotionSelector::stand()
 {
-  if(theInstance)
-    theInstance->forceStand = true;
+  if (*theInstance)
+    (*theInstance)->forceStand = true;
 }
 
 void MotionSelector::move()
 {
-  if(theInstance)
-    theInstance->forceStand = false;
+  if (*theInstance)
+    (*theInstance)->forceStand = false;
 }
 
 
@@ -33,14 +33,14 @@ void MotionSelector::update(MotionSelection& motionSelection)
   interpolationTimes[MotionRequest::walk] = 300;
   interpolationTimes[MotionRequest::kick] = 100;
   //interpolationTimes[MotionRequest::dmpKick] = 200;
-  interpolationTimes[MotionRequest::specialAction] = 200;
+  interpolationTimes[MotionRequest::specialAction] = 12;
   interpolationTimes[MotionRequest::stand] = 1500;
-  interpolationTimes[MotionRequest::keyFrame] = 200;
+  interpolationTimes[MotionRequest::keyFrame] = 12;
   //interpolationTimes[MotionRequest::stand] = 600;
 
   static const int playDeadDelay(2000);
 
-  if(lastExecution)
+  if (lastExecution)
   {
     MotionRequest::Motion requestedMotion = theMotionRequest.motion;
     if (theMotionRequest.motion == MotionRequest::walk && !theGroundContactState.contact)
@@ -55,27 +55,24 @@ void MotionSelector::update(MotionSelection& motionSelection)
       motionSelection.walkRequest = WalkRequest();
 
     // check if the target motion can be the requested motion (mainly if leaving is possible)
-    if((lastMotion == MotionRequest::walk && 
-          (theWalkingEngineOutput.isLeavingPossible || !theGroundContactState.contact || 
-            (theMotionSettings.leaveWalkForDive && requestedMotion == theMotionRequest.specialAction &&
-              theMotionRequest.specialActionRequest.specialAction >= SpecialActionRequest::numOfBasicMotions &&
-              theMotionRequest.specialActionRequest.specialAction < SpecialActionRequest::numOfSpecialActionIDs))) ||
-       (lastMotion == MotionRequest::specialAction && theSpecialActionsOutput.isLeavingPossible) ||
-       (lastMotion == MotionRequest::kick && theKickEngineOutput.isLeavingPossible) || //never immediatly leave kick or get up
-      (lastMotion == MotionRequest::stand && theStandEngineOutput.isLeavingPossible))
+    const bool leaveWalk = lastMotion == MotionRequest::walk
+        && (theWalkingEngineOutput.isLeavingPossible || !theGroundContactState.contact
+            || (theMotionSettings.leaveWalkForDive && (theMotionRequest.inBlockMotion() || theMotionRequest.inStandUpMotion())));
+    const bool leaveSpecialAction = lastMotion == MotionRequest::specialAction && theSpecialActionsOutput.isLeavingPossible;
+    const bool leaveKick = lastMotion == MotionRequest::kick && theKickEngineOutput.isLeavingPossible;
+    const bool leaveStand = lastMotion == MotionRequest::stand && theStandEngineOutput.isLeavingPossible;
+    if (leaveWalk || leaveSpecialAction || leaveKick || leaveStand)
     {
       motionSelection.targetMotion = requestedMotion;
     }
 
-    if(requestedMotion == MotionRequest::specialAction)
+    if (requestedMotion == MotionRequest::specialAction)
     {
       motionSelection.specialActionRequest = theMotionRequest.specialActionRequest;
     }
     else
     {
       motionSelection.specialActionRequest = SpecialActionRequest();
-      if(motionSelection.targetMotion == MotionRequest::specialAction)
-        motionSelection.specialActionRequest.specialAction = SpecialActionRequest::numOfSpecialActionIDs;
     }
 
     const bool afterPlayDead(prevMotion == MotionRequest::specialAction && lastActiveSpecialAction == SpecialActionRequest::playDead);
@@ -83,9 +80,9 @@ void MotionSelector::update(MotionSelection& motionSelection)
     const int bodyInterpolationTime(afterPlayDead ? playDeadDelay : interpolationTimes[motionSelection.targetMotion]);
     interpolate(motionSelection.ratios, MotionRequest::numOfMotions, bodyInterpolationTime, motionSelection.targetMotion);
 
-    if(motionSelection.ratios[MotionRequest::specialAction] < 1.f)
+    if (motionSelection.ratios[MotionRequest::specialAction] < 1.f)
     {
-      if(motionSelection.targetMotion == MotionRequest::specialAction)
+      if (motionSelection.targetMotion == MotionRequest::specialAction)
         motionSelection.specialActionMode = MotionSelection::first;
       else
         motionSelection.specialActionMode = MotionSelection::deactive;
@@ -93,12 +90,11 @@ void MotionSelector::update(MotionSelection& motionSelection)
     else
       motionSelection.specialActionMode = MotionSelection::active;
 
-    if(motionSelection.specialActionMode == MotionSelection::active && motionSelection.specialActionRequest.specialAction != SpecialActionRequest::numOfSpecialActionIDs)
+    if (motionSelection.specialActionMode == MotionSelection::active && motionSelection.specialActionRequest.specialAction != SpecialActionRequest::numOfSpecialActionIDs)
       lastActiveSpecialAction = motionSelection.specialActionRequest.specialAction;
-
   }
 
-  if(lastMotion != motionSelection.targetMotion)
+  if (lastMotion != motionSelection.targetMotion)
     prevMotion = lastMotion;
 
   lastMotion = motionSelection.targetMotion;
@@ -120,7 +116,7 @@ void MotionSelector::update(MotionSelection& motionSelection)
 
 #ifndef NDEBUG
   const Rangef& ratioLimits = Rangef::ZeroOneRange();
-  for(int i = 0; i < MotionRequest::numOfMotions; ++i)
+  for (int i = 0; i < MotionRequest::numOfMotions; ++i)
     ASSERT(ratioLimits.isInside(motionSelection.ratios[i]));
 #endif
 }
@@ -132,9 +128,9 @@ void MotionSelector::interpolate(float* ratios, const int amount, const int inte
   float delta(static_cast<float>(deltaTime) / interpolationTime);
   ASSERT(SystemCall::getMode() == SystemCall::logfileReplay || delta > 0.00001f);
   float sum(0);
-  for(int i = 0; i < amount; i++)
+  for (int i = 0; i < amount; i++)
   {
-    if(i == targetMotion)
+    if (i == targetMotion)
       ratios[i] += delta;
     else
       ratios[i] -= delta;
@@ -143,10 +139,10 @@ void MotionSelector::interpolate(float* ratios, const int amount, const int inte
   }
   ASSERT(sum != 0);
   // normalize ratios
-  for(int i = 0; i < amount; i++)
+  for (int i = 0; i < amount; i++)
   {
     ratios[i] /= sum;
-    if(std::abs(ratios[i] - 1.f) < 0.00001f)
+    if (std::abs(ratios[i] - 1.f) < 0.00001f)
       ratios[i] = 1.f; // this should fix a "motionSelection.ratios[motionSelection.targetMotion] remains smaller than 1.f" bug
   }
 }

@@ -8,69 +8,43 @@
 
 #include "Utils/dorsh/cmdlib/ProcessRunner.h"
 #include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include <iostream>
 
-ProcessRunner::ProcessRunner(const QString& command)
-  : process(0),
-    program(command),
-    arguments(0),
-    context(0)
-{}
+ProcessRunner::ProcessRunner(const QString& command) : process(0), program(command), arguments(0), context(0) {}
 
-ProcessRunner::ProcessRunner(const QString& program, const QStringList& arguments)
-  : process(0),
-    program(program),
-    arguments(new QStringList(arguments)),
-    context(0)
-{}
+ProcessRunner::ProcessRunner(const QString& program, const QStringList& arguments) : process(0), program(program), arguments(new QStringList(arguments)), context(0) {}
 
 ProcessRunner::ProcessRunner(Context& context, const std::string& program, const QStringList& arguments)
-  : process(0),
-    program(fromString(program)),
-    arguments(new QStringList(arguments)),
-    context(&context)
-{}
+    : process(0), program(QString::fromStdString(program)), arguments(new QStringList(arguments)), context(&context)
+{
+}
 
-ProcessRunner::ProcessRunner(Context& context, const QString& program, const QStringList& args)
-  : process(0),
-    program(program),
-    arguments(new QStringList(args)),
-    context(&context)
-{}
+ProcessRunner::ProcessRunner(Context& context, const QString& program, const QStringList& args) : process(0), program(program), arguments(new QStringList(args)), context(&context)
+{
+}
 
-ProcessRunner::ProcessRunner(Context& context, const std::string& command)
-  : process(0),
-    program(fromString(command)),
-    arguments(0),
-    context(&context)
-{}
+ProcessRunner::ProcessRunner(Context& context, const std::string& command) : process(0), program(QString::fromStdString(command)), arguments(0), context(&context) {}
 
-ProcessRunner::ProcessRunner(Context& context, const QString& command)
-  : process(0),
-    program(command),
-    arguments(0),
-    context(&context)
-{}
+ProcessRunner::ProcessRunner(Context& context, const QString& command) : process(0), program(command), arguments(0), context(&context) {}
 
 ProcessRunner::~ProcessRunner()
 {
-  if(process)
+  if (process)
     process->deleteLater();
-  if(arguments)
+  if (arguments)
     delete arguments;
 }
 
 ProcessRunner& ProcessRunner::operator=(const ProcessRunner& other)
 {
-  if(this != &other)
+  if (this != &other)
   {
-    if(arguments)
+    if (arguments)
       delete arguments;
 
     process = other.process;
     program = other.program;
-    if(other.arguments)
+    if (other.arguments)
       arguments = new QStringList(*other.arguments);
     else
       arguments = 0;
@@ -80,7 +54,7 @@ ProcessRunner& ProcessRunner::operator=(const ProcessRunner& other)
 
 void ProcessRunner::run()
 {
-  if(!process)
+  if (!process)
     process = new QProcess();
 #ifdef WINDOWS
   QProcessEnvironment env = env.systemEnvironment();
@@ -91,7 +65,7 @@ void ProcessRunner::run()
   connect(process, SIGNAL(readyReadStandardError()), this, SLOT(updateError()), Qt::DirectConnection);
   connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(updateText()), Qt::DirectConnection);
 
-  if(arguments)
+  if (arguments)
     process->start(program, *arguments);
   else
     process->start(program);
@@ -124,8 +98,8 @@ void ProcessRunner::updateError()
   QByteArray data = process->readAllStandardError();
   QString errorOutput(data);
   output += errorOutput;
-  if(context)
-    context->error(toString(errorOutput));
+  if (context)
+    context->error(errorOutput.toStdString());
 }
 
 void ProcessRunner::updateText()
@@ -133,21 +107,18 @@ void ProcessRunner::updateText()
   QByteArray data = process->readAllStandardOutput();
   QString stdOutput(data);
   output += stdOutput;
-  if(context)
-    context->print(toString(stdOutput));
+  if (context)
+    context->print(stdOutput.toStdString());
 }
 
-RemoteWriteProcessRunner::RemoteWriteProcessRunner(Context& context,
-    const QString& program,
-    const QStringList& arguments,
-    const QByteArray& data)
-  : ProcessRunner(context, program, arguments),
-    data(data)
-{}
+RemoteWriteProcessRunner::RemoteWriteProcessRunner(Context& context, const QString& program, const QStringList& arguments, const QByteArray& data)
+    : ProcessRunner(context, program, arguments), data(data)
+{
+}
 
 void RemoteWriteProcessRunner::interact(QProcess* process)
 {
-  if(process->write(data) < 0)
+  if (process->write(data) < 0)
     context->errorLine("Cannot write to remote file.");
   process->closeWriteChannel();
 }

@@ -5,7 +5,7 @@
 *
 * @author <a href="mailto:kaden@informatik.hu-berlin.de">Steffen Kaden</a>
 * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
-*/ 
+*/
 
 
 #pragma once
@@ -13,39 +13,36 @@
 #include "Tools/Math/Eigen.h"
 
 // measurement vectors which are elements of a euclidean vector space, e.g. velocity, accelerations
-template <int dim>
-class Measurement : public Eigen::Matrix<double,dim,1>
+template <int dim> class Measurement : public Eigen::Matrix<double, dim, 1>
 {
 public:
   // This constructor allows you to construct MyVectorType from Eigen expressions
-  template<typename OtherDerived>
-  Measurement(const Eigen::MatrixBase<OtherDerived>& other) : Eigen::Matrix<double,dim,1>(other)
-  { }
+  template <typename OtherDerived> Measurement(const Eigen::MatrixBase<OtherDerived>& other) : Eigen::Matrix<double, dim, 1>(other) {}
 
   // inital state (zero rotation, zero angular velocity)
-  Measurement() : Eigen::Matrix<double,dim,1>(Eigen::Matrix<double,dim,1>::Zero())
-  { }
+  Measurement() : Eigen::Matrix<double, dim, 1>(Eigen::Matrix<double, dim, 1>::Zero()) {}
 
   // initial measurement vector (zero rotation, zero angular velocity)
   // This method allows you to assign Eigen expressions to MyVectorType
-  template<typename OtherDerived>
-  Measurement& operator=(const Eigen::MatrixBase<OtherDerived>& other)
+  template <typename OtherDerived> Measurement& operator=(const Eigen::MatrixBase<OtherDerived>& other)
   {
-    this->Eigen::Matrix<double,dim,1>::operator=(other);
+    this->Eigen::Matrix<double, dim, 1>::operator=(other);
     return *this;
   }
 
 public:
-  static Measurement calcMean(const std::vector<Measurement, Eigen::aligned_allocator<Measurement> >& states)
+  static Measurement calcMean(const std::vector<Measurement, Eigen::aligned_allocator<Measurement>>& states)
   {
     Measurement mean;
 
-    if(states.empty()) {
+    if (states.empty())
+    {
       return mean;
     }
 
     // calculate new state (weighted mean of sigma points)
-    for(const auto& s : states) {
+    for (const auto& s : states)
+    {
       mean += s;
     }
 

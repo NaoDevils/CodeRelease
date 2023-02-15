@@ -13,9 +13,8 @@
  * @struct HeadAngleRequest
  * A struct that represents the requested head angles.
  */
-STREAMABLE(HeadAngleRequest,
-{,
+STREAMABLE(HeadAngleRequest,,
   (Angle)(0) pan,   /**< Head pan target angle. */
   (Angle)(0) tilt,  /**< Head tilt target angle. */
-  (Angle)(1) speed, /**< Maximum joint speed to reach target angles in rad/s. */
-});
+  (Angle)(1) speed /**< Maximum joint speed to reach target angles in rad/s. */
+);

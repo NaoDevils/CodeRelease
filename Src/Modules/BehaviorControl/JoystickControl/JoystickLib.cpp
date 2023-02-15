@@ -2,12 +2,12 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 #include "JoystickLib.h"
@@ -25,9 +25,7 @@
 #include "unistd.h"
 #endif
 
-JoystickLib::JoystickLib()
-{
-}
+JoystickLib::JoystickLib() {}
 
 JoystickLib::JoystickLib(int joystickNumber)
 {
@@ -68,7 +66,8 @@ void JoystickLib::openPath(std::string devicePath)
   std::cout << "Succeeded" << std::endl;
   // Empty message buffer.
   JoystickEvent event;
-  while (sample(&event));
+  while (sample(&event))
+    ;
 #endif
 }
 
@@ -83,7 +82,7 @@ void JoystickLib::closeJoystick()
 bool JoystickLib::sample(JoystickEvent* event)
 {
 #ifdef LINUX
-  int bytes = read(m_fd, event, sizeof(*event));
+  ssize_t bytes = read(m_fd, event, sizeof(*event));
 
   if (bytes == -1)
     return false;

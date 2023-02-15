@@ -7,7 +7,6 @@
 #include "BHAssert.h"
 #include "Semaphore.h"
 
-#define NOMINMAX
 #include <windows.h>
 
 #include <limits>

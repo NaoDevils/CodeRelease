@@ -25,8 +25,7 @@ namespace InverseKinematic
    * @param ratio The ratio between the left and right yaw angle.
    * @return Whether the target position was reachable or not (if the given target position is not reachable the computation proceeds using the closest reachable position near the target).
    */
-  bool calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, JointAngles& jointAngles,
-                     const RobotDimensions& robotDimensions, float ratio = 0.5f) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio = 0.5f);
 
   /**
    * This method calculates the joint angles for the legs of the robot from a Pose3f for each leg and the body ptch and roll.
@@ -38,10 +37,10 @@ namespace InverseKinematic
    * @param ratio The ratio between the left and right yaw angle
    * @return Whether the target position was reachable or not (if the given target position is not reachable the computation proceeds using the closest reachable position near the target)
    */
-  bool calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, const Vector2f& bodyRotation, JointAngles& jointAngles,
-                     const RobotDimensions& robotDimensions, float ratio = 0.5f) WARN_UNUSED_RESULT;
-  bool calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, const Quaternionf& bodyRotation, JointAngles& jointAngles,
-                const RobotDimensions& robotDimensions, float ratio = 0.5f) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool calcLegJoints(
+      const Pose3f& positionLeft, const Pose3f& positionRight, const Vector2f& bodyRotation, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio = 0.5f);
+  [[nodiscard]] bool calcLegJoints(
+      const Pose3f& positionLeft, const Pose3f& positionRight, const Quaternionf& bodyRotation, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio = 0.5f);
 
   /**
    * Solves the inverse kinematics for the head of the Nao such that the camera looks at a certain point.
@@ -52,6 +51,5 @@ namespace InverseKinematic
    * @param robotDimensions The robot dimensions needed for the calculation.
    * @param cameraCalibration The camera calibration
    */
-  void calcHeadJoints(const Vector3f& position, const float imageTilt, const RobotDimensions& robotDimensions,
-                      const bool lowerCamera, Vector2f& panTilt, const CameraCalibration& cameraCalibration);
-};
+  void calcHeadJoints(const Vector3f& position, const float imageTilt, const RobotDimensions& robotDimensions, const bool lowerCamera, Vector2f& panTilt, const CameraCalibration& cameraCalibration);
+}; // namespace InverseKinematic

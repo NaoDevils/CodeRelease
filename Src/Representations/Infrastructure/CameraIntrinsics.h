@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file CameraIntrinsics.h
  * Declaration of a struct for representing the intrinsic parameters of the cameras.
  * @author Alexis Tsogias
@@ -16,14 +16,11 @@
  * Restoring the optical center in pixels is a matter of multiplying the width / height of the cameras.
  * Thus, only resolutions with the same aspect ratios should be used.
  */
-STREAMABLE(CameraIntrinsics,
-{,
+STREAMABLE(CameraIntrinsics,,
   (Angle) upperOpeningAngleWidth,
   (Angle) upperOpeningAngleHeight,
   (Vector2f) upperOpticalCenter,
   (Angle) lowerOpeningAngleWidth,
   (Angle) lowerOpeningAngleHeight,
-  (Vector2f) lowerOpticalCenter,
-});
-
-using CameraIntrinsicsNext = Next<CameraIntrinsics>;
+  (Vector2f) lowerOpticalCenter
+);

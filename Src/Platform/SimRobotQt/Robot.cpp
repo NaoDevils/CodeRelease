@@ -12,6 +12,7 @@
 #include "Controller/LocalRobot.h"
 #include "Robot.h"
 #include "Controller/ConsoleRoboCupCtrl.h"
+#include "Tools/Module/Logger.h"
 
 extern "C" DLL_EXPORT SimRobot::Module* createModule(SimRobot::Application& simRobot)
 {
@@ -22,16 +23,17 @@ extern "C" DLL_EXPORT SimRobot::Module* createModule(SimRobot::Application& simR
 
 MAKE_PROCESS(LocalRobot);
 
-Robot::Robot(const char* name)
-  : name(name)
+Robot::Robot(const char* name) : name(name), logger(std::make_unique<Logger>(std::initializer_list<char>{'m', 'c'}))
 {
+  create(logger.get());
+
   InMapFile cm("Processes/connect.cfg");
   ASSERT(cm.exists());
 
   // attach receivers to senders
   ConnectionParameter cp;
   cm >> cp;
-  for(std::vector<ConnectionParameter::ProcessConnection>::const_iterator it = cp.processConnections.begin(); it != cp.processConnections.end(); ++it)
+  for (std::vector<ConnectionParameter::ProcessConnection>::const_iterator it = cp.processConnections.begin(); it != cp.processConnections.end(); ++it)
   {
     connect(getSender(it->sender.c_str()), getReceiver(it->receiver.c_str()));
   }
@@ -41,10 +43,12 @@ Robot::Robot(const char* name)
   connect(getSender("LocalRobot.Sender.MessageQueue.S"), getReceiver("Debug.Receiver.MessageQueue.O"));
 
   robotProcess = 0;
-  for(ProcessList::const_iterator i = begin(); i != end() && !robotProcess; ++i)
+  for (ProcessList::const_iterator i = begin(); i != end() && !robotProcess; ++i)
     robotProcess = (LocalRobot*)(*i)->getProcess("LocalRobot");
   ASSERT(robotProcess);
 }
+
+Robot::~Robot() = default;
 
 void Robot::update()
 {
@@ -53,22 +57,22 @@ void Robot::update()
 
 void Robot::connect(SenderList* sender, ReceiverList* receiver)
 {
-  if(sender && receiver)
+  if (sender && receiver)
     sender->add(receiver);
 }
 
 SenderList* Robot::getSender(const std::string& senderName)
 {
-  for(ProcessList::const_iterator i = begin(); i != end(); ++i)
+  for (ProcessList::const_iterator i = begin(); i != end(); ++i)
   {
     std::string name;
-    if(senderName[0] == '.')
+    if (senderName[0] == '.')
       name = (*i)->getName();
     else
       name = "";
     name += senderName;
     SenderList* sender = (*i)->lookupSender(name);
-    if(sender)
+    if (sender)
       return sender;
   }
   TRACE("%s not found", senderName.c_str());
@@ -77,10 +81,10 @@ SenderList* Robot::getSender(const std::string& senderName)
 
 ReceiverList* Robot::getReceiver(const std::string& receiverName)
 {
-  for(ProcessList::const_iterator i = begin(); i != end(); ++i)
+  for (ProcessList::const_iterator i = begin(); i != end(); ++i)
   {
     ReceiverList* receiver = (*i)->lookupReceiver(receiverName);
-    if(receiver)
+    if (receiver)
       return receiver;
   }
   TRACE("%s not found", receiverName.c_str());

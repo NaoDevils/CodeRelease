@@ -11,17 +11,20 @@ dr debugDrawing3d:representation:TeamInfo
 robot all
 
 # Select modules for simulator
-mr CameraInfo CognitionLogDataProvider
-mr CameraInfoUpper CognitionLogDataProvider
+mr GroundTruthWorldState CognitionLogDataProvider
+#mr BallModel OracledWorldModelProvider
+#mr MultipleBallModel OracledWorldModelProvider
+#mr RobotPose OracledWorldModelProvider
+#mr RobotMap OracledWorldModelProvider
+mr GroundTruthRobotPose OracledWorldModelProvider
+mr GroundTruthBallModel OracledWorldModelProvider
+mr GroundTruthMultipleBallModel OracledWorldModelProvider
 mr FrameInfo CognitionLogDataProvider
 mr JointSensorData MotionLogDataProvider
 mr InertialSensorData MotionLogDataProvider
 mr KeyStates MotionLogDataProvider
 mr UsSensorData MotionLogDataProvider
 mr FrameInfo MotionLogDataProvider
-mr GroundTruthWorldState CognitionLogDataProvider
-mr GroundTruthRobotPose OracledWorldModelProvider
-mr GroundTruthBallModel OracledWorldModelProvider
 
 # Fast, because we do not compute images
 ci off
@@ -31,26 +34,35 @@ mr ImageUpper default
 # Deactivate unused modules
 mr RobotHealth default
 mr Thumbnail off
-
-call Includes/FieldViews
+mr ThumbnailUpper off
+mr LowFrameRateImage off
+mr LowFrameRateImageUpper off
 
 mr RobotsPercept OracledPerceptsProvider
 mr RobotsPerceptUpper OracledPerceptsProvider
+mr CLIPCenterCirclePercept OracledPerceptsProvider
 mr CLIPGoalPercept OracledPerceptsProvider
 mr CLIPFieldLinesPercept OracledPerceptsProvider
-mr BallPercept OracledPerceptsProvider
-mr CLIPCenterCirclePercept OracledPerceptsProvider
 mr PenaltyCrossPercept OracledPerceptsProvider
+mr BallPercept OracledPerceptsProvider
+mr MultipleBallPercept OracledPerceptsProvider
+
+mr BallHypothesesYolo default
+mr PenaltyCrossHypothesesYolo default
+mr BallPercept default
+mr MultipleBallPercept default
+mr ProcessedBallPatches default
 mr CLIPPointsPercept off
 mr ObstacleBasePoints off
 mr BallSpots off
-mr IntegralImage off
-mr BodyContour default
+mr BodyContour off
+mr BodyContourUpper off
 mr FieldColors default
 mr FieldColorsUpper default
+mr YoloInput off
+mr YoloInputUpper off
+mr PNGImageDummy default
 
 call Includes/DebugResponses
 call Includes/GameStates
-
-dr debugDrawing3d:representation:RobotPose
-dr debugDrawing3d:representation:SideConfidence
+call Includes/FieldViews

@@ -40,6 +40,11 @@ public:
   static bool logInit(const char* name);
 
   /**
+  * Terminates log message ring buffers associated to the current thread
+  */
+  static void logTerm();
+
+  /**
   * Adds a message to the log message ring buffer
   * @param track The id of the used ring buffer
   * @param file The name of the current file (__FILE__)
@@ -101,6 +106,16 @@ public:
 #define BH_TRACE_INIT(name) ((void)0)
 #else
 #define BH_TRACE_INIT(name) VERIFY(Assert::logInit(name))
+#endif
+
+
+/**
+* Terminates log message ring buffers associated to the current thread
+*/
+#if defined(NDEBUG) || !defined(TARGET_ROBOT)
+#define BH_TRACE_TERM ((void)0)
+#else
+#define BH_TRACE_TERM Assert::logTerm()
 #endif
 
 /**

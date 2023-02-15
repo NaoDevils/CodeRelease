@@ -1,0 +1,167 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "simulator",
+      "displayName": "Simulator",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "hidden": true,
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      }
+    },
+    {
+      "name": "nao",
+      "displayName": "Nao",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "hidden": true,
+      "cacheVariables": {
+        "BUILD_ROBOT": true,
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_C_COMPILER": "clang"
+      },
+      "condition": {
+        "lhs": "${hostSystemName}",
+        "type": "equals",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "simulator-multiconfig",
+      "displayName": "Simulator",
+      "inherits": "simulator",
+      "generator": "Ninja Multi-Config"
+    },
+    {
+      "name": "simulator-develop",
+      "displayName": "Simulator Develop",
+      "inherits": "simulator",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Linux" ] }
+      }
+    },
+    {
+      "name": "simulator-release",
+      "displayName": "Simulator Release",
+      "inherits": "simulator",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Linux" ] }
+      }
+    },
+    {
+      "name": "simulator-debug",
+      "displayName": "Simulator Debug",
+      "inherits": "simulator",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Linux" ] }
+      }
+    },
+    {
+      "name": "nao-multiconfig",
+      "displayName": "Nao",
+      "inherits": "nao",
+      "generator": "Ninja Multi-Config"
+    },
+    {
+      "name": "nao-develop",
+      "displayName": "Nao Develop",
+      "inherits": "nao",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "nao-release",
+      "displayName": "Nao Release",
+      "inherits": "nao",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "nao-debug",
+      "displayName": "Nao Debug",
+      "inherits": "nao",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "simulator-develop",
+      "displayName": "Default",
+      "configurePreset": "simulator-develop"
+    },
+    {
+      "name": "simulator-release",
+      "displayName": "Default",
+      "configurePreset": "simulator-release"
+    },
+    {
+      "name": "simulator-debug",
+      "displayName": "Default",
+      "configurePreset": "simulator-debug"
+    },
+    {
+      "name": "simulator-multiconfig-develop",
+      "displayName": "Develop",
+      "configurePreset": "simulator-multiconfig",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "simulator-multiconfig-release",
+      "displayName": "Release",
+      "configurePreset": "simulator-multiconfig",
+      "configuration": "Release"
+    },
+    {
+      "name": "simulator-multiconfig-debug",
+      "displayName": "Debug",
+      "configurePreset": "simulator-multiconfig",
+      "configuration": "Debug"
+    },
+    {
+      "name": "nao-develop",
+      "configurePreset": "nao-develop"
+    },
+    {
+      "name": "nao-release",
+      "configurePreset": "nao-release"
+    },
+    {
+      "name": "nao-debug",
+      "configurePreset": "nao-debug"
+    },
+    {
+      "name": "nao-multiconfig-develop",
+      "displayName": "Develop",
+      "configurePreset": "nao-multiconfig",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "nao-multiconfig-release",
+      "displayName": "Release",
+      "configurePreset": "nao-multiconfig",
+      "configuration": "Release"
+    },
+    {
+      "name": "nao-multiconfig-debug",
+      "displayName": "Debug",
+      "configurePreset": "nao-multiconfig",
+      "configuration": "Debug"
+    }
+  ]
+}

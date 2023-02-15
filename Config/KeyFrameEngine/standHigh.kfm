@@ -1,8 +1,11 @@
 //copy from stand
 keyFrameID = standHigh;
-stabilizationP = 0;
-stabilizationI = 0;
-stabilizationD = 0;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
 keyFrames = [
   {
     headAngles = [20000,20000];
@@ -14,7 +17,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   {
@@ -27,7 +32,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = false;
   },
   {
@@ -40,7 +47,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = true;
   }
 ];

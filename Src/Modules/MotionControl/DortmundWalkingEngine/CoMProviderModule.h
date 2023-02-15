@@ -12,30 +12,26 @@
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Tools/Module/Module.h"
 #include "CoMProvider.h"
-#include "Representations/Infrastructure/JointAngles.h"
 #include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/MotionControl/ActualCoM.h"
 
 MODULE(CoMProviderModule,
-{,
-  //REQUIRES(JointAngles),
+  //REQUIRES(JointSensorData),
   //REQUIRES(FootSteps),
   //REQUIRES(RobotModel),
   REQUIRES(ActualCoMRCS),
   USES(WalkingInfo),
   //USES(JointRequest),
   //REQUIRES(WalkingEngineParams),
-  PROVIDES(ActualCoM),
-});
+  PROVIDES(ActualCoM)
+);
 
 class CoMProviderModule : public CoMProviderModuleBase
 {
 public:
-	CoMProviderModule();
+  CoMProviderModule();
 
-	CoMProvider controller;
+  CoMProvider controller;
 
-	void update(ActualCoM &theActualCoM);
+  void update(ActualCoM& theActualCoM);
 };
-
-

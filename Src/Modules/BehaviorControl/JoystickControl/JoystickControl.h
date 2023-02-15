@@ -32,7 +32,6 @@
 
 
 MODULE(JoystickControl,
-{,
   REQUIRES(FallDownState),
   REQUIRES(FrameInfo),
   REQUIRES(KeyStates),
@@ -40,8 +39,8 @@ MODULE(JoystickControl,
 
   PROVIDES(ArmContact), // Provide ArmContact to prevent moving arms in front of obstacles.
   PROVIDES(HeadControlRequest),
-  PROVIDES(MotionRequest),
-});
+  PROVIDES(MotionRequest)
+);
 
 
 class JoystickControl : public JoystickControlBase
@@ -106,7 +105,7 @@ private:
    * Process current joystick events and set \c localMotionRequest.
    */
   void generateMotionRequest();
-  
+
   /**
    * Process joystick button events to run special actions or kicks.
    */
@@ -158,7 +157,7 @@ private:
    * @param specialAction Choose the special action including option to mirror.
    * @param duration The duration time of the given special action.
    */
-  void specialAction(SpecialActionRequest &specialAction, unsigned duration);
+  void specialAction(SpecialActionRequest& specialAction, unsigned duration);
 
   /**
    * Run the special action 'playDead'.
@@ -192,7 +191,7 @@ private:
 
   /// Joystick object is used to receive joystick events.
   JoystickLib joystick;
-  /// The current state (after execution of \c parseJoystickEvents) of 
+  /// The current state (after execution of \c parseJoystickEvents) of
   /// all buttons and axes of the joystick.
   JoystickState state;
 

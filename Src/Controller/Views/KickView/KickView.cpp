@@ -9,6 +9,7 @@
 #include <QHeaderView>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QActionGroup>
 #include "Controller/RobotConsole.h"
 #include "KickView.h"
 #include "KickViewWidget.h"
@@ -34,7 +35,7 @@ QMenu* KickViewHeaderedWidget::createFileMenu() const
 {
   QMenu* menu = new QMenu(tr("&File"));
 
-  QAction* newAct, * saveAct, * saveAsAct, * loadAct;
+  QAction *newAct, *saveAct, *saveAsAct, *loadAct;
 
   newAct = new QAction(QIcon(":/Icons/kick_new.png"), tr("&New .kmc"), menu);
   newAct->setShortcut(tr("Shift+N"));
@@ -71,8 +72,7 @@ QMenu* KickViewHeaderedWidget::createEditMenu() const
 {
   QMenu* menu = new QMenu(tr("&KickEdit"));
 
-  QAction* undoAct, *redoAct, *singleDraw, *reachedDraw, *show3D, *showEditor,
-           *show1D, *show2D, *showVelo, *showAccel, *noExtraView, *followMode;
+  QAction *undoAct, *redoAct, *singleDraw, *reachedDraw, *show3D, *showEditor, *show1D, *show2D, *showVelo, *showAccel, *noExtraView, *followMode;
 
   undoAct = new QAction(QIcon(":/Icons/arrow_undo.png"), tr("Undo"), menu);
   undoAct->setShortcut(QKeySequence::Undo);
@@ -171,17 +171,17 @@ QMenu* KickViewHeaderedWidget::createEditMenu() const
 
 bool KickViewHeaderedWidget::canClose()
 {
-  if(undo.empty())
+  if (undo.empty())
     return true;
-  switch(QMessageBox::warning(this, tr("KickView"), tr("Do you want to save changes to %1?").arg(fileName), QMessageBox::Save  | QMessageBox::Discard | QMessageBox::Cancel))
+  switch (QMessageBox::warning(this, tr("KickView"), tr("Do you want to save changes to %1?").arg(fileName), QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel))
   {
-    case QMessageBox::Save:
-      saveButtonClicked();
-      break;
-    case QMessageBox::Discard:
-      break;
-    default:
-      return false;
+  case QMessageBox::Save:
+    saveButtonClicked();
+    break;
+  case QMessageBox::Discard:
+    break;
+  default:
+    return false;
   }
   return true;
 }
@@ -217,13 +217,12 @@ void KickViewHeaderedWidget::loadButtonClicked()
 {
   char dirname[260];
   sprintf(dirname, "%s/Config/KickEngine/", File::getBHDir());
-  fileName = QFileDialog::getOpenFileName(this,
-                                          tr("Open Kick Motion"), dirname, tr("Kick Motion Config Files (*.kmc)"));
+  fileName = QFileDialog::getOpenFileName(this, tr("Open Kick Motion"), dirname, tr("Kick Motion Config Files (*.kmc)"));
   QString name;
   name = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
 
   InMapFile stream(name.toUtf8().constData());
-  if(stream.exists())
+  if (stream.exists())
   {
     stream >> parameters;
     name = name.remove(0, name.lastIndexOf("/") + 1);
@@ -243,12 +242,11 @@ void KickViewHeaderedWidget::saveAsButtonClicked()
 {
   char dirname[260];
   sprintf(dirname, "%s/Config/KickEngine/", File::getBHDir());
-  fileName = QFileDialog::getSaveFileName(this,
-                                          tr("Save Kick Motion as..."), dirname, tr("Kick Motion Config Files (*.kmc)"));
+  fileName = QFileDialog::getSaveFileName(this, tr("Save Kick Motion as..."), dirname, tr("Kick Motion Config Files (*.kmc)"));
 
-  if(fileName.begin() != fileName.end())
+  if (fileName.begin() != fileName.end())
   {
-    QString temp  = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
+    QString temp = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
     temp = temp.remove(0, temp.lastIndexOf("/") + 1);
     strcpy(parameters.name, temp.remove(temp.lastIndexOf("."), temp.length()).toUtf8().constData());
     writeParametersToFile(fileName.toUtf8().constData());
@@ -260,7 +258,7 @@ void KickViewHeaderedWidget::saveAsButtonClicked()
 }
 void KickViewHeaderedWidget::saveButtonClicked()
 {
-  if(fileName.begin() != fileName.end() && fileName != QString("newKick.kmc"))
+  if (fileName.begin() != fileName.end() && fileName != QString("newKick.kmc"))
   {
     QString name;
     name = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
@@ -288,10 +286,10 @@ void KickViewHeaderedWidget::addStateToUndoList()
   undo.push_back(parameters);
 
   emit undoAvailable(true);
-  if(fileName.size() > 0 && fileName != QString("newKick.kmc"))
+  if (fileName.size() > 0 && fileName != QString("newKick.kmc"))
     emit saveAvailable(true);
 
-  if(undo.size() >= 20)
+  if (undo.size() >= 20)
   {
     undo.erase(undo.begin());
   }
@@ -299,7 +297,7 @@ void KickViewHeaderedWidget::addStateToUndoList()
 
 void KickViewHeaderedWidget::undoChanges()
 {
-  if(!undo.empty())
+  if (!undo.empty())
   {
     KickEngineParameters last;
     last = undo.back();
@@ -307,12 +305,13 @@ void KickViewHeaderedWidget::undoChanges()
     redo.push_back(parameters);
     emit redoAvailable(true);
 
-    if(redo.size() >= 20) redo.erase(redo.begin());
-    if(parameters.numberOfPhases == last.numberOfPhases)
+    if (redo.size() >= 20)
+      redo.erase(redo.begin());
+    if (parameters.numberOfPhases == last.numberOfPhases)
     {
       parameters = last;
       kickViewWidget->updateCommon();
-      for(int i = 0; i < parameters.numberOfPhases; i++)
+      for (int i = 0; i < parameters.numberOfPhases; i++)
       {
         kickViewWidget->fillModelWithPhaseData(i);
       }
@@ -324,7 +323,7 @@ void KickViewHeaderedWidget::undoChanges()
     }
   }
 
-  if(undo.empty())
+  if (undo.empty())
   {
     emit undoAvailable(false);
     emit saveAvailable(false);
@@ -333,7 +332,7 @@ void KickViewHeaderedWidget::undoChanges()
 
 void KickViewHeaderedWidget::redoChanges()
 {
-  if(!redo.empty())
+  if (!redo.empty())
   {
     KickEngineParameters last;
     last = redo.back();
@@ -341,16 +340,17 @@ void KickViewHeaderedWidget::redoChanges()
 
     undo.push_back(parameters);
     emit undoAvailable(true);
-    if(fileName.begin() != fileName.end() && fileName != QString("newKick.kmc"))
+    if (fileName.begin() != fileName.end() && fileName != QString("newKick.kmc"))
       emit saveAvailable(true);
 
-    if(undo.size() >= 20) undo.erase(undo.begin());
+    if (undo.size() >= 20)
+      undo.erase(undo.begin());
 
-    if(parameters.numberOfPhases == last.numberOfPhases)
+    if (parameters.numberOfPhases == last.numberOfPhases)
     {
       parameters = last;
       kickViewWidget->updateCommon();
-      for(int i = 0; i < parameters.numberOfPhases; i++)
+      for (int i = 0; i < parameters.numberOfPhases; i++)
       {
         kickViewWidget->fillModelWithPhaseData(i);
       }
@@ -363,15 +363,22 @@ void KickViewHeaderedWidget::redoChanges()
     kickViewWidget->updateGL();
   }
 
-  if(redo.empty())
+  if (redo.empty())
     emit redoAvailable(false);
 }
 
-KickView::KickView(const QString& fullName, RobotConsole& console, const MotionRequest& motionRequest, const JointAngles& jointAngles, 
-           const JointCalibration& jointCalibration, const RobotDimensions& robotDimensions, const std::string& mr, SimRobotCore2::Body* robot) :
-  fullName(fullName), console(console), motionRequest(motionRequest), jointAngles(jointAngles),
-  jointCalibration(jointCalibration), robotDimensions(robotDimensions), motionRequestCommand(mr), robot(robot)
-{}
+KickView::KickView(const QString& fullName,
+    RobotConsole& console,
+    const MotionRequest& motionRequest,
+    const JointAngles& jointAngles,
+    const JointCalibration& jointCalibration,
+    const RobotDimensions& robotDimensions,
+    const std::string& mr,
+    SimRobotCore2::Body* robot)
+    : fullName(fullName), console(console), motionRequest(motionRequest), jointAngles(jointAngles), jointCalibration(jointCalibration), robotDimensions(robotDimensions),
+      motionRequestCommand(mr), robot(robot)
+{
+}
 
 SimRobot::Widget* KickView::createWidget()
 {

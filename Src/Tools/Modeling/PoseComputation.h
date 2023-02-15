@@ -27,6 +27,5 @@ namespace PoseComputation
    * @param goalpostRadius As you might have guessed ...
    * @return A pose
    */
-  Pose2f computePoseFromTwoGoalposts(const Vector2f& pl, const Vector2f& pr, const Vector2f& plWorld,
-                                     const Vector2f& prWorld, float goalpostRadius);
-};
+  Pose2f computePoseFromTwoGoalposts(const Vector2f& pl, const Vector2f& pr, const Vector2f& plWorld, const Vector2f& prWorld, float goalpostRadius);
+}; // namespace PoseComputation

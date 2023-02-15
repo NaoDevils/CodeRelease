@@ -21,6 +21,7 @@ public:
 private:
   QPoint m_dragStartPos;
   int m_dragCurrentIndex;
+
 protected:
   void mousePressEvent(QMouseEvent* event);
   void mouseMoveEvent(QMouseEvent* event);
@@ -34,7 +35,8 @@ class TabWidget : public QTabWidget
 {
 public:
   TabWidget(QWidget* parent = 0);
-  QTabBar* getTabBar() { return tb;}
+  QTabBar* getTabBar() { return tb; }
+
 private:
   QTabBar* tb;
 };

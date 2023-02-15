@@ -12,7 +12,6 @@
 struct RobotCameraMatrix;
 
 STREAMABLE(HeadLimits,
-{
 private:
   bool intersectionWithShoulderPlane(const RobotCameraMatrix& robotCameraMatrix,
                                      const Vector3f& shoulderInOrigin,
@@ -52,5 +51,5 @@ public:
   (float) shoulderRadius,
   (std::vector<float>) intervals,
   (std::vector<float>) lowerBounds,
-  (std::vector<float>) upperBounds,
-});
+  (std::vector<float>) upperBounds
+);

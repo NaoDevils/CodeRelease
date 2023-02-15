@@ -32,11 +32,8 @@ public:
   View3D(const QString& fullName, const Vector3f& background);
 
 protected:
-  enum
-  {
-    cubeId = 1, /**< The id of the cube display list. */
-    colorsId /**< The id of the color table display list. */
-  };
+  unsigned int cubeId = 0;
+  unsigned int colorsId = 0;
 
   /**
   * Update the display lists if required.
@@ -47,13 +44,13 @@ protected:
   * Need the display lists to be updated?
   * @return Yes or no?
   */
-  virtual bool needsUpdate() const {return true;}
+  virtual bool needsUpdate() const { return true; }
 
   /**
   * The function returns the view distance.
   * @return The distance from which the scene is viewed.
   */
-  virtual float getViewDistance() const {return 8.0;}
+  virtual float getViewDistance() const { return 8.0; }
 
 protected:
   const Vector3f& background; /**< The background color. */
@@ -70,8 +67,8 @@ private:
   */
   virtual SimRobot::Widget* createWidget();
 
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 
   friend class View3DWidget;
 };

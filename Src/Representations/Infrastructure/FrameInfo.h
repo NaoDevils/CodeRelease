@@ -13,7 +13,6 @@
  * A struct that contains information on the current frame.
  */
 STREAMABLE(FrameInfo,
-{
   /**
    * The method returns the time difference between a given time stamp and the
    * current frame time.
@@ -21,10 +20,11 @@ STREAMABLE(FrameInfo,
    * @return The number of ms passed since the given time stamp.
    */
   int getTimeSince(unsigned timeStamp) const;
+  void draw() const;
   ,
   (unsigned)(0) time, /**< The time stamp of the data processed in the current frame in ms. */
-  (float)(1) cycleTime, /**< Length of one cycle in seconds. */
-});
+  (float)(1) cycleTime /**< Length of one cycle in seconds. */
+);
 
 inline int FrameInfo::getTimeSince(unsigned timeStamp) const
 {

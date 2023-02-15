@@ -5,6 +5,7 @@
 #include "Representations/MotionControl/WalkingEngineOutput.h"
 #include "Representations/MotionControl/KinematicOutput.h"
 #include "Representations/MotionControl/ArmMovement.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/SpeedInfo.h"
@@ -18,7 +19,6 @@
 #include "Tools/Math/angleerror.hpp"
 
 MODULE(LimbCombinator,
-{ ,
   REQUIRES(FrameInfo),
   REQUIRES(SpeedRequest),
   REQUIRES(Footpositions),
@@ -29,32 +29,38 @@ MODULE(LimbCombinator,
   REQUIRES(ArmMovement),
   REQUIRES(JointSensorData),
   REQUIRES(WalkingInfo),
+  REQUIRES(WalkCalibration),
   REQUIRES(WalkingEngineParams),
   PROVIDES(WalkingEngineOutput),
-  LOADS_PARAMETERS(
-  {,
-    (int)(5) outFilterOrderSize,
+  LOADS_PARAMETERS(,
     (bool)(false) useKickHack,
-  }),
-});
+    (float)(0.2f) hipPitchKneeCompensation
+  )
+);
 
 class LimbCombinator : public LimbCombinatorBase
 {
 public:
-	LimbCombinator(void);
+  LimbCombinator(void);
   ~LimbCombinator(void);
-    
-  void applyKickHack(WalkingEngineOutput& walkingEngineOutput); 
 
-	static int walkingEngineTime;
+  void applyKickHackHip(WalkingEngineOutput& walkingEngineOutput);
+  void applyKickHackKnee(WalkingEngineOutput& walkingEngineOutput);
+
+  static int walkingEngineTime;
+
 private:
-	AngleError angerr;
-	float getOffset(int j, float targetAngle);
-	float angleoffset[Joints::numOfJoints][200];
-	RingBuffer<float, 100> delayBuffer[Joints::numOfJoints];
-	void update(WalkingEngineOutput& walkingEngineOutput);
-	bool init;
-	FastFilter<float> filter[Joints::numOfJoints];
+  AngleError angerr;
+  float getOffset(int j, float targetAngle);
+  float angleoffset[Joints::numOfJoints][200];
+  RingBuffer<float, 100> delayBuffer[Joints::numOfJoints];
+  void update(WalkingEngineOutput& walkingEngineOutput);
+  bool init;
+  bool lastInKick;
+  int lastOutFilterOrder;
+  FastFilter<float> filter[Joints::numOfJoints];
+
+  RingBuffer<Angle, MAX_DELAY_FRAMES> lHipPitchTargetAngle, rHipPitchTargetAngle;
 
   // kick hack -> fixed joints while kicking
   unsigned int timeStampKickStarted = 0;

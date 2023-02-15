@@ -39,9 +39,7 @@ public:
   /**
    * @param pView All editor events will be send to this view.
    */
-  PropertyEditorFactory(DataView* pView) :
-    pTheView(pView), pTheManager(nullptr)
-  {}
+  PropertyEditorFactory(DataView* pView) : pTheView(pView), pTheManager(nullptr) {}
 
   QWidget* createEditor(QtVariantPropertyManager* pManager, QtProperty* pProperty, QWidget* pParent);
 
@@ -91,13 +89,7 @@ signals:
   void unityChanged(int index);
 
 private slots:
-  void updateValue(double value)
-  {
-    emit valueChanged(static_cast<float>(value));
-  }
+  void updateValue(double value) { emit valueChanged(static_cast<float>(value)); }
 
-  void updateUnity(int index)
-  {
-    emit unityChanged(index);
-  }
+  void updateUnity(int index) { emit unityChanged(index); }
 };

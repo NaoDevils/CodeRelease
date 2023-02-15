@@ -43,8 +43,8 @@ public:
 
   Debug();
   ~Debug()
-  { 
-    if(fout) 
+  {
+    if (fout)
       delete fout;
   }
 

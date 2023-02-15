@@ -18,33 +18,33 @@
 struct RobotInfo : public RoboCup::RobotInfo, public Streamable
 {
 public:
-
   ENUM(NaoType,
-  {,
     H21,
-    H25,
-  }); // need to be sorted
+    H25
+  ); // need to be sorted
 
   ENUM(RobotFeature,
-  {,
     hands,
     grippyFingers,
     wristYaws,
     zGyro,
     tactileHandSensores,
     tactileHeadSensores,
-    headLEDs,
-  });
+    headLEDs
+  );
 
   int number; /**< The number of the robot. */
-  RobotConfig::NaoVersion naoVersion = RobotConfig::V5;
-  NaoType naoBodyType = H21;
-  NaoType naoHeadType = H21;
-  float transitionToBhuman = 1.f; /** If libbhuman has given full control to bhuman. (0 = libbhuman, 1 = bhuman) Range: [0.0, 1.0] */
+  RobotConfig::NaoVersion naoVersion = RobotConfig::V6;
+  NaoType naoBodyType = H25;
+  NaoType naoHeadType = H25;
+  float transitionToFramework = 1.f; /** If naodevilsbase has given full control to framework. (0 = naodevilsbase, 1 = framework) Range: [0.0, 1.0] */
 
   RobotInfo();
 
   bool hasFeature(const RobotFeature feature) const;
+  std::string getPenaltyAsString() const;
+
+  Streamable& operator=(const Streamable& other) noexcept;
 
 private:
   /**

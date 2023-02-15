@@ -2,17 +2,20 @@
 
 #include "RotationMatrix.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Pose2f.h"
 
 STREAMABLE(Pose3f,
-{
   Pose3f() = default;
   Pose3f(const Pose3f& other) = default;
   Pose3f(const RotationMatrix& rotation, const Vector3f& translation);
   Pose3f(const RotationMatrix& rotation);
   Pose3f(const Vector3f& translation);
   Pose3f(const float x, const float y, const float z);
+  explicit Pose3f(const Pose2f& pose);
 
   Pose3f& operator=(const Pose3f& other) = default;
+
+  explicit operator Pose2f() const;
 
   bool operator==(const Pose3f& other) const;
   bool operator!=(const Pose3f& other) const;
@@ -44,24 +47,24 @@ STREAMABLE(Pose3f,
   Pose3f inverse() const,
 
   (RotationMatrix) rotation,
-  (Vector3f)(Vector3f::Zero()) translation,
-});
+  (Vector3f)(Vector3f::Zero()) translation
+);
 
-inline Pose3f::Pose3f(const RotationMatrix& rotation, const Vector3f& translation) :
-  rotation(rotation), translation(translation)
-{}
+inline Pose3f::Pose3f(const RotationMatrix& rotation, const Vector3f& translation) : rotation(rotation), translation(translation) {}
 
-inline Pose3f::Pose3f(const RotationMatrix& rotation) :
-  rotation(rotation)
-{}
+inline Pose3f::Pose3f(const RotationMatrix& rotation) : rotation(rotation) {}
 
-inline Pose3f::Pose3f(const Vector3f& translation) :
-  translation(translation)
-{}
+inline Pose3f::Pose3f(const Vector3f& translation) : translation(translation) {}
 
-inline Pose3f::Pose3f(const float x, const float y, const float z) :
-  translation(x, y, z)
-{}
+inline Pose3f::Pose3f(const float x, const float y, const float z) : translation(x, y, z) {}
+
+inline Pose3f::Pose3f(const Pose2f& pose) : rotation(0.f, 0.f, pose.rotation), translation(pose.translation.x(), pose.translation.y(), 0.f) {}
+
+inline Pose3f::operator Pose2f() const
+{
+  const Vector3a rot = this->rotation.eulerAngles(0, 1, 2).cast<Angle>();
+  return Pose2f(rot.z(), this->translation.head<2>());
+}
 
 inline bool Pose3f::operator==(const Pose3f& other) const
 {

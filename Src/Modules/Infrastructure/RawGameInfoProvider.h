@@ -6,35 +6,54 @@
 
 #pragma once
 
-#include "Tools/Module/Module.h"
-#ifdef TARGET_ROBOT
+#include <memory>
+
+#if defined(MACOS) || defined(LINUX)
 #include "arpa/inet.h"
-#include "Tools/Network/UdpComm.h"
-#include "Platform/Linux/NaoBody.h"
-#include "Platform/Linux/NaoBodyV6.h"
 #endif
+
+#include "Tools/Module/Module.h"
+
+#include "Tools/Network/UdpComm.h"
+#include "Platform/Linux/NaoBodyV6.h"
+
+#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Infrastructure/USBSettings.h"
 
-static const int GAMECONTROLLER_TIMEOUT = 2000; /**< Connected to GameController when packet was received within the last 2000 ms. */
+// debug returns for GC 2022
+#include "Representations/Sensing/FallDownState.h"
+#include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/RobotPose.h"
 
 MODULE(RawGameInfoProvider,
-{,
-  USES(FrameInfo),
-  USES(KeyStates),
+  REQUIRES(FrameInfo),
+  USES(BehaviorData),
+  USES(FallDownState),
+  USES(RobotPose),
+  USES(BallModel),
+  REQUIRES(KeyStates),
+  REQUIRES(USBSettings),
+  REQUIRES(RobotInfo),
+  HAS_PREEXECUTION,
   PROVIDES(OpponentTeamInfo),
   PROVIDES(OwnTeamInfo),
   PROVIDES(RawGameInfo),
   PROVIDES(RobotInfo),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     ((RobotInfo) NaoType) naoBodyType, ///< H21, H25 ...
     ((RobotInfo) NaoType) naoHeadType,
-  }),
-});
+    (std::string)("") robotConfig,
+    (unsigned)(TEAM_YELLOW) ownColor,
+    (unsigned)(TEAM_BLACK) oppColor,
+    (int)(2000) gameControllerTimeout,
+    (int)(1000) aliveDelay
+  )
+);
 
 /**
 * @class RawGameInfoProvider
@@ -43,7 +62,6 @@ MODULE(RawGameInfoProvider,
 class RawGameInfoProvider : public RawGameInfoProviderBase
 {
 private:
-#ifdef TARGET_ROBOT
   /** The main function, called every cycle
   * @param rawGameInfo The data struct to be filled
   */
@@ -51,7 +69,7 @@ private:
   void update(OpponentTeamInfo& teamInfo);
   void update(OwnTeamInfo& ownTeamInfo);
   void update(RobotInfo& robotInfo);
-  void execute();
+  void execute(tf::Subflow&);
 
   bool receive();
 
@@ -61,21 +79,10 @@ private:
 
   uint8_t lastGameState = STATE_INITIAL;
   uint8_t lastSecsTillUnpenalized = 0;
-  unsigned lastExecutedTimeStamp = 0; // only one execute per frame!
   unsigned lastSentTimeStamp = 0;
-#else
-  void update(RawGameInfo& rawGameInfo)
-  { 
-    if(Blackboard::getInstance().exists("GameInfo"))
-      (GameInfo&) rawGameInfo = (GameInfo&) Blackboard::getInstance()["GameInfo"]; 
-  }
-  void update(OpponentTeamInfo& teamInfo) {}
-  void update(OwnTeamInfo& ownTeamInfo) {}
-  void update(RobotInfo& robotInfo) {}
-  bool receive() { return true; }
-  bool send() { return true;  }
-  void initialize() { memset(&gameCtrlData, 0, sizeof(gameCtrlData)); initialized = true; }
-#endif
+  unsigned lastPlayerNumberUpdate = 0;
+  unsigned lastTeamNumberUpdate = 0;
+  int teamNumber = Global::getSettings().teamNumber;
 
   void updateGameState();
 
@@ -84,22 +91,20 @@ private:
   uint8_t ownPenalty = PENALTY_NONE;
   unsigned timeStampGameStateChanged = 0;
   unsigned timeStampPenaltyChanged = 0;
-  float transitionToBhuman = 0.f;
+  bool chestButtonPressed = false;
+  float transitionToFramework = 0.f;
   unsigned lastReceivedTimeStamp = 0;
-#ifdef TARGET_ROBOT
-  UdpComm* udp = 0; /**< The socket used to communicate. */
+  std::unique_ptr<UdpComm> udp = nullptr; /**< The socket used to communicate. */
   in_addr gameControllerAddress; /**< The address of the GameController PC. */
-  NaoBody naoBody;
+#ifdef TARGET_ROBOT
   NaoBodyV6 naoBodyV6;
 #endif
 
 public:
   /** Constructor. */
   RawGameInfoProvider()
-  {    
-#ifdef TARGET_ROBOT
+  {
     memset(&gameControllerAddress, 0, sizeof(gameControllerAddress));
-  	memset(&gameCtrlData, 0, sizeof(gameCtrlData));
-#endif
+    memset(&gameCtrlData, 0, sizeof(gameCtrlData));
   }
 };

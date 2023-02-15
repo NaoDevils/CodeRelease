@@ -15,11 +15,10 @@ class LogDataProvider
 {
 private:
   ENUM(State,
-  {,
     unknown, // No specification available -> replay anyway.
     accept,  // Specification is compatible -> replay.
-    convert, // Specification not compatible -> convert.
-  });
+    convert // Specification not compatible -> convert.
+  );
 
   State states[numOfDataMessageIDs]; /**< Should the corresponding message ids be replayed? */
   StreamHandler* logStreamHandler = nullptr; /**< The stream specifications of all the types from the log file. */

@@ -5,8 +5,11 @@
  */
 
 #pragma once
-
+#include "Tools/SIMD.h"
 #include "Tools/Streams/Streamable.h"
+#include "Tools/Enum.h"
+#include "Tools/Math/Eigen.h"
+
 // TODO: check this warning
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -16,6 +19,16 @@
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
+ENUM(ImageSource,
+  naoProviderV6,
+  thumbnail,
+  jpegImage,
+  lowFrameRateImage,
+  sequenceImage,
+  yoloInput
+);
+
 /**
  * Platform independent definition of an image struct
  */
@@ -61,7 +74,7 @@ public:
   unsigned timeStamp = 0; /**< The time stamp of this image. */
   bool isReference = false; /**< States whether this struct holds the image, or only a reference to an image stored elsewhere. */
   bool isFullSize = false; /**< States that the pixels x = [width ... widthStep] should be preserved. */
-
+  ImageSource imageSource = ImageSource::naoProviderV6;
   Pixel* image; /**< The image. Please note that the second half of each row must be ignored. */
 
   /**
@@ -91,7 +104,7 @@ public:
   Pixel getFullSizePixel(const int y, const int x) const
   {
     Image::Pixel p = *(image + y * width + x / 2);
-    if(!(x & 1))
+    if (!(x & 1))
       p.y = p.yCbCrPadding;
     return p;
   }
@@ -147,39 +160,29 @@ public:
    */
   static float getColorDistance(const Image::Pixel& a, const Image::Pixel& b);
 
-  bool isOutOfImage(int x, int y, int distance) const
-  {
-    return x >= width - distance || x < distance ||
-      y >= height - distance || y < distance;
-  }
+  bool isOutOfImage(int x, int y, int distance) const { return x >= width - distance || x < distance || y >= height - distance || y < distance; }
 
-  bool isOutOfImage(float x, float y, int distance) const
-  {
-    return x >= width - distance || x < distance ||
-      y >= height - distance || y < distance;
-  }
+  bool isOutOfImage(float x, float y, int distance) const { return x >= width - distance || x < distance || y >= height - distance || y < distance; }
 
-  bool projectIntoImage(int &x, int &y, int sizeX, int sizeY) const;
+  bool isOutOfBounds(int xStart, int xOffset, int yStart, int yOffset) const;
 
-  void copyAndResizeArea(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char> &result) const;
-  void copyAndResizeAreaFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float *result) const;
-  void copyAndResizeAreaRGBFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float *result) const;
-  void copyAndResizeAreaRGBFloatZeroPadding(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float *result) const;
+  bool projectIntoImage(int& x, int& y, int sizeX, int sizeY) const;
+  bool projectIntoImage(Vector2i& postion, float radius) const;
+
+  void copyAndResizeArea(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char>& result) const;
+  void copyAndResizeAreaFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float* result) const;
+  void copyAndResizeAreaRGBFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float* result) const;
+  void copyAndResizeAreaRGB(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char>& result) const;
+  void copyAndResizeAreaRGBA(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char>& result) const;
+  std::vector<int> copyAndResizeRGBFloatNoHorizon(int sizeXNew, int sizeYNew, const int horizon_y, float* result) const;
+  void copyAndResizeAreaRGBFloatZeroPadding(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float* result) const;
+  bool shouldBeProcessed() const;
+
 protected:
   void serialize(In* in, Out* out);
 };
 
 //New class by Naodevils
-struct ImageUpper : public Image
-{
-  void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-    STREAM_BASE(Image);
-    STREAM_REGISTER_FINISH;
-  }
-
-public:
-  ImageUpper(bool initialize = true, int width = maxResolutionWidth, int height = maxResolutionHeight) 
-    : Image(initialize, width, height) {}
-};
+STREAMABLE_WITH_BASE(ImageUpper, Image,
+  using Image::Image;
+);

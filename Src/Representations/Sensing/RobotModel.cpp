@@ -18,7 +18,7 @@ void RobotModel::setJointData(const JointAngles& jointAngles, const RobotDimensi
 {
   ForwardKinematic::calculateHeadChain(jointAngles, robotDimensions, limbs);
 
-  for(unsigned side = 0; side < 2; side++)
+  for (unsigned side = 0; side < 2; side++)
   {
     const bool left = side == 0;
     ForwardKinematic::calculateArmChain(Arms::Arm(side), jointAngles, robotDimensions, limbs);
@@ -31,7 +31,7 @@ void RobotModel::setJointData(const JointAngles& jointAngles, const RobotDimensi
   // calculate center of mass
   centerOfMass = Vector3f::Zero();
   totalMass = 0.0;
-  for(int i = 0; i < Limbs::numOfLimbs; i++)
+  for (int i = 0; i < Limbs::numOfLimbs; i++)
   {
     const MassCalibration::MassInfo& limb(massCalibration.masses[i]);
     totalMass += limb.mass;
@@ -45,7 +45,7 @@ void RobotModel::draw() const
   DECLARE_DEBUG_DRAWING3D("representation:RobotModel", "robot");
   COMPLEX_DRAWING3D("representation:RobotModel")
   {
-    for(int i = 0; i < Limbs::numOfLimbs; ++i)
+    for (int i = 0; i < Limbs::numOfLimbs; ++i)
       SUBCOORDINATES3D("representation:RobotModel", limbs[i], 50, 1);
   }
   DECLARE_DEBUG_DRAWING3D("representation:RobotModel:centerOfMass", "robot");

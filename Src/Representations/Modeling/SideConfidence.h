@@ -12,47 +12,39 @@
 #include "Tools/Enum.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Settings.h"
+#include "Representations/Infrastructure/RobotInfo.h"
+#include "Tools/Module/Blackboard.h"
 
 /**
  * @struct SideConfidence
  */
 STREAMABLE(SideConfidence,
-{
   ENUM(ConfidenceState,
-  {,
     CONFIDENT,
-    ALMOST_CONFIDENT,
     UNSURE,
-    CONFUSED,
-  }); /**< Discrete states of confidence, mapped by provider */
+    CONFUSED
+  ); /**< Discrete states of confidence, mapped by provider */
 
   /** Draw representation. */
   void draw() const,
 
-  (float)(1) sideConfidence, /**< Am I mirrored because of two yellow goals (0 = no idea, 1 = absolute sure I am right). */
-  (bool)(false) mirror, /**< Indicates whether ball model of others is mirrored to own ball model. */
-  (ConfidenceState)(CONFIDENT) confidenceState, /**< The state of confidence */
-});
+  (ConfidenceState)(CONFIDENT) confidenceState /**< The state of confidence */
+);
 
 inline void SideConfidence::draw() const
 {
+  DEBUG_DRAWING("representation:SideConfidence", "drawingOnField")
+  {
+    DRAWTEXT("representation:SideConfidence", -5000, -3600, 140, ColorRGBA::red, "Sideconfidence: " << confidenceState);
+  }
+
   DEBUG_DRAWING3D("representation:SideConfidence", "robot")
   {
-    static const ColorRGBA colors[numOfConfidenceStates] =
-    {
-      ColorRGBA::green,
-      ColorRGBA(0, 128, 0),
-      ColorRGBA::yellow,
-      ColorRGBA::red
-    };
-    int pNumber = Global::getSettings().playerNumber;
+    static const ColorRGBA colors[ConfidenceState::numOfConfidenceStates] = {ColorRGBA::green, ColorRGBA::yellow, ColorRGBA::red};
+    const RobotInfo& robotInfo = Blackboard::get<RobotInfo>();
+    int pNumber = robotInfo.number;
     float centerDigit = (pNumber > 1) ? 50.f : 0;
     ROTATE3D("representation:SideConfidence", 0, 0, pi_2);
     DRAWDIGIT3D("representation:SideConfidence", pNumber, Vector3f(centerDigit, 0.f, 500.f), 80, 5, colors[confidenceState]);
-  }
-
-  DEBUG_DRAWING("representation:SideConfidence", "drawingOnField")
-  {
-    DRAWTEXT("representation:SideConfidence", -5000, -3600, 140, ColorRGBA::red, "Sideconfidence: " << sideConfidence);
   }
 }

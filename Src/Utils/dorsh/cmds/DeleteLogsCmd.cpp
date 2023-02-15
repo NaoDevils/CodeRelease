@@ -10,8 +10,6 @@
 #include "Utils/dorsh/cmdlib/ProcessRunner.h"
 #include "Utils/dorsh/tools/Platform.h"
 #include "Utils/dorsh/tools/ShellTools.h"
-#include "Utils/dorsh/tools/StringTools.h"
-
 
 
 #include <QMessageBox>
@@ -30,12 +28,12 @@ std::string DeleteLogsCmd::getName() const
 
 std::string DeleteLogsCmd::getDescription() const
 {
-  return "Deletes all *.log files from the robot. Stops and restarts the B-Human if necessary";
+  return "Deletes all *.log files from the robot. Stops and restarts the Framework if necessary";
 }
 
 bool DeleteLogsCmd::preExecution(Context& context, const std::vector<std::string>& params)
 {
-  if(params.size() > 0)
+  if (params.size() > 0)
   {
     context.printLine("This command does not have any parameters!");
     return false;
@@ -53,13 +51,13 @@ bool DeleteLogsCmd::DeleteLogsTask::execute()
 {
   QStringList args;
   args.push_back("--just-delete");
-  args.push_back(fromString(robot->name));
-  args.push_back(fromString(robot->getBestIP(context())));
+  args.push_back(QString::fromStdString(robot->name));
+  args.push_back(QString::fromStdString(robot->getBestIP(context())));
 
   ProcessRunner r(context(), getCommand(), args);
   r.run();
 
-  if(r.error())
+  if (r.error())
     context().errorLine("Deleting failed!");
   else
     context().printLine("Success! (" + robot->name + ")");
@@ -67,16 +65,13 @@ bool DeleteLogsCmd::DeleteLogsTask::execute()
   return true;
 }
 
-DeleteLogsCmd::DeleteLogsTask::DeleteLogsTask(Context& context,
-    RobotConfigDorsh* robot)
-  : RobotTask(context, robot)
-{}
+DeleteLogsCmd::DeleteLogsTask::DeleteLogsTask(Context& context, RobotConfigDorsh* robot) : RobotTask(context, robot) {}
 
 QString DeleteLogsCmd::DeleteLogsTask::getCommand()
 {
 #ifdef WINDOWS
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/downloadLogs.cmd");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/downloadLogs.cmd");
 #else
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/downloadLogs");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/downloadLogs");
 #endif
 }

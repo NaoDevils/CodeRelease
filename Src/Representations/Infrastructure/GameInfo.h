@@ -21,7 +21,7 @@ private:
 
 public:
   unsigned timeLastPackageReceived = 0;
-  bool whistleCausedPlay = false;
+  unsigned timeFirstReadyState = 0; // Used for packet counter, since packets before do not count to limit (rules 2022)
   uint8_t oppTeamNumber = 0;
 
   GameInfo();
@@ -30,8 +30,9 @@ public:
   void draw() const;
 
   std::string getStateAsString() const;
+  std::string getSetPlayAsString() const;
 
-  friend class NaoProvider; // access to packetNumber
+  virtual Streamable& operator=(const Streamable&) noexcept;
 
 private:
   /**
@@ -43,4 +44,6 @@ private:
 };
 
 /** The game info as sent by the GameController */
-struct RawGameInfo : public GameInfo {};
+struct RawGameInfo : public GameInfo
+{
+};

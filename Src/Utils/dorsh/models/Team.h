@@ -10,12 +10,13 @@ struct RobotConfigDorsh;
 
 class Team : public Streamable
 {
-  std::vector<std::vector<RobotConfigDorsh*> > players;
+  std::vector<std::vector<RobotConfigDorsh*>> players;
   std::map<RobotConfigDorsh*, bool> selectedPlayers;
 
   void serialize(In*, Out*);
 
   void init();
+
 public:
   std::string name;
   unsigned short number;
@@ -24,12 +25,10 @@ public:
   //std::string colorOpp;
   int colorOwn;
   int colorOpp;
-  std::string location;
+  std::vector<std::string> overlays;
   std::string gameMode;
   std::string wlanConfig;
-  std::string wlanFrequency;
   std::string logConfig;
-  bool mocapConfig;
   std::string buildConfig;
   unsigned short volume;
   unsigned short micVolume;
@@ -37,8 +36,8 @@ public:
 
   Team();
   Team(const std::string& name, unsigned short number);
-  void addPlayer(unsigned int playerNumber, bool  substitutePlayer, RobotConfigDorsh& robot);
-  std::vector<std::vector<RobotConfigDorsh*> > getPlayersPerNumber() const;
+  void addPlayer(unsigned int playerNumber, bool substitutePlayer, RobotConfigDorsh& robot);
+  std::vector<std::vector<RobotConfigDorsh*>> getPlayersPerNumber() const;
   std::vector<RobotConfigDorsh*> getPlayers() const;
   std::vector<RobotConfigDorsh*> getPlayersWrapped() const;
   unsigned short getPlayerNumber(const RobotConfigDorsh& robot) const;

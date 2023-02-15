@@ -17,11 +17,11 @@ struct SequenceImage : public Streamable
   virtual void serialize(In* in, Out* out)
   {
     STREAM_REGISTER_BEGIN;
-      STREAM(noInSequence);
-      if(noInSequence > 0)
-      {
-        STREAM(image);
-      }
+    STREAM(noInSequence);
+    if (noInSequence > 0)
+    {
+      STREAM(image);
+    }
     STREAM_REGISTER_FINISH;
   }
 };
@@ -34,11 +34,11 @@ struct SequenceImageUpper : public Streamable
   virtual void serialize(In* in, Out* out)
   {
     STREAM_REGISTER_BEGIN;
-      STREAM(noInSequence);
-      if (noInSequence > 0)
-      {
-        STREAM(image);
-      }
+    STREAM(noInSequence);
+    if (noInSequence > 0)
+    {
+      STREAM(image);
+    }
     STREAM_REGISTER_FINISH;
   }
 };

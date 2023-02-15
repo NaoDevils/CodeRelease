@@ -20,7 +20,6 @@
 #include "Tools/Module/Module.h"
 
 MODULE(InertialDataFilter,
-{,
   REQUIRES(FrameInfo),
   REQUIRES(InertialSensorData),
   REQUIRES(RobotDimensions),
@@ -29,13 +28,12 @@ MODULE(InertialDataFilter,
   USES(MotionInfo),
   USES(WalkingEngineOutput),
   PROVIDES(InertialData),
-  DEFINES_PARAMETERS(
-  {,
+  DEFINES_PARAMETERS(,
     (Vector2f)(0.004f, 0.004f) processNoise, /**< The standard deviation of the process. */
     (Vector3f)(1.f, 1.f, 1.f) accNoise, /**< The standard deviation of the inertia sensor. */
-    (Vector2a)(20._deg, 30._deg) calculatedAccLimit, /**< Use a calculated angle up to this angle (in rad). (We use the acceleration sensors otherwise.) */
-  }),
-});
+    (Vector2a)(20._deg, 30._deg) calculatedAccLimit /**< Use a calculated angle up to this angle (in rad). (We use the acceleration sensors otherwise.) */
+  )
+);
 
 /**
  * @class InertialDataFilter
@@ -106,18 +104,9 @@ private:
   Matrix3x2f covOfSigmaReadingsAndSigmaPoints();
   Matrix3f covOfSigmaReadings();
 
-  Matrix2f tensor(const Vector2f& a) const
-  {
-    return (Matrix2f() << a * a.x(), a * a.y()).finished();
-  }
+  Matrix2f tensor(const Vector2f& a) const { return (Matrix2f() << a * a.x(), a * a.y()).finished(); }
 
-  Matrix3x2f tensor(const Vector3f& a, const Vector2f& b)
-  {
-    return (Matrix3x2f() << a * b.x(), a * b.y()).finished();
-  }
+  Matrix3x2f tensor(const Vector3f& a, const Vector2f& b) { return (Matrix3x2f() << a * b.x(), a * b.y()).finished(); }
 
-  Matrix3f tensor(const Vector3f& a) const
-  {
-    return (Matrix3f() << a * a.x(), a * a.y(), a * a.z()).finished();
-  }
+  Matrix3f tensor(const Vector3f& a) const { return (Matrix3f() << a * a.x(), a * a.y(), a * a.z()).finished(); }
 };

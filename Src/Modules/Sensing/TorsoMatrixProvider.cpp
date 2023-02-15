@@ -13,20 +13,7 @@ MAKE_MODULE(TorsoMatrixProvider, sensing)
 
 void TorsoMatrixProvider::update(TorsoMatrix& torsoMatrix)
 {
-  Vector3f axis;
-  switch (anglesource)
-  {
-  case TorsoMatrixEnums::AngleSource::inertialData:
-    axis = Vector3f(theInertialData.angle.x(), theInertialData.angle.y(), 0.0f);
-    break;
-  case TorsoMatrixEnums::AngleSource::inertialSensorData:
-    axis = Vector3f(theInertialSensorData.angle.x(), theInertialSensorData.angle.y(), 0.0f);
-    break;
-  case TorsoMatrixEnums::AngleSource::imuModel:
-    axis = Vector3f(theIMUModel.orientation.x(), theIMUModel.orientation.y(), 0.0f);
-    break;
-  }
-
+  Vector3f axis = Vector3f(theJoinedIMUData.imuData[anglesource].angle.x(), theJoinedIMUData.imuData[anglesource].angle.y(), 0.0f);
   const RotationMatrix torsoRotation = Rotation::AngleAxis::unpack(axis);
 
   // calculate "center of hip" position from left foot
@@ -62,7 +49,7 @@ void TorsoMatrixProvider::update(TorsoMatrix& torsoMatrix)
   newTorsoMatrix.conc(useLeft ? fromLeftFoot : fromRightFoot);
 
   // calculate torso offset
-  if(torsoMatrix.translation.z() != 0) // the last torso matrix should be valid
+  if (torsoMatrix.translation.z() != 0) // the last torso matrix should be valid
   {
     Pose3f& torsoOffset = torsoMatrix.offset;
     torsoOffset = torsoMatrix.inverse();
@@ -122,7 +109,7 @@ void TorsoMatrixProvider::update(OdometryData& odometryData)
 {
   Pose2f odometryOffset;
 
-  if(lastTorsoMatrix.translation.z() != 0.)
+  if (lastTorsoMatrix.translation.z() != 0.)
   {
     Pose3f odometryOffset3D(lastTorsoMatrix);
     odometryOffset3D.conc(theTorsoMatrix.offset);

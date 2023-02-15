@@ -18,7 +18,6 @@
  * A struct that provides transformations on image coordinates.
  */
 STREAMABLE(ImageCoordinateSystem,
-{
 private:
   CameraInfo cameraInfo;
   int* xTable = nullptr;
@@ -244,10 +243,9 @@ public:
   (Vector2f) origin, /**< The origin of the horizon in image coordinates. */
   (Vector2f) offset, /**< The offset of the previous image to the current one. */
   (float)(0) a, /**< Constant part of equation to motion distortion. */
-  (float)(0) b, /**< Linear part of equation to motion distortion. */
-});
+  (float)(0) b /**< Linear part of equation to motion distortion. */
+);
 
 struct ImageCoordinateSystemUpper : public ImageCoordinateSystem
 {
-
 };

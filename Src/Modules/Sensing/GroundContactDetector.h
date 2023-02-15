@@ -10,7 +10,7 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/Sensing/GroundContactState.h"
-#include "Representations/Sensing/InertialData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
@@ -21,17 +21,16 @@
 #include "Tools/RingBuffer.h"
 
 MODULE(GroundContactDetector,
-{,
   REQUIRES(FrameInfo),
-  REQUIRES(InertialData),
+  REQUIRES(JoinedIMUData),
   REQUIRES(MotionRequest),
   REQUIRES(RobotModel),
   REQUIRES(FsrSensorData),
   USES(MotionInfo),
   USES(TorsoMatrix),
   PROVIDES(GroundContactState),
-  DEFINES_PARAMETERS(
-  {,
+  DEFINES_PARAMETERS(,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
     (float)(0.08f) noContactMinAccNoise,
     (float)(0.04f) noContactMinGyroNoise,
     (float)(0.01f) contactMaxAngleNoise,
@@ -39,9 +38,9 @@ MODULE(GroundContactDetector,
     (float)(20.f) contactMaxAccZ, // deactivate
     (float)(0.5f) minFsrFootContactThreshold, //minimum edge hight for foot contact detection
     (bool)(true) filterFrequency, //use the medium of 10 frequency measurements
-    (float)(-2.f) lowpass_a, //inverse of breaking frequency
-  }),
-});
+    (float)(-2.f) lowpass_a //inverse of breaking frequency
+  )
+);
 
 /**
  * @class GroundContactDetector
@@ -70,12 +69,12 @@ private:
   unsigned int lastTimestampLeft = 0; /** timestamp of last first contact of left foot on grount */
   float frqLeft = 0.f; /** current frequency of left foot */
   float frqRight = 0.f; /** current frequency of right foot */
-  RingBufferWithSum<float,7> fsrBufferLeft; /** buffer of last 10 fsr sensor datas (avg of all 4 sensors) of left foot */
-  RingBufferWithSum<float,7> fsrBufferRight; /** buffer of last 10 fsr sensor datas (avg of all 4 sensors) of right foot */
-  RingBufferWithSum<float,5> frequencyBufferLeft; /** buffer of last 5 frequencies of left foot */
-  RingBufferWithSum<float,5> frequencyBufferRight; /** buffer of last 5 frequencies of right foot */
-  RingBufferWithSum<float,10> convolutionBufferLeft; /** buffer of last 15 fsr sensor datas (avg of all 4 sensors) of left foot */
-  RingBufferWithSum<float,10> convolutionBufferRight; /** buffer of last 15 fsr sensor datas (avg of all 4 sensors) of right foot */
+  RingBufferWithSum<float, 7> fsrBufferLeft; /** buffer of last 10 fsr sensor datas (avg of all 4 sensors) of left foot */
+  RingBufferWithSum<float, 7> fsrBufferRight; /** buffer of last 10 fsr sensor datas (avg of all 4 sensors) of right foot */
+  RingBufferWithSum<float, 5> frequencyBufferLeft; /** buffer of last 5 frequencies of left foot */
+  RingBufferWithSum<float, 5> frequencyBufferRight; /** buffer of last 5 frequencies of right foot */
+  RingBufferWithSum<float, 10> convolutionBufferLeft; /** buffer of last 15 fsr sensor datas (avg of all 4 sensors) of left foot */
+  RingBufferWithSum<float, 10> convolutionBufferRight; /** buffer of last 15 fsr sensor datas (avg of all 4 sensors) of right foot */
 
   /**
    * Updates the GroundContactState representation .

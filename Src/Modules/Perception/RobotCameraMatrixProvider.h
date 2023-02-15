@@ -10,21 +10,20 @@
 #include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Infrastructure/CameraInfo.h"
-#include "Representations/Infrastructure/JointAngles.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Perception/CameraMatrix.h"
 
 MODULE(RobotCameraMatrixProvider,
-{,
   REQUIRES(CameraCalibration),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
-  REQUIRES(JointAngles),
+  REQUIRES(JointSensorData),
   REQUIRES(RobotDimensions),
   PROVIDES(RobotCameraMatrix),
-  PROVIDES(RobotCameraMatrixUpper),
-});
+  PROVIDES(RobotCameraMatrixUpper)
+);
 
-class RobotCameraMatrixProvider: public RobotCameraMatrixProviderBase
+class RobotCameraMatrixProvider : public RobotCameraMatrixProviderBase
 {
 private:
   void update(RobotCameraMatrix& robotCameraMatrix);

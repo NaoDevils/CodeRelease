@@ -1,34 +1,12 @@
 #include "LineMatcher.h"
 
 
-LineMatcher::Parameters::Parameters() :
-  relativeAllowedDistanceErrorForLineClustering(0.15),
-  absoluteAllowedDistanceErrorForLineClustering(200),
-  allowPosesOutsideOfCarpet(false)
-{
-}
+LineMatcher::AbstractLine::AbstractLine() {}
 
-LineMatcher::AbstractLine::AbstractLine()
-{
-}
+LineMatcher::AbstractLine::AbstractLine(double _offset, double _min, double _max) : offset(_offset), min(_min), max(_max), numberOfContributingLines(1) {}
 
-LineMatcher::AbstractLine::AbstractLine(double _offset, double _min, double _max) :
-  offset(_offset),
-  min(_min),
-  max(_max),
-  numberOfContributingLines(1)
-{
-}
-
-LineMatcher::LineMatcher() :
-  preInitDone(false),
-  lastUpdateTime(0)
-{
-}
-LineMatcher::~LineMatcher() {
-
-
-}
+LineMatcher::LineMatcher() : preInitDone(false), lastUpdateTime(0) {}
+LineMatcher::~LineMatcher() {}
 
 void LineMatcher::update(LineMatchingResult& theLineMatchingResult)
 {
@@ -53,26 +31,26 @@ void LineMatcher::doGlobalDebugging()
     int counter = 0;
     for (std::vector<AbstractLine>::const_iterator i = fieldLinesX.begin(); i != fieldLinesX.end(); ++i)
     {
-      LINE("module:LineMatcher:fieldLineSegmentsFromSpecification",
-        i->min, i->offset, i->max, i->offset, 30, Drawings::solidPen, ColorRGBA(255, 150, 255));
+      LINE("module:LineMatcher:fieldLineSegmentsFromSpecification", i->min, i->offset, i->max, i->offset, 30, Drawings::solidPen, ColorRGBA(255, 150, 255));
       DRAWTEXT("module:LineMatcher:fieldLineSegmentsFromSpecification", (i->min + i->max) / 2 + 40, i->offset + 40, 100, ColorRGBA(255, 150, 255), counter);
       counter++;
     }
     counter = 0;
     for (std::vector<AbstractLine>::const_iterator i = fieldLinesY.begin(); i != fieldLinesY.end(); ++i)
     {
-      LINE("module:LineMatcher:fieldLineSegmentsFromSpecification",
-        -i->offset, i->min, -i->offset, i->max, 30, Drawings::solidPen, ColorRGBA(200, 100, 255));
+      LINE("module:LineMatcher:fieldLineSegmentsFromSpecification", -i->offset, i->min, -i->offset, i->max, 30, Drawings::solidPen, ColorRGBA(200, 100, 255));
       DRAWTEXT("module:LineMatcher:fieldLineSegmentsFromSpecification", -i->offset + 40, (i->min + i->max) / 2 + 40, 100, ColorRGBA(200, 100, 255), counter);
       counter++;
     }
   }
 }
 
-inline void LineMatcher::preExecuteInit(LineMatchingResult & theLineMatchingResult)
+inline void LineMatcher::preExecuteInit(LineMatchingResult& theLineMatchingResult)
 {
-  if (!preInitDone)
+  if (!preInitDone || lastFieldDimensionsUpdate != theFieldDimensions.lastUpdate)
   {
+    lastFieldDimensionsUpdate = theFieldDimensions.lastUpdate;
+
     // initialize stuff
     fieldLinesX.clear();
     fieldLinesY.clear();
@@ -85,64 +63,79 @@ inline void LineMatcher::preExecuteInit(LineMatchingResult & theLineMatchingResu
 
     // field lines (segments) in x-direction
     fieldLinesX.push_back(AbstractLine( // right sideline; 0
-      theFieldDimensions.yPosRightSideline,
-      theFieldDimensions.xPosOwnGroundline,
-      theFieldDimensions.xPosOpponentGroundline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightSideline),
-        Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightSideline),
-        0));
+        theFieldDimensions.yPosRightSideline,
+        theFieldDimensions.xPosOwnGroundline,
+        theFieldDimensions.xPosOpponentGroundline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightSideline), Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightSideline), 0));
 
     fieldLinesX.push_back(AbstractLine( // left sideline; 1
-      theFieldDimensions.yPosLeftSideline,
-      theFieldDimensions.xPosOwnGroundline,
-      theFieldDimensions.xPosOpponentGroundline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftSideline),
-        Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline),
-        0));
+        theFieldDimensions.yPosLeftSideline,
+        theFieldDimensions.xPosOwnGroundline,
+        theFieldDimensions.xPosOpponentGroundline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftSideline), Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline), 0));
 
     fieldLinesX.push_back(AbstractLine( // right own penalty line; 2
-      theFieldDimensions.yPosRightPenaltyArea,
-      theFieldDimensions.xPosOwnGroundline,
-      theFieldDimensions.xPosOwnPenaltyArea));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightPenaltyArea),
-        Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
-        0));
+        theFieldDimensions.yPosRightPenaltyArea,
+        theFieldDimensions.xPosOwnGroundline,
+        theFieldDimensions.xPosOwnPenaltyArea));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightPenaltyArea), Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosRightPenaltyArea), 0));
 
     fieldLinesX.push_back(AbstractLine( // left own penalty line; 3
-      theFieldDimensions.yPosLeftPenaltyArea,
-      theFieldDimensions.xPosOwnGroundline,
-      theFieldDimensions.xPosOwnPenaltyArea));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftPenaltyArea),
-        Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea),
-        0));
+        theFieldDimensions.yPosLeftPenaltyArea,
+        theFieldDimensions.xPosOwnGroundline,
+        theFieldDimensions.xPosOwnPenaltyArea));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftPenaltyArea), Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea), 0));
 
     fieldLinesX.push_back(AbstractLine( // right opp penalty line; 4
-      theFieldDimensions.yPosRightPenaltyArea,
-      theFieldDimensions.xPosOpponentPenaltyArea,
-      theFieldDimensions.xPosOpponentGroundline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
+        theFieldDimensions.yPosRightPenaltyArea,
+        theFieldDimensions.xPosOpponentPenaltyArea,
+        theFieldDimensions.xPosOpponentGroundline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
         Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightPenaltyArea),
         0));
 
     fieldLinesX.push_back(AbstractLine( // left opp penalty line; 5
-      theFieldDimensions.yPosLeftPenaltyArea,
-      theFieldDimensions.xPosOpponentPenaltyArea,
-      theFieldDimensions.xPosOpponentGroundline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea),
+        theFieldDimensions.yPosLeftPenaltyArea,
+        theFieldDimensions.xPosOpponentPenaltyArea,
+        theFieldDimensions.xPosOpponentGroundline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea),
         Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftPenaltyArea),
         0));
+    // added 06.02.2020 - goal area (former penalty area) from field 2020
+    if (theFieldDimensions.goalAreaPresent)
+    {
+      fieldLinesX.push_back(AbstractLine( // right own goal area line; 6
+          theFieldDimensions.yPosRightGoalArea,
+          theFieldDimensions.xPosOwnGroundline,
+          theFieldDimensions.xPosOwnGoalArea));
+      theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+          Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoalArea), Vector2d(theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosRightGoalArea), 0));
+
+      fieldLinesX.push_back(AbstractLine( // left own goal area line; 7
+          theFieldDimensions.yPosLeftGoalArea,
+          theFieldDimensions.xPosOwnGroundline,
+          theFieldDimensions.xPosOwnGoalArea));
+      theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+          Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftGoalArea), Vector2d(theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosLeftGoalArea), 0));
+
+      fieldLinesX.push_back(AbstractLine( // right opp goal area line; 8
+          theFieldDimensions.yPosRightGoalArea,
+          theFieldDimensions.xPosOpponentGoalArea,
+          theFieldDimensions.xPosOpponentGroundline));
+      theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+          Vector2d(theFieldDimensions.xPosOpponentGoalArea, theFieldDimensions.yPosRightGoalArea), Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightGoalArea), 0));
+
+      fieldLinesX.push_back(AbstractLine( // left opp goal area line; 9
+          theFieldDimensions.yPosLeftGoalArea,
+          theFieldDimensions.xPosOpponentGoalArea,
+          theFieldDimensions.xPosOpponentGroundline));
+      theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+          Vector2d(theFieldDimensions.xPosOpponentGoalArea, theFieldDimensions.yPosLeftGoalArea), Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftGoalArea), 0));
+    }
 
 
     // field lines (segments) in y-direction
@@ -150,83 +143,103 @@ inline void LineMatcher::preExecuteInit(LineMatchingResult & theLineMatchingResu
     // a positive offset in the rotated
     // AbstractLine coordinate system.
     // Min and max are min-y and max-y, respectively.
-    fieldLinesY.push_back(AbstractLine( // own groundline; 6
-      -theFieldDimensions.xPosOwnGroundline,
-      theFieldDimensions.yPosRightSideline,
-      theFieldDimensions.yPosLeftSideline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightSideline),
-        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftSideline),
-        0));
+    fieldLinesY.push_back(AbstractLine( // own groundline; 10
+        -theFieldDimensions.xPosOwnGroundline,
+        theFieldDimensions.yPosRightSideline,
+        theFieldDimensions.yPosLeftSideline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightSideline), Vector2d(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftSideline), 0));
 
-    fieldLinesY.push_back(AbstractLine( // middle line; 7
-      -theFieldDimensions.xPosHalfWayLine,
-      theFieldDimensions.yPosRightSideline,
-      theFieldDimensions.yPosLeftSideline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosHalfWayLine, theFieldDimensions.yPosRightSideline),
-        Vector2d(theFieldDimensions.xPosHalfWayLine, theFieldDimensions.yPosLeftSideline),
-        0));
+    fieldLinesY.push_back(AbstractLine( // middle line; 11
+        -theFieldDimensions.xPosHalfWayLine,
+        theFieldDimensions.yPosRightSideline,
+        theFieldDimensions.yPosLeftSideline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosHalfWayLine, theFieldDimensions.yPosRightSideline), Vector2d(theFieldDimensions.xPosHalfWayLine, theFieldDimensions.yPosLeftSideline), 0));
 
-    fieldLinesY.push_back(AbstractLine( // opp groundline; 8
-      -theFieldDimensions.xPosOpponentGroundline,
-      theFieldDimensions.yPosRightSideline,
-      theFieldDimensions.yPosLeftSideline));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightSideline),
-        Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline),
-        0));
+    fieldLinesY.push_back(AbstractLine( // opp groundline; 12
+        -theFieldDimensions.xPosOpponentGroundline,
+        theFieldDimensions.yPosRightSideline,
+        theFieldDimensions.yPosLeftSideline));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightSideline), Vector2d(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline), 0));
 
-    fieldLinesY.push_back(AbstractLine( // own penaltyline; 9
-      -theFieldDimensions.xPosOwnPenaltyArea,
-      theFieldDimensions.yPosRightPenaltyArea,
-      theFieldDimensions.yPosLeftPenaltyArea));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
-        Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea),
-        0));
+    fieldLinesY.push_back(AbstractLine( // own penaltyline; 13
+        -theFieldDimensions.xPosOwnPenaltyArea,
+        theFieldDimensions.yPosRightPenaltyArea,
+        theFieldDimensions.yPosLeftPenaltyArea));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosRightPenaltyArea), Vector2d(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea), 0));
 
-    fieldLinesY.push_back(AbstractLine( // opponent penaltyline; 10
-      -theFieldDimensions.xPosOpponentPenaltyArea,
-      theFieldDimensions.yPosRightPenaltyArea,
-      theFieldDimensions.yPosLeftPenaltyArea));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
+    fieldLinesY.push_back(AbstractLine( // opponent penaltyline; 14
+        -theFieldDimensions.xPosOpponentPenaltyArea,
+        theFieldDimensions.yPosRightPenaltyArea,
+        theFieldDimensions.yPosLeftPenaltyArea));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosRightPenaltyArea),
         Vector2d(theFieldDimensions.xPosOpponentPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea),
         0));
 
-    fieldLinesY.push_back(AbstractLine( // own penaltyline; 11
-      -theFieldDimensions.xPosOwnGoal,
-      theFieldDimensions.yPosRightGoal,
-      theFieldDimensions.yPosLeftGoal));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosRightGoal),
-        Vector2d(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosLeftGoal),
-        0));
+    fieldLinesY.push_back(AbstractLine( // own goalline; 15
+        -theFieldDimensions.xPosOwnGoal,
+        theFieldDimensions.yPosRightGoal,
+        theFieldDimensions.yPosLeftGoal));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosRightGoal), Vector2d(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosLeftGoal), 0));
 
-    fieldLinesY.push_back(AbstractLine( // opponent penaltyline; 12
-      -theFieldDimensions.xPosOpponentGoal,
-      theFieldDimensions.yPosRightGoal,
-      theFieldDimensions.yPosLeftGoal));
-    theLineMatchingResult.fieldLines.push_back(
-      LineMatchingResult::FieldLine(
-        Vector2d(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosRightGoal),
-        Vector2d(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosLeftGoal),
-        0));
+    fieldLinesY.push_back(AbstractLine( // opponent goalline; 16
+        -theFieldDimensions.xPosOpponentGoal,
+        theFieldDimensions.yPosRightGoal,
+        theFieldDimensions.yPosLeftGoal));
+    theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+        Vector2d(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosRightGoal), Vector2d(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosLeftGoal), 0));
+    // added 06.02.2020 - goal area (former penalty area) from field 2020
+    if (theFieldDimensions.goalAreaPresent)
+    {
+      fieldLinesY.push_back(AbstractLine( // own goal area line; 17
+          -theFieldDimensions.xPosOwnGoalArea,
+          theFieldDimensions.yPosRightGoalArea,
+          theFieldDimensions.yPosLeftGoalArea));
+      theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+          Vector2d(theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosRightGoalArea), Vector2d(theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosLeftGoalArea), 0));
 
+      fieldLinesY.push_back(AbstractLine( // opponent goal area line; 18
+          -theFieldDimensions.xPosOpponentGoalArea,
+          theFieldDimensions.yPosRightGoalArea,
+          theFieldDimensions.yPosLeftGoalArea));
+      theLineMatchingResult.fieldLines.push_back(LineMatchingResult::FieldLine(
+          Vector2d(theFieldDimensions.xPosOpponentGoalArea, theFieldDimensions.yPosRightGoalArea), Vector2d(theFieldDimensions.xPosOpponentGoalArea, theFieldDimensions.yPosLeftGoalArea), 0));
+    }
+
+    numberOfFieldLinesX = static_cast<int>(fieldLinesX.size());
+    numberOfFieldLinesY = static_cast<int>(fieldLinesY.size());
+    numberOfFieldLinesTotal = numberOfFieldLinesX + numberOfFieldLinesY;
+
+    correspondences.clear();
+    correspondenceInMainDirectionClass.clear();
+    correspondenceIndexOfOrigin.clear();
+    alreadyAssignedFieldLinesX.clear();
+    alreadyAssignedFieldLinesY.clear();
+    observationMapToInternalIndex.clear();
+    observationMapToInternalMainDirectionClass.clear();
+    mainDirectionClassIndex2correspondenceIndex.clear();
+    notMainDirectionClassIndex2correspondenceIndex.clear();
+
+    correspondences.resize(numberOfFieldLinesTotal, 0);
+    correspondenceInMainDirectionClass.resize(numberOfFieldLinesTotal, false);
+    correspondenceIndexOfOrigin.resize(numberOfFieldLinesTotal, 0);
+    alreadyAssignedFieldLinesX.resize(numberOfFieldLinesX, false);
+    alreadyAssignedFieldLinesY.resize(numberOfFieldLinesY, false);
+    observationMapToInternalIndex.resize(numberOfFieldLinesTotal, 0);
+    observationMapToInternalMainDirectionClass.resize(numberOfFieldLinesTotal, false);
+    mainDirectionClassIndex2correspondenceIndex.resize(numberOfFieldLinesTotal, 0);
+    notMainDirectionClassIndex2correspondenceIndex.resize(numberOfFieldLinesTotal, 0);
 
     preInitDone = true;
   }
 }
 
 
-void LineMatcher::execute(LineMatchingResult & theLineMatchingResult)
+void LineMatcher::execute(LineMatchingResult& theLineMatchingResult)
 {
   if (theFrameInfo.time == lastUpdateTime)
   {
@@ -238,8 +251,7 @@ void LineMatcher::execute(LineMatchingResult & theLineMatchingResult)
   theLineMatchingResult.reset();
   for (const auto& i : theCLIPFieldLinesPercept.lines)
   {
-    LineMatchingResult::FieldLine obs(i.startOnField.cast<double>(), i.endOnField.cast<double>(),
-      (i.fromUpper ? theCameraMatrix.translation.z() : theCameraMatrixUpper.translation.z()));
+    LineMatchingResult::FieldLine obs(i.startOnField.cast<double>(), i.endOnField.cast<double>(), (i.fromUpper ? theCameraMatrixUpper.translation.z() : theCameraMatrix.translation.z()));
 
     // Plausability check if observed line is in front of robot
     // Still allow lines observed behind robot but one side only (look over shoulder)
@@ -274,8 +286,8 @@ double LineMatcher::determineMainDirection()
   // and the overlapping garantees acceptable results.
   // I don't see a reason not to hardcode those numbers,
   // as this will not be a subject to any parameter tuning.
-  int accumulatorCount[9]{ 0 };
-  double directionAccumulator[9]{ 0 };
+  int accumulatorCount[9]{0};
+  double directionAccumulator[9]{0};
 
   // "accumulatorCount[0] = 1" means there is 1 line
   // with a direction between 0° and 30° (or +90°)
@@ -285,7 +297,7 @@ double LineMatcher::determineMainDirection()
     float direction = (i.endOnField - i.startOnField).angle();
     //direction = (direction + pi2) % pi_2; // so it is positive and in the first quadrant
     // shitty C++ does not know modulo for non-integers...
-    float temp = direction + pi2;                            // so it is positive...
+    float temp = direction + pi2; // so it is positive...
     direction = temp - static_cast<int>(temp / pi_2) * pi_2; // ...and in the first quadrant
 
     int index = static_cast<int>(direction / tenDegrees); // [0..8]
@@ -318,7 +330,7 @@ double LineMatcher::determineMainDirection()
   for (int i = 0; i < 9; i++)
   {
     if (accumulatorCount[i]) // Dont know if this is correct, but dividing by 0 is
-                 // definately bullshit, so avoid this
+        // definately bullshit, so avoid this
       directionAccumulator[i] /= accumulatorCount[i];
     else
       directionAccumulator[i] = 0;
@@ -333,7 +345,7 @@ double LineMatcher::determineMainDirection()
   return mainDirection;
 }
 
-void LineMatcher::buildLineClusters(LineMatchingResult & theLineMatchingResult)
+void LineMatcher::buildLineClusters(LineMatchingResult& theLineMatchingResult)
 {
   linesInMainDirection.clear();
   lines90DegreeToMainDirection.clear();
@@ -348,7 +360,7 @@ void LineMatcher::buildLineClusters(LineMatchingResult & theLineMatchingResult)
     double direction = (i->end - i->start).angle() - mainDirection;
     direction = std::abs(Angle::normalize(direction)); // -> [0..pi]
 
-    std::vector<AbstractLine> * linesCluster;
+    std::vector<AbstractLine>* linesCluster;
     if (direction < pi_4 || direction > pi3_4)
     {
       linesCluster = &linesInMainDirection;
@@ -374,8 +386,7 @@ void LineMatcher::buildLineClusters(LineMatchingResult & theLineMatchingResult)
     int matchIndex = 0;
     for (auto j = linesCluster->begin(); j != linesCluster->end(); ++j)
     {
-      if (std::abs(distance / j->offset - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
-        || std::abs(distance - j->offset) < parameters.absoluteAllowedDistanceErrorForLineClustering)
+      if (std::abs(distance / j->offset - 1) < parameters.relativeAllowedDistanceErrorForLineClustering || std::abs(distance - j->offset) < parameters.absoluteAllowedDistanceErrorForLineClustering)
       {
         matchFound = true;
 
@@ -429,7 +440,7 @@ void LineMatcher::buildLineClusters(LineMatchingResult & theLineMatchingResult)
 }
 
 
-void LineMatcher::findPossiblePositions(LineMatchingResult & theLineMatchingResult)
+void LineMatcher::findPossiblePositions(LineMatchingResult& theLineMatchingResult)
 {
   int totalNumberOfObservedLines = static_cast<int>(linesInMainDirection.size() + lines90DegreeToMainDirection.size());
 
@@ -530,10 +541,9 @@ bool LineMatcher::getNextCorrespondenceCombination(int totalNumberOfObservedLine
   for (index = conflictingPosition; index >= 0; index--)
   {
     // is it possible to increment this position?
-    if ((correspondenceInMainDirectionClass[index] && correspondences[index] + 1 < numberOfFieldLinesX)  // we search for a x-line correspondence
-      ||
-      (!correspondenceInMainDirectionClass[index] && correspondences[index] + 1 < numberOfFieldLinesY)  // we search for a y-line correspondence
-      )
+    if ((correspondenceInMainDirectionClass[index] && correspondences[index] + 1 < numberOfFieldLinesX) // we search for a x-line correspondence
+        || (!correspondenceInMainDirectionClass[index] && correspondences[index] + 1 < numberOfFieldLinesY) // we search for a y-line correspondence
+    )
     {
       break; // possible position found!
     }
@@ -620,18 +630,17 @@ bool LineMatcher::checkCombinatorialValidityOfCorrespondences(int totalNumberOfO
   return true;
 }
 
-bool LineMatcher::doesObservationFitModel(const AbstractLine & observationInRelativeCoords, const AbstractLine & modelInRelativeCoords)
+bool LineMatcher::doesObservationFitModel(const AbstractLine& observationInRelativeCoords, const AbstractLine& modelInRelativeCoords)
 {
   // check the distances of the line
   if (std::abs(observationInRelativeCoords.offset / modelInRelativeCoords.offset - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
-    || std::abs(observationInRelativeCoords.offset - modelInRelativeCoords.offset) < parameters.absoluteAllowedDistanceErrorForLineClustering)
+      || std::abs(observationInRelativeCoords.offset - modelInRelativeCoords.offset) < parameters.absoluteAllowedDistanceErrorForLineClustering)
   {
     // check if the segment might lie outside of the prediction too much
     if ((std::abs(observationInRelativeCoords.min / modelInRelativeCoords.min - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
-      || -1 * (observationInRelativeCoords.min - modelInRelativeCoords.min) < parameters.absoluteAllowedDistanceErrorForLineClustering)
-      &&
-      (std::abs(observationInRelativeCoords.max / modelInRelativeCoords.max - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
-        || (observationInRelativeCoords.max - modelInRelativeCoords.max) < parameters.absoluteAllowedDistanceErrorForLineClustering))
+            || -1 * (observationInRelativeCoords.min - modelInRelativeCoords.min) < parameters.absoluteAllowedDistanceErrorForLineClustering)
+        && (std::abs(observationInRelativeCoords.max / modelInRelativeCoords.max - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
+            || (observationInRelativeCoords.max - modelInRelativeCoords.max) < parameters.absoluteAllowedDistanceErrorForLineClustering))
     {
       // Using absoluteAllowedDistanceErrorForLineClustering might allow small line fragments on the wrong side of
       // another perpendicular line. Calculate the overlap (how much of the observation is covered by the model)
@@ -647,7 +656,7 @@ bool LineMatcher::doesObservationFitModel(const AbstractLine & observationInRela
 }
 
 
-bool LineMatcher::checkGeometricValidityOfCorrespondences(int totalNumberOfObservedLines, int& conflictingPosition, Pose2f & poseHypothesis)
+bool LineMatcher::checkGeometricValidityOfCorrespondences(int totalNumberOfObservedLines, int& conflictingPosition, Pose2f& poseHypothesis)
 {
   // use the first two correspondences (which are of different classes) to uniquely determine the position
   // first is always mainDirection which corresponds to x-lines (side line etc.)
@@ -663,7 +672,8 @@ bool LineMatcher::checkGeometricValidityOfCorrespondences(int totalNumberOfObser
   // now check the geometric plausibility
   for (int i = 0; i < totalNumberOfObservedLines; i++)
   {
-    const AbstractLine& observationInRelativeCoords = correspondenceInMainDirectionClass[i] ? linesInMainDirection[correspondenceIndexOfOrigin[i]] : lines90DegreeToMainDirection[correspondenceIndexOfOrigin[i]];
+    const AbstractLine& observationInRelativeCoords =
+        correspondenceInMainDirectionClass[i] ? linesInMainDirection[correspondenceIndexOfOrigin[i]] : lines90DegreeToMainDirection[correspondenceIndexOfOrigin[i]];
     AbstractLine modelInRelativeCoords;
     if (correspondenceInMainDirectionClass[i])
     { // x line
@@ -693,14 +703,16 @@ bool LineMatcher::checkGeometricValidityOfCorrespondences(int totalNumberOfObser
   return true;
 }
 
-void LineMatcher::addPoseToLineMatchingResult(const Pose2f & pose, LineMatchingResult & theLineMatchingResult)
+void LineMatcher::addPoseToLineMatchingResult(const Pose2f& pose, LineMatchingResult& theLineMatchingResult)
 {
   LineMatchingResult::PoseHypothesis ph;
   ph.pose = pose;
   for (unsigned int i = 0; i < theLineMatchingResult.observations.size(); i++)
   {
     int offset = observationMapToInternalMainDirectionClass[i] ? 0 : numberOfFieldLinesX;
-    int indexInCorrespondenceArray = observationMapToInternalMainDirectionClass[i] ? mainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]] : notMainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]];
+    int indexInCorrespondenceArray = observationMapToInternalMainDirectionClass[i]
+        ? mainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]]
+        : notMainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]];
     ph.lineCorrespondences[i] = correspondences[indexInCorrespondenceArray] + offset;
   }
   if (parameters.allowPosesOutsideOfCarpet || theFieldDimensions.isInsideCarpet(ph.pose.translation))
@@ -715,7 +727,7 @@ void LineMatcher::addPoseToLineMatchingResult(const Pose2f & pose, LineMatchingR
   counterForDrawing++;
 }
 
-void LineMatcher::addPoseIntervalToLineMatchingResult(const Pose2f & start, const Pose2f & end, LineMatchingResult & theLineMatchingResult)
+void LineMatcher::addPoseIntervalToLineMatchingResult(const Pose2f& start, const Pose2f& end, LineMatchingResult& theLineMatchingResult)
 {
   LineMatchingResult::PoseHypothesisInterval phi;
   phi.start = start;
@@ -723,13 +735,13 @@ void LineMatcher::addPoseIntervalToLineMatchingResult(const Pose2f & start, cons
   for (unsigned int i = 0; i < theLineMatchingResult.observations.size(); i++)
   {
     int offset = observationMapToInternalMainDirectionClass[i] ? 0 : numberOfFieldLinesX;
-    int indexInCorrespondenceArray = observationMapToInternalMainDirectionClass[i] ? mainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]] : notMainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]];
+    int indexInCorrespondenceArray = observationMapToInternalMainDirectionClass[i]
+        ? mainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]]
+        : notMainDirectionClassIndex2correspondenceIndex[observationMapToInternalIndex[i]];
     phi.lineCorrespondences[i] = correspondences[indexInCorrespondenceArray] + offset;
   }
 
-  if (parameters.allowPosesOutsideOfCarpet
-    || theFieldDimensions.isInsideCarpet(phi.start.translation)
-    || theFieldDimensions.isInsideCarpet(phi.end.translation))
+  if (parameters.allowPosesOutsideOfCarpet || theFieldDimensions.isInsideCarpet(phi.start.translation) || theFieldDimensions.isInsideCarpet(phi.end.translation))
   {
     theLineMatchingResult.poseHypothesisIntervals.push_back(phi);
   }
@@ -739,16 +751,15 @@ void LineMatcher::addPoseIntervalToLineMatchingResult(const Pose2f & start, cons
   for (float t = 0.f; t <= 1.f; t += 1.f / 25)
   {
     float s = 1.f - t;
-    Pose2f interpolation(t * phi.start.rotation + s * phi.end.rotation,
-      t * phi.start.translation.x() + s * phi.end.translation.x(),
-      t * phi.start.translation.y() + s * phi.end.translation.y());
+    Pose2f interpolation(
+        t * phi.start.rotation + s * phi.end.rotation, t * phi.start.translation.x() + s * phi.end.translation.x(), t * phi.start.translation.y() + s * phi.end.translation.y());
     POSE_2D_SAMPLE("module:LineMatcher:possiblePositions", interpolation, ColorRGBA(0, 255, 255));
   }
   DRAWTEXT("module:LineMatcher:possiblePositions", phi.start.translation.x() + 40, phi.start.translation.y() + 40, 100, ColorRGBA(0, 255, 255), counterForDrawing);
   counterForDrawing++;
 }
 
-void LineMatcher::findPossiblePoseIntervals(LineMatchingResult & theLineMatchingResult)
+void LineMatcher::findPossiblePoseIntervals(LineMatchingResult& theLineMatchingResult)
 {
   int totalNumberOfObservedLines = static_cast<int>(linesInMainDirection.size() + lines90DegreeToMainDirection.size());
 
@@ -757,8 +768,7 @@ void LineMatcher::findPossiblePoseIntervals(LineMatchingResult & theLineMatching
   int conflictingPosition; // needed later when checking possible correspondences
 
   // test for 0°, 90°, 180°, 270° rotation
-  Pose2f poseIntervalHypothesisStart(static_cast<float>(-mainDirection)),
-    poseIntervalHypothesisEnd(static_cast<float>(-mainDirection));
+  Pose2f poseIntervalHypothesisStart(static_cast<float>(-mainDirection)), poseIntervalHypothesisEnd(static_cast<float>(-mainDirection));
   for (int i = 0; i < 4; i++)
   {
     resetToStartingCorrespondencesForIntervals();
@@ -799,7 +809,7 @@ void LineMatcher::resetToStartingCorrespondencesForIntervals()
   }
 }
 
-bool LineMatcher::checkGeometricValidityOfCorrespondencesForIntervals(int totalNumberOfObservedLines, int& conflictingPosition, Pose2f & poseIntervalHypothesisStart, Pose2f & poseIntervalHypothesisEnd)
+bool LineMatcher::checkGeometricValidityOfCorrespondencesForIntervals(int totalNumberOfObservedLines, int& conflictingPosition, Pose2f& poseIntervalHypothesisStart, Pose2f& poseIntervalHypothesisEnd)
 {
   // This is relatively easy, we only have to distinguish between the observation classes
   // at the end of this procedure to calculate poseIntervalHypothesisStart/poseIntervalHypothesisEnd.
@@ -848,11 +858,12 @@ bool LineMatcher::checkGeometricValidityOfCorrespondencesForIntervals(int totalN
   return true;
 }
 
-bool LineMatcher::doesObservationFitModelForInterval(const AbstractLine & observationInRelativeCoords, const AbstractLine & modelInRelativeCoords, double& minPositionInLineDirection, double& maxPositionInLineDirection)
+bool LineMatcher::doesObservationFitModelForInterval(
+    const AbstractLine& observationInRelativeCoords, const AbstractLine& modelInRelativeCoords, double& minPositionInLineDirection, double& maxPositionInLineDirection)
 {
   // check the distances of the line
   if (std::abs(observationInRelativeCoords.offset / modelInRelativeCoords.offset - 1) < parameters.relativeAllowedDistanceErrorForLineClustering
-    || std::abs(observationInRelativeCoords.offset - modelInRelativeCoords.offset) < parameters.absoluteAllowedDistanceErrorForLineClustering)
+      || std::abs(observationInRelativeCoords.offset - modelInRelativeCoords.offset) < parameters.absoluteAllowedDistanceErrorForLineClustering)
   {
     // in contrast to absolute pose hypotheses, we can only use the new constraints
     // to decrease the interval and check if it is still "there" afterwards.

@@ -3,6 +3,7 @@
  */
 
 #include "WhistleHandlerDortmund.h"
+#include "Representations/Infrastructure/TeamCommEvents.h"
 #include "Tools/Settings.h"
 
 MAKE_MODULE(WhistleHandlerDortmund, cognitionInfrastructure)
@@ -10,39 +11,34 @@ MAKE_MODULE(WhistleHandlerDortmund, cognitionInfrastructure)
 void WhistleHandlerDortmund::update(GameInfo& gameInfo)
 {
   //printf("WhistleHandlerDortmund#update\n");
-  bool whistleDetected = false;
-  if (gameInfo.state == STATE_PLAYING && theRawGameInfo.state == STATE_SET)
-    whistleDetected = true;
+  // check if game state was changed due to whistle -> keep that change
+  bool setToPlay = gameInfo.state == STATE_PLAYING && theRawGameInfo.state == STATE_SET;
+  bool playToReady = gameInfo.state == STATE_READY && theRawGameInfo.state == STATE_PLAYING;
+
+  // check if gameInfo does not agree with rawGameInfo after GameController should have sent the update
+  if (playToReady && theFrameInfo.getTimeSince(timeStampPlayToReady) > playToReadyTimeout)
+    playToReady = false;
+  if (setToPlay && theFrameInfo.getTimeSince(timeStampSetToPlay) > setToPlayTimeout)
+    setToPlay = false;
+
+  // update gameInfo with rawgameinfo
   gameInfo = theRawGameInfo;
-  // no whistle detection in penalty shootout (Rules 2017)
-  if (Global::getSettings().gameMode == Settings::penaltyShootout)
-    return;
-  if (theRawGameInfo.state != STATE_SET && theRawGameInfo.state != STATE_PLAYING)
-    gameInfo.whistleCausedPlay = false;
-  if (whistleDetected)
-    gameInfo.state = STATE_PLAYING;
+  // remember time of state change to set for illegal motion detection
   if (gameInfo.state != lastGameState && gameInfo.state == STATE_SET)
   {
-    gameInfo.whistleCausedPlay = false;
     for (unsigned int i = 0; i <= MAX_NUM_PLAYERS; i++)
       whistleTimestamps[i] = 0;
     timeOfLastSetState = theFrameInfo.time;
   }
-    
-  
-  if (gameInfo.state != STATE_SET)
-    overrideGameState = false;
-  else if (!overrideGameState && gameInfo.gamePhase == GAME_PHASE_NORMAL)
+
+  // if whistle caused a game state change, game info has to be updated accordingly
+  if (setToPlay)
   {
-    gameInfo.whistleCausedPlay = checkWhistles();
-    overrideGameState = gameInfo.whistleCausedPlay || checkBall();
-  }
-  if(overrideGameState)
-  {
+    // illegal motion penalty can only occur in set state -> whistle detection went wrong
+    // TODO: this should also trigger something in the whistleHandler!
     if (checkForIllegalMotionPenalty())
     {
       timeOfLastSetState = theFrameInfo.time;
-      overrideGameState = false;
       gameInfo.state = STATE_SET;
     }
     else
@@ -50,47 +46,58 @@ void WhistleHandlerDortmund::update(GameInfo& gameInfo)
       gameInfo.state = STATE_PLAYING;
     }
   }
-  lastGameState = gameInfo.state;
+  else if (playToReady)
+    gameInfo.state = STATE_READY;
+  else
+  { // no game state was recently changed -> check whistle and other hints for a referee game state change
+    const bool whistleDetected = theWhistleDortmund.detectionState == WhistleDortmund::DetectionState::isDetected;
+    if (theRawGameInfo.state == STATE_SET && (whistleDetected || checkBall()))
+    {
+      gameInfo.state = STATE_PLAYING;
+      timeStampSetToPlay = theFrameInfo.time;
+    }
 
-}
-
-bool WhistleHandlerDortmund::checkWhistles()
-{
-  int numberWhistleDetected = 0;
-  if (theFrameInfo.getTimeSince(theWhistleDortmund.lastDetectionTime) < timeWindow)
-    numberWhistleDetected++;
-
-  int numberOfActiveTeammates = 0;
-  for (auto &mate : theTeammateData.teammates)
-  {
-    whistleTimestamps[mate.number] = mate.whistle.lastDetectionTime;
-    if (mate.whistleCausedPlay)
-      return true;
-    if (mate.isNDevilsPlayer && mate.status >= Teammate::ACTIVE)
-      numberOfActiveTeammates++;
+    const int localTimeDiffGoalToWhistle = static_cast<int>(theBallModel.timeWhenBallInGoalBox) - static_cast<int>(theWhistleDortmund.lastDetectionTime);
+    const int remoteTimeDiffGoalToWhistle = static_cast<int>(theRemoteBallModel.timeWhenBallInGoalBox) - static_cast<int>(theWhistleDortmund.lastDetectionTime);
+    const Teammate* goalDetectedMate = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::goalDetected);
+    const bool inSetPlay = theRawGameInfo.setPlay != SET_PLAY_NONE;
+    const bool localGoalDetected = theWhistleDortmund.lastDetectionTime > 0 && theFrameInfo.getTimeSince(theWhistleDortmund.lastDetectionTime) < 3000
+        && ((std::abs(localTimeDiffGoalToWhistle) < maxTimediffWhistleToGoal && theBallModel.validity > 0.7)
+            || (std::abs(remoteTimeDiffGoalToWhistle) < maxTimediffWhistleToGoal && theRemoteBallModel.validity > 0.7));
+    const bool remoteGoalDetected = goalDetectedMate && theWhistleDortmund.lastDetectionTime > 0 && goalDetectedMate->whistle.lastDetectionTime > 0
+        && theFrameInfo.getTimeSince(theWhistleDortmund.lastDetectionTime) < timeWindow && theFrameInfo.getTimeSince(goalDetectedMate->whistle.lastDetectionTime) < timeWindow;
+    if (theRawGameInfo.state == STATE_PLAYING && !inSetPlay && (localGoalDetected || remoteGoalDetected))
+    {
+      gameInfo.state = STATE_READY;
+      timeStampPlayToReady = theFrameInfo.time;
+    }
   }
-
-  for (unsigned int i = 0; i <= MAX_NUM_PLAYERS; i++)
-    if (theFrameInfo.getTimeSince(whistleTimestamps[i]) < timeWindow)
-      numberWhistleDetected++;
-
-  bool teamAgrees = numberWhistleDetected * 100 / (theTeammateData.numberOfActiveTeammates + 1) > percentOfTeamAgrees;
-  return teamAgrees;
+  lastGameState = gameInfo.state;
 }
 
 bool WhistleHandlerDortmund::checkBall()
 {
   // defenders always use the ball position
-  if (!useBallPosition)// && theRobotPose.translation.x() > theFieldDimensions.xPosOwnGroundline / 3)
+  if (!useBallPosition) // && theRobotPose.translation.x() > theFieldDimensions.xPosOwnGroundline / 3)
     return false;
   Vector2f ballField = Transformation::robotToField(theRobotPose, theBallModel.estimate.position);
   return (theFrameInfo.getTimeSince(timeOfLastSetState) > 5000
-    && ((theRemoteBallModel.validity > 0.7f
-      && (theBallModel.validity > 0.7f || theRobotPose.translation.x() < -1500)
-      && theFrameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 1000) ||
-      (theBallModel.estimate.position.norm() < 1000.f && theBallModel.validity > 0.7f && theBallModel.estimate.velocity.norm() < 30.f))
-    && (theRemoteBallModel.position.squaredNorm() > maxBallToMiddleDistance * maxBallToMiddleDistance ||
-      (ballField.squaredNorm() > maxBallToMiddleDistance * maxBallToMiddleDistance && theBallModel.estimate.position.norm() < 1000.f)));
+      && ((theRemoteBallModel.validity > 0.7f && (theBallModel.validity > 0.7f || theRobotPose.translation.x() < -1500) && theFrameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 1000)
+          || (theBallModel.estimate.position.norm() < 1000.f && theBallModel.validity > 0.7f && theBallModel.estimate.velocity.norm() < 30.f))
+      && (theRemoteBallModel.position.squaredNorm() > maxBallToMiddleDistance * maxBallToMiddleDistance
+          || (ballField.squaredNorm() > maxBallToMiddleDistance * maxBallToMiddleDistance && theBallModel.estimate.position.norm() < 1000.f)));
+}
+
+bool WhistleHandlerDortmund::checkForGoal()
+{
+  if (!useBallForPlayingReadyTransition)
+    return true;
+  Vector2f ballField = Transformation::robotToField(theRobotPose, theBallModel.estimate.position);
+  Vector2f ballFieldRemote = theRemoteBallModel.position;
+  bool localBallInGoalArea = theBallModel.validity > 0.7f && std::abs(ballField.x()) > theFieldDimensions.xPosOpponentGoalArea && std::abs(ballField.y()) < theFieldDimensions.yPosLeftGoalArea;
+  bool remoteBallInGoalArea = theRemoteBallModel.validity > 0.7f && std::abs(ballFieldRemote.x()) > theFieldDimensions.xPosOpponentGoalArea
+      && std::abs(ballFieldRemote.y()) < theFieldDimensions.yPosLeftGoalArea;
+  return localBallInGoalArea || remoteBallInGoalArea;
 }
 
 bool WhistleHandlerDortmund::checkForIllegalMotionPenalty()

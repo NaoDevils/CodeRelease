@@ -23,7 +23,7 @@ void BoxGeometry::drawPhysics(unsigned int flags) const
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  if(flags & SimRobotCore2::Renderer::showPhysics)
+  if (flags & SimRobotCore2::Renderer::showPhysics)
   {
     const float lx = depth * 0.5f;
     const float ly = width * 0.5f;
@@ -31,57 +31,57 @@ void BoxGeometry::drawPhysics(unsigned int flags) const
 
     // -y-side
     glBegin(GL_TRIANGLE_FAN);
-      glColor4fv(color);
-      glNormal3f(0, -1, 0);
-      glVertex3f(lx, -ly, -lz);
-      glVertex3f(lx, -ly, lz);
-      glVertex3f(-lx, -ly, lz);
-      glVertex3f(-lx, -ly, -lz);
+    glColor4fv(color);
+    glNormal3f(0, -1, 0);
+    glVertex3f(lx, -ly, -lz);
+    glVertex3f(lx, -ly, lz);
+    glVertex3f(-lx, -ly, lz);
+    glVertex3f(-lx, -ly, -lz);
     glEnd();
 
     // y-side
     glBegin(GL_TRIANGLE_FAN);
-      glNormal3f(0, 1, 0);
-      glVertex3f(-lx, ly, lz);
-      glVertex3f(lx, ly, lz);
-      glVertex3f(lx, ly, -lz);
-      glVertex3f(-lx, ly, -lz);
+    glNormal3f(0, 1, 0);
+    glVertex3f(-lx, ly, lz);
+    glVertex3f(lx, ly, lz);
+    glVertex3f(lx, ly, -lz);
+    glVertex3f(-lx, ly, -lz);
     glEnd();
 
     // -x-side
     glBegin(GL_TRIANGLE_FAN);
-      glNormal3f(-1, 0, 0);
-      glVertex3f(-lx, -ly, -lz);
-      glVertex3f(-lx, -ly, lz);
-      glVertex3f(-lx, ly, lz);
-      glVertex3f(-lx, ly, -lz);
+    glNormal3f(-1, 0, 0);
+    glVertex3f(-lx, -ly, -lz);
+    glVertex3f(-lx, -ly, lz);
+    glVertex3f(-lx, ly, lz);
+    glVertex3f(-lx, ly, -lz);
     glEnd();
 
     // x-side
     glBegin(GL_TRIANGLE_FAN);
-      glNormal3f(1, 0, 0);
-      glVertex3f(lx, -ly, -lz);
-      glVertex3f(lx, ly, -lz);
-      glVertex3f(lx, ly, lz);
-      glVertex3f(lx, -ly, lz);
+    glNormal3f(1, 0, 0);
+    glVertex3f(lx, -ly, -lz);
+    glVertex3f(lx, ly, -lz);
+    glVertex3f(lx, ly, lz);
+    glVertex3f(lx, -ly, lz);
     glEnd();
 
     // bottom
     glBegin(GL_TRIANGLE_FAN);
-      glNormal3f(0, 0, -1);
-      glVertex3f(-lx, -ly, -lz);
-      glVertex3f(-lx, ly, -lz);
-      glVertex3f(lx, ly, -lz);
-      glVertex3f(lx, -ly, -lz);
+    glNormal3f(0, 0, -1);
+    glVertex3f(-lx, -ly, -lz);
+    glVertex3f(-lx, ly, -lz);
+    glVertex3f(lx, ly, -lz);
+    glVertex3f(lx, -ly, -lz);
     glEnd();
 
     // top
     glBegin(GL_TRIANGLE_FAN);
-      glNormal3f(0, 0, 1);
-      glVertex3f(-lx, -ly, lz);
-      glVertex3f(lx, -ly, lz);
-      glVertex3f(lx, ly, lz);
-      glVertex3f(-lx, ly, lz);
+    glNormal3f(0, 0, 1);
+    glVertex3f(-lx, -ly, lz);
+    glVertex3f(lx, -ly, lz);
+    glVertex3f(lx, ly, lz);
+    glVertex3f(-lx, ly, lz);
     glEnd();
   }
 

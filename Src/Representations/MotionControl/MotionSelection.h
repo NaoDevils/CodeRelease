@@ -14,13 +14,11 @@
  * A struct that represents the motions actually selected based on the constraints given.
  */
 STREAMABLE(MotionSelection,
-{
   ENUM(ActivationMode,
-  {,
     deactive,
     active,
-    first,
-  });
+    first
+  );
 
   /** Special action is the default selection. */
   MotionSelection()
@@ -35,5 +33,5 @@ STREAMABLE(MotionSelection,
   (float[MotionRequest::numOfMotions]) ratios, /**< The current ratio of each motion in the final joint request. */
   (unsigned[MotionRequest::numOfMotions]) timeStampLastExecuted, /**< The last time the motion was active (i.e. ratio > 0). */
   (SpecialActionRequest) specialActionRequest, /**< The special action request, if it is an active motion. */
-  (WalkRequest) walkRequest, /**< The walk request, if it is an active motion. */
-});
+  (WalkRequest) walkRequest /**< The walk request, if it is an active motion. */
+);

@@ -11,18 +11,24 @@ SimplePathProvider::SimplePathProvider()
   obstacles.reserve(20);
   state = far;
   wasBlockingWayToGoal = false;
+}
 
-  goalAreaDownLeft = Vector2f(theFieldDimensions.xPosOwnGroundline,theFieldDimensions.yPosLeftPenaltyArea+150);
-  goalAreaDownRight = Vector2f(theFieldDimensions.xPosOwnGroundline,theFieldDimensions.yPosRightPenaltyArea-150);
-  goalAreaUpRight = Vector2f(theFieldDimensions.xPosOwnPenaltyArea+150,theFieldDimensions.yPosRightPenaltyArea-150);
-  goalAreaUpLeft = Vector2f(theFieldDimensions.xPosOwnPenaltyArea+150,theFieldDimensions.yPosLeftPenaltyArea+150);
+void SimplePathProvider::initialize()
+{
+  penaltyAreaDownLeft = Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftPenaltyArea + 150);
+  penaltyAreaDownRight = Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightPenaltyArea - 150);
+  penaltyAreaUpRight = Vector2f(theFieldDimensions.xPosOwnPenaltyArea + 150, theFieldDimensions.yPosRightPenaltyArea - 150);
+  penaltyAreaUpLeft = Vector2f(theFieldDimensions.xPosOwnPenaltyArea + 150, theFieldDimensions.yPosLeftPenaltyArea + 150);
+  initialized = true;
 }
 
 void SimplePathProvider::update(Path& path)
 {
   // TODO: ball next to goal post
-  DECLARE_DEBUG_DRAWING("module:SimplePathProvider:obstacles","drawingOnField");
- 
+  DECLARE_DEBUG_DRAWING("module:SimplePathProvider:obstacles", "drawingOnField");
+
+  if (!initialized)
+    initialize();
   // clear old wayPoints/obstacles
   // TODO : remember the old way
   if (theMotionRequest.motion == MotionRequest::walk && theMotionRequest.walkRequest.requestType == WalkRequest::destination && !path.wayPoints.empty())
@@ -50,9 +56,8 @@ void SimplePathProvider::update(Path& path)
     {
       path.reset();
       path.wayPoints = wayPoints;
-      
     }
-    
+
     path.nearestObstacle = distanceToClosestObstacle;
     path.nearestObstaclePosition = nearestObstaclePosition;
     path.nearestObstacleType = nearestObstacleType;
@@ -80,7 +85,7 @@ void SimplePathProvider::handleRobots()
   std::vector<RobotMapEntry>::const_iterator end = theRobotMap.robots.end();
   for (; robot != end; ++robot)
   {
-    const Vector2f &trans = robot->pose.translation;
+    const Vector2f& trans = robot->pose.translation;
     float distance = (trans - theRobotPose.translation).norm() - (robot->robotType == RobotEstimate::teammateRobot ? teamRobotInfluenceRadius : robotInfluenceRadius);
     if (distance < distanceToClosestObstacle)
     {
@@ -90,23 +95,23 @@ void SimplePathProvider::handleRobots()
     }
     if (distance < 2500)
     {
-      obstacles.push_back(
-        Obstacle(robot->pose.translation.x(),robot->pose.translation.y(),
-        ((robot->robotType == RobotEstimate::teammateRobot) ? teamRobotInfluenceRadius : robotInfluenceRadius), 
+      obstacles.push_back(Obstacle(robot->pose.translation.x(),
+          robot->pose.translation.y(),
+          ((robot->robotType == RobotEstimate::teammateRobot) ? teamRobotInfluenceRadius : robotInfluenceRadius),
           Path::robot,
-        (robot->robotType == RobotEstimate::teammateRobot))
-        );
+          (robot->robotType == RobotEstimate::teammateRobot)));
     }
   }
 }
 
 void SimplePathProvider::handleBall()
 {
-  if ((theBallSymbols.timeSinceLastSeen < 2000 || 
-      (theBallSymbols.timeSinceLastSeenByTeam < 2000 && Transformation::fieldToRobot(theRobotPoseAfterPreview,theBallSymbols.ballPositionField).x() < 0))
-    && theGameInfo.state == STATE_PLAYING)
+  if ((theBallSymbols.timeSinceLastSeen < 2000
+          || (theBallSymbols.timeSinceLastSeenByTeam < 2000 && Transformation::fieldToRobot(theRobotPoseAfterPreview, theBallSymbols.ballPositionField).x() < 0))
+      && (theGameInfo.state == STATE_PLAYING || theBehaviorData.behaviorState >= BehaviorData::BehaviorState::firstCalibrationState)
+      && theBallchaser.kickType != MotionRequest::dribble && theBallSymbols.avoidBall == true)
   {
-    const Vector2f &trans = Transformation::robotToField(theRobotPoseAfterPreview, theBallModelAfterPreview.estimate.position);
+    const Vector2f& trans = Transformation::robotToField(theRobotPoseAfterPreview, theBallModelAfterPreview.estimate.position);
     float distance = theBallModelAfterPreview.estimate.position.norm();
     if (distance < distanceToClosestObstacle)
     {
@@ -114,13 +119,12 @@ void SimplePathProvider::handleBall()
       nearestObstaclePosition = Vector2f(trans);
       nearestObstacleType = Path::ball;
     }
-    float alpha = std::abs(Angle::normalize(destWorldCoordinates.translation.angle() - (destWorldCoordinates.translation-theBallSymbols.ballPositionField).angle()))
-      / pi;
-    float influenceRadius = ballInfluenceRadius + ballInfluenceRadius*alpha;
+    float alpha = std::abs(Angle::normalize(destWorldCoordinates.translation.angle() - (destWorldCoordinates.translation - theBallSymbols.ballPositionField).angle())) / pi;
+    float influenceRadius = ballInfluenceRadius + ballInfluenceRadius * alpha;
     // if free kick, use wide circle around ball
-    isGoalieInOwnPenaltyArea = theBehaviorData.role == BehaviorData::keeper &&
-      std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.penaltyAreaWidth + (isGoalieInOwnPenaltyArea ? 100.f : 0.f) &&
-      theRobotPoseAfterPreview.translation.x() < theFieldDimensions.xPosOwnPenaltyArea + (isGoalieInOwnPenaltyArea ? 100.f : 0.f);
+    isGoalieInOwnPenaltyArea = theBehaviorData.role == BehaviorData::keeper
+        && std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.yPosLeftPenaltyArea + (isGoalieInOwnPenaltyArea ? 100.f : 0.f)
+        && theRobotPoseAfterPreview.translation.x() < theFieldDimensions.xPosOwnPenaltyArea + (isGoalieInOwnPenaltyArea ? 100.f : 0.f);
     if (theGameInfo.setPlay != SET_PLAY_NONE && !theGameSymbols.ownKickOff && !isGoalieInOwnPenaltyArea)
       influenceRadius = 150.f;
     obstacles.push_back(Obstacle(trans.x(), trans.y(), influenceRadius, Path::ball));
@@ -129,10 +133,10 @@ void SimplePathProvider::handleBall()
 
 void SimplePathProvider::handleStaticObstacles()
 {
-  Vector2f oppGoalPostLeft(theFieldDimensions.xPosOpponentGoalPost,theFieldDimensions.yPosLeftGoal);
-  Vector2f oppGoalPostRight(theFieldDimensions.xPosOpponentGoalPost,theFieldDimensions.yPosRightGoal);
-  Vector2f ownGoalPostLeft(theFieldDimensions.xPosOwnGoalPost,theFieldDimensions.yPosLeftGoal);
-  Vector2f ownGoalPostRight(theFieldDimensions.xPosOwnGoalPost,theFieldDimensions.yPosRightGoal);
+  Vector2f oppGoalPostLeft(theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal);
+  Vector2f oppGoalPostRight(theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosRightGoal);
+  Vector2f ownGoalPostLeft(theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosLeftGoal);
+  Vector2f ownGoalPostRight(theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosRightGoal);
   /*Vector2f oppGoalPostLeftBack(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosLeftGoal);
   Vector2f oppGoalPostRightBack(theFieldDimensions.xPosOpponentGoal, theFieldDimensions.yPosRightGoal);
   Vector2f ownGoalPostLeftBack(theFieldDimensions.xPosOwnGoal, theFieldDimensions.yPosLeftGoal);
@@ -156,12 +160,11 @@ void SimplePathProvider::buildPath()
     if (destWorldCoordinates.translation.norm() < circleSafetyRadius)
     {
       float rotation = Angle::normalize(theRobotPoseAfterPreview.translation.angle() + pi);
-      destWorldCoordinates = Pose2f(rotation,
-        Vector2f(theRobotPoseAfterPreview.translation).normalize(circleSafetyRadius));
+      destWorldCoordinates = Pose2f(rotation, Vector2f(theRobotPoseAfterPreview.translation).normalize(circleSafetyRadius));
     }
-    else 
+    else
     {
-      obstacles.push_back(Obstacle(0,0,centerCircleInfluenceRadius+theFieldDimensions.centerCircleRadius, Path::centerCircle));
+      obstacles.push_back(Obstacle(0, 0, centerCircleInfluenceRadius + theFieldDimensions.centerCircleRadius, Path::centerCircle));
     }
   }
 
@@ -183,77 +186,20 @@ void SimplePathProvider::buildPath()
   }
 
   wayPoints.push_back(theRobotPoseAfterPreview);
-    
-  bool notAllowedInGoalArea = false;
-  // handle own goal area
-  // cases ignored when ball on goal line and inside left/right penalty area lines 
-  // -> one robot is allowed into penalty area anyway, behavior should not send other robots there
-  // does not add all necessary wayPoints for avoidance at once, they are added on the way if going around goal area
-  if (theBehaviorData.role != BehaviorData::keeper && theGameSymbols.allowedInPenaltyArea == false)
+
+  bool notAllowedInPenaltyArea = false;
+  // handle penalty area
+  // only defender roles or ball chaser are allowed in penalty area
+  //bool ballChaserInPenaltyArea = theBallchaser.optPosition.translation.x() < theFieldDimensions.xPosOwnPenaltyArea + 200.f;
+  if (!theGameSymbols.allowedInPenaltyArea)
   {
-    notAllowedInGoalArea = true;
-    static const Geometry::Line lineFront(goalAreaUpLeft,goalAreaUpRight-goalAreaUpLeft);
-    const Geometry::Line lineToTarget(theRobotPoseAfterPreview.translation,destWorldCoordinates.translation-theRobotPoseAfterPreview.translation);
-    static const Geometry::Line lineLeft(goalAreaUpLeft,goalAreaDownLeft-goalAreaUpLeft);
-    static const Geometry::Line lineRight(goalAreaUpRight,goalAreaDownRight-goalAreaUpRight);
-    static const Geometry::Line lineBack(goalAreaDownLeft,goalAreaDownRight-goalAreaDownLeft);
-
-    Vector2f intersectionPoint(0,0);
-
-    // below penalty area line? 
-    if (destWorldCoordinates.translation.x() < goalAreaUpLeft.x())
-    {
-      // if the robot is below the penalty area line and has to cross sides
-      if (theRobotPoseAfterPreview.translation.x() < goalAreaUpLeft.x() - 100)
-      {
-        // robot is on right side
-        if (theRobotPoseAfterPreview.translation.y() < goalAreaUpRight.y() - 100 && destWorldCoordinates.translation.y() > goalAreaUpLeft.y() - 100)
-        {
-          wayPoints.push_back(Pose2f(pi_2, goalAreaUpRight));
-          wayPoints.push_back(Pose2f((destWorldCoordinates.translation - goalAreaUpLeft).angle(), goalAreaUpLeft));
-        }
-        // robot is on left side
-        else if (theRobotPoseAfterPreview.translation.y() > goalAreaUpLeft.y() + 100 && destWorldCoordinates.translation.y() < goalAreaUpRight.y() + 100)
-        {
-          wayPoints.push_back(Pose2f(-pi_2, goalAreaUpLeft));
-          wayPoints.push_back(Pose2f((destWorldCoordinates.translation - goalAreaUpRight).angle(), goalAreaUpRight));
-        }
-      }
-      // robot above penalty area line? Threshold to make sure robot reaches position
-      else if (theRobotPoseAfterPreview.translation.x() > goalAreaUpLeft.x() + 100)
-      {
-        // would cross penalty area on the way to target (left)
-        if (destWorldCoordinates.translation.y() > 0 && theRobotPoseAfterPreview.translation.y() < goalAreaUpLeft.y() + 100
-          && Geometry::getIntersectionOfLines(lineToTarget,lineFront,intersectionPoint) && intersectionPoint.y() < goalAreaUpLeft.y())
-          wayPoints.push_back(Pose2f(pi3_4, goalAreaUpLeft));
-        // would cross penalty area on the way to target (right)
-        else if (destWorldCoordinates.translation.y() < 0 && theRobotPoseAfterPreview.translation.y() > goalAreaUpRight.y() - 100
-          && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint) && intersectionPoint.y() > goalAreaUpRight.y())
-          wayPoints.push_back(Pose2f(-pi3_4, goalAreaUpRight));
-      }
-    }
-    // if the robot is below the penalty area line
-    else if (theRobotPoseAfterPreview.translation.x() < goalAreaUpLeft.x() + 100)
-    {
-      // robot is on right side and would cross penalty area
-      if (theRobotPoseAfterPreview.translation.y() < goalAreaUpRight.y() + 100
-        && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint) && intersectionPoint.y() > goalAreaUpRight.y())
-      {
-        wayPoints.push_back(Pose2f((destWorldCoordinates.translation - goalAreaUpRight).angle(), goalAreaUpRight));
-      }
-      // robot is on left side and would cross penalty area
-      else if (theRobotPoseAfterPreview.translation.y() > goalAreaUpLeft.y() - 100
-        && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint) && intersectionPoint.y() < goalAreaUpLeft.y())
-      {
-        wayPoints.push_back(Pose2f((destWorldCoordinates.translation - goalAreaUpLeft).angle(), goalAreaUpLeft));
-      }
-    }
-    
+    notAllowedInPenaltyArea = true;
+    avoidRectangularArea(penaltyAreaDownLeft, penaltyAreaUpLeft, penaltyAreaUpRight, penaltyAreaDownRight);
   }
 
-  if (wayPoints.size() > 1 && 
-    ((wayPoints[1].translation - theRobotPoseAfterPreview.translation).norm() < 150 
-      || (wayPoints[1].translation - destWorldCoordinates.translation).norm() < (destWorldCoordinates.translation - theRobotPoseAfterPreview.translation).norm()))
+  if (wayPoints.size() > 1
+      && ((wayPoints[1].translation - theRobotPoseAfterPreview.translation).norm() < 150
+          || (wayPoints[1].translation - destWorldCoordinates.translation).norm() > (destWorldCoordinates.translation - theRobotPoseAfterPreview.translation).norm()))
     wayPoints.erase(wayPoints.begin() + 1);
 
   // do not cross through goal sides
@@ -268,8 +214,7 @@ void SimplePathProvider::buildPath()
     bool insertLeftGoalPost = false, insertRightGoalPost = false;
 
     // left goal side
-    if ((robotY > goalLeftY && targetY < goalLeftY) ||
-      (robotY < goalLeftY && targetY > goalLeftY))
+    if ((robotY > goalLeftY && targetY < goalLeftY) || (robotY < goalLeftY && targetY > goalLeftY))
     {
       Geometry::Line lineToTarget(theRobotPoseAfterPreview.translation, destWorldCoordinates.translation - theRobotPoseAfterPreview.translation);
       Geometry::Line leftGoalNet(Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftGoal), Vector2f(-1.f, 0.f));
@@ -279,8 +224,7 @@ void SimplePathProvider::buildPath()
         insertLeftGoalPost = true;
     }
     // right goal side
-    if ((robotY < -goalLeftY && targetY > -goalLeftY) ||
-      (robotY > -goalLeftY && targetY < -goalLeftY))
+    if ((robotY < -goalLeftY && targetY > -goalLeftY) || (robotY > -goalLeftY && targetY < -goalLeftY))
     {
       Geometry::Line lineToTarget(theRobotPoseAfterPreview.translation, destWorldCoordinates.translation - theRobotPoseAfterPreview.translation);
       Geometry::Line rightGoalNet(Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoal), Vector2f(-1.f, 0.f));
@@ -293,24 +237,28 @@ void SimplePathProvider::buildPath()
     // insert left goal post first if on left side
     if (theRobotPoseAfterPreview.translation.y() > 0.f)
     {
-      if (insertLeftGoalPost) wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
-      if (insertRightGoalPost) wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
+      if (insertLeftGoalPost)
+        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
+      if (insertRightGoalPost)
+        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
     }
     else
     {
-      if (insertRightGoalPost) wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
-      if (insertLeftGoalPost) wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
+      if (insertRightGoalPost)
+        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
+      if (insertLeftGoalPost)
+        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
     }
   }
 
-  avoidObstacles(notAllowedInGoalArea);
+  avoidObstacles(notAllowedInPenaltyArea);
 
   // needed bc of own goal area waypoints (not anymore?)
   //   std::sort(wayPoints.begin(),wayPoints.end(),sortPoses(this));
 
   // if block way to goal is requested (while going to ball), move between ball and goal before actually going to ball
   // useful for defence
-  if (wayPoints.size() <= 2 && theMotionRequest.walkRequest.request.translation.norm() > 0.f - (wasBlockingWayToGoal ? 250.f : 0)) //750.f
+  if (theBallchaser.blockWayToGoalOnApproach && wayPoints.size() <= 2 && theMotionRequest.walkRequest.request.translation.norm() > 0.f - (wasBlockingWayToGoal ? 250.f : 0)) //750.f
   {
     Vector2f destRel = destWorldCoordinates.translation - theRobotPoseAfterPreview.translation;
     Vector2f goalToBall = theBallSymbols.ballPositionFieldPredicted - Vector2f(theFieldDimensions.xPosOwnGroundline, 0.f);
@@ -320,17 +268,16 @@ void SimplePathProvider::buildPath()
     Angle angleHysteresis = (wasBlockingWayToGoal ? 10_deg : 0_deg);
     float distanceHysteresis = (wasBlockingWayToGoal ? 100.f : 0.f);
     if ((std::abs(angleGoalToBall) < 60_deg + angleHysteresis //60_deg
-      && std::abs(angleDifference) > 20_deg - angleHysteresis //20_deg
-      && std::abs(angleDifference) < 45_deg + angleHysteresis //30_deg
-      && std::abs(vectorToBall.y()) > 300 - distanceHysteresis)
-      //TODO: check condition
-      /*&& std::abs(Angle::normalize(angleGoalToBall - theRobotPoseAfterPreview.rotation)) < 30_deg + angleHysteresis*/)
+            && std::abs(angleDifference) > 20_deg - angleHysteresis //20_deg
+            && std::abs(angleDifference) < 45_deg + angleHysteresis //30_deg
+            && std::abs(vectorToBall.y()) > 300 - distanceHysteresis)
+        //TODO: check condition
+        /*&& std::abs(Angle::normalize(angleGoalToBall - theRobotPoseAfterPreview.rotation)) < 30_deg + angleHysteresis*/)
     {
-      goalToBall.normalize(destRel.norm()*std::cos(angleDifference));
+      goalToBall.normalize(destRel.norm() * std::cos(angleDifference));
       Pose2f newWP(angleGoalToBall, destWorldCoordinates.translation - goalToBall);
       float distanceToNewWP = (newWP.translation - theRobotPoseAfterPreview.translation).norm();
-      if ((distanceToNewWP < 700.f + (wasBlockingWayToGoal ? 150.f : 0.f)) 
-        && (distanceToNewWP > 350.f - (wasBlockingWayToGoal ? 150.f : 0.f)))
+      if ((distanceToNewWP < 700.f + (wasBlockingWayToGoal ? 150.f : 0.f)) && (distanceToNewWP > 350.f - (wasBlockingWayToGoal ? 150.f : 0.f)))
       {
         //if robot approaches ball from the side remove last waypoint since robot is moving to the center anyway
         if (inBallApproach)
@@ -341,22 +288,81 @@ void SimplePathProvider::buildPath()
         wasBlockingWayToGoal = true;
       }
     }
-
   }
   else
     wasBlockingWayToGoal = false;
 
-  
+
   wayPoints.push_back(destWorldCoordinates);
-  
 }
 
-void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
+void SimplePathProvider::avoidRectangularArea(const Vector2f& bottomLeft, const Vector2f& topLeft, const Vector2f& topRight, const Vector2f& bottomRight)
+{
+  // used for goal/penalty area avoidance
+  const Geometry::Line lineToTarget(theRobotPoseAfterPreview.translation, destWorldCoordinates.translation - theRobotPoseAfterPreview.translation);
+  const Geometry::Line lineFront(topLeft, topRight - topLeft);
+  const Geometry::Line lineLeft(topLeft, bottomLeft - topLeft);
+  const Geometry::Line lineRight(topRight, bottomRight - topRight);
+  const Geometry::Line lineBack(bottomLeft, bottomRight - bottomLeft);
+
+  Vector2f intersectionPoint(0, 0);
+
+  // below penalty area line?
+  if (destWorldCoordinates.translation.x() < topLeft.x())
+  {
+    // if the robot is below the penalty area line and has to cross sides
+    if (theRobotPoseAfterPreview.translation.x() < topLeft.x() - 100)
+    {
+      // robot is on right side
+      if (theRobotPoseAfterPreview.translation.y() < topRight.y() - 100 && destWorldCoordinates.translation.y() > topLeft.y() - 100)
+      {
+        wayPoints.push_back(Pose2f(pi_2, topRight));
+        wayPoints.push_back(Pose2f((destWorldCoordinates.translation - topLeft).angle(), topLeft));
+      }
+      // robot is on left side
+      else if (theRobotPoseAfterPreview.translation.y() > topLeft.y() + 100 && destWorldCoordinates.translation.y() < topRight.y() + 100)
+      {
+        wayPoints.push_back(Pose2f(-pi_2, topLeft));
+        wayPoints.push_back(Pose2f((destWorldCoordinates.translation - topRight).angle(), topRight));
+      }
+    }
+    // robot above penalty area line? Threshold to make sure robot reaches position
+    else if (theRobotPoseAfterPreview.translation.x() > topLeft.x() + 100)
+    {
+      // would cross penalty area on the way to target (left)
+      if (destWorldCoordinates.translation.y() > 0 && theRobotPoseAfterPreview.translation.y() < topLeft.y() + 100
+          && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint) && intersectionPoint.y() < topLeft.y())
+        wayPoints.push_back(Pose2f(pi3_4, topLeft));
+      // would cross penalty area on the way to target (right)
+      else if (destWorldCoordinates.translation.y() < 0 && theRobotPoseAfterPreview.translation.y() > topRight.y() - 100
+          && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint) && intersectionPoint.y() > topRight.y())
+        wayPoints.push_back(Pose2f(-pi3_4, topRight));
+    }
+  }
+  // if the robot is below the penalty area line
+  else if (theRobotPoseAfterPreview.translation.x() < topLeft.x() + 100)
+  {
+    // robot is on right side and would cross penalty area
+    if (theRobotPoseAfterPreview.translation.y() < topRight.y() + 100 && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint)
+        && intersectionPoint.y() > topRight.y())
+    {
+      wayPoints.push_back(Pose2f((destWorldCoordinates.translation - topRight).angle(), topRight));
+    }
+    // robot is on left side and would cross penalty area
+    else if (theRobotPoseAfterPreview.translation.y() > topLeft.y() - 100 && Geometry::getIntersectionOfLines(lineToTarget, lineFront, intersectionPoint)
+        && intersectionPoint.y() < topLeft.y())
+    {
+      wayPoints.push_back(Pose2f((destWorldCoordinates.translation - topLeft).angle(), topLeft));
+    }
+  }
+}
+
+void SimplePathProvider::avoidObstacles(bool notAllowedInPenaltyArea)
 {
   // TODO: create wall were player may shoot ball and avoid that..??!!
-  std::sort(obstacles.begin(),obstacles.end(),sortObstacles(this));
+  std::sort(obstacles.begin(), obstacles.end(), sortObstacles(this));
   int i = 0;
-  
+
   // TODO: memory!
   // TODO: should do this while building path..
   // TODO: check missing if obstacle is actually relevant
@@ -369,10 +375,9 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
       for (size_t second = first + 1; second < obstacles.size(); second++)
       {
         float obstacleDistance = (obstacles[first].position - obstacles[second].position).norm();
-        if (obstacleDistance < std::min(maxObstacleDistanceForMerging, obstacles[first].radius + obstacles[second].radius) &&
-          !(obstacles[first].type == Path::ball || obstacles[second].type == Path::ball) &&
-          !((obstacles[first].type == Path::goalPost && obstacles[second].type == Path::robot) ||
-            (obstacles[second].type == Path::goalPost && obstacles[first].type == Path::robot)))
+        if (obstacleDistance < std::min(maxObstacleDistanceForMerging, obstacles[first].radius + obstacles[second].radius)
+            && !(obstacles[first].type == Path::ball || obstacles[second].type == Path::ball)
+            && !((obstacles[first].type == Path::goalPost && obstacles[second].type == Path::robot) || (obstacles[second].type == Path::goalPost && obstacles[first].type == Path::robot)))
         {
           obstacles[first].position = (obstacles[first].position + obstacles[second].position) / 2;
           obstacles[first].radius = obstacleDistance + (obstacles[first].radius + obstacles[second].radius) / 2;
@@ -390,18 +395,9 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
     if (obstacle->type == Path::ball)
       ballIsObstacle = true;
     i++;
-    CIRCLE("module:SimplePathProvider:obstacles",
-      obstacle->position.x(),
-      obstacle->position.y(),
-      obstacle->radius,
-      5,Drawings::solidPen,ColorRGBA::yellow,
-      Drawings::noBrush, ColorRGBA::yellow);
-    DRAWTEXT("module:SimplePathProvider:obstacles",
-      obstacle->position.x(),
-      obstacle->position.y(),
-      30, ColorRGBA::yellow,
-      i);
-    const Pose2f &currentWayPoint = ((wayPoints.size() < 2) ? (Pose2f&)theRobotPose : wayPoints.back());
+    CIRCLE("module:SimplePathProvider:obstacles", obstacle->position.x(), obstacle->position.y(), obstacle->radius, 5, Drawings::solidPen, ColorRGBA::yellow, Drawings::noBrush, ColorRGBA::yellow);
+    DRAWTEXT("module:SimplePathProvider:obstacles", obstacle->position.x(), obstacle->position.y(), 30, ColorRGBA::yellow, i);
+    const Pose2f& currentWayPoint = ((wayPoints.size() < 2) ? (Pose2f&)theRobotPose : wayPoints.back());
     const Vector2f vectorToTarget = (destWorldCoordinates.translation - currentWayPoint.translation);
     const float distance = vectorToTarget.norm();
     const Vector2f vectorToObstacle = (obstacle->position - currentWayPoint.translation);
@@ -409,18 +405,14 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
 
     const float angleToTargetWC = vectorToTarget.angle();
     const float angleToObstacleWC = vectorToObstacle.angle();
-    float angleDiff = Angle::normalize(angleToTargetWC-angleToObstacleWC);
-    float maxAngleDiff = pi_2*0.8f;
+    float angleDiff = Angle::normalize(angleToTargetWC - angleToObstacleWC);
+    float maxAngleDiff = pi_2 * 0.8f;
     if ((obstacle->type == Path::robot && obstacle->isTeamMate) || obstacle->type == Path::centerCircle || obstacle->type == Path::setPlayCircle)
-      maxAngleDiff = pi_2*1.5f;
+      maxAngleDiff = pi_2 * 1.5f;
 
     // second clause?
-    if ((std::abs(angleDiff) < maxAngleDiff && 
-      distanceToObstacle < distance) || 
-      (obstacle->type == Path::ball
-      && std::abs(Angle::normalize(angleToObstacleWC-destWorldCoordinates.rotation)) > pi_2*0.7f 
-      && distance > 150
-      && distanceToObstacle -50 < distance)) 
+    if ((std::abs(angleDiff) < maxAngleDiff && distanceToObstacle < distance)
+        || (obstacle->type == Path::ball && std::abs(Angle::normalize(angleToObstacleWC - destWorldCoordinates.rotation)) > pi_2 * 0.7f && distance > 150 && distanceToObstacle - 50 < distance))
     {
       // might be dangerous
       /*
@@ -430,14 +422,9 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
         obstacle->position = Transformation::robotToField(theRobotPoseAfterPreview, theBallModelAfterPreview.estimate.position);
       }
       */
-      CIRCLE("module:SimplePathProvider:obstacles",
-        obstacle->position.x(),
-        obstacle->position.y(),
-        obstacle->radius,
-        5,Drawings::solidPen, ColorRGBA::orange,
-        Drawings::noBrush, ColorRGBA::orange);
+      CIRCLE("module:SimplePathProvider:obstacles", obstacle->position.x(), obstacle->position.y(), obstacle->radius, 5, Drawings::solidPen, ColorRGBA::orange, Drawings::noBrush, ColorRGBA::orange);
       Vector2f normalToObstacle = vectorToObstacle;
-      
+
       if (obstacle->type == Path::ball)
       {
         Angle approachAngleWC = Angle::normalize(vectorToTarget.angle() - destWorldCoordinates.rotation);
@@ -453,40 +440,33 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
       else
       {
         if (std::abs(angleDiff) > pi_4)
-          angleDiff = pi_4*sgn(angleDiff);
+          angleDiff = pi_4 * sgn(angleDiff);
         if (angleDiff > 0)
           normalToObstacle.rotate(pi_2 + std::abs(angleDiff));
         else
           normalToObstacle.rotate(-pi_2 - std::abs(angleDiff));
       }
-      
+
       normalToObstacle.normalize(obstacle->radius);
 
       Vector2f avoidancePoint = obstacle->position + normalToObstacle;
 
       const Vector2f goalCenter(theFieldDimensions.xPosOwnGroundline, 0.f);
-      if ((notAllowedInGoalArea && 
-          Geometry::isPointInsideRectangle(goalAreaDownLeft, goalAreaUpRight, avoidancePoint) && 
-          (goalCenter - (obstacle->position + normalToObstacle)).norm() < (goalCenter - (obstacle->position - normalToObstacle)).norm())
-        || (obstacle->type == Path::goalPost &&
-          std::abs(obstacle->position.x()+normalToObstacle.x()) > theFieldDimensions.xPosOpponentGroundline))
+      if ((notAllowedInPenaltyArea && Geometry::isPointInsideRectangle(penaltyAreaDownLeft, penaltyAreaUpRight, avoidancePoint)
+              && (goalCenter - (obstacle->position + normalToObstacle)).norm() < (goalCenter - (obstacle->position - normalToObstacle)).norm())
+          || (obstacle->type == Path::goalPost && std::abs(obstacle->position.x() + normalToObstacle.x()) > theFieldDimensions.xPosOpponentGroundline))
       {
         normalToObstacle.rotate(pi);
       }
 
       avoidancePoint = obstacle->position + normalToObstacle;
 
-      float distObstacleToTargetLine = std::asin(std::min<float>(std::abs(angleDiff),1.f))*distanceToObstacle;
+      float distObstacleToTargetLine = std::asin(std::min<float>(std::abs(angleDiff), 1.f)) * distanceToObstacle;
 
       if (normalToObstacle.norm() > distObstacleToTargetLine)
       {
         // okay, that thing is really blocking my path
-        CIRCLE("module:SimplePathProvider:obstacles",
-        obstacle->position.x(),
-        obstacle->position.y(),
-        obstacle->radius,
-        5,Drawings::solidPen, ColorRGBA::red,
-        Drawings::noBrush, ColorRGBA::red);
+        CIRCLE("module:SimplePathProvider:obstacles", obstacle->position.x(), obstacle->position.y(), obstacle->radius, 5, Drawings::solidPen, ColorRGBA::red, Drawings::noBrush, ColorRGBA::red);
 
         // if inside obstacle influence radius, try to get out roughly in direction to target
         if (avoidRobotCrashes && (theRobotPose.translation - obstacle->position).norm() <= obstacle->radius)
@@ -496,20 +476,14 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
           // rotate back out vector towards target to at least move a little close to target
           Angle backOutVectorToTargetVector = Angle::normalize((destWorldCoordinates.translation - obstacle->position).angle() - meToObstacle.angle());
           meToObstacle.rotate(-sgn(backOutVectorToTargetVector) * std::min<Angle>(std::abs(backOutVectorToTargetVector), 30_deg));
-          avoidancePoint = obstacle->position + meToObstacle.normalize(obstacle->radius*1.2f);
+          avoidancePoint = obstacle->position + meToObstacle.normalize(obstacle->radius * 1.2f);
         }
 
-        
+
         wayPoints.push_back(Pose2f((destWorldCoordinates.translation - avoidancePoint).angle(), avoidancePoint));
-        
       }
 
-      LINE("module:SimplePathProvider:obstacles",
-        obstacle->position.x(),
-        obstacle->position.y(),
-        avoidancePoint.x(),
-        avoidancePoint.y(),
-        4,Drawings::solidPen, ColorRGBA::blue);
+      LINE("module:SimplePathProvider:obstacles", obstacle->position.x(), obstacle->position.y(), avoidancePoint.x(), avoidancePoint.y(), 4, Drawings::solidPen, ColorRGBA::blue);
     }
 
     /*if (obstacle->type == Obstacle::ball)
@@ -544,7 +518,7 @@ bool SimplePathProvider::isOldPathFine(Path& path)
   for (unsigned int i = 1; i < path.wayPoints.size(); i++)
   {
     Vector2f vToNextWayPoint = path.wayPoints[i].translation - path.wayPoints[i - 1].translation;
-    for (auto &robot : theRobotMap.robots)
+    for (auto& robot : theRobotMap.robots)
     {
       if ((robot.pose.translation - path.wayPoints[i].translation).norm() < 400)
         return false;

@@ -10,6 +10,9 @@
 #pragma once
 
 #include "SimpleMap.h"
+#include <algorithm>
+#include <memory>
+#include <list>
 
 class File;
 
@@ -42,7 +45,7 @@ public:
    * This function is relevant if the stream represents a file.
    * @return Does the stream exist?
    */
-  virtual bool exists() const {return true;}
+  virtual bool exists() const { return true; }
 
   /**
    * The function states whether the end of the stream has been reached.
@@ -115,6 +118,13 @@ protected:
    * @param stream the stream to read from
    */
   virtual void readUInt(unsigned int& d, PhysicalInStream& stream) = 0;
+
+  /**
+  * reads a int64_t from a stream
+  * @param d the data to read from the stream
+  * @param stream the stream to read from
+  */
+  virtual void readInt64(int64_t& d, PhysicalInStream& stream) = 0;
 
   /**
   * reads a uint64_t from a stream
@@ -197,19 +207,13 @@ public:
    *          "size" bytes large.
    * @param size The number of bytes to be read.
    */
-  virtual void read(void* p, size_t size)
-  {
-    R::readData(p, size, *this);
-  }
+  virtual void read(void* p, size_t size) { R::readData(p, size, *this); }
 
   /**
    * The function skips a number of bytes in the stream.
    * @param size The number of bytes to be skipped.
    */
-  virtual void skip(size_t size)
-  {
-    R::skipData(size, *this);
-  }
+  virtual void skip(size_t size) { R::skipData(size, *this); }
 
   /**
    * Determines whether the end of file has been reached.
@@ -220,115 +224,78 @@ protected:
   /**
    * Virtual redirection for operator>>(bool& value).
    */
-  virtual void inBool(bool& d)
-  {
-    R::readBool(d, *this);
-  }
+  virtual void inBool(bool& d) { R::readBool(d, *this); }
 
   /**
    * Virtual redirection for operator>>(char& value).
    */
-  virtual void inChar(char& d)
-  {
-    R::readChar(d, *this);
-  }
+  virtual void inChar(char& d) { R::readChar(d, *this); }
 
   /**
    * Virtual redirection for operator>>(signed char& value).
    */
-  virtual void inSChar(signed char& d)
-  {
-    R::readSChar(d, *this);
-  }
+  virtual void inSChar(signed char& d) { R::readSChar(d, *this); }
 
   /**
    * Virtual redirection for operator>>(unsigend char& value).
    */
-  virtual void inUChar(unsigned char& d)
-  {
-    R::readUChar(d, *this);
-  }
+  virtual void inUChar(unsigned char& d) { R::readUChar(d, *this); }
 
   /**
    * Virtual redirection for operator>>(short& value).
    */
-  virtual void inShort(short& d)
-  {
-    R::readShort(d, *this);
-  }
+  virtual void inShort(short& d) { R::readShort(d, *this); }
 
   /**
    * Virtual redirection for operator>>(unsigend short& value).
    */
-  virtual void inUShort(unsigned short& d)
-  {
-    R::readUShort(d, *this);
-  }
+  virtual void inUShort(unsigned short& d) { R::readUShort(d, *this); }
 
   /**
    * Virtual redirection for operator>>(int& value).
    */
-  virtual void inInt(int& d)
-  {
-    R::readInt(d, *this);
-  }
+  virtual void inInt(int& d) { R::readInt(d, *this); }
 
   /**
    * Virtual redirection for operator>>(unsigend int& value).
    */
-  virtual void inUInt(unsigned int& d)
-  {
-    R::readUInt(d, *this);
-  }
+  virtual void inUInt(unsigned int& d) { R::readUInt(d, *this); }
+
+  /**
+  * Virtual redirection for operator>>(int64_t& value).
+  */
+  virtual void inInt64(int64_t& d) { R::readInt64(d, *this); }
 
   /**
   * Virtual redirection for operator>>(uint64_t& value).
   */
-  virtual void inUInt64(uint64_t& d)
-  {
-    R::readUInt64(d, *this);
-  }
+  virtual void inUInt64(uint64_t& d) { R::readUInt64(d, *this); }
 
   /**
    * Virtual redirection for operator>>(float& value).
    */
-  virtual void inFloat(float& d)
-  {
-    R::readFloat(d, *this);
-  }
+  virtual void inFloat(float& d) { R::readFloat(d, *this); }
 
   /**
    * Virtual redirection for operator>>(double& value).
    */
-  virtual void inDouble(double& d)
-  {
-    R::readDouble(d, *this);
-  }
+  virtual void inDouble(double& d) { R::readDouble(d, *this); }
 
   /**
    * Virtual redirection for operator>>(std::string& value).
    */
-  virtual void inString(std::string& d)
-  {
-    R::readString(d, *this);
-  }
+  virtual void inString(std::string& d) { R::readString(d, *this); }
 
   /**
    * Virtual redirection for operator>>(Angle& value).
    */
-  virtual void inAngle(Angle& d)
-  {
-    R::readAngle(d, *this);
-  }
+  virtual void inAngle(Angle& d) { R::readAngle(d, *this); }
 
   /**
    * Virtual redirection for operator>>(In& (*f)(In&)) that reads
    * the symbol "endl";
    */
-  virtual void inEndL()
-  {
-    R::readEndl(*this);
-  }
+  virtual void inEndL() { R::readEndl(*this); }
 };
 
 /**
@@ -341,15 +308,15 @@ class InText : public StreamReader
 {
 protected:
   /** The last character read. */
-  char theChar = ' ',
-       theNextChar = ' ';
+  char theChar = ' ', theNextChar = ' ';
+
 private:
   std::string buf; /**< A buffer to convert read strings. */
-  bool eof = false , /**< Stores whether the end of file was reached during the last call to nextChar. */
-       nextEof = false;
+  bool eof = false, /**< Stores whether the end of file was reached during the last call to nextChar. */
+      nextEof = false;
 
 public:
-  InText() {buf.reserve(200);};
+  InText() { buf.reserve(200); };
 
   /** 
    * Resets theChar to be able to use the same instance of InText or InConfig
@@ -370,7 +337,7 @@ protected:
   virtual void initEof(PhysicalInStream& stream)
   {
     eof = nextEof = stream.getEof();
-    if(stream.exists())
+    if (stream.exists())
       nextChar(stream);
   }
 
@@ -439,6 +406,13 @@ protected:
   virtual void readUInt(unsigned int& d, PhysicalInStream& stream);
 
   /**
+  * reads a int64_t from a stream
+  * @param d the data to read from the stream
+  * @param stream the stream to read from
+  */
+  virtual void readInt64(int64_t& d, PhysicalInStream& stream);
+
+  /**
   * reads a uint64_t from a stream
   * @param d the data to read from the stream
   * @param stream the stream to read from
@@ -497,11 +471,11 @@ protected:
    */
   virtual void nextChar(PhysicalInStream& stream)
   {
-    if(!eof)
+    if (!eof)
     {
       eof = nextEof;
       theChar = theNextChar;
-      if(stream.getEof())
+      if (stream.getEof())
       {
         nextEof = true;
         theNextChar = ' ';
@@ -543,7 +517,7 @@ private:
 class InConfig : public InText
 {
 private:
-  bool readSection = false;  ///< Are we reading a section?
+  bool readSection = false; ///< Are we reading a section?
 
 protected:
   /**
@@ -604,7 +578,7 @@ protected:
   virtual void readBool(bool& d, PhysicalInStream& stream)
   {
     char c;
-    stream.readFromStream(&c, sizeof(d)); 
+    stream.readFromStream(&c, sizeof(d));
     d = c != 0;
   }
 
@@ -613,100 +587,77 @@ protected:
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readChar(char& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readChar(char& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads an signed char from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readSChar(signed char& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readSChar(signed char& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads an unsigned char from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readUChar(unsigned char& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readUChar(unsigned char& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads a short int from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readShort(short& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readShort(short& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads an unsigned short int from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readUShort(unsigned short& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readUShort(unsigned short& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads an int from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readInt(int& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readInt(int& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads an unsigned int from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readUInt(unsigned int& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readUInt(unsigned int& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
+
+  /**
+  * The function reads an int64_t from the stream.
+  * @param d The value that is read.
+  * @param stream A stream to read from.
+  */
+  virtual void readInt64(int64_t& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
   * The function reads an uint64_t from the stream.
   * @param d The value that is read.
   * @param stream A stream to read from.
   */
-  virtual void readUInt64(uint64_t& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readUInt64(uint64_t& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads a float from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readFloat(float& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readFloat(float& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads a double from the stream.
    * @param d The value that is read.
    * @param stream A stream to read from.
    */
-  virtual void readDouble(double& d, PhysicalInStream& stream)
-  {
-    stream.readFromStream(&d, sizeof(d));
-  }
+  virtual void readDouble(double& d, PhysicalInStream& stream) { stream.readFromStream(&d, sizeof(d)); }
 
   /**
    * The function reads a string from the stream.
@@ -718,7 +669,7 @@ protected:
     size_t size = 0;
     stream.readFromStream(&size, sizeof(unsigned));
     d.resize(size);
-    if(size)
+    if (size)
       stream.readFromStream(&d[0], size);
   }
 
@@ -744,20 +695,14 @@ protected:
    * @param size The number of bytes to be read.
    * @param stream A stream to read from.
    */
-  virtual void readData(void* p, size_t size, PhysicalInStream& stream)
-  {
-    stream.readFromStream(p, size);
-  }
+  virtual void readData(void* p, size_t size, PhysicalInStream& stream) { stream.readFromStream(p, size); }
 
   /**
    * The function skips a number of bytes in the file.
    * @param size The number of bytes to be skipped.
    * @param stream The stream to read from.
    */
-  virtual void skipData(size_t size, PhysicalInStream& stream)
-  {
-    stream.skipInStream(size);
-  }
+  virtual void skipData(size_t size, PhysicalInStream& stream) { stream.skipInStream(size); }
 };
 
 /**
@@ -789,10 +734,16 @@ public:
    * The function returns the full path of the file.
    * @return The full path name actually used or the file searched for
    *         if it was not found. If the file was opened, the path can
-   *         still be relative to the current directory if the B-Human
+   *         still be relative to the current directory if the Framework
    *         directory was specified this way.
    */
   std::string getFullName() const;
+
+  /**
+   * Returns the current byte position of the file.
+   * @return Byte position.
+   */
+  size_t getPosition() const;
 
 protected:
   /**
@@ -820,15 +771,15 @@ protected:
 class InMemory : public PhysicalInStream
 {
 private:
-  const char* memory = nullptr, /**< Points to the next byte to read from memory. */
-            * end = nullptr; /**< Points to the end of the memory block. */
+  const char *memory = nullptr, /**< Points to the next byte to read from memory. */
+      *end = nullptr; /**< Points to the end of the memory block. */
 
 public:
   /**
    * The function states whether the stream actually exists.
    * @return Does the stream exist? This is always true for memory streams.
    */
-  virtual bool exists() const {return (memory != nullptr);}
+  virtual bool exists() const { return (memory != nullptr); }
 
   /**
    * The function states whether the end of the file has been reached.
@@ -836,10 +787,7 @@ public:
    * specified during the construction of the stream.
    * @return End of file reached?
    */
-  virtual bool getEof() const
-  {
-    return memory != nullptr && memory >= end;
-  }
+  virtual bool getEof() const { return memory != nullptr && memory >= end; }
 
 protected:
   /**
@@ -852,9 +800,9 @@ protected:
    */
   void open(const void* mem, size_t size = 0)
   {
-    if(memory == nullptr)
-    { 
-      memory = reinterpret_cast<const char*>(mem); 
+    if (memory == nullptr)
+    {
+      memory = reinterpret_cast<const char*>(mem);
       end = memory + size;
     }
   }
@@ -872,7 +820,7 @@ protected:
    * The function skips a number of bytes.
    * @param size The number of bytes to be skipped.
    */
-  virtual void skipInStream(size_t size) {memory += size;}
+  virtual void skipInStream(size_t size) { memory += size; }
 };
 
 /**
@@ -888,13 +836,13 @@ public:
    * @param name The name of the file to open. It will be interpreted
    *             as relative to the configuration directory.
    */
-  InBinaryFile(const std::string& name) {open(name);}
+  InBinaryFile(const std::string& name) { open(name); }
 
   /**
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return true;}
+  virtual bool isBinary() const { return true; }
 };
 
 /**
@@ -913,13 +861,13 @@ public:
    *             specified, eof() will always return true, but reading
    *             from the stream is still possible.
    */
-  InBinaryMemory(const void* mem, size_t size = 0) {open(mem, size);}
+  InBinaryMemory(const void* mem, size_t size = 0) { open(mem, size); }
 
   /**
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return true;}
+  virtual bool isBinary() const { return true; }
 };
 
 /**
@@ -936,8 +884,8 @@ public:
    *             as relative to the configuration directory.
    */
   InTextFile(const std::string& name)
-  { 
-    open(name); 
+  {
+    open(name);
     initEof(*this);
   }
 };
@@ -1031,12 +979,10 @@ private:
     int type; /**< The type of the entry. -2: value or record, -1: array , >= 0: array element index. */
     const char* (*enumToString)(int); /**< A function that translates an enum to a string. */
 
-    Entry(const char* key, const SimpleMap::Value* value, int type, const char* (*enumToString)(int)) :
-      key(key), value(value), type(type), enumToString(enumToString)
-    {}
+    Entry(const char* key, const SimpleMap::Value* value, int type, const char* (*enumToString)(int)) : key(key), value(value), type(type), enumToString(enumToString) {}
   };
 
-  SimpleMap* map = nullptr; /**< The configuration map that was read. */
+  std::shared_ptr<SimpleMap> map; /**< The configuration map that was read. */
   std::string name; /**< The name of the opened file. */
   std::vector<Entry> stack; /**< The hierarchy of values to read. */
   bool showErrors; /**< Show error messages if specification does not match. */
@@ -1052,17 +998,17 @@ private:
    * The entry has been selected by select() before.
    * @param value The value that is read.
    */
-  template<class T> void in(T& value)
+  template <class T> void in(T& value)
   {
     Entry& e = stack.back();
-    if(e.value)
+    if (e.value)
     {
       const SimpleMap::Literal* literal = dynamic_cast<const SimpleMap::Literal*>(e.value);
-      if(literal)
+      if (literal)
       {
         In& stream = *literal;
         stream >> value;
-        if(!stream.eof())
+        if (!stream.eof())
           printError("wrong format");
       }
       else
@@ -1077,12 +1023,6 @@ protected:
    */
   InMap(bool showErrors) : showErrors(showErrors) {}
 
-  ~InMap() 
-  { 
-    if(map != nullptr) 
-      delete map;
-  }
-
   /**
    * Parse the stream.
    * @param stream The stream to read from.
@@ -1093,7 +1033,7 @@ protected:
   /**
    * Virtual redirection for operator>>(bool& value).
    */
-  virtual void inBool(bool& value) {in(value);}
+  virtual void inBool(bool& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(char& value).
@@ -1113,12 +1053,12 @@ protected:
   /**
    * Virtual redirection for operator>>(short& value).
    */
-  virtual void inShort(short& value) {in(value);}
+  virtual void inShort(short& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(unsigend short& value).
    */
-  virtual void inUShort(unsigned short& value) {in(value);}
+  virtual void inUShort(unsigned short& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(int& value).
@@ -1131,6 +1071,11 @@ protected:
   virtual void inUInt(unsigned int& value);
 
   /**
+  * Virtual redirection for operator>>(int64_t& value).
+  */
+  virtual void inInt64(int64_t& value) { in(value); }
+
+  /**
   * Virtual redirection for operator>>(uint64_t& value).
   */
   virtual void inUInt64(uint64_t& value) { in(value); }
@@ -1138,22 +1083,22 @@ protected:
   /**
    * Virtual redirection for operator>>(float& value).
    */
-  virtual void inFloat(float& value) {in(value);}
+  virtual void inFloat(float& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(double& value).
    */
-  virtual void inDouble(double& value) {in(value);}
+  virtual void inDouble(double& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(std::string& value).
    */
-  virtual void inString(std::string& value) {in(value);}
+  virtual void inString(std::string& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(Angle& value).
    */
-  virtual void inAngle(Angle& value) {in(value);}
+  virtual void inAngle(Angle& value) { in(value); }
 
   /**
    * Virtual redirection for operator>>(In& (*f)(In&)) that reads
@@ -1200,7 +1145,12 @@ public:
    * This is only the case if the file does not exist or
    * reading failed.
    */
-  virtual bool eof() const {return (const SimpleMap::Value*) *map == 0;}
+  virtual bool eof() const { return (const SimpleMap::Value*)*map == 0; }
+
+  /**
+   * Returns pointer to internal SimpleMap.
+   */
+  std::shared_ptr<SimpleMap>& getMap() { return map; }
 
   friend class DebugDataStreamer; // needs access to printError to report suppressable error message
 };
@@ -1208,12 +1158,13 @@ public:
 /**
  * @class InMapFile
  *
- * A stream that reads data from a text file in config map format.
+ * A stream that reads data from a hierarchy of text files in config map format.
  */
 class InMapFile : public InMap
 {
 private:
-  InBinaryFile stream;
+  std::list<InBinaryFile> streams;
+  void open(const std::list<std::string>& names);
 
 public:
   /**
@@ -1221,13 +1172,31 @@ public:
    * @param name The name of the config file to read.
    * @param showErrors Show error messages if specification does not match.
    */
-  InMapFile(const std::string& name, bool showErrors = true);
+  InMapFile(const std::string& name, bool showErrors = true, bool disableHierarchy = false);
+
+  /**
+   * Constructor.
+   * @param names The names of incremental config files to read.
+   * @param showErrors Show error messages if specification does not match.
+   */
+  InMapFile(const std::list<std::string>& names, bool showErrors = true);
 
   /**
    * The function states whether this stream actually exists.
    * @return Does the stream exist?
    */
-  bool exists() {return stream.exists();}
+  bool exists()
+  {
+    if (streams.size() == 0)
+      return false;
+
+    return std::all_of(streams.begin(),
+        streams.end(),
+        [](InBinaryFile& stream)
+        {
+          return stream.exists();
+        });
+  }
 };
 
 /**

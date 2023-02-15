@@ -9,32 +9,52 @@
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Enum.h"
 
- /**
+/**
   * @struct SpecialActionRequest
   * The struct represents special action requests.
   */
 STREAMABLE(SpecialActionRequest,
-{
   /** ids for all special actions */
   ENUM(SpecialActionID,
-  {,
     playDead,
     sitDown,
     stand,
     standHigh,
+    cheering1,
+    cheering2,
+    cheering3,
+    cheering4,
+    cheering5,
+    wave_left,
+    wave_right,
+    kickLeftFast,
+    kickLeftSlow,
+    penaltyGoaliePrepareDive,
     // add new non-standup and non-block motions here
-    numOfBasicMotions,
+    numOfUprightMotions,
+
     // -------- from here on, gyro fall down detection is off for all motions               ---------
-    standUpBackNao = numOfBasicMotions,
+    
+    // stand up motions
+    firstStandUpMotion = numOfUprightMotions,
+    standUpBackNao = firstStandUpMotion,
+    standUpBackNaoFast,
+    standUpBackNaoMed,
+    standUpBackNaoSlow,
     standUpFrontNao,
-    numOfStandUpMotions,
-    standUpSideNao = numOfStandUpMotions,
+    standUpFrontNaoFast,
+    standUpFrontNaoMed,
+    standUpFrontNaoSlow,
+    lastStandUpMotion,
+    standUpSideNao = lastStandUpMotion,
+
     // block motions
-    // add new block motions here
-    // -------- up to numOfSpecialActionIDs, gyro fall down detection is off for all motions ---------
-    // -------- so do not add non-block motions here!
-    // penalty shootout block motions
-  });
+    firstBlockMotion,
+    wideStanceWithStandUp = firstBlockMotion,
+    goalkeeperDefendLeft,
+    lastBlockMotion,
+    penaltyGoalieDiveLeft = lastBlockMotion
+  );
 
 /**
  * The function searches the id for a special action name.
@@ -44,5 +64,5 @@ STREAMABLE(SpecialActionRequest,
 static SpecialActionID getSpecialActionFromName(const char* name),
 
   (SpecialActionID)(playDead) specialAction, /**< The special action selected. */
-  (bool)(false) mirror, /**< Mirror left and right. */
-});
+  (bool)(false) mirror /**< Mirror left and right. */
+);

@@ -16,12 +16,9 @@
 
 SoundPlayerSimultaneous SoundPlayerSimultaneous::soundPlayer;
 
-SoundPlayerSimultaneous::SoundPlayerSimultaneous() :
-  Thread<SoundPlayerSimultaneous>()
-{}
+SoundPlayerSimultaneous::SoundPlayerSimultaneous() : Thread<SoundPlayerSimultaneous>() {}
 
-SoundPlayerSimultaneous::~SoundPlayerSimultaneous()
-{}
+SoundPlayerSimultaneous::~SoundPlayerSimultaneous() {}
 
 /*
 void SoundPlayer::start()
@@ -98,32 +95,36 @@ int SoundPlayer::play(const std::string& name)
 
 static std::vector<std::string> currentSounds;
 
-void playSoundFile(std::string fileName) {
-	//if requested sound is not being played at the moment:
-	if (std::find(currentSounds.begin(), currentSounds.end(), fileName) == currentSounds.end()) {
-		#ifdef TARGET_ROBOT
-		  fprintf(stderr, "Playing %s\n", fileName.c_str());
-		#endif
-		currentSounds.push_back(fileName);
-		std::string cmd = "aplay -q ";
-		std::string dir = File::getBHDir();
-		dir.append("/Config/Sounds/");
-		cmd.append(dir);
-		cmd.append(fileName);
-		char * cstr = new char[cmd.length() + 1];
-		std::strcpy(cstr, cmd.c_str());
-		std::system(cstr);
-		currentSounds.erase(std::remove(currentSounds.begin(), currentSounds.end(), fileName));
-	}
-	else {
-		#ifdef TARGET_ROBOT
-		  fprintf(stderr, "%s is already being played\n", fileName.c_str());
-		#endif
-	}
+void playSoundFile(std::string fileName)
+{
+  //if requested sound is not being played at the moment:
+  if (std::find(currentSounds.begin(), currentSounds.end(), fileName) == currentSounds.end())
+  {
+#ifdef TARGET_ROBOT
+    fprintf(stderr, "Playing %s\n", fileName.c_str());
+#endif
+    currentSounds.push_back(fileName);
+    std::string cmd = "aplay -q ";
+    std::string dir = File::getBHDir();
+    dir.append("/Config/Sounds/");
+    cmd.append(dir);
+    cmd.append(fileName);
+    char* cstr = new char[cmd.length() + 1];
+    std::strcpy(cstr, cmd.c_str());
+    std::system(cstr);
+    currentSounds.erase(std::remove(currentSounds.begin(), currentSounds.end(), fileName));
+  }
+  else
+  {
+#ifdef TARGET_ROBOT
+    fprintf(stderr, "%s is already being played\n", fileName.c_str());
+#endif
+  }
 }
 
-int SoundPlayerSimultaneous::play(std::string name) {
-    std::thread soundThread(playSoundFile, name);
-    soundThread.detach();
-	return 0;
+int SoundPlayerSimultaneous::play(std::string name)
+{
+  std::thread soundThread(playSoundFile, name);
+  soundThread.detach();
+  return 0;
 }

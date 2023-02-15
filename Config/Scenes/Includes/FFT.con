@@ -13,4 +13,3 @@ echo gc set
 
 vd parameters:WhistleDetector2019
 vd parameters:WhistleDetectorMono2019
-echo set parameters:AudioProviderDortmund params = { retries = 10; retryDelay = 500; channels = 4; sampleRate = 22050; maxFrames = 10000; simulateWhistleInSimulator = true; simulateSinusInSimulator = -1; simulateNoiseInSimulator = -1; audioFileName = "go19_whistle-while-testings_4ch_22050Hz_S16_LE.raw"; };

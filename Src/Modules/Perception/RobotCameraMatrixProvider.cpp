@@ -11,10 +11,10 @@ MAKE_MODULE(RobotCameraMatrixProvider, perception);
 
 void RobotCameraMatrixProvider::update(RobotCameraMatrix& robotCameraMatrix)
 {
-  robotCameraMatrix.computeRobotCameraMatrix(theRobotDimensions, theJointAngles.angles[Joints::headYaw], theJointAngles.angles[Joints::headPitch], theCameraCalibration, false);
+  robotCameraMatrix.computeRobotCameraMatrix(theRobotDimensions, theJointSensorData.angles[Joints::headYaw], theJointSensorData.angles[Joints::headPitch], theCameraCalibration, false);
 }
 
 void RobotCameraMatrixProvider::update(RobotCameraMatrixUpper& robotCameraMatrixUpper)
 {
-  robotCameraMatrixUpper.computeRobotCameraMatrix(theRobotDimensions, theJointAngles.angles[Joints::headYaw], theJointAngles.angles[Joints::headPitch], theCameraCalibration, true);
+  robotCameraMatrixUpper.computeRobotCameraMatrix(theRobotDimensions, theJointSensorData.angles[Joints::headYaw], theJointSensorData.angles[Joints::headPitch], theCameraCalibration, true);
 }

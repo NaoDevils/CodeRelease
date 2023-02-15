@@ -8,61 +8,44 @@
 
 #include "SyntaxHighlighter.h"
 
-SyntaxHighlighter::SyntaxHighlighter(QTextDocument* parent) :
-  QSyntaxHighlighter(parent)
+SyntaxHighlighter::SyntaxHighlighter(QTextDocument* parent) : QSyntaxHighlighter(parent)
 {
   HighlightingRule rule;
 
-  //Taken from W3C: <http://www.w3.org/TR/REC-xml/#sec-suggested-names>
-  //These are removed: \\x10000-\\xEFFFF (we can't fit them into the \xhhhh format).
-  const QString nameStartCharList =
-      ":A-Z_a-z\\x00C0-\\x00D6\\x00D8-\\x00F6\\x00F8-\\x02FF\\x0370-\\x037D\\x037F-\\x1FFF\\x200C-\\x200D\\x2070-\\x218F\\x2C00-\\x2FEF\\x3001-\\xD7FF\\xF900-\\xFDCF\\xFDF0-\\xFFFD";
-
-  const QString nameCharList = nameStartCharList + "\\-\\.0-9\\x00B7\\x0300-\\x036F\\x203F-\\x2040";
+  const QString nameStartCharList = ":A-Z_a-z";
+  const QString nameCharList = nameStartCharList + "\\-\\.0-9";
   const QString nameStart = "[" + nameStartCharList + "]";
   const QString nameChar = "[" + nameCharList + "]";
   const QString xmlName = nameStart + "(" + nameChar + ")*";
 
   //Processing instructions.
-  xmlProcInstStartExpression = QRegExp("<\\?");
-  xmlProcInstEndExpression = QRegExp("\\?>");
+  xmlProcInstStartExpression = QRegularExpression("<\\?");
+  xmlProcInstEndExpression = QRegularExpression("\\?>");
   xmlProcInstFormat.setForeground(Qt::red);
   xmlProcInstFormat.setFontItalic(false);
 
   //Multiline comments.
-  xmlCommentStartExpression = QRegExp("<!\\-\\-");
-  xmlCommentStartExpression.setMinimal(true);
-  xmlCommentEndExpression = QRegExp("\\-\\->");
-  xmlCommentEndExpression.setMinimal(true);
+  xmlCommentStartExpression = QRegularExpression("<!\\-\\-");
+  xmlCommentEndExpression = QRegularExpression("\\-\\->");
   xmlCommentFormat.setForeground(Qt::darkGreen);
   xmlCommentFormat.setFontItalic(false);
 
   //Opening tags
-  xmlOpenTagStartExpression = QRegExp("<" + xmlName);
-  xmlOpenTagStartExpression.setMinimal(false);
-  xmlOpenTagEndExpression = QRegExp(">");
-  xmlOpenTagEndExpression.setMinimal(true);
+  xmlOpenTagStartExpression = QRegularExpression("<" + xmlName);
+  xmlOpenTagEndExpression = QRegularExpression(">");
 
   //Closing tags: first shot, handling them as start-end pairs.
-  xmlCloseTagStartExpression = QRegExp("</" + xmlName);
-  xmlCloseTagStartExpression.setMinimal(false);
-  xmlCloseTagEndExpression = QRegExp(">");
-  xmlCloseTagEndExpression.setMinimal(true);
+  xmlCloseTagStartExpression = QRegularExpression("</" + xmlName);
+  xmlCloseTagEndExpression = QRegularExpression(">");
 
   xmlTagFormat.setForeground(Qt::darkBlue);
   xmlTagFormat.setFontItalic(false);
 
   //Attributes
-  xmlAttributeStartExpression = QRegExp("\\s*" + xmlName + "\\s*=\\s*((\\x0022)|(\\x0027))");
-  xmlAttributeStartExpression.setMinimal(true);
-  xmlAttributeEndExpression = QRegExp("(([^\\x0022]*\\x0022)|([^\\x0027]*\\x0027))");
-  xmlAttributeStartExpression.setMinimal(true);
+  xmlAttributeStartExpression = QRegularExpression("\\s*" + xmlName + "\\s*=\\s*\\\"");
+  xmlAttributeEndExpression = QRegularExpression("(?<!\\\\)(?:(\\\\\\\\)*)(\")");
   xmlAttributeFormat.setForeground(Qt::darkMagenta);
   xmlAttributeFormat.setFontItalic(false);
-
-  //Attribute values.
-  xmlAttValStartExpression = QRegExp("((\\x0022[^\\x0022]*)|(\\x0027[^\\x0027]*))");
-  xmlAttValStartExpression.setMinimal(true);
 
   //The end expression varies depending on what's matched with the start expression (single or double quote).
   //This regexp is actually reset repeatedly during the highlighting process.
@@ -70,8 +53,8 @@ SyntaxHighlighter::SyntaxHighlighter(QTextDocument* parent) :
   xmlAttValFormat.setFontItalic(false);
 
   //The DOCTYPE declaration.
-  xmlDoctypeStartExpression = QRegExp("<!DOCTYPE");
-  xmlDoctypeEndExpression = QRegExp(">");
+  xmlDoctypeStartExpression = QRegularExpression("<!DOCTYPE");
+  xmlDoctypeEndExpression = QRegularExpression(">");
   xmlDoctypeFormat.setForeground(Qt::darkCyan);
   xmlDoctypeFormat.setFontItalic(false);
 
@@ -80,402 +63,376 @@ SyntaxHighlighter::SyntaxHighlighter(QTextDocument* parent) :
   //that it can highlight inside attribute values.
   xmlEntityFormat.setForeground(Qt::darkGray);
   xmlEntityFormat.setFontItalic(true);
-  rule.pattern = QRegExp("&" + xmlName + ";");
+  rule.pattern = QRegularExpression("&" + xmlName + ";");
   rule.format = xmlEntityFormat;
   hlRules.append(rule);
 }
 
-void SyntaxHighlighter::highlightBlock(const QString &text)
+void SyntaxHighlighter::highlightBlock(const QString& text)
 {
   //Do the main block highlighting.
   highlightSubBlock(text, 0, previousBlockState());
 
   //Run the set of inline rules.
-  foreach (const HighlightingRule &rule, hlRules)
-    {
-      QRegExp expression(rule.pattern);
-      int index = expression.indexIn(text);
-      while(index >= 0)
-      {
-        int length = expression.matchedLength();
-        setFormat(index, length, rule.format);
-        index = expression.indexIn(text, index + length);
-      }
-    }
-}
-
-void SyntaxHighlighter::highlightSubBlock(const QString &text, const int startIndex, const int currState)
-{
-  if(startIndex >= text.length())
-    return;
-  int offset, commentOffset, procInstOffset, doctypeOffset, openTagOffset, closeTagOffset;
-  int matchedLength = 0;
-  int lowest = -1;
-  int newState = -1;
-
-  int effectiveState = currState;
-  if(currState < 0)
-    effectiveState = inNothing;
-  switch(effectiveState)
+  foreach (const HighlightingRule& rule, hlRules)
   {
-    case (inNothing):
+    QRegularExpression expression(rule.pattern);
+
+    for (const auto& match : expression.globalMatch(text))
     {
-      //If we're not in anything, then what could be coming is either a comment, processing instruction, a doctype decl, or a tag (open or close).
-      commentOffset = xmlCommentStartExpression.indexIn(text, startIndex);
-      procInstOffset = xmlProcInstStartExpression.indexIn(text, startIndex);
-      doctypeOffset = xmlDoctypeStartExpression.indexIn(text, startIndex);
-      openTagOffset = xmlOpenTagStartExpression.indexIn(text, startIndex);
-      closeTagOffset = xmlCloseTagStartExpression.indexIn(text, startIndex);
-      if(commentOffset > lowest)
-      {
-        lowest = commentOffset;
-        newState = inComment;
-        matchedLength = xmlCommentStartExpression.matchedLength();
-      }
-      if((procInstOffset > -1) && ((lowest == -1) || (procInstOffset < lowest)))
-      {
-        lowest = procInstOffset;
-        newState = inProcInst;
-        matchedLength = xmlProcInstStartExpression.matchedLength();
-      }
-      if((doctypeOffset > -1) && ((lowest == -1) || (doctypeOffset < lowest)))
-      {
-        lowest = doctypeOffset;
-        newState = inDoctypeDecl;
-        matchedLength = xmlDoctypeStartExpression.matchedLength();
-      }
-      if((openTagOffset > -1) && ((lowest == -1) || (openTagOffset < lowest)))
-      {
-        lowest = openTagOffset;
-        newState = inOpenTag;
-        matchedLength = xmlOpenTagStartExpression.matchedLength();
-      }
-      if((closeTagOffset > -1) && ((lowest == -1) || (closeTagOffset < lowest)))
-      {
-        newState = inCloseTag;
-        matchedLength = xmlCloseTagStartExpression.matchedLength();
-      }
-      switch(newState)
-      {
-        case -1:
-        {
-          //Nothing starts in this block.
-          setCurrentBlockState(inNothing);
-          break;
-        }
-        case inComment:
-        {
-          //We're into a comment.
-          setFormat(commentOffset, matchedLength, xmlCommentFormat);
-          setCurrentBlockState(inComment);
-          highlightSubBlock(text, commentOffset + matchedLength, inComment);
-          break;
-        }
-        case inProcInst:
-        {
-          //We're into a processing instruction.
-          //Format the matched text
-          setFormat(procInstOffset, matchedLength, xmlProcInstFormat);
-          //Call this function again with a new offset and state.
-          setCurrentBlockState(inProcInst);
-          highlightSubBlock(text, procInstOffset + matchedLength, inProcInst);
-          break;
-        }
-        case inDoctypeDecl:
-        {
-          //We're into a document type declaration.
-          //Format the matched text
-          setFormat(doctypeOffset, matchedLength, xmlDoctypeFormat);
-          //Call this function again with a new offset and state.
-          setCurrentBlockState(inDoctypeDecl);
-          highlightSubBlock(text, doctypeOffset + matchedLength, inDoctypeDecl);
-          break;
-        }
-        case inOpenTag:
-        {
-          //We're into an opening tag.
-          //Format the matched text
-          setFormat(openTagOffset, matchedLength, xmlTagFormat);
-          //Call this function again with a new offset and state.
-          setCurrentBlockState(inOpenTag);
-          highlightSubBlock(text, openTagOffset + matchedLength, inOpenTag);
-          break;
-        }
-        case inCloseTag:
-        {
-          //We're into a closing tag.
-          //Format the matched text
-          setFormat(closeTagOffset, matchedLength, xmlTagFormat);
-          setCurrentBlockState(inCloseTag);
-          //Call this function again with a new offset and state.
-          highlightSubBlock(text, closeTagOffset + matchedLength, inCloseTag);
-          break;
-        }
-      }
-      break;
-    }
-    case inProcInst:
-    {
-      //Look for the end of the processing instruction.
-      offset = xmlProcInstEndExpression.indexIn(text, startIndex);
-      matchedLength = xmlProcInstEndExpression.matchedLength();
-      if(offset > -1)
-      {
-        setFormat(startIndex, (offset + matchedLength) - startIndex, xmlProcInstFormat);
-        setCurrentBlockState(inNothing);
-        highlightSubBlock(text, offset + matchedLength, inNothing);
-      }
-      else
-      {
-        //We leave this block still inside the processing instruction,
-        //after formatting the rest of the line.
-        setFormat(startIndex, text.length() - startIndex, xmlProcInstFormat);
-        setCurrentBlockState(inProcInst);
-      }
-      break;
-    }
-    case inDoctypeDecl:
-    {
-      //Look for the end of the doctype declaration.
-      offset = xmlDoctypeEndExpression.indexIn(text, startIndex);
-      matchedLength = xmlDoctypeEndExpression.matchedLength();
-      if(offset > -1)
-      {
-        setFormat(startIndex, (offset + matchedLength) - startIndex, xmlDoctypeFormat);
-        setCurrentBlockState(inNothing);
-        highlightSubBlock(text, offset + matchedLength, inNothing);
-      }
-      else
-      {
-        //We leave this block still inside the doctype declaration,
-        //after formatting the rest of the line.
-        setFormat(startIndex, text.length() - startIndex, xmlDoctypeFormat);
-        setCurrentBlockState(inDoctypeDecl);
-      }
-      break;
-    }
-    case inOpenTag:
-    {
-      //If we're in an open tag, we're looking either for the end of the open tag, or for
-      //the beginning of an attribute name.
-      int openTagEndOffset = xmlOpenTagEndExpression.indexIn(text, startIndex);
-      int attStartOffset = xmlAttributeStartExpression.indexIn(text, startIndex);
-      if(attStartOffset > -1)
-      {
-        lowest = attStartOffset;
-        newState = inAttVal;
-        matchedLength = xmlAttributeStartExpression.matchedLength();
-      }
-      if((openTagEndOffset > -1) && ((lowest == -1) || (openTagEndOffset < lowest)))
-      {
-        newState = inNothing;
-        matchedLength = xmlOpenTagEndExpression.matchedLength();
-      }
-      switch(newState)
-      {
-        case -1:
-        {
-          //we're still in a tag. No need to highlight anything.
-          setCurrentBlockState(inOpenTag);
-          break;
-        }
-        case inNothing:
-        {
-          //We've come to the end of the open tag.
-          setFormat(openTagEndOffset, matchedLength, xmlTagFormat);
-          setCurrentBlockState(inNothing);
-          highlightSubBlock(text, openTagEndOffset + matchedLength, inNothing);
-          break;
-        }
-        case inAttVal:
-        {
-          //We've started an attribute. First format the attribute name and quote.
-          setFormat(attStartOffset, matchedLength, xmlAttributeFormat);
-          //We need to change the value of the attribute close matcher, so that
-          //it pairs correctly with the opening quote.
-          QChar quote = text.at(attStartOffset + matchedLength - 1);
-          if(quote.unicode() == 0x27)
-          {
-            xmlAttributeEndExpression = QRegExp("\\x0027");
-          }
-          else
-          {
-            xmlAttributeEndExpression = QRegExp("\\x0022");
-          }
-          setCurrentBlockState(inAttVal);
-          highlightSubBlock(text, attStartOffset + matchedLength, inAttVal);
-          break;
-        }
-      }
-      break;
-    }
-    case inAttVal:
-    {
-      //When we're in an attribute value, we're only looking for the closing quote.
-      offset = xmlAttributeEndExpression.indexIn(text, startIndex);
-      if(offset > -1)
-      {
-        //Do some highlighting. First the attribute value.
-        setFormat(startIndex, offset - startIndex, xmlAttValFormat);
-        //Now the closing quote.
-        setFormat(offset, 1, xmlAttributeFormat);
-        setCurrentBlockState(inOpenTag);
-        highlightSubBlock(text, offset + 1, inOpenTag);
-      }
-      else
-      {
-        //The attribute value runs over the end of the line.
-        setFormat(startIndex, text.length() - startIndex, xmlAttValFormat);
-        setCurrentBlockState(inAttVal);
-      }
-      break;
-    }
-    case inCloseTag:
-    {
-      int closeTagEndOffset = xmlCloseTagEndExpression.indexIn(text, startIndex);
-      matchedLength = xmlCloseTagEndExpression.matchedLength();
-      if(closeTagEndOffset > -1)
-      {
-        //We've found the end of the close tag.
-        setFormat(closeTagEndOffset, matchedLength, xmlTagFormat);
-        setCurrentBlockState(inNothing);
-        highlightSubBlock(text, closeTagEndOffset + matchedLength, inNothing);
-      }
-      else
-      {
-        //There must be a linebreak inside the close tag.
-        setCurrentBlockState(inCloseTag);
-      }
-      break;
-    }
-    case inComment:
-    {
-      //Once we're in a comment, we just have to search for the end of it. Nothing else takes precedence.
-      //Look for the end of the comment.
-      offset = xmlCommentEndExpression.indexIn(text, startIndex);
-      matchedLength = xmlCommentEndExpression.matchedLength();
-      if(offset > -1)
-      {
-        setFormat(startIndex, (offset + matchedLength) - startIndex, xmlCommentFormat);
-        setCurrentBlockState(inNothing);
-        highlightSubBlock(text, offset + matchedLength, inNothing);
-      }
-      else
-      {
-        //We leave this block still inside the comment,
-        //after formatting the rest of the line.
-        setFormat(startIndex, text.length() - startIndex, xmlCommentFormat);
-        setCurrentBlockState(inComment);
-      }
-      break;
+      setFormat(match.capturedStart(), match.capturedLength(), rule.format);
     }
   }
 }
 
-void SyntaxHighlighter::setCharFormat(const int whichFormat, const QTextCharFormat &newFormat)
+void SyntaxHighlighter::highlightSubBlock(const QString& text, const int startIndex, const int currState)
 {
-  QTextCharFormat *targFormat;
-  switch(whichFormat)
+  if (startIndex >= text.length())
+    return;
+  int lowest = -1;
+  int newState = -1;
+
+  int effectiveState = currState;
+  if (currState < 0)
+    effectiveState = inNothing;
+  switch (effectiveState)
   {
-    case xmlDefault:
+  case (inNothing):
+  {
+    //If we're not in anything, then what could be coming is either a comment, processing instruction, a doctype decl, or a tag (open or close).
+    const auto comment = xmlCommentStartExpression.match(text, startIndex);
+    const auto procInst = xmlProcInstStartExpression.match(text, startIndex);
+    const auto doctype = xmlDoctypeStartExpression.match(text, startIndex);
+    const auto openTag = xmlOpenTagStartExpression.match(text, startIndex);
+    const auto closeTag = xmlCloseTagStartExpression.match(text, startIndex);
+    if (comment.hasMatch())
     {
-      targFormat = &xmlDefaultFormat;
+      lowest = comment.capturedStart();
+      newState = inComment;
+    }
+    if (procInst.hasMatch() && ((lowest == -1) || (procInst.capturedStart() < lowest)))
+    {
+      lowest = procInst.capturedStart();
+      newState = inProcInst;
+    }
+    if (doctype.hasMatch() && ((lowest == -1) || (doctype.capturedStart() < lowest)))
+    {
+      lowest = doctype.capturedStart();
+      newState = inDoctypeDecl;
+    }
+    if (openTag.hasMatch() && ((lowest == -1) || (openTag.capturedStart() < lowest)))
+    {
+      lowest = openTag.capturedStart();
+      newState = inOpenTag;
+    }
+    if (closeTag.hasMatch() && ((lowest == -1) || (closeTag.capturedStart() < lowest)))
+    {
+      newState = inCloseTag;
+    }
+    switch (newState)
+    {
+    case -1:
+    {
+      //Nothing starts in this block.
+      setCurrentBlockState(inNothing);
       break;
     }
-    case xmlProcInst:
+    case inComment:
     {
-      targFormat = &xmlProcInstFormat;
+      //We're into a comment.
+      setFormat(comment.capturedStart(), comment.capturedLength(), xmlCommentFormat);
+      setCurrentBlockState(inComment);
+      highlightSubBlock(text, comment.capturedEnd(), inComment);
       break;
     }
-    case xmlDoctype:
+    case inProcInst:
     {
-      targFormat = &xmlDoctypeFormat;
+      //We're into a processing instruction.
+      //Format the matched text
+      setFormat(procInst.capturedStart(), procInst.capturedLength(), xmlProcInstFormat);
+      //Call this function again with a new offset and state.
+      setCurrentBlockState(inProcInst);
+      highlightSubBlock(text, procInst.capturedEnd(), inProcInst);
       break;
     }
-    case xmlComment:
+    case inDoctypeDecl:
     {
-      targFormat = &xmlCommentFormat;
+      //We're into a document type declaration.
+      //Format the matched text
+      setFormat(doctype.capturedStart(), doctype.capturedLength(), xmlDoctypeFormat);
+      //Call this function again with a new offset and state.
+      setCurrentBlockState(inDoctypeDecl);
+      highlightSubBlock(text, doctype.capturedEnd(), inDoctypeDecl);
       break;
     }
-    case xmlTag:
+    case inOpenTag:
     {
-      targFormat = &xmlTagFormat;
+      //We're into an opening tag.
+      //Format the matched text
+      setFormat(openTag.capturedStart(), openTag.capturedLength(), xmlTagFormat);
+      //Call this function again with a new offset and state.
+      setCurrentBlockState(inOpenTag);
+      highlightSubBlock(text, openTag.capturedEnd(), inOpenTag);
       break;
     }
-    case xmlEntity:
+    case inCloseTag:
     {
-      targFormat = &xmlEntityFormat;
+      //We're into a closing tag.
+      //Format the matched text
+      setFormat(closeTag.capturedStart(), closeTag.capturedLength(), xmlTagFormat);
+      setCurrentBlockState(inCloseTag);
+      //Call this function again with a new offset and state.
+      highlightSubBlock(text, closeTag.capturedEnd(), inCloseTag);
       break;
     }
-    case xmlAttribute:
+    }
+    break;
+  }
+  case inProcInst:
+  {
+    //Look for the end of the processing instruction.
+    const auto offset = xmlProcInstEndExpression.match(text, startIndex);
+    if (offset.hasMatch())
     {
-      targFormat = &xmlAttributeFormat;
+      setFormat(startIndex, offset.capturedEnd() - startIndex, xmlProcInstFormat);
+      setCurrentBlockState(inNothing);
+      highlightSubBlock(text, offset.capturedEnd(), inNothing);
+    }
+    else
+    {
+      //We leave this block still inside the processing instruction,
+      //after formatting the rest of the line.
+      setFormat(startIndex, text.length() - startIndex, xmlProcInstFormat);
+      setCurrentBlockState(inProcInst);
+    }
+    break;
+  }
+  case inDoctypeDecl:
+  {
+    //Look for the end of the doctype declaration.
+    const auto offset = xmlDoctypeEndExpression.match(text, startIndex);
+    if (offset.hasMatch())
+    {
+      setFormat(startIndex, offset.capturedEnd() - startIndex, xmlDoctypeFormat);
+      setCurrentBlockState(inNothing);
+      highlightSubBlock(text, offset.capturedEnd(), inNothing);
+    }
+    else
+    {
+      //We leave this block still inside the doctype declaration,
+      //after formatting the rest of the line.
+      setFormat(startIndex, text.length() - startIndex, xmlDoctypeFormat);
+      setCurrentBlockState(inDoctypeDecl);
+    }
+    break;
+  }
+  case inOpenTag:
+  {
+    //If we're in an open tag, we're looking either for the end of the open tag, or for
+    //the beginning of an attribute name.
+    const auto openTagEnd = xmlOpenTagEndExpression.match(text, startIndex);
+    const auto attStart = xmlAttributeStartExpression.match(text, startIndex);
+    if (attStart.hasMatch())
+    {
+      lowest = attStart.capturedStart();
+      newState = inAttVal;
+    }
+    if (openTagEnd.hasMatch() && ((lowest == -1) || (openTagEnd.capturedStart() < lowest)))
+    {
+      newState = inNothing;
+    }
+    switch (newState)
+    {
+    case -1:
+    {
+      //we're still in a tag. No need to highlight anything.
+      setCurrentBlockState(inOpenTag);
       break;
     }
-    case xmlAttVal:
+    case inNothing:
     {
-      targFormat = &xmlAttValFormat;
+      //We've come to the end of the open tag.
+      setFormat(openTagEnd.capturedStart(), openTagEnd.capturedLength(), xmlTagFormat);
+      setCurrentBlockState(inNothing);
+      highlightSubBlock(text, openTagEnd.capturedEnd(), inNothing);
       break;
     }
-    default:
+    case inAttVal:
     {
-      return;
+      //We've started an attribute. First format the attribute name and quote.
+      setFormat(attStart.capturedStart(), attStart.capturedLength(), xmlAttributeFormat);
+      setCurrentBlockState(inAttVal);
+      highlightSubBlock(text, attStart.capturedEnd(), inAttVal);
+      break;
     }
+    }
+    break;
+  }
+  case inAttVal:
+  {
+    //When we're in an attribute value, we're only looking for the closing quote.
+    const auto attrEnd = xmlAttributeEndExpression.match(text, startIndex);
+    if (attrEnd.hasMatch())
+    {
+      //Do some highlighting. First the attribute value.
+      setFormat(startIndex, attrEnd.capturedStart(2) - startIndex, xmlAttValFormat);
+      //Now the closing quote.
+      setFormat(attrEnd.capturedStart(2), attrEnd.capturedLength(2), xmlAttributeFormat);
+      setCurrentBlockState(inOpenTag);
+      highlightSubBlock(text, attrEnd.capturedStart() + 1, inOpenTag);
+    }
+    else
+    {
+      //The attribute value runs over the end of the line.
+      setFormat(startIndex, text.length() - startIndex, xmlAttValFormat);
+      setCurrentBlockState(inAttVal);
+    }
+    break;
+  }
+  case inCloseTag:
+  {
+    const auto closeTagEnd = xmlCloseTagEndExpression.match(text, startIndex);
+    if (closeTagEnd.hasMatch())
+    {
+      //We've found the end of the close tag.
+      setFormat(closeTagEnd.capturedStart(), closeTagEnd.capturedLength(), xmlTagFormat);
+      setCurrentBlockState(inNothing);
+      highlightSubBlock(text, closeTagEnd.capturedEnd(), inNothing);
+    }
+    else
+    {
+      //There must be a linebreak inside the close tag.
+      setCurrentBlockState(inCloseTag);
+    }
+    break;
+  }
+  case inComment:
+  {
+    //Once we're in a comment, we just have to search for the end of it. Nothing else takes precedence.
+    //Look for the end of the comment.
+    const auto offset = xmlCommentEndExpression.match(text, startIndex);
+    if (offset.hasMatch())
+    {
+      setFormat(startIndex, offset.capturedEnd() - startIndex, xmlCommentFormat);
+      setCurrentBlockState(inNothing);
+      highlightSubBlock(text, offset.capturedEnd(), inNothing);
+    }
+    else
+    {
+      //We leave this block still inside the comment,
+      //after formatting the rest of the line.
+      setFormat(startIndex, text.length() - startIndex, xmlCommentFormat);
+      setCurrentBlockState(inComment);
+    }
+    break;
+  }
+  }
+}
+
+void SyntaxHighlighter::setCharFormat(const int whichFormat, const QTextCharFormat& newFormat)
+{
+  QTextCharFormat* targFormat;
+  switch (whichFormat)
+  {
+  case xmlDefault:
+  {
+    targFormat = &xmlDefaultFormat;
+    break;
+  }
+  case xmlProcInst:
+  {
+    targFormat = &xmlProcInstFormat;
+    break;
+  }
+  case xmlDoctype:
+  {
+    targFormat = &xmlDoctypeFormat;
+    break;
+  }
+  case xmlComment:
+  {
+    targFormat = &xmlCommentFormat;
+    break;
+  }
+  case xmlTag:
+  {
+    targFormat = &xmlTagFormat;
+    break;
+  }
+  case xmlEntity:
+  {
+    targFormat = &xmlEntityFormat;
+    break;
+  }
+  case xmlAttribute:
+  {
+    targFormat = &xmlAttributeFormat;
+    break;
+  }
+  case xmlAttVal:
+  {
+    targFormat = &xmlAttValFormat;
+    break;
+  }
+  default:
+  {
+    return;
+  }
   }
 
   targFormat->setForeground(newFormat.foreground());
   rehighlight();
 }
 
-bool SyntaxHighlighter::getCharFormat(const int whichFormat, QTextCharFormat &targFormat)
+bool SyntaxHighlighter::getCharFormat(const int whichFormat, QTextCharFormat& targFormat)
 {
-  QTextCharFormat *srcFormat;
-  switch(whichFormat)
+  QTextCharFormat* srcFormat;
+  switch (whichFormat)
   {
-    case xmlDefault:
-    {
-      srcFormat = &xmlDefaultFormat;
-      break;
-    }
-    case xmlProcInst:
-    {
-      srcFormat = &xmlProcInstFormat;
-      break;
-    }
-    case xmlDoctype:
-    {
-      srcFormat = &xmlDoctypeFormat;
-      break;
-    }
-    case xmlComment:
-    {
-      srcFormat = &xmlCommentFormat;
-      break;
-    }
-    case xmlTag:
-    {
-      srcFormat = &xmlTagFormat;
-      break;
-    }
-    case xmlEntity:
-    {
-      srcFormat = &xmlEntityFormat;
-      break;
-    }
-    case xmlAttribute:
-    {
-      srcFormat = &xmlAttributeFormat;
-      break;
-    }
-    case xmlAttVal:
-    {
-      srcFormat = &xmlAttValFormat;
-      break;
-    }
-    default:
-    {
-      return false;
-    }
+  case xmlDefault:
+  {
+    srcFormat = &xmlDefaultFormat;
+    break;
+  }
+  case xmlProcInst:
+  {
+    srcFormat = &xmlProcInstFormat;
+    break;
+  }
+  case xmlDoctype:
+  {
+    srcFormat = &xmlDoctypeFormat;
+    break;
+  }
+  case xmlComment:
+  {
+    srcFormat = &xmlCommentFormat;
+    break;
+  }
+  case xmlTag:
+  {
+    srcFormat = &xmlTagFormat;
+    break;
+  }
+  case xmlEntity:
+  {
+    srcFormat = &xmlEntityFormat;
+    break;
+  }
+  case xmlAttribute:
+  {
+    srcFormat = &xmlAttributeFormat;
+    break;
+  }
+  case xmlAttVal:
+  {
+    srcFormat = &xmlAttValFormat;
+    break;
+  }
+  default:
+  {
+    return false;
+  }
   }
 
   targFormat.setForeground(srcFormat->foreground());

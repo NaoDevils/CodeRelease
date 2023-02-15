@@ -12,8 +12,9 @@
 #include <QTextCharFormat>
 #include <QVector>
 #include <QTextDocument>
+#include <QRegularExpression>
 
-class SyntaxHighlighter: public QSyntaxHighlighter
+class SyntaxHighlighter : public QSyntaxHighlighter
 {
   Q_OBJECT
 
@@ -34,37 +35,35 @@ public:
   };
 
 protected:
-  void highlightBlock(const QString &text);
-  void highlightSubBlock(const QString &text, const int startIndex, const int currState);
+  void highlightBlock(const QString& text);
+  void highlightSubBlock(const QString& text, const int startIndex, const int currState);
 
-  void setCharFormat(const int whichFormat, const QTextCharFormat &newFormat);
-  bool getCharFormat(const int whichFormat, QTextCharFormat &targFormat);
+  void setCharFormat(const int whichFormat, const QTextCharFormat& newFormat);
+  bool getCharFormat(const int whichFormat, QTextCharFormat& targFormat);
 
 private:
   struct HighlightingRule
   {
-      QRegExp pattern;
-      QTextCharFormat format;
+    QRegularExpression pattern;
+    QTextCharFormat format;
   };
   QVector<HighlightingRule> hlRules;
 
-  QRegExp xmlProcInstStartExpression;
-  QRegExp xmlProcInstEndExpression;
-  QRegExp xmlCommentStartExpression;
-  QRegExp xmlCommentEndExpression;
-  QRegExp xmlDoctypeStartExpression;
-  QRegExp xmlDoctypeEndExpression;
+  QRegularExpression xmlProcInstStartExpression;
+  QRegularExpression xmlProcInstEndExpression;
+  QRegularExpression xmlCommentStartExpression;
+  QRegularExpression xmlCommentEndExpression;
+  QRegularExpression xmlDoctypeStartExpression;
+  QRegularExpression xmlDoctypeEndExpression;
 
-  QRegExp xmlOpenTagStartExpression;
-  QRegExp xmlOpenTagEndExpression;
-  QRegExp xmlCloseTagStartExpression;
-  QRegExp xmlCloseTagEndExpression;
-  QRegExp xmlAttributeStartExpression;
-  QRegExp xmlAttributeEndExpression;
-  QRegExp xmlAttValStartExpression;
-  QRegExp xmlAttValEndExpression;
+  QRegularExpression xmlOpenTagStartExpression;
+  QRegularExpression xmlOpenTagEndExpression;
+  QRegularExpression xmlCloseTagStartExpression;
+  QRegularExpression xmlCloseTagEndExpression;
+  QRegularExpression xmlAttributeStartExpression;
+  QRegularExpression xmlAttributeEndExpression;
 
-  QRegExp xmlAttValExpression;
+  QRegularExpression xmlAttValExpression;
 
   QTextCharFormat xmlDefaultFormat;
   QTextCharFormat xmlProcInstFormat;

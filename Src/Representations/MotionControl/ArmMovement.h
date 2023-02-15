@@ -14,7 +14,7 @@
 * A class that represents the output of the walking engine.
 */
 STREAMABLE_WITH_BASE(ArmMovement, JointAngles,
-{,
+,
   (bool)(false) usearms,
-  (bool)(false) armsInContactAvoidance,
-});
+  (bool)(false) armsInContactAvoidance
+);

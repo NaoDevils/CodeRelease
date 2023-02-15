@@ -10,5 +10,4 @@ public:
   Power(int value, bool powerPlugged);
 
   bool isValid();
-  
 };

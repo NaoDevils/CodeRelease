@@ -11,10 +11,10 @@
 #include "Controller/ConsoleRoboCupCtrl.h"
 #endif
 #ifdef TARGET_ROBOT
-#include "Platform/Linux/NaoBody.h"
 #include "Platform/Linux/NaoBodyV6.h"
-#include <cstdio>
-#include <unistd.h>
+#include <iostream>
+#include <chrono>
+#include <thread>
 #endif
 
 #include "Platform/BHAssert.h"
@@ -25,10 +25,9 @@
 #include "Tools/Streams/AutoStreamable.h"
 #include "Utils/dorsh/models/Robot.h"
 
-STREAMABLE(Robots,
-{,
-  (std::vector<RobotConfig>) robotsIds,
-});
+STREAMABLE(Robots,,
+  (std::vector<RobotConfig>) robotsIds
+);
 
 bool Settings::recover = false;
 
@@ -43,7 +42,7 @@ Settings::Settings(bool master)
 Settings::Settings()
 {
   static_assert(TEAM_BLUE == blue && TEAM_RED == red && TEAM_YELLOW == yellow && TEAM_BLACK == black, "These macros and enums have to match!");
-  if(!loaded)
+  if (!loaded)
   {
     VERIFY(settings.load());
     loaded = true;
@@ -51,26 +50,26 @@ Settings::Settings()
   *this = settings;
 
 #ifdef TARGET_SIM
-  if(SystemCall::getMode() == SystemCall::simulatedRobot)
+  if (SystemCall::getMode() == SystemCall::simulatedRobot)
   {
     int index = atoi(RoboCupCtrl::controller->getRobotName().c_str() + 5) - 1;
-    teamNumber = index < 6 ? 1 : 2;
+    teamNumber = index < MAX_NUM_PLAYERS ? 1 : 2;
     teamPort = 10000 + teamNumber;
-    teamColor = index < 6 ? blue : red;
-    playerNumber = index % 6 + 1;
+    teamColor = index < MAX_NUM_PLAYERS ? blue : red;
+    playerNumber = index % MAX_NUM_PLAYERS + 1;
   }
 
   robotName = "Nao";
 
   ConsoleRoboCupCtrl* ctrl = dynamic_cast<ConsoleRoboCupCtrl*>(RoboCupCtrl::controller);
-  if(ctrl)
+  if (ctrl)
   {
     std::string logFileName = ctrl->getLogFile();
-    if(logFileName != "")
+    if (logFileName != "")
     {
       QRegExp re("[0-9]_[A-Za-z]*_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_[0-9][0-9]-[0-9][0-9]-[0-9][0-9].log", Qt::CaseSensitive, QRegExp::RegExp2);
       int pos = re.indexIn(logFileName.c_str());
-      if(pos != -1)
+      if (pos != -1)
       {
         robotName = logFileName.substr(pos + 2);
         robotName = robotName.substr(0, robotName.find("_"));
@@ -83,7 +82,6 @@ Settings::Settings()
   bodyName = robotName.c_str();
 
 #endif
-
 }
 
 bool Settings::load()
@@ -95,20 +93,10 @@ bool Settings::load()
     Global::theStreamHandler = &streamHandler;
   }
 
-  InMapFile stream("settings.cfg");
-  if(stream.exists())
-    stream >> *this;
-  else
-  {
-    TRACE("Could not load settings for robot \"%s\" from settings.cfg", robotName.c_str());
-    return false;
-  }
-
-#ifdef TARGET_ROBOT
-  robotName = SystemCall::getHostName();
   std::string bhdir = File::getBHDir();
+#ifdef TARGET_ROBOT
   InMapFile robotsStream(bhdir + "/Config/Robots/robots.cfg");
-  if(!robotsStream.exists())
+  if (!robotsStream.exists())
   {
     TRACE("Could not load robots.cfg");
     return false;
@@ -118,72 +106,89 @@ bool Settings::load()
     Robots robots;
     robotsStream >> robots;
 
-    std::string bodyId;
-    
-	  // wait for NaoQi/LoLA
-    if (naoVersion == RobotConfig::V6)
-    {
-      NaoBodyV6 naoBody;
-      if(!naoBody.init())
-      {
-        fprintf(stderr, "B-Human: Waiting for LoLA via ndevilsbase...\n");
-        do
-        {
-          usleep(1000000);
-        }
-        while(!naoBody.init());
-      }
-      
-      bodyId = std::string(NaoBodyV6().getBodyId());
-    }
-    else
-    {
-      NaoBody naoBody;
-      if(!naoBody.init())
-      {
-        fprintf(stderr, "B-Human: Waiting for NaoQi via libbhuman...\n");
-        do
-        {
-          usleep(1000000);
-        }
-        while(!naoBody.init());
-      }
+    std::string bodyId, headId;
 
-      bodyId = std::string(NaoBody().getBodyId());
+    // wait for LoLA
+    NaoBodyV6 naoBody;
+    while (!naoBody.init())
+    {
+      std::cerr << "Waiting for LoLA via ndevilsbase...\n";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    for(const RobotConfig& robot : robots.robotsIds)
+    while (*NaoBodyV6().getBodyId() == 0)
     {
-      if(robot.bodyId == bodyId)
+      std::cerr << "Waiting for body id...\n";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    bodyId = std::string(NaoBodyV6().getBodyId());
+
+    while (*NaoBodyV6().getHeadId() == 0)
+    {
+      std::cerr << "Waiting for head id...\n";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    headId = std::string(NaoBodyV6().getHeadId());
+
+    for (const RobotConfig& robot : robots.robotsIds)
+    {
+      if (robot.bodyId == bodyId)
       {
         bodyName = robot.name;
         naoVersion = robot.naoVersion;
-        break;
+      }
+      if (robot.headId == headId)
+      {
+        robotName = robot.name;
       }
     }
-    if(bodyId.empty())
+
+    if (bodyName.empty())
     {
-      TRACE("Could not find bodyId in robots.cfg");
-      return false;
+      bodyName = bodyId;
+      TRACE("Could not find bodyId in robots.cfg.");
+    }
+
+    if (robotName.empty())
+    {
+      robotName = headId;
+      TRACE("Could not find headId in robots.cfg.");
     }
   }
 #else
   robotName = "Nao";
   bodyName = "Nao";
-  naoVersion = RobotConfig::V5;
+  naoVersion = RobotConfig::V6;
 #endif
 
-#ifdef TARGET_ROBOT
-  if(robotName == bodyName)
-    printf("Hi, I am %s.\n", robotName.c_str());
+  // the default config hierarchy does not work here because
+  // the global settings object is not initialized at this point
+  const std::list<std::string> names = {bhdir + "/Config/settings.cfg", bhdir + "/Config/Robots/" + robotName + "/Head/settings.cfg", bhdir + "/Config/Robots/" + bodyName + "/Body/settings.cfg"};
+  InMapFile stream(names);
+  if (stream.exists())
+    stream >> *this;
   else
-    printf("Hi, I am %s (using %ss Body).\n", robotName.c_str(), bodyName.c_str());
-  printf("teamNumber %d\n", teamNumber);
-  printf("teamPort %d\n", teamPort);
-  printf("teamColor %s\n", getName(teamColor));
-  printf("playerNumber %d\n", playerNumber);
-  printf("location %s\n", location.c_str());
-  printf("gameMode %s\n", getName(gameMode));
+  {
+    TRACE("Could not load settings for robot \"%s\" from settings.cfg", robotName.c_str());
+    return false;
+  }
+
+#ifdef TARGET_ROBOT
+  std::cout << "Hi, I am " << robotName;
+  if (robotName == bodyName)
+    std::cout << ".\n";
+  else
+    std::cout << " (using body of " << bodyName << ").\n";
+
+  std::cout << "teamNumber: " << teamNumber << "\n";
+  std::cout << "teamPort: " << teamPort << "\n";
+  std::cout << "teamColor: " << getName(teamColor) << "\n";
+  std::cout << "playerNumber: " << playerNumber << "\n";
+  std::cout << "gameMode: " << getName(gameMode) << "\n";
+  std::cout << "overlays:";
+  for (const std::string& overlay : overlays)
+    std::cout << " " << overlay;
+  std::cout << "\n";
 #endif
 
   return true;

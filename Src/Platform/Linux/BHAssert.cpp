@@ -18,12 +18,12 @@ void Assert::print(const char* file, int line, const char* format, ...)
 {
   char data[320];
   int length = snprintf(data, sizeof(data) - 2, "%s:%d: ", file, line);
-  if(length < 0)
+  if (length < 0)
     length = sizeof(data) - 2;
   va_list ap;
   va_start(ap, format);
   int i = vsnprintf(data + length, sizeof(data) - length - 2, format, ap);
-  if(i < 0)
+  if (i < 0)
     length = sizeof(data) - 2;
   else
     length += i;
@@ -52,6 +52,7 @@ void Assert::abort()
 #include <sstream>
 #include <ctime>
 #include "BHAssert.h"
+#include <filesystem>
 
 class AssertFramework
 {
@@ -78,8 +79,7 @@ public:
 
   struct Data
   {
-    Thread thread[10];
-    int currentThread;
+    Thread thread[20];
   };
 
   static pthread_mutex_t mutex;
@@ -92,30 +92,29 @@ public:
 
   ~AssertFramework()
   {
-    if(data != MAP_FAILED)
+    if (data != MAP_FAILED)
       munmap(data, sizeof(Data));
-    if(fd != -1)
+    if (fd != -1)
       close(fd);
   }
 
   bool init(bool reset)
   {
-    if(data != MAP_FAILED)
+    if (data != MAP_FAILED)
       return true;
 
     fd = shm_open("/bhuman_assert", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if(fd == -1)
+    if (fd == -1)
       return false;
 
-    if(ftruncate(fd, sizeof(Data)) == -1 ||
-       (data = (Data*)mmap(nullptr, sizeof(Data), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
+    if (ftruncate(fd, sizeof(Data)) == -1 || (data = (Data*)mmap(nullptr, sizeof(Data), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED)
     {
       close(fd);
       fd = -1;
       return false;
     }
 
-    if(reset)
+    if (reset)
       memset(data, 0, sizeof(Data));
 
     return true;
@@ -128,17 +127,35 @@ __thread AssertFramework::Thread* AssertFramework::threadData = 0;
 bool Assert::logInit(const char* name)
 {
   //printf("logInit %s", name);
-  int thread = -1;
   pthread_mutex_lock(&AssertFramework::mutex);
   assertFramework.init(true);
-  if(assertFramework.data != MAP_FAILED)
-    thread = assertFramework.data->currentThread++;
+  if (assertFramework.data != MAP_FAILED)
+  {
+    for (AssertFramework::Thread& thread : assertFramework.data->thread)
+    {
+      if (!*thread.name)
+      {
+        AssertFramework::threadData = &thread;
+        memccpy(AssertFramework::threadData->name, name, 0, sizeof(AssertFramework::threadData->name) - 1);
+        AssertFramework::threadData->name[sizeof(AssertFramework::threadData->name) - 1] = 0;
+        break;
+      }
+    }
+  }
+  ASSERT(AssertFramework::threadData);
   pthread_mutex_unlock(&AssertFramework::mutex);
-  ASSERT(thread >= 0 && thread < int(sizeof(assertFramework.data->thread) / sizeof(*assertFramework.data->thread)));
-  AssertFramework::threadData = &assertFramework.data->thread[thread];
-  memccpy(AssertFramework::threadData->name, name, 0, sizeof(AssertFramework::threadData->name) - 1);
-  AssertFramework::threadData->name[sizeof(AssertFramework::threadData->name) - 1] = 0;
+
   return true;
+}
+
+void Assert::logTerm()
+{
+  //printf("logTerm");
+  pthread_mutex_lock(&AssertFramework::mutex);
+  ASSERT(AssertFramework::threadData);
+  memset(AssertFramework::threadData, 0, sizeof(AssertFramework::Thread));
+  AssertFramework::threadData = nullptr;
+  pthread_mutex_unlock(&AssertFramework::mutex);
 }
 
 void Assert::logAdd(int trackId, const char* file, int lineNum, const char* message)
@@ -159,11 +176,11 @@ void Assert::logAdd(int trackId, const char* file, int lineNum, const char* mess
 // Get current date/time, format is YYYY-MM-DD_HH:mm:ss
 const std::string currentTimeStamp()
 {
-  time_t     now = time(0);
-  struct tm  tstruct;
-  char       buf[80];
+  time_t now = time(0);
+  struct tm tstruct;
+  char buf[80];
   tstruct = *localtime(&now);
-  strftime(buf, sizeof(buf), "%F_%T", &tstruct);
+  strftime(buf, sizeof(buf), "%F_%H-%M-%S", &tstruct);
   return buf;
 }
 
@@ -172,68 +189,58 @@ void Assert::logDump(bool toStderr, int termSignal)
   assertFramework.init(false);
   std::stringstream ssfilename;
 #ifdef TARGET_ROBOT
-  ssfilename << "/home/nao/logs/bhuman.assert_"
+
+  // use USB directory if present
+  // required to comply with GORE2021 rules for USB logging
+  const char* dir;
+  if (std::filesystem::is_directory("/home/nao/usb/logs"))
+    dir = "/home/nao/usb/logs/assert_";
+  else
+    dir = "/home/nao/logs/assert_";
+
+  ssfilename << dir
 #else
-  ssfilename << "/tmp/bhuman.assert_"
+  ssfilename << "/tmp/assert_"
 #endif
-             << currentTimeStamp()
-             << ".log";
+             << currentTimeStamp() << ".log";
 
   FILE* fp = toStderr ? stderr : fopen(ssfilename.str().c_str(), "w");
-  if(fp == 0)
+  if (fp == 0)
     return;
 
-  for(int i = 0; i < int(sizeof(assertFramework.data->thread) / sizeof(*assertFramework.data->thread)); ++i)
+  for (int i = 0; i < int(sizeof(assertFramework.data->thread) / sizeof(*assertFramework.data->thread)); ++i)
   {
     AssertFramework::Thread* thread = &assertFramework.data->thread[i];
-    if(!*thread->name)
+    if (!*thread->name)
       continue;
 
-    for(int i = 0; i < int(sizeof(thread->track) / sizeof(*thread->track)); ++i)
+    for (int i = 0; i < int(sizeof(thread->track) / sizeof(*thread->track)); ++i)
     {
       AssertFramework::Track* track = &thread->track[i];
-      if(!track->active)
+      if (!track->active)
         continue;
-      fprintf(fp, "---- %s %s ----\n[...]\n", thread->name, i == 0 ? "BH_TRACE" : "ASSERT, VERIFY, TRACE");
-      for(int i = 0; i < int(sizeof(track->line) / sizeof(*track->line)); ++i)
+      fprintf(fp, "---- %s %s ----\n[...]\n", thread->name, i == 0 ? "TRACE" : "ASSERT, VERIFY, TRACE");
+      for (int i = 0; i < int(sizeof(track->line) / sizeof(*track->line)); ++i)
       {
         int j = track->currentLine - (int(sizeof(track->line) / sizeof(*track->line)) - 1 - i);
-        if(j < 0)
+        if (j < 0)
           j += int(sizeof(track->line) / sizeof(*track->line));
         AssertFramework::Line* line = &track->line[j];
-        if(!*line->file)
+        if (!*line->file)
           continue;
         fprintf(fp, "%s:%d: %s\n", line->file, line->line, line->message);
       }
     }
   }
 
-  const char* termSignalNames[] =
-  {
-    "",
-    "",
-    "sigINT",
-    "sigQUIT",
-    "sigILL",
-    "",
-    "sigABRT",
-    "",
-    "sigFPE",
-    "sigKILL",
-    "",
-    "sigSEGV",
-    "",
-    "sigPIPE",
-    "sigALRM",
-    "sigTERM"
-  };
+  const char* termSignalNames[] = {"", "", "sigINT", "sigQUIT", "sigILL", "", "sigABRT", "", "sigFPE", "sigKILL", "", "sigSEGV", "", "sigPIPE", "sigALRM", "sigTERM"};
 
   fprintf(fp, "----\n");
   const char* termSignalName = termSignal < 0 || termSignal >= int(sizeof(termSignalNames) / sizeof(*termSignalNames)) ? "" : termSignalNames[termSignal];
-  if(*termSignalName)
+  if (*termSignalName)
     fprintf(fp, "%s\n", termSignalName);
 
-  if(fp != stderr)
+  if (fp != stderr)
     fclose(fp);
 }
 

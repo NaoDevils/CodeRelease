@@ -23,14 +23,14 @@ class SensorWidget : public QWidget, public SimRobot::Widget
   Q_OBJECT
 
 public:
-   /**
+  /**
   * Constructor
   * @param sensor The sensor the readings of which should be visualized
   */
   SensorWidget(SimRobotCore2::SensorPort* sensor);
 
   /** Destructor */
-  virtual ~SensorWidget();
+  ~SensorWidget();
 
 private:
   QPainter painter;
@@ -40,12 +40,12 @@ private:
   QList<int> sensorDimensions;
   QMimeData* mineData;
 
-  virtual QWidget* getWidget() {return this;}
-  virtual void update();
-  virtual QMenu* createEditMenu() const;
+  QWidget* getWidget() override { return this; }
+  void update() override;
+  QMenu* createEditMenu() const override;
 
-  virtual QSize sizeHint() const;
-  virtual void paintEvent(QPaintEvent *event);
+  QSize sizeHint() const override;
+  void paintEvent(QPaintEvent* event) override;
 
   void paintBoolSensor();
   void paintFloatArrayWithDescriptionsSensor();

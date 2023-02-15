@@ -17,14 +17,12 @@
 * A class that represents the lines found in an image.
 */
 STREAMABLE(CLIPCenterCirclePercept,
-{
-  STREAMABLE(CenterCircle,
-  {,
+  STREAMABLE(CenterCircle,,
     (Vector2i) locationOnField,
     (Vector2i) locationInImage,
     (float) orientation, // angle of the center line (if detected) [in field coordinates relative to the robot]
-    (bool) orientationKnown,
-  });
+    (bool) orientationKnown
+  );
 
   float getDistanceToFieldLinesPercept(const CLIPFieldLinesPercept::FieldLine &line) const
   {
@@ -82,5 +80,5 @@ STREAMABLE(CLIPCenterCirclePercept,
 
   (CenterCircle) centerCircle,
   (bool)(false) centerCircleWasSeen,
-  (bool) fromUpper,
-});
+  (bool) fromUpper
+);

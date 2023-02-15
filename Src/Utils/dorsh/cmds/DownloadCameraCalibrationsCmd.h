@@ -17,22 +17,23 @@ class DownloadCameraCalibrationsCmd : public RobotCommand
   class DownloadCameraCalibrationsTask : public RobotTask
   {
   public:
-    DownloadCameraCalibrationsTask(Context &context, RobotConfigDorsh *robot);
+    DownloadCameraCalibrationsTask(Context& context, RobotConfigDorsh* robot);
     bool execute();
     QString getCommand();
   };
 
-  public:
-    DownloadCameraCalibrationsCmd();
-    virtual std::string getName() const;
-    virtual std::string getDescription() const;
-    virtual bool preExecution(Context &context, const std::vector<std::string> &params);
-    virtual Task* perRobotExecution(Context &context, RobotConfigDorsh &robot);
-    virtual bool postExecution(Context &context, const std::vector<std::string> &params);
+public:
+  DownloadCameraCalibrationsCmd();
+  virtual std::string getName() const;
+  virtual std::string getDescription() const;
+  virtual bool preExecution(Context& context, const std::vector<std::string>& params);
+  virtual Task* perRobotExecution(Context& context, RobotConfigDorsh& robot);
+  virtual bool postExecution(Context& context, const std::vector<std::string>& params);
 
-    QString getCommand();
-  public:
-    static DownloadCameraCalibrationsCmd theDownloadLogsCmd;
+  QString getCommand();
+
+public:
+  static DownloadCameraCalibrationsCmd theDownloadLogsCmd;
 };
 
 #endif /* DOWNLOADLOGSCMD_H_ */

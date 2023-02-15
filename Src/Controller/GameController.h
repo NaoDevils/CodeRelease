@@ -38,7 +38,6 @@ private:
   };
 
   ENUM(Penalty,
-  {,
     none,
     illegalBallContact,
     playerPushing,
@@ -48,12 +47,12 @@ private:
     leavingTheField,
     kickOffGoal,
     requestForPickup,
-    manual,
-  });
+    manual
+  );
   static const int numOfPenalties = numOfPenaltys; /**< Correct typo. */
 
   DECLARE_SYNC;
-  static const int numOfRobots = 12;
+  static const int numOfRobots = MAX_NUM_PLAYERS * 2;
   static const int numOfFieldPlayers = numOfRobots / 2 - 2; // Keeper, Substitute
   static const int durationOfHalf = 600;
   static const int durationOfPS = 45; /**< duration of one penalty shootout attemp. */
@@ -69,16 +68,16 @@ private:
   unsigned timeOfLastDropIn;
   unsigned timeWhenLastRobotMoved;
   unsigned timeWhenStateBegan;
+  int minNextMessageCountIncrease = 0;
   int timeWhenSetPlayStarted = -1; /**Time when the current set play started (-1 during SET_PLAY_NONE)*/
   Robot robots[numOfRobots];
 
-   /** enum which declares the different types of balls leaving the field */
-  enum BallOut { 
-    NONE, 
-    GOAL_BY_RED, 
-    GOAL_BY_BLUE, 
-    OUT_BY_RED, 
-    OUT_BY_BLUE,
+  /** enum which declares the different types of balls leaving the field */
+  enum BallOut
+  {
+    NONE,
+    GOAL_BY_RED,
+    GOAL_BY_BLUE,
     KICK_IN_FOR_RED,
     KICK_IN_FOR_BLUE,
     GOAL_FREE_KICK_FOR_RED,
@@ -100,12 +99,22 @@ private:
    */
   bool handleRobotCommand(int robot, const std::string& command);
 
+  /** Return the number of the team the a robot is playing for.*/
+  int getTeamNumberOfRobot(int robotNum);
+
   /**
    * Is a robot it its own penalty area or in its own goal area?
    * @param robot The number of the robot to check [0 ... numOfRobots-1].
    * @return Is it?
    */
   bool inOwnPenaltyArea(int robot) const;
+
+  /**
+   * Is a robot it the opponents penalty area or in the opponents own goal area?
+   * @param robot The number of the robot to check [0 ... numOfRobots-1].
+   * @return Is it?
+   */
+  bool inOpponentPenaltyArea(int robot) const;
 
   /**
    * Finds a free place for a (un)penalized robot.
@@ -162,6 +171,29 @@ private:
   /** Checks if current set play ended because time ran out or offensive team touched the ball. */
   void checkForSetPlayCompletion();
 
+  /** Executes all actions necessary when switching from ready to set during a penalty kick.*/
+  void handlePenaltyKickSet();
+
+  /** Determines which robot is supposed to execute a penalty kick by choosing the player with minimal distance to ball. */
+  int findPlayerNumberOfPenaltyKickStriker(Vector2f ballPosition);
+
+  /** Determines which robot is the goalkeeper of the team defending a set play.*/
+  int findGoalieOfDefendingTeam();
+
+  /** Determines if a robot is placed on its own groundlinde between the posts of its own goal. */
+  bool isRobotPlacedOnItsGoalLine(int robotNum);
+
+  /** Moves all players out of the penalty area that are not allowed there during a penalty kick. */
+  void removeIllegalPlayersFromPenaltyArea(Vector2f ballPosition);
+
+  /**
+   * Write the current information of the team to the stream
+   * provided.
+   * @param teamInfo The team information (either own or opponent).
+   * @param stream The stream the team information is written to.
+   */
+  void writeTeamInfo(TeamInfo& teamInfo, Out& stream);
+
 public:
   bool automatic; /**< Are the automatic features active? */
 
@@ -200,13 +232,19 @@ public:
   static void setLastBallContactRobot(SimRobot::Object* robot);
 
   /**
+   * @brief Decreases message budget counter by one.
+   * @param robot The robot
+   */
+  void decreaseMessageBudget(int robot);
+
+  /**
    * Write the current game information to the stream provided.
    * @param stream The stream the game information is written to.
    */
   void writeGameInfo(Out& stream);
 
   /**
-   * Write the current information of the team to the stream
+   * Write the current information of the own team to the stream
    * provided.
    * @param robot A robot from the team.
    * @param stream The stream the team information is written to.
@@ -220,6 +258,8 @@ public:
    * @param stream The stream the team information is written to.
    */
   void writeOpponentTeamInfo(int robot, Out& stream);
+
+  void setTeamColors(uint8_t firstTeamColor, uint8_t secondTeamColor);
 
   /**
    * Write the current information of a certain robot to the

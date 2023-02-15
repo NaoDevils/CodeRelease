@@ -13,10 +13,11 @@
  * The executed motion request and additional information about the motions which are executed by the Motion process.
  */
 STREAMABLE_WITH_BASE(MotionInfo, MotionRequest,
-{,
+,
   (bool)(false) isMotionStable, /**< If true, the motion is stable, leading to a valid torso / camera matrix. */
   (Pose2f) offsetToRobotPoseAfterPreview, /**< The remaining odometry offset for the currently executed motion. */
   (bool)(false) customStepKickInPreview, /**< If true, the custom step kick motion is inserted into preview */
+  (bool)(false) walkKicking, /**< True if the currently executed foot step is executing a walk kick */
   (bool)(true) lastStandUpSafeFront,
-  (bool)(true) lastStandUpSafeBack,
-});
+  (bool)(true) lastStandUpSafeBack
+);

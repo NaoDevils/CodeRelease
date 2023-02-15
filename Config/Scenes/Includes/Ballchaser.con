@@ -1,0 +1,16 @@
+call Includes/Behavior
+call Includes/Behavior3D
+
+vd representation:Ballchaser 
+
+vfd worldState
+
+vfd worldState representation:RobotMap 
+echo vfd worldState module:HeatMapProvider:HeatMap
+
+vfd worldState behavior:BallchaserProvider:KickManager:KickRange 
+vfd worldState behavior:BallchaserProvider:KickManager:Blocked 
+vfd worldState behavior:BallchaserProvider:KickManager:TargetFree 
+vfd worldState behavior:KickManager:ExecutableKicks:Freely 
+vfd worldState behavior:KickManager:ExecutableKicks:InGrid off
+vfd worldState behavior:KickManager:ExecutableKicks:Width

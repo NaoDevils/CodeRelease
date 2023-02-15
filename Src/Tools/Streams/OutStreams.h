@@ -97,6 +97,13 @@ protected:
   virtual void writeUInt(unsigned int d, PhysicalOutStream& stream) = 0;
 
   /**
+  * Writes a int64_t to a stream.
+  * @param d the data to write.
+  * @param stream the stream to write on.
+  */
+  virtual void writeInt64(int64_t d, PhysicalOutStream& stream) = 0;
+
+  /**
   * Writes a uint64_t to a stream.
   * @param d the data to write.
   * @param stream the stream to write on.
@@ -159,124 +166,84 @@ public:
    * @param p The address the data is located at.
    * @param size The number of bytes to be written.
    */
-  virtual void write(const void* p, size_t size)
-  {
-    W::writeData(p, size, *this);
-  }
+  virtual void write(const void* p, size_t size) { W::writeData(p, size, *this); }
 
 protected:
   /**
    * Virtual redirection for operator<<(const bool& value).
    */
-  virtual void outBool(bool d)
-  {
-    W::writeBool(d, *this);
-  }
+  virtual void outBool(bool d) { W::writeBool(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const char& value).
    */
-  virtual void outChar(char d)
-  {
-    W::writeChar(d, *this);
-  }
+  virtual void outChar(char d) { W::writeChar(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const signed char& value).
    */
-  virtual void outSChar(signed char d)
-  {
-    W::writeSChar(d, *this);
-  }
+  virtual void outSChar(signed char d) { W::writeSChar(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const unsigned char& value).
    */
-  virtual void outUChar(unsigned char d)
-  {
-    W::writeUChar(d, *this);
-  }
+  virtual void outUChar(unsigned char d) { W::writeUChar(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const short& value).
    */
-  virtual void outShort(short d)
-  {
-    W::writeShort(d, *this);
-  }
+  virtual void outShort(short d) { W::writeShort(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const unsigned short& value).
    */
-  virtual void outUShort(unsigned short d)
-  {
-    W::writeUShort(d, *this);
-  }
+  virtual void outUShort(unsigned short d) { W::writeUShort(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const int& value).
    */
-  virtual void outInt(int d)
-  {
-    W::writeInt(d, *this);
-  }
+  virtual void outInt(int d) { W::writeInt(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const unsigned& value).
    */
-  virtual void outUInt(unsigned int d)
-  {
-    W::writeUInt(d, *this);
-  }
+  virtual void outUInt(unsigned int d) { W::writeUInt(d, *this); }
+
+  /**
+  * Virtual redirection for operator<<(const int64_t& value).
+  */
+  virtual void outInt64(int64_t d) { W::writeInt64(d, *this); }
 
   /**
   * Virtual redirection for operator<<(const uint64_t& value).
   */
-  virtual void outUInt64(uint64_t d)
-  {
-    W::writeUInt64(d, *this);
-  }
+  virtual void outUInt64(uint64_t d) { W::writeUInt64(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const float& value).
    */
-  virtual void outFloat(float d)
-  {
-    W::writeFloat(d, *this);
-  }
+  virtual void outFloat(float d) { W::writeFloat(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const double& value).
    */
-  virtual void outDouble(double d)
-  {
-    W::writeDouble(d, *this);
-  }
+  virtual void outDouble(double d) { W::writeDouble(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const char* value).
    */
-  virtual void outString(const char* d)
-  {
-    W::writeString(d, *this);
-  }
+  virtual void outString(const char* d) { W::writeString(d, *this); }
 
   /**
    * Virtual redirection for operator<<(const Angle& value).
    */
-  virtual void outAngle(const Angle& d)
-  {
-    W::writeAngle(d, *this);
-  }
+  virtual void outAngle(const Angle& d) { W::writeAngle(d, *this); }
 
   /**
    * Virtual redirection for operator<<(Out& (*f)(Out&)) that writes
    * the symbol "endl";
    */
-  virtual void outEndL()
-  {
-    W::writeEndL(*this);
-  }
+  virtual void outEndL() { W::writeEndL(*this); }
 };
 
 /**
@@ -304,100 +271,77 @@ protected:
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeChar(char d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeChar(char d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a signed character to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeSChar(signed char d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeSChar(signed char d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a unsigned character to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeUChar(unsigned char d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeUChar(unsigned char d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a short to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeShort(short d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeShort(short d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a unsigned short to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeUShort(unsigned short d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeUShort(unsigned short d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a int to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeInt(int d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeInt(int d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a unsigned int to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeUInt(unsigned int d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeUInt(unsigned int d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
+
+  /**
+  * Writes a int64_t to a stream.
+  * @param d the data to write.
+  * @param stream the stream to write on.
+  */
+  virtual void writeInt64(int64_t d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
   * Writes a uint64_t to a stream.
   * @param d the data to write.
   * @param stream the stream to write on.
   */
-  virtual void writeUInt64(uint64_t d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeUInt64(uint64_t d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a float to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeFloat(float d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeFloat(float d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a double to a stream.
    * @param d the data to write.
    * @param stream the stream to write on.
    */
-  virtual void writeDouble(double d, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(&d, sizeof(d));
-  }
+  virtual void writeDouble(double d, PhysicalOutStream& stream) { stream.writeToStream(&d, sizeof(d)); }
 
   /**
    * Writes a string to a stream.
@@ -425,10 +369,7 @@ protected:
    * @param size The number of bytes to be written.
    * @param stream the stream to write on.
    */
-  virtual void writeData(const void* p, size_t size, PhysicalOutStream& stream)
-  {
-    stream.writeToStream(p, size);
-  }
+  virtual void writeData(const void* p, size_t size, PhysicalOutStream& stream) { stream.writeToStream(p, size); }
 };
 
 /**
@@ -442,6 +383,7 @@ class OutText : public StreamWriter
 private:
   /** A buffer for formatting the numeric data to a text format. */
   char buf[50];
+
 protected:
   /**
    * Writes a bool to a stream.
@@ -498,6 +440,13 @@ protected:
    * @param stream the stream to write on.
    */
   virtual void writeUInt(unsigned int d, PhysicalOutStream& stream);
+
+  /**
+  * Writes a int64_t to a stream.
+  * @param d the data to write.
+  * @param stream the stream to write on.
+  */
+  virtual void writeInt64(int64_t d, PhysicalOutStream& stream);
 
   /**
   * Writes a uint64_t to a stream.
@@ -563,6 +512,7 @@ class OutTextRaw : public StreamWriter
 private:
   /** A buffer for formatting the numeric data to a text format. */
   char buf[50];
+
 protected:
   /**
    * Writes a bool to a stream.
@@ -619,6 +569,13 @@ protected:
    * @param stream the stream to write on.
    */
   virtual void writeUInt(unsigned int d, PhysicalOutStream& stream);
+
+  /**
+  * Writes a int64_t to a stream.
+  * @param d the data to write.
+  * @param stream the stream to write on.
+  */
+  virtual void writeInt64(int64_t d, PhysicalOutStream& stream);
 
   /**
   * Writes a uint64_t to a stream.
@@ -694,7 +651,7 @@ public:
    * The function returns the full path of the file.
    * @return The full path name actually used or the file searched for
    *         if it was not found. If the file was opened, the path can
-   *         still be relative to the current directory if the B-Human
+   *         still be relative to the current directory if the Framework
    *         directory was specified this way.
    */
   std::string getFullName() const;
@@ -758,8 +715,8 @@ protected:
    */
   void open(void* mem)
   {
-    memory = reinterpret_cast<char*>(mem); 
-    start = mem; 
+    memory = reinterpret_cast<char*>(mem);
+    start = mem;
     length = 0;
   }
 
@@ -788,14 +745,14 @@ public:
   /**
    * The function resets the counter to zero.
    */
-  void reset() {size = 0;}
+  void reset() { size = 0; }
 
   /**
    * The function returns the number of bytes required to store the
    * data written so far.
    * @return The size of the memory block required for the data written.
    */
-  size_t getSize() const {return size;}
+  size_t getSize() const { return size; }
 
 protected:
   /**
@@ -803,7 +760,7 @@ protected:
    * @param p The address the data is located at.
    * @param s The number of bytes to be written.
    */
-  virtual void writeToStream(const void* p, size_t s) {size += s;}
+  virtual void writeToStream(const void* p, size_t s) { size += s; }
 };
 
 /**
@@ -821,10 +778,7 @@ public:
    *             does not exist, it will be created. If it already
    *             exists, its previous contents will be discared.
    */
-  OutBinaryFile(const std::string& name)
-  {
-    open(name);
-  }
+  OutBinaryFile(const std::string& name) { open(name); }
 
   /**
    * Constructor.
@@ -835,16 +789,13 @@ public:
    *             if append = true.
    * @param append Determines, if the file content is preserved or discared.
    */
-  OutBinaryFile(const std::string& name, bool append)
-  {
-    open(name, append);
-  }
+  OutBinaryFile(const std::string& name, bool append) { open(name, append); }
 
   /**
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return true;}
+  virtual bool isBinary() const { return true; }
 };
 
 /**
@@ -859,16 +810,13 @@ public:
    * Constructor.
    * @param mem The address of the memory block into which is written.
    */
-  OutBinaryMemory(void* mem)
-  {
-    open(mem);
-  }
+  OutBinaryMemory(void* mem) { open(mem); }
 
   /**
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return true;}
+  virtual bool isBinary() const { return true; }
 };
 
 /**
@@ -883,7 +831,7 @@ public:
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return true;}
+  virtual bool isBinary() const { return true; }
 };
 
 /**
@@ -901,10 +849,7 @@ public:
    *             does not exist, it will be created. If it already
    *             exists, its previous contents will be discared.
    */
-  OutTextFile(const std::string& name)
-  {
-    open(name);
-  }
+  OutTextFile(const std::string& name) { open(name); }
 
   /**
    * Constructor.
@@ -915,10 +860,7 @@ public:
    *             if append = true.
    * @param append Determines, if the file content is preserved or discared.
    */
-  OutTextFile(const std::string& name, bool append)
-  {
-    open(name, append);
-  }
+  OutTextFile(const std::string& name, bool append) { open(name, append); }
 };
 
 /**
@@ -936,10 +878,7 @@ public:
    *             does not exist, it will be created. If it already
    *             exists, its previous contents will be discared.
    */
-  OutTextRawFile(const std::string& name)
-  {
-    open(name);
-  }
+  OutTextRawFile(const std::string& name) { open(name); }
 
   /**
    * Constructor.
@@ -950,10 +889,7 @@ public:
    *             if append = true.
    * @param append Determines, if the file content is preserved or discared.
    */
-  OutTextRawFile(const std::string& name, bool append)
-  {
-    open(name, append);
-  }
+  OutTextRawFile(const std::string& name, bool append) { open(name, append); }
 };
 
 /**
@@ -968,10 +904,7 @@ public:
    * Constructor.
    * @param mem The address of the memory block into which is written.
    */
-  OutTextMemory(void* mem)
-  {
-    open(mem);
-  }
+  OutTextMemory(void* mem) { open(mem); }
 };
 
 /**
@@ -986,10 +919,7 @@ public:
    * Constructor.
    * @param mem The address of the memory block into which is written.
    */
-  OutTextRawMemory(void* mem)
-  {
-    open(mem);
-  }
+  OutTextRawMemory(void* mem) { open(mem); }
 };
 
 /**
@@ -997,14 +927,18 @@ public:
  *
  * A Text stream size counter
  */
-class OutTextSize : public OutStream<OutSize, OutText> {};
+class OutTextSize : public OutStream<OutSize, OutText>
+{
+};
 
 /**
  * @class OutTextRawSize
  *
  * A Text stream size counter
  */
-class OutTextRawSize : public OutStream<OutSize, OutTextRaw> {};
+class OutTextRawSize : public OutStream<OutSize, OutTextRaw>
+{
+};
 
 /**
  * @class OutMap
@@ -1023,9 +957,7 @@ class OutMap : public Out
     const char* (*enumToString)(int); /**< A function that translates an enum to a string. */
     bool hasSubEntries; /**< Has the current entry sub entries? */
 
-    Entry(int type, const char* (*enumToString)(int)) :
-      type(type), enumToString(enumToString), hasSubEntries(false)
-    {}
+    Entry(int type, const char* (*enumToString)(int)) : type(type), enumToString(enumToString), hasSubEntries(false) {}
   };
   Out& stream; /**< The map that is written to. */
   bool singleLine; /**< Output to a single line. */
@@ -1044,21 +976,22 @@ protected:
   OutMap(Out& stream, bool singleLine);
 
   /** Helper to write a value. */
-  template<class T> void out(const T& value) {stream << value;}
+  template <class T> void out(const T& value) { stream << value; }
 
-  virtual void outBool(bool value) {out(value);}
-  virtual void outChar(char value) {out(static_cast<int>(value));}
-  virtual void outSChar(signed char value) {out(static_cast<int>(value));}
+  virtual void outBool(bool value) { out(value); }
+  virtual void outChar(char value) { out(static_cast<int>(value)); }
+  virtual void outSChar(signed char value) { out(static_cast<int>(value)); }
   virtual void outUChar(unsigned char value);
-  virtual void outShort(short value) {out(value);}
-  virtual void outUShort(unsigned short value) {out(value);}
-  virtual void outInt(int value) {out(value);}
+  virtual void outShort(short value) { out(value); }
+  virtual void outUShort(unsigned short value) { out(value); }
+  virtual void outInt(int value) { out(value); }
   virtual void outUInt(unsigned int value);
+  virtual void outInt64(int64_t value) { out(value); }
   virtual void outUInt64(uint64_t value) { out(value); }
-  virtual void outFloat(float value) {out(value);}
-  virtual void outDouble(double value) {out(value);}
+  virtual void outFloat(float value) { out(value); }
+  virtual void outDouble(double value) { out(value); }
   virtual void outString(const char* value);
-  virtual void outAngle(const Angle& value) {out(value);};
+  virtual void outAngle(const Angle& value) { out(value); };
   virtual void outEndL() {}
 
 public:
@@ -1102,7 +1035,7 @@ public:
    * Checks whether was successfully opened.
    * @return Was it possible to open that file for writing?
    */
-  bool exists() const {return stream.exists();}
+  bool exists() const { return stream.exists(); }
 };
 
 /**
@@ -1126,7 +1059,7 @@ public:
   /**
    * Returns the number of written bytes
    */
-  size_t getLength() const {return stream.getLength();}
+  size_t getLength() const { return stream.getLength(); }
 };
 
 /**
@@ -1151,5 +1084,5 @@ public:
    * data written so far.
    * @return The size of the memory block required for the data written.
    */
-  size_t getSize() const {return stream.getSize();}
+  size_t getSize() const { return stream.getSize(); }
 };

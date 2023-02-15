@@ -50,7 +50,7 @@ bool AddRobotCmd::execute(Context& context, const std::vector<std::string>& para
 
   args.push_back(QString("--add"));
   args.push_back(QString(params[1].c_str()));
-  
+
   ProcessRunner r(context, command, args);
   r.run();
   if (r.error())
@@ -107,15 +107,11 @@ std::vector<std::string> AddRobotCmd::complete(const std::string& cmdLine) const
   else
     return commandWithArgs;
 }
-
+QString AddRobotCmd::getCommand()
+{
 #ifdef WINDOWS
-QString AddRobotCmd::getCommand()
-{
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/installRobot.cmd");
-}
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/installRobot.cmd");
 #else
-QString AddRobotCmd::getCommand()
-{
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/installRobot");
-}
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/installRobot");
 #endif
+}

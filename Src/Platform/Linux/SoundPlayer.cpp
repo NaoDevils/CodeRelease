@@ -9,16 +9,15 @@
 
 #include "SoundPlayer.h"
 #include "Platform/File.h"
+#include <Platform/Common/Text2Speech.h>
 
 SoundPlayer SoundPlayer::soundPlayer;
 
-SoundPlayer::SoundPlayer() :
-  Thread<SoundPlayer>(), started(false), closing(false)
-{}
+SoundPlayer::SoundPlayer() : Thread<SoundPlayer>(), started(false), closing(false) {}
 
 SoundPlayer::~SoundPlayer()
 {
-  if(started)
+  if (started)
   {
     closing = true;
     sem.post();
@@ -32,7 +31,9 @@ void SoundPlayer::start()
 
 void SoundPlayer::main()
 {
-  while(isRunning() && !closing)
+  setName("SoundPlayer");
+
+  while (isRunning() && !closing)
   {
     flush();
     VERIFY(sem.wait());
@@ -45,34 +46,40 @@ void SoundPlayer::playDirect(const std::string& basename)
   fileName += basename;
 
   int r = vfork();
-  if(r == -1)
+  if (r == -1)
     perror("SoundPlayer: fork() failed");
-  else if(r != 0) //parent
+  else if (r != 0) //parent
   {
     int status;
     waitpid(r, &status, 0);
   }
   else //child
   {
-    if(execlp("aplay", "aplay", "-q", fileName.c_str(), (char*)0) == -1)
+    if (execlp("aplay", "aplay", "-q", fileName.c_str(), (char*)0) == -1)
       perror("SoundPlayer: exec failed");
   }
 }
 
 void SoundPlayer::flush()
 {
-  for(;;)
+  for (;;)
   {
     std::string first;
     {
       SYNC;
-      if(0 == queue.size())
+      if (0 == queue.size())
         break;
       first = queue.front();
       queue.pop_front();
     }
-
-    playDirect(first);
+    if (first.substr(0, 4).compare("t2s:") == 0)
+    {
+      Text2Speech::getInstance().text2Speech(first.substr(3));
+    }
+    else
+    {
+      playDirect(first);
+    }
   }
 }
 
@@ -84,7 +91,7 @@ int SoundPlayer::play(const std::string& name)
     SYNC_WITH(soundPlayer);
     soundPlayer.queue.push_back(name.c_str()); // avoid copy-on-write
     queuelen = static_cast<int>(soundPlayer.queue.size());
-    if(!soundPlayer.started)
+    if (!soundPlayer.started)
     {
       soundPlayer.started = true;
       soundPlayer.filePrefix = File::getBHDir();

@@ -15,9 +15,9 @@
  * A struct that represents the output of the walking engine.
  */
 STREAMABLE_WITH_BASE(KickEngineOutput, JointRequest,
-{,
+,
   (Pose2f) odometryOffset, /**< The body motion performed in this step. */
   (bool)(true) isLeavingPossible, /**< Is leaving the motion module possible now? */
   (bool)(true) isStable, /**< Is motion currently stable? */
-  (KickRequest) executedKickRequest, /**< The kick request that is currently in execution. */
-});
+  (KickRequest) executedKickRequest /**< The kick request that is currently in execution. */
+);

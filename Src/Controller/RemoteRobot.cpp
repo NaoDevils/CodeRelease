@@ -7,19 +7,15 @@
 #include "RemoteRobot.h"
 #include "ConsoleRoboCupCtrl.h"
 
-RemoteRobot::RemoteRobot(const char* name, const char* ip) :
-  RobotConsole((setGlobals(), theDebugReceiver), theDebugSender),
-  theDebugReceiver(this, "Receiver.MessageQueue.O"),
-  theDebugSender(this, "Sender.MessageQueue.S"),
-  bytesTransfered(0),
-  transferSpeed(0),
-  timeStamp(0)
+RemoteRobot::RemoteRobot(const char* name, const char* ip)
+    : RobotConsole((setGlobals(), theDebugReceiver), theDebugSender), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S"),
+      bytesTransfered(0), transferSpeed(0), timeStamp(0)
 {
   strcpy(this->name, name);
   strcpy(this->ip, ip);
   mode = SystemCall::remoteRobot;
   puppet = (SimRobotCore2::Body*)RoboCupCtrl::application->resolveObject("RoboCup.puppets." + robotName, SimRobotCore2::body);
-  if(puppet)
+  if (puppet)
     simulatedRobot.init(puppet);
 
   // try to connect for one second
@@ -37,25 +33,23 @@ void RemoteRobot::run()
 {
   Thread<RemoteRobot>::setName(std::string(name) + ".RemoteRobot");
   setGlobals();
-  while(isRunning())
+  while (isRunning())
     processMain();
 }
 
 bool RemoteRobot::main()
 {
-  unsigned char* sendData = 0,
-               * receivedData;
-  int sendSize = 0,
-      receivedSize = 0;
+  unsigned char *sendData = 0, *receivedData;
+  int sendSize = 0, receivedSize = 0;
   MessageQueue temp;
 
   // If there is something to send, prepare a package
-  if(!theDebugSender.isEmpty())
+  if (!theDebugSender.isEmpty())
   {
     SYNC;
     OutBinarySize size;
     size << theDebugSender;
-    sendSize = (int) size.getSize();
+    sendSize = (int)size.getSize();
     sendData = new unsigned char[sendSize];
     OutBinaryMemory stream(sendData);
     stream << theDebugSender;
@@ -64,7 +58,7 @@ bool RemoteRobot::main()
   }
 
   // exchange data with the router
-  if(!sendAndReceive(sendData, sendSize, receivedData, receivedSize) && sendSize)
+  if (!sendAndReceive(sendData, sendSize, receivedData, receivedSize) && sendSize)
   {
     // sending failed, restore theDebugSender
     SYNC;
@@ -75,16 +69,16 @@ bool RemoteRobot::main()
   }
 
   // If a package was prepared, remove it
-  if(sendSize)
-    delete [] sendData;
+  if (sendSize)
+    delete[] sendData;
 
   // If a package was received from the router program, add it to receiver queue
-  if(receivedSize > 0)
+  if (receivedSize > 0)
   {
     SYNC;
     InBinaryMemory stream(receivedData, receivedSize);
     stream >> theDebugReceiver;
-    delete [] receivedData;
+    delete[] receivedData;
   }
 
   SystemCall::sleep(receivedSize > 0 ? 1 : 20);
@@ -106,21 +100,21 @@ void RemoteRobot::update()
 {
   RobotConsole::update();
 
-  if(puppet)
+  if (puppet)
   {
     simulatedRobot.setJointRequest(jointRequest);
-    if(moveOp != noMove)
+    if (moveOp != noMove)
     {
-      if(moveOp == moveBoth)
-        simulatedRobot.moveRobot(movePos, moveRot * 1_deg,true);
-      else if(moveOp == movePosition)
-        simulatedRobot.moveRobot(movePos, Vector3f::Zero(),false);
-      else if(moveOp == moveBallPosition)
+      if (moveOp == moveBoth)
+        simulatedRobot.moveRobot(movePos, moveRot * 1_deg, true);
+      else if (moveOp == movePosition)
+        simulatedRobot.moveRobot(movePos, Vector3f::Zero(), false);
+      else if (moveOp == moveBallPosition)
         simulatedRobot.moveBall(movePos);
       moveOp = noMove;
     }
   }
-  if(SystemCall::getTimeSince(timeStamp) >= 2000)
+  if (SystemCall::getTimeSince(timeStamp) >= 2000)
   {
     int bytes = this->getOverallBytesSent() + this->getOverallBytesReceived() - bytesTransfered;
     bytesTransfered += bytes;
@@ -130,17 +124,16 @@ void RemoteRobot::update()
 
   char buf[33];
   sprintf(buf, "%.1lf kb/s", transferSpeed);
-  std::string statusText = robotName.mid(robotName.lastIndexOf(".") + 1).toUtf8().constData() +
-                           (isConnected() ? std::string(": connected to ") + ip + ", " + buf
-                                          : std::string(": connection lost from ") + ip);
+  std::string statusText = robotName.mid(robotName.lastIndexOf(".") + 1).toUtf8().constData()
+      + (isConnected() ? std::string(": connected to ") + ip + ", " + buf : std::string(": connection lost from ") + ip);
 
-  if(logPlayer.getNumberOfMessages() != 0)
+  if (logPlayer.getNumberOfMessages() != 0)
   {
     sprintf(buf, "%u", logPlayer.numberOfFrames);
     statusText += std::string(", recorded ") + buf;
   }
 
-  if(pollingFor)
+  if (pollingFor)
   {
     statusText += statusText != "" ? ", polling for " : "polling for ";
     statusText += pollingFor;

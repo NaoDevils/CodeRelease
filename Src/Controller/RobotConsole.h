@@ -9,14 +9,11 @@
 #pragma once
 
 #ifdef WINDOWS
-#define NOMINMAX
 #include <WinSock2.h> // This must be included first to prevent errors, since windows.h is included in one of the following headers.
 #endif
 
 #include "Representations/BehaviorControl/ActivationGraph.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/Configuration/ColorCalibration.h"
-#include "Representations/Configuration/ColorTable.h"
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Infrastructure/JointRequest.h"
@@ -38,9 +35,7 @@
 #include "Tools/Debugging/DebugImages.h"
 #include "Tools/ProcessFramework/Process.h"
 
-#include "CameraCalibratorHandler.h"
-#include "AutomaticCameraCalibratorHandlerInsertion.h"
-#include "AutomaticCameraCalibratorHandlerDeletion.h"
+#include "AudioPlayer.h"
 #include "LogPlayer.h" // Must be included after Process.h
 #include "Platform/Joystick.h"
 #include "Representations/AnnotationInfo.h"
@@ -53,9 +48,9 @@
 #include <QString>
 #include <fstream>
 #include <list>
+#include <map>
 
 class ConsoleRoboCupCtrl;
-class ColorCalibrationView;
 class ImageView;
 
 /**
@@ -97,9 +92,7 @@ private:
   };
 
 public:
-  ENUM(Color, /**< Colors for plot drawings. */
-  {,
-    black,
+  ENUM(Color, /**< Colors for plot drawings. */    black,
     red,
     green,
     blue,
@@ -108,16 +101,10 @@ public:
     magenta,
     orange,
     violet,
-    gray,
-  });
+    gray
+  );
 
   DECLARE_SYNC; /**< Make this object synchronizable. */
-  ColorCalibration colorCalibration; /**< The color calibration */
-  ColorCalibration prevColorCalibration; /**< The previous color calibration */
-  bool colorCalibrationChanged = false; /**< Was the color calibration changed since the color table was updated? */
-  ColorTable colorTable; /**< The color table */
-  unsigned colorTableTimeStamp = 0; /**< The last time when the last color table was updated. */
-  ColorCalibrationView* colorCalibrationView = nullptr;
   std::vector<ImageView*> segmentedImageViews;
   SystemCall::Mode mode; /**< Defines mode in which this process runs. */
 
@@ -136,6 +123,7 @@ protected:
   DrawingManager drawingManager;
   DrawingManager3D drawingManager3D;
   DebugRequestTable debugRequestTable;
+  AudioPlayer audioPlayer;
   const char* pollingFor = nullptr; /**< The information the console is waiting for. */
   JointRequest jointRequest; /**< The joint angles request received from the robot code. */
   JointSensorData jointSensorData; /**< The most current set of joint angles received from the robot code. */
@@ -144,7 +132,13 @@ protected:
   KeyStates keyStates; /**< The most current set of key states received from the robot code. */
   SystemSensorData systemSensorData; /**< The most current set of system sensor data received from the robot code. */
   UsSensorData usSensorData; /**< The most current set of us sensor data received from the robot code. */
-  enum MoveOp {noMove, movePosition, moveBoth, moveBallPosition} moveOp = noMove; /**< The move operation to perform. */
+  enum MoveOp
+  {
+    noMove,
+    movePosition,
+    moveBoth,
+    moveBallPosition
+  } moveOp = noMove; /**< The move operation to perform. */
   Vector3f movePos = Vector3f::Zero(); /**< The position the robot is moved to. */
   Vector3f moveRot = Vector3f::Zero(); /**< The rotation the robot is moved to. */
   RobotPose robotPose; /**< Robot pose from team communication. */
@@ -154,7 +148,6 @@ protected:
   BehaviorData behaviorData; /**< Behavior data from team communication. */
   RobotHealth robotHealth; /**< Robot Health from team communication. */
   MotionRequest motionRequest; /**< Motion Request from team communication. */
-  bool isPenalized = false; /**< Penalized state from team communication. */
   bool hasGroundContact = true; /**< Ground contact state from team communication. */
   bool isUpright = true; /**<fall down state from team communication */
   unsigned obstacleModelCompressedReceived = 0; /**< When was the obstacle model received from team communication. */
@@ -172,10 +165,11 @@ protected:
   int mrCounter = 0; /**< Counts the number of mr commands. */
   JointCalibration jointCalibration; /**< The joint calibration received from the robot code. */
   RobotDimensions robotDimensions; /**< The robotDimensions received from the robot code. */
-  USRequest usRequest;  /**< The current us request received from the robot code (for simulation). */
+  USRequest usRequest; /**< The current us request received from the robot code (for simulation). */
   std::string printBuffer; /**< Buffer used for command get. */
   char drawingsViaProcess = 'b'; /** Which process is used to provide field and 3D drawings */
   std::unordered_map<char, AnnotationInfo> annotationInfos;
+  unsigned frame = 0; /**< Current frame number */
 
 public:
   class ImagePtr
@@ -184,9 +178,14 @@ public:
     Image* image = nullptr;
     char processIdentifier = 0; /**< "c" denotes lower camera process, "d" denotes upper camera process */
 
-    ~ImagePtr() {reset();}
+    ~ImagePtr() { reset(); }
 
-    void reset() {if(image) delete image; image = nullptr;}
+    void reset()
+    {
+      if (image)
+        delete image;
+      image = nullptr;
+    }
   };
   typedef std::unordered_map<std::string, ImagePtr> Images; /**< The type of the map of images. */
 
@@ -217,11 +216,11 @@ public:
     std::string description;
     ColorRGBA color;
 
-    bool operator==(const Layer& other) const {return layer == other.layer;}
+    bool operator==(const Layer& other) const { return layer == other.layer; }
   };
 
-  typedef std::unordered_map<std::string, std::list<Layer> > PlotViews;
-  typedef std::unordered_map<std::string, std::list<std::string> > Views;
+  typedef std::unordered_map<std::string, std::list<Layer>> PlotViews;
+  typedef std::unordered_map<std::string, std::list<std::string>> Views;
   PlotViews plotViews; /**< The map of all plot views. */
 
   Views fieldViews; /**< The map of all field views. */
@@ -266,7 +265,7 @@ private:
   Drawings incompleteFieldDrawings; /**< Buffers incomplete field drawings from the debug queue. */
   Drawings3D incompleteDrawings3D; /**< Buffers incomplete 3d drawings from the debug queue. */
 
-  ActivationGraph activationGraph;/**< Graph of active options and states. */
+  ActivationGraph activationGraph; /**< Graph of active options and states. */
   unsigned activationGraphReceived = 0; /**< When was the last activation graph received? */
   std::fstream* logMessages = nullptr; /** The file messages from the robot are written to. */
   typedef std::unordered_map<char, TimeInfo> TimeInfos;
@@ -308,9 +307,8 @@ private:
   unsigned maxPlotSize = 0; /**< The maximum number of data points to remember for plots. */
   bool kickViewSet = false; /**Indicator if there is already a KikeView, we need it just once */
   int imageSaveNumber = 0; /**< A counter for generating image file names. */
-  CameraCalibratorHandler cameraCalibratorHandler;
-  AutomaticCameraCalibratorHandlerInsertion automaticCameraCalibratorHandlerInsertion;
-  AutomaticCameraCalibratorHandlerDeletion automaticCameraCalibratorHandlerDeletion;
+  std::map<char, std::vector<uint8_t>> observerMsgpackData;
+  std::map<char, bool> observerDataFinished;
 
 public:
   char processIdentifier = 0; /** The process from which messages are currently read. */
@@ -345,7 +343,7 @@ public:
   * The function is called when a console command has been entered.
   * @param line A string containing the console command.
   */
-  void handleConsole(const std::string& line);
+  void handleConsole(const std::string& line, bool fromCall = false);
 
   /**
   * The method is called when Shift+Ctrl+letter was pressed.
@@ -369,7 +367,7 @@ public:
   * The method returns whether the console is polling for some data from the robot.
   * @return Currently waiting?
   */
-  bool isPolling() const {return !lines.empty();}
+  bool isPolling() const { return !lines.empty(); }
 
   /**
    * Sends the specified message to debugOut
@@ -382,17 +380,34 @@ public:
    */
   std::string getDebugRequest(const std::string& name);
 
-  /**
-   * Save current color calibration and send it to robot.
-   */
-  void saveColorCalibration();
-
 protected:
   /**
    * Called by the Process (the base class) to get the
    * "debug in" message queue handled.
    */
   virtual void handleAllMessages(MessageQueue& messageQueue);
+
+  template <typename T> static void handleAllMessagesByCycle(MessageQueue& queue, std::unordered_map<char, T>& map)
+  {
+    char cycle = 0;
+    queue.handleAllMessages(
+        [&](InMessage& msg)
+        {
+          switch (msg.getMessageID())
+          {
+          case idProcessBegin:
+            msg.bin >> cycle;
+            msg.resetReadPosition();
+            [[fallthrough]];
+          case idProcessFinished:
+            for (auto& entry : map)
+              entry.second.handleMessage(msg);
+            return;
+          }
+
+          map.at(cycle).handleMessage(msg);
+        });
+  }
 
 private:
   /**
@@ -419,7 +434,7 @@ private:
   * @param line A string containing the console command.
   * @return Was the command processed? Otherwise, it has to be processed later.
   */
-  bool handleConsoleLine(const std::string& line);
+  bool handleConsoleLine(const std::string& line, bool fromCall = false);
 
   /**
   * The function prints an unfolded type to the console.
@@ -438,7 +453,9 @@ private:
   * @param representation A string naming a representation
   * @return A string to the filename to the requested file
   */
-  std::string getPathForRepresentation(std::string representation);
+  std::string getPathForRepresentation(const std::string& representation);
+
+  std::string getConfigFileForRepresentation(const std::string& representation);
 
   //!@name Handler for different console commands
   //!@{
@@ -455,7 +472,7 @@ private:
   bool penalizeRobot(In& stream);
   bool saveImage(In& stream);
   bool saveRequest(In& stream, bool first);
-  bool sendMof(In& stream);
+  bool sendKfm(In& stream);
   bool sendWek(In& stream);
   bool repoll(In& stream);
   bool queueFillRequest(In& stream);
@@ -473,8 +490,4 @@ private:
   bool acceptCamera(In&);
   bool setDrawingsViaProcess(In&);
   //!@}
-
-  friend class CameraCalibratorHandler;
-  friend class AutomaticCameraCalibratorHandlerInsertion;
-  friend class AutomaticCameraCalibratorHandlerDeletion;
 };

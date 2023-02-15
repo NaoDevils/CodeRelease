@@ -9,37 +9,40 @@
 #include "Tools/Enum.h"
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Configuration/RobotConfig.h"
+#include "Representations/Infrastructure/GameInfo.h"
 
 /**
  * @class Settings
  * The class provides access to settings-specific configuration directories.
  */
 STREAMABLE(Settings,
-{
 public:
   ENUM(TeamColor,
-  {,
     blue,
     red,
     yellow,
     black,
-  });
+    white,
+    green,
+    orange,
+    purple,
+    brown,
+    gray
+  );
   
   ENUM(GameMode,
-  { ,
     mixedTeam,
     preliminary,
     playOff,
-    penaltyShootout,
-    demoIRF,
-  });
+    penaltyShootout
+  );
   
   std::string robotName; /**< The name of this robot. */
   std::string bodyName; /**< The name of this robot's body. */
   
   static bool recover; /**< Start directly without the pre-initial state. */
 
-  static constexpr int highestValidPlayerNumber = 6; /**< No player can have a number greater than this */
+  static constexpr int highestValidPlayerNumber = MAX_NUM_PLAYERS; /**< No player can have a number greater than this */
   static constexpr int lowestValidPlayerNumber = 1;  /**< No player can have a number smaller than this */
   bool isGoalkeeper;            /**< Is this robot the goaliekeeper? */
   
@@ -70,7 +73,7 @@ private:
     teamNumber = other.teamNumber;
     teamColor = other.teamColor;
     playerNumber = other.playerNumber;
-    location = other.location.c_str(); // avoid copy-on-write
+    overlays = other.overlays; // avoid copy-on-write
     teamPort = other.teamPort;
     robotName = other.robotName.c_str(); // avoid copy-on-write
     bodyName = other.bodyName.c_str(); // avoid copy-on-write
@@ -90,7 +93,7 @@ public:
   (int)(0) teamNumber, /**< The number of our team in the game controller. Use theOwnTeamInfo.teamNumber instead. */
   (TeamColor)(blue) teamColor, /**< The color of our team. Use theOwnTeamInfo.teamColor instead. */
   (int)(0) playerNumber, /**< The number of the robot in the team. Use theRobotInfo.playerNumber instead. */
-  (std::string)("Default") location, /**< The name of the location. */
+  (std::vector<std::string>) overlays, /**< The activated config overlays. */
   (int)(0) teamPort, /**< The UDP port our team uses for team communication. */
-  (GameMode)(preliminary) gameMode,
-});
+  (GameMode)(preliminary) gameMode
+);

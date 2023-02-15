@@ -36,15 +36,15 @@ namespace Rotation
     float getXAngle(const Quaternionf& rot);
     float getYAngle(const Quaternionf& rot);
     float getZAngle(const Quaternionf& rot);
-  }
+  } // namespace Euler
 
   namespace AngleAxis
   {
     // Do not missinterpret the vectors as Euler angles!
     Vector3f pack(const AngleAxisf& angleAxis);
     AngleAxisf unpack(const Vector3f& angleAxisVec);
-  }
-}
+  } // namespace AngleAxis
+} // namespace Rotation
 
 inline Quaternionf Rotation::aroundX(float angle)
 {
@@ -72,7 +72,7 @@ inline Quaternionf Rotation::removeZRotation(const Quaternionf& rotation)
   const Vector3f zRotated = rotation.inverse() * z;
   const Vector3f c = zRotated.cross(z);
   const float cLen = c.norm();
-  if(Approx::isZero(cLen))
+  if (Approx::isZero(cLen))
     return rotation;
   else
   {
@@ -103,7 +103,7 @@ inline Vector3f Rotation::Euler::getAngles(const Quaternionf& rot)
   const Matrix3f mat = rot.normalized().toRotationMatrix();
   const float m20 = mat(2, 0);
 
-  if(std::abs(m20) < 0.999999f)
+  if (std::abs(m20) < 0.999999f)
   {
     const float m00 = mat(0, 0);
     const float m10 = mat(1, 0);
@@ -151,7 +151,7 @@ inline float Rotation::Euler::getZAngle(const Quaternionf& rot)
 inline Vector3f Rotation::AngleAxis::pack(const AngleAxisf& angleAxis)
 {
   const float angle = angleAxis.angle();
-  if(Approx::isZero(angle))
+  if (Approx::isZero(angle))
     return Vector3f::Zero();
   else
     return angleAxis.axis().normalized(angle);
@@ -160,7 +160,7 @@ inline Vector3f Rotation::AngleAxis::pack(const AngleAxisf& angleAxis)
 inline AngleAxisf Rotation::AngleAxis::unpack(const Vector3f& angleAxisVec)
 {
   const float angle = angleAxisVec.norm();
-  if(Approx::isZero(angle))
+  if (Approx::isZero(angle))
     return AngleAxisf::Identity();
   else
     return AngleAxisf(angle, angleAxisVec.normalized());

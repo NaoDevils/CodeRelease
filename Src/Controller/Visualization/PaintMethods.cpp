@@ -16,65 +16,65 @@ QPen PaintMethods::noPen(Qt::NoPen);
 
 void PaintMethods::paintDebugDrawing(QPainter& painter, const DebugDrawing& debugDrawing, const QTransform& baseTrans)
 {
-  for(const DebugDrawing::Element* e = debugDrawing.getFirst(); e; e = debugDrawing.getNext(e))
-    switch(e->type)
+  for (const DebugDrawing::Element* e = debugDrawing.getFirst(); e; e = debugDrawing.getNext(e))
+    switch (e->type)
     {
-      case DebugDrawing::Element::POLYGON:
-      {
-        paintPolygon(*static_cast<const DebugDrawing::Polygon*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::GRID_RGBA:
-      {
-        paintGridRGBA(*static_cast<const DebugDrawing::GridRGBA*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::GRID_MONO:
-      {
-        paintGridMono(*static_cast<const DebugDrawing::GridMono*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::ELLIPSE:
-      {
-        paintEllipse(*static_cast<const DebugDrawing::Ellipse*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::ARC:
-      {
-        paintArc(*static_cast<const DebugDrawing::Arc*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::RECTANGLE:
-      {
-        paintRectangle(*static_cast<const DebugDrawing::Rectangle*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::LINE:
-      {
-        paintLine(*static_cast<const DebugDrawing::Line*>(e), painter);
-        break;
-      }
-      case DebugDrawing::Element::ORIGIN:
-      {
-        paintOrigin(*static_cast<const DebugDrawing::Origin*>(e), painter, baseTrans);
-        break;
-      }
-      case DebugDrawing::Element::TEXT:
-      {
-        paintText(*static_cast<const DebugDrawing::Text*>(e), painter);
-        break;
-      }
-      default:
-        break;
+    case DebugDrawing::Element::POLYGON:
+    {
+      paintPolygon(*static_cast<const DebugDrawing::Polygon*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::GRID_RGBA:
+    {
+      paintGridRGBA(*static_cast<const DebugDrawing::GridRGBA*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::GRID_MONO:
+    {
+      paintGridMono(*static_cast<const DebugDrawing::GridMono*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::ELLIPSE:
+    {
+      paintEllipse(*static_cast<const DebugDrawing::Ellipse*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::ARC:
+    {
+      paintArc(*static_cast<const DebugDrawing::Arc*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::RECTANGLE:
+    {
+      paintRectangle(*static_cast<const DebugDrawing::Rectangle*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::LINE:
+    {
+      paintLine(*static_cast<const DebugDrawing::Line*>(e), painter);
+      break;
+    }
+    case DebugDrawing::Element::ORIGIN:
+    {
+      paintOrigin(*static_cast<const DebugDrawing::Origin*>(e), painter, baseTrans);
+      break;
+    }
+    case DebugDrawing::Element::TEXT:
+    {
+      paintText(*static_cast<const DebugDrawing::Text*>(e), painter);
+      break;
+    }
+    default:
+      break;
     }
 }
 
 void PaintMethods::paintLine(const DebugDrawing::Line& element, QPainter& painter)
 {
-  if(element.penStyle != Drawings::noPen)
+  if (element.penStyle != Drawings::noPen)
   {
     setPen(element, painter);
-    if(element.xStart == element.xEnd && element.yStart == element.yEnd)
+    if (element.xStart == element.xEnd && element.yStart == element.yEnd)
     {
       painter.drawPoint(element.xStart, element.yStart);
     }
@@ -93,7 +93,7 @@ void PaintMethods::paintPolygon(const DebugDrawing::Polygon& element, QPainter& 
   // copy vector2 to QPoints
   const int* points = (const int*)(&element + 1);
   std::vector<QPoint> qpoints;
-  for(int n = element.nCount - 1; n >= 0; --n)
+  for (int n = element.nCount - 1; n >= 0; --n)
     qpoints.push_back(QPoint(points[2 * n], points[2 * n + 1]));
 
   painter.drawPolygon(qpoints.data(), element.nCount);
@@ -104,7 +104,7 @@ void PaintMethods::paintEllipse(const DebugDrawing::Ellipse& element, QPainter& 
   setBrush(element.brushStyle, element.brushColor, painter);
   setPen(element, painter);
 
-  if(element.rotation != 0.0f)
+  if (element.rotation != 0.0f)
   {
     QTransform trans(painter.transform());
     QTransform transBack(painter.transform());
@@ -143,11 +143,12 @@ void PaintMethods::paintText(const DebugDrawing::Text& element, QPainter& painte
   painter.setFont(font);
 
   QTransform trans(painter.transform());
-  QTransform newTrans;
-  newTrans.translate(trans.dx(), trans.dy());
-  newTrans.scale(std::abs(trans.m11()), std::abs(trans.m22()));
+  QTransform newTrans(trans);
+  newTrans.translate(element.x, element.y);
+  newTrans.rotateRadians(std::atan2(trans.m21(), trans.m11()));
+  newTrans.scale(sgn(trans.m11()), sgn(trans.m22()));
   painter.setTransform(newTrans);
-  painter.drawText(QPoint(element.x * (int)sgn(trans.m11()), element.y * (int)sgn(trans.m22())), QObject::tr((const char*)(&element + 1)));
+  painter.drawText(QPoint(), QObject::tr(reinterpret_cast<const char*>(&element + 1)));
   painter.setTransform(trans);
 }
 
@@ -158,7 +159,7 @@ void PaintMethods::paintGridRGBA(const DebugDrawing::GridRGBA& element, QPainter
   unsigned* pDst = (unsigned*)image.bits();
   unsigned* pEnd = pDst + element.cellsX * element.cellsY;
   const ColorRGBA* pSrc = (const ColorRGBA*)(&element + 1);
-  while(pDst != pEnd)
+  while (pDst != pEnd)
   {
     *pDst++ = pSrc->a << 24 | pSrc->r << 16 | pSrc->g << 8 | pSrc->b;
     ++pSrc;
@@ -174,7 +175,7 @@ void PaintMethods::paintGridMono(const DebugDrawing::GridMono& element, QPainter
   QImage image(element.cellsX, element.cellsY, QImage::Format_ARGB32);
 
   unsigned colors[256];
-  for(int i = 0; i < 256; ++i)
+  for (int i = 0; i < 256; ++i)
   {
     ColorRGBA col(element.baseColor * (1.0f - (static_cast<float>(i) / 255.0f)));
     colors[i] = element.baseColor.a << 24 | col.r << 16 | col.g << 8 | col.b;
@@ -183,7 +184,7 @@ void PaintMethods::paintGridMono(const DebugDrawing::GridMono& element, QPainter
   unsigned* pDst = (unsigned*)image.bits();
   unsigned* pEnd = pDst + element.cellsX * element.cellsY;
   const unsigned char* pSrc = (const unsigned char*)(&element + 1);
-  while(pDst != pEnd)
+  while (pDst != pEnd)
     *pDst++ = colors[*pSrc++];
 
   float totalWidth = float(element.cellsX * element.cellSize);
@@ -198,7 +199,7 @@ void PaintMethods::paintRectangle(const DebugDrawing::Rectangle& element, QPaint
 
   const QRect dRect(element.topLX, element.topLY, element.w, element.h);
 
-  if(element.rotation != 0.0f)
+  if (element.rotation != 0.0f)
   {
     const QPoint center = dRect.center();
     QTransform trans(painter.transform());
@@ -217,21 +218,21 @@ void PaintMethods::paintRectangle(const DebugDrawing::Rectangle& element, QPaint
 
 void PaintMethods::setPen(const DebugDrawing::Element& element, QPainter& painter)
 {
-  if(element.penStyle != Drawings::noPen)
+  if (element.penStyle != Drawings::noPen)
   {
     pen.setColor(QColor(element.penColor.r, element.penColor.g, element.penColor.b, element.penColor.a));
     pen.setWidth(element.width);
-    switch(element.penStyle)
+    switch (element.penStyle)
     {
-      case Drawings::dashedPen:
-        pen.setStyle(Qt::DashLine);
-        break;
-      case Drawings::dottedPen:
-        pen.setStyle(Qt::DotLine);
-        break;
-      case Drawings::solidPen:
-      default:
-        pen.setStyle(Qt::SolidLine);
+    case Drawings::dashedPen:
+      pen.setStyle(Qt::DashLine);
+      break;
+    case Drawings::dottedPen:
+      pen.setStyle(Qt::DotLine);
+      break;
+    case Drawings::solidPen:
+    default:
+      pen.setStyle(Qt::SolidLine);
     }
     painter.setPen(pen);
   }
@@ -243,7 +244,7 @@ void PaintMethods::setPen(const DebugDrawing::Element& element, QPainter& painte
 
 void PaintMethods::setBrush(const Drawings::BrushStyle brushStyle, const ColorRGBA& brushColor, QPainter& painter)
 {
-  if(brushStyle == Drawings::solidBrush)
+  if (brushStyle == Drawings::solidBrush)
   {
     brush.setColor(QColor(brushColor.r, brushColor.g, brushColor.b, brushColor.a));
     painter.setBrush(brush);

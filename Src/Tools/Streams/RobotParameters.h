@@ -21,6 +21,7 @@
 #endif
 #include <string>
 
+// clang-format off
 
 #define ROBOT_PARAMETERS(n) \
   protected: \
@@ -246,3 +247,5 @@ STREAM_REGISTER_BEGIN;\
 beginstreaming(in, out);\
 STREAM_REGISTER_FINISH;}};\
 Params##n params##n;
+
+// clang-format on

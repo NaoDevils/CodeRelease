@@ -15,7 +15,6 @@
  * The template class represents rectangular boundaries.
  */
 template<typename T = float> STREAMABLE(Boundary,
-{
   Boundary();
 
   /**
@@ -79,12 +78,12 @@ template<typename T = float> STREAMABLE(Boundary,
   }
   ,
   (Range<T>) x, /**< The range in x-direction. */
-  (Range<T>) y, /**< The range in y-direction. */
-});
+  (Range<T>) y /**< The range in y-direction. */
+);
 
-template<typename T> Boundary<T>::Boundary() : x(0, 0), y(0, 0) {}
-template<typename T> Boundary<T>::Boundary(T min, T max) : x(max, min), y(max, min) {}
-template<typename T> Boundary<T>::Boundary(const Range<T>& x, const Range<T>& y) : x(x), y(y) {}
+template <typename T> Boundary<T>::Boundary() : x(0, 0), y(0, 0) {}
+template <typename T> Boundary<T>::Boundary(T min, T max) : x(max, min), y(max, min) {}
+template <typename T> Boundary<T>::Boundary(const Range<T>& x, const Range<T>& y) : x(x), y(y) {}
 
 using Boundaryi = Boundary<int>;
 using Boundaryf = Boundary<float>;

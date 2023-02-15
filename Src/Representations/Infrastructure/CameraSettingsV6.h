@@ -14,7 +14,6 @@
 struct CameraSettingsV6 : public Streamable
 {
   ENUM(CameraSetting,
-  {,
     AutoFocus, /*1: Enable continuous automatic focus adjustments, 0: Disable auto focus*/ //New
     AutoExposure, /* 1: Use auto exposure, 0: disable auto exposure. */
     // AutoExposureAlgorithm,
@@ -36,14 +35,12 @@ struct CameraSettingsV6 : public Streamable
     //MinGain, /* The minimum value for the analog gain that AE Track is permitted to use [0 .. 65535] */
     //MaxGain, /* The maximum value for the analog gain that AE Track is permitted to use [0 .. 65535] */
     //AeMode, /* AE mode (indoor, ...) [0 .. 255] */
-    Focus, /*This control sets the focal point of the camera to the specified position in [0,250], in 25 step*/ //New
-  });
+    Focus /*This control sets the focal point of the camera to the specified position in [0,250] in 25 step*/ //New
+  );
 
 
   STREAMABLE(CameraRegister,
-  {
     ENUM(RegisterName,
-    { ,
       aec_ctrl,
       aec_ctrl_stable_high,
       aec_ctrl_stable_low,
@@ -57,8 +54,8 @@ struct CameraSettingsV6 : public Streamable
       aec_5060hz_ctrl1,
       aec_60hz_max_bands,
       aec_50hz_max_bands,
-      timing_tc_reg21,
-    });
+      timing_tc_reg21
+    );
 
     uint16_t getAddress() const
     {
@@ -100,11 +97,10 @@ struct CameraSettingsV6 : public Streamable
     ,
 
     (RegisterName)(0) reg,
-    (int)(0) value,
-  });
+    (int)(0) value
+  );
 
   STREAMABLE(V4L2Setting,
-  {
     int command;
 
   private:
@@ -124,15 +120,15 @@ struct CameraSettingsV6 : public Streamable
 
     void enforceBounds(),
 
-    (int) value,
-  });
+    (int) value
+  );
 
   std::array<V4L2Setting, numOfCameraSettings> settings;
   std::vector<CameraRegister> registers;
 
   Vector2s windowPosition;
   Vector2s windowSize;
-  std::array<uint8_t,16> windowWeights;
+  std::array<uint8_t, 16> windowWeights;
 
   CameraSettingsV6();
   virtual ~CameraSettingsV6() = default;
@@ -146,7 +142,4 @@ struct CameraSettingsV6 : public Streamable
   virtual void serialize(In* in, Out* out);
 };
 
-STREAMABLE_WITH_BASE(CameraSettingsUpperV6, CameraSettingsV6,
-{,
-
-});
+STREAMABLE_WITH_BASE(CameraSettingsUpperV6, CameraSettingsV6,);

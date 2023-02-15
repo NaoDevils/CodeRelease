@@ -3,8 +3,8 @@
 class Filter
 {
 public:
-	Filter(void){};
-	~Filter(void){};
+  Filter(void){};
+  ~Filter(void){};
 
-	virtual double nextValue(double v) = 0;
+  virtual double nextValue(double v) = 0;
 };

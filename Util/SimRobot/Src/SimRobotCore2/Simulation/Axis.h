@@ -41,7 +41,7 @@ public:
   Joint* joint; /**< The joint that own this axis. */
 
   /** Default constructor */
-  Axis() :  x(0), y(0), z(0), cfm(-1.f), deflection(0), motor(0), joint(0) {}
+  Axis() : x(0), y(0), z(0), cfm(-1.f), deflection(0), motor(0), joint(0) {}
 
   /** Destructor */
   ~Axis();
@@ -54,5 +54,5 @@ private:
   * Registers an element as parent
   * @param element The element to register
   */
-  virtual void addParent(Element& element);
+  void addParent(Element& element) override;
 };

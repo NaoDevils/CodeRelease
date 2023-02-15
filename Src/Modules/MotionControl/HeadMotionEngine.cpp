@@ -15,18 +15,14 @@ MAKE_MODULE(HeadMotionEngine, motionControl)
 HeadMotionEngine::HeadMotionEngine()
 {
   requestedPan = requestedTilt = JointAngles::off;
-  lastSpeed = Vector2f::Zero();
+  lastSpeed = Vector2a::Zero();
 
-  deathPoints[0] = Geometry::getCircle(
-                     Vector2i(45, -25), Vector2i(120, -20), Vector2i(90, -17));
-  deathPoints[1] = Geometry::getCircle(
-                     Vector2i(-45, -25), Vector2i(-120, -20), Vector2i(-90, -17));
-  deathPoints[2] = Geometry::getCircle(
-                     Vector2i(17, 46), Vector2i(85, 23), Vector2i(120, 27));
-  deathPoints[3] = Geometry::getCircle(
-                     Vector2i(-17, 46), Vector2i(-85, 23), Vector2i(-120, 27));
+  deathPoints[0] = Geometry::getCircle(Vector2i(45, -25), Vector2i(120, -20), Vector2i(90, -17));
+  deathPoints[1] = Geometry::getCircle(Vector2i(-45, -25), Vector2i(-120, -20), Vector2i(-90, -17));
+  deathPoints[2] = Geometry::getCircle(Vector2i(17, 46), Vector2i(85, 23), Vector2i(120, 27));
+  deathPoints[3] = Geometry::getCircle(Vector2i(-17, 46), Vector2i(-85, 23), Vector2i(-120, 27));
 
-  for(int i = 0; i < 4; ++i)
+  for (int i = 0; i < 4; ++i)
   {
     deathPoints[i].center.x() = Angle::fromDegrees(deathPoints[i].center.x());
     deathPoints[i].center.y() = Angle::fromDegrees(deathPoints[i].center.y());
@@ -44,14 +40,18 @@ void HeadMotionEngine::update(HeadJointRequest& headJointRequest)
   float maxAcc = theGroundContactState.contact ? 10.f : 1.f; // arbitrary value that seems to be good...
   MODIFY("module:HeadMotionEngine:maxAcceleration", maxAcc);
 
-  float pan = requestedPan == JointAngles::off ? JointAngles::off : Rangef(theJointCalibration.joints[Joints::headYaw].minAngle, theJointCalibration.joints[Joints::headYaw].maxAngle).limit(requestedPan);
-  float tilt = requestedTilt == JointAngles::off ? JointAngles::off : Rangef(theJointCalibration.joints[Joints::headPitch].minAngle, theJointCalibration.joints[Joints::headPitch].maxAngle).limit(requestedTilt);
+  Angle pan = requestedPan == JointAngles::off
+      ? JointAngles::off
+      : Range<Angle>(theJointCalibration.joints[Joints::headYaw].minAngle, theJointCalibration.joints[Joints::headYaw].maxAngle).limit(requestedPan);
+  Angle tilt = requestedTilt == JointAngles::off
+      ? JointAngles::off
+      : Range<Angle>(theJointCalibration.joints[Joints::headPitch].minAngle, theJointCalibration.joints[Joints::headPitch].maxAngle).limit(requestedTilt);
 
   const float deltaTime = theFrameInfo.cycleTime;
-  const Vector2f position(headJointRequest.pan == JointAngles::off ? theJointAngles.angles[Joints::headYaw] : headJointRequest.pan,
-                           headJointRequest.tilt == JointAngles::off ? theJointAngles.angles[Joints::headPitch] : headJointRequest.tilt);
-  const Vector2f target(pan == JointAngles::off ? 0 : pan, tilt == JointAngles::off ? 0 : tilt);
-  Vector2f offset(target - position);
+  const Vector2a position(headJointRequest.pan == JointAngles::off ? theJointSensorData.angles[Joints::headYaw] : headJointRequest.pan,
+      headJointRequest.tilt == JointAngles::off ? theJointSensorData.angles[Joints::headPitch] : headJointRequest.tilt);
+  const Vector2a target(pan == JointAngles::off ? 0_deg : pan, tilt == JointAngles::off ? 0_deg : tilt);
+  Vector2a offset(target - position);
   const float distanceToTarget = offset.norm();
 
   // calculate max speed
@@ -59,14 +59,14 @@ void HeadMotionEngine::update(HeadJointRequest& headJointRequest)
   const float maxSpeed = std::min(maxSpeedForDistance, static_cast<float>(theHeadAngleRequest.speed));
 
   // max speed clipping
-  if(distanceToTarget / deltaTime > maxSpeed)
+  if (distanceToTarget / deltaTime > maxSpeed)
     offset *= maxSpeed * deltaTime / distanceToTarget; // <=> offset.normalize(maxSpeed * deltaTime);
 
   // max acceleration clipping
-  Vector2f speed(offset / deltaTime);
-  Vector2f acc((speed - lastSpeed) / deltaTime);
+  Vector2a speed(offset / deltaTime);
+  Vector2a acc((speed - lastSpeed) / deltaTime);
   const float accSquareAbs = acc.squaredNorm();
-  if(accSquareAbs > maxAcc * maxAcc)
+  if (accSquareAbs > maxAcc * maxAcc)
   {
     acc *= maxAcc * deltaTime / std::sqrt(accSquareAbs);
     speed = acc + lastSpeed;
@@ -84,15 +84,15 @@ void HeadMotionEngine::update(HeadJointRequest& headJointRequest)
   PLOT("module:HeadMotionEngine:speed", toDegrees(speed.norm()));
 
   // calculate new position
-  Vector2f newPosition(position + offset);
+  Vector2a newPosition(position + offset);
 
   // make sure we don't get to close to the evil points of death
-  if(pan != JointAngles::off && tilt != JointAngles::off)
-    for(int i = 0; i < 4; ++i)
+  if (pan != JointAngles::off && tilt != JointAngles::off)
+    for (int i = 0; i < 4; ++i)
     {
-      Vector2f deathPointToPosition(newPosition - deathPoints[i].center);
+      Vector2a deathPointToPosition(newPosition - deathPoints[i].center.cast<Angle>());
       const float deathPointToPositionSquareAbs = deathPointToPosition.squaredNorm();
-      if(deathPointToPositionSquareAbs != 0.f && deathPointToPositionSquareAbs < sqr(deathPoints[i].radius))
+      if (deathPointToPositionSquareAbs != 0.f && deathPointToPositionSquareAbs < sqr(deathPoints[i].radius))
       {
         const float deathPointToPositionAbs = std::sqrt(deathPointToPositionSquareAbs);
         deathPointToPosition *= (deathPoints[i].radius - deathPointToPositionAbs) / deathPointToPositionAbs;
@@ -107,11 +107,11 @@ void HeadMotionEngine::update(HeadJointRequest& headJointRequest)
 
   // check reachability
   headJointRequest.reachable = true;
-  if(pan != requestedPan || tilt != requestedTilt)
+  if (pan != requestedPan || tilt != requestedTilt)
     headJointRequest.reachable = false;
   else
-    for(int i = 0; i < 4; ++i)
-      if((target - deathPoints[i].center).squaredNorm() < sqr(deathPoints[i].radius))
+    for (int i = 0; i < 4; ++i)
+      if ((target - deathPoints[i].center.cast<Angle>()).squaredNorm() < sqr(deathPoints[i].radius))
         headJointRequest.reachable = false;
 
   // store some values for the next iteration

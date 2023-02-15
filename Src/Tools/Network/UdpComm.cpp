@@ -8,17 +8,17 @@
 
 #include <iostream>
 #ifdef WINDOWS
-#  include <ws2tcpip.h>
+#include <ws2tcpip.h>
 #else
-#  include <cerrno>
-#  include <unistd.h>
-#  include <fcntl.h>
-#  include <sys/socket.h>
-#  include <sys/ioctl.h>
-#  include <arpa/inet.h>
-#  include <cstring>
-#  include <net/if.h>
-#  include <ifaddrs.h>
+#include <cerrno>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <arpa/inet.h>
+#include <cstring>
+#include <net/if.h>
+#include <ifaddrs.h>
 #endif
 
 #ifndef SENSOR_READER
@@ -40,13 +40,38 @@ UdpComm::UdpComm()
 
 UdpComm::~UdpComm()
 {
-#ifdef WINDOWS
-  closesocket(sock);
-#else
-  close(sock);
-#endif
+  this->close();
+}
 
-  delete (sockaddr_in*)target;
+void UdpComm::close()
+{
+  if (sock != -1)
+  {
+#ifdef WINDOWS
+    closesocket(sock);
+#else
+    ::close(sock);
+#endif
+  }
+
+  if (target)
+    delete (sockaddr_in*)target;
+}
+
+UdpComm::UdpComm(UdpComm&& other) noexcept : target(other.target), sock(other.sock)
+{
+  other.target = nullptr;
+  other.sock = -1;
+}
+
+UdpComm& UdpComm::operator=(UdpComm&& other) noexcept
+{
+  this->close();
+  this->target = other.target;
+  this->sock = other.sock;
+  other.target = nullptr;
+  other.sock = -1;
+  return *this;
 }
 
 bool UdpComm::resolve(const char* addrStr, int port, sockaddr_in* addr)
@@ -54,7 +79,7 @@ bool UdpComm::resolve(const char* addrStr, int port, sockaddr_in* addr)
   memset(addr, 0, sizeof(sockaddr_in));
   addr->sin_family = AF_INET;
   addr->sin_port = htons(static_cast<unsigned short>(port));
-  if(1 != inet_pton(AF_INET, addrStr, &(addr->sin_addr.s_addr)))
+  if (1 != inet_pton(AF_INET, addrStr, &(addr->sin_addr.s_addr)))
   {
     std::cerr << addrStr << " is not a valid dotted ipv4 address" << std::endl;
     return false;
@@ -73,20 +98,20 @@ bool UdpComm::setBlocking(bool block)
 {
 #ifdef WINDOWS
   int yes = block ? 0 : 1;
-  if(ioctlsocket(sock, FIONBIO, (u_long*)&yes))
+  if (ioctlsocket(sock, FIONBIO, (u_long*)&yes))
     return false;
   else
     return true;
 #else
   bool result(false);
-  if(block)
+  if (block)
   {
-    if(-1 != fcntl(sock, F_SETFL, 0))
+    if (-1 != fcntl(sock, F_SETFL, 0))
       result = true;
   }
   else
   {
-    if(-1 != fcntl(sock, F_SETFL, O_NONBLOCK))
+    if (-1 != fcntl(sock, F_SETFL, O_NONBLOCK))
       result = true;
   }
   return result;
@@ -95,7 +120,7 @@ bool UdpComm::setBlocking(bool block)
 
 bool UdpComm::setTTL(const char ttl)
 {
-  if(setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(unsigned char)) < 0)
+  if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(unsigned char)) < 0)
   {
     std::cerr << "could not set TTL to " << ttl << std::endl;
     return false;
@@ -106,7 +131,7 @@ bool UdpComm::setTTL(const char ttl)
 bool UdpComm::setLoopback(bool yesno)
 {
   const char val = yesno ? 1 : 0;
-  if(setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(char)) < 0)
+  if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(char)) < 0)
   {
     std::cerr << "could not set ip_multicast_loop to " << val << std::endl;
     return false;
@@ -117,11 +142,11 @@ bool UdpComm::setLoopback(bool yesno)
 bool UdpComm::joinMulticast(const char* addrStr)
 {
   sockaddr_in group;
-  if(!resolve(addrStr, 0, &group))
+  if (!resolve(addrStr, 0, &group))
     return false;
 
   //join multicast group for every interface
-  if(IN_MULTICAST(ntohl(group.sin_addr.s_addr)))
+  if (IN_MULTICAST(ntohl(group.sin_addr.s_addr)))
   {
 #ifndef WINDOWS
     ip_mreq mreq;
@@ -131,7 +156,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
 
     ifc.ifc_len = sizeof(buf);
     ifc.ifc_buf = buf;
-    if(ioctl(sock, SIOCGIFCONF, &ifc) < 0)
+    if (ioctl(sock, SIOCGIFCONF, &ifc) < 0)
     {
       std::cerr << "cannot get interface list" << std::endl;
       return false;
@@ -139,15 +164,15 @@ bool UdpComm::joinMulticast(const char* addrStr)
     else
     {
       bool could_join(false);
-      for(unsigned int i = 0; i < ifc.ifc_len / sizeof(ifreq); i++)
+      for (unsigned int i = 0; i < ifc.ifc_len / sizeof(ifreq); i++)
       {
         item = &ifc.ifc_req[i];
         mreq.imr_multiaddr = group.sin_addr;
         mreq.imr_interface = ((sockaddr_in*)&item->ifr_addr)->sin_addr;
-        if(0 == setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq)))
+        if (0 == setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq)))
           could_join = true;
       }
-      if(!could_join)
+      if (!could_join)
       {
         std::cerr << "join multicast group failed for interface" << std::endl;
         return false;
@@ -156,7 +181,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
 #else
     char host[128];
     hostent* pHost;
-    if(gethostname(host, sizeof(host)) < 0 || !(pHost = (hostent*)gethostbyname(host)))
+    if (gethostname(host, sizeof(host)) < 0 || !(pHost = (hostent*)gethostbyname(host)))
     {
       std::cerr << "cannot get interface list" << std::endl;
       return false;
@@ -164,14 +189,14 @@ bool UdpComm::joinMulticast(const char* addrStr)
 
     ip_mreq mreq;
     bool couldJoin(false);
-    for(int i = 0; pHost->h_addr_list[i]; i++)
+    for (int i = 0; pHost->h_addr_list[i]; i++)
     {
       mreq.imr_multiaddr = group.sin_addr;
       mreq.imr_interface = *((in_addr*)pHost->h_addr_list[i]);
-      if(setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) == 0)
+      if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) == 0)
         couldJoin = true;
     }
-    if(!couldJoin)
+    if (!couldJoin)
     {
       std::cerr << "join multicast group failed for interface" << std::endl;
       return false;
@@ -187,7 +212,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
 bool UdpComm::setBroadcast(bool enable)
 {
   int yes = enable ? 1 : 0;
-  if(0 == setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(yes)))
+  if (0 == setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(yes)))
     return true;
   else
   {
@@ -198,19 +223,17 @@ bool UdpComm::setBroadcast(bool enable)
 
 bool UdpComm::setRcvBufSize(unsigned int rcvbuf)
 {
-  if(0 == setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&rcvbuf, sizeof(rcvbuf)))
+  if (0 == setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&rcvbuf, sizeof(rcvbuf)))
   {
-    std::cerr << "multicast-socket: setsockopt for SO_RCVBUF failed: "
-              << strerror(errno) << std::endl;
+    std::cerr << "multicast-socket: setsockopt for SO_RCVBUF failed: " << strerror(errno) << std::endl;
     return false;
   }
 
   int result;
   socklen_t result_len = sizeof(result);
-  if(0 == getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&result, &result_len))
+  if (0 == getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&result, &result_len))
   {
-    std::cerr << "multicast-socket: receive buffer set to "
-              << result << " Bytes." << std::endl;
+    std::cerr << "multicast-socket: receive buffer set to " << result << " Bytes." << std::endl;
     return true;
   }
 
@@ -229,7 +252,7 @@ bool UdpComm::bind(const char* addr_str, int port)
 #ifdef BHUMAN_USE_INET_ADDR
   addr.sin_addr.s_addr = inet_addr(addr_str);
 #else
-  if(inet_pton(AF_INET, addr_str, &(addr.sin_addr)) <= 0)
+  if (inet_pton(AF_INET, addr_str, &(addr.sin_addr)) <= 0)
   {
     std::cerr << "UdpComm::bind() failed: invalid address " << addr_str << std::endl;
     return false;
@@ -237,14 +260,14 @@ bool UdpComm::bind(const char* addr_str, int port)
 #endif
 
 #ifdef SO_REUSEADDR
-  if(-1 == setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)))
+  if (-1 == setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)))
     std::cerr << "UdpComm: could not set SO_REUSEADDR" << std::endl;
 #endif
 #ifdef SO_REUSEPORT
-  if(-1 == setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&yes, sizeof(yes)))
+  if (-1 == setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&yes, sizeof(yes)))
     std::cerr << "UdpComm: could not set SO_REUSEPORT" << std::endl;
 #endif
-  if(-1 == ::bind(sock, (sockaddr*)&addr, sizeof(sockaddr_in)))
+  if (-1 == ::bind(sock, (sockaddr*)&addr, sizeof(sockaddr_in)))
   {
     std::cout << "UdpComm::bind() failed: " << strerror(errno) << std::endl;
     return false;
@@ -261,21 +284,21 @@ int UdpComm::read(char* data, int len, unsigned int& ip)
 #else
   unsigned size = sizeof(senderAddr);
 #endif
-  const int result = (int) ::recvfrom(sock, data, len, 0, (sockaddr*)&senderAddr, &size);
-  if(result > 0)
+  const int result = (int)::recvfrom(sock, data, len, 0, (sockaddr*)&senderAddr, &size);
+  if (result > 0)
     ip = ntohl(senderAddr.sin_addr.s_addr);
   return result;
 }
 
 int UdpComm::read(char* data, int len)
 {
-  return (int) ::recv(sock, data, len, 0);
+  return (int)::recv(sock, data, len, 0);
 }
 
 int UdpComm::read(char* data, int len, sockaddr_in& from)
 {
   socklen_t fromLen = sizeof(from);
-  return ::recvfrom(sock, data, len, 0, (sockaddr*) &from, &fromLen);
+  return static_cast<int>(::recvfrom(sock, data, len, 0, (sockaddr*)&from, &fromLen));
 }
 
 int UdpComm::readLocal(char* data, int len)
@@ -287,24 +310,22 @@ int UdpComm::readLocal(char* data, int len)
   unsigned size = sizeof(senderAddr);
   bool found = false;
 #endif
-  int result = (int) ::recvfrom(sock, data, len, 0, (sockaddr*)&senderAddr, &size);
-  if(result <= 0)
+  int result = (int)::recvfrom(sock, data, len, 0, (sockaddr*)&senderAddr, &size);
+  if (result <= 0)
     return result;
   else
   {
 #ifndef WINDOWS
-    ifaddrs* addrs, *ifac;
+    ifaddrs *addrs, *ifac;
 
-    if(getifaddrs(&addrs) < 0)
+    if (getifaddrs(&addrs) < 0)
       return -1;
 
-    for(ifac = addrs; !found && ifac != nullptr; ifac = ifac->ifa_next)
+    for (ifac = addrs; !found && ifac != nullptr; ifac = ifac->ifa_next)
     {
-      if(ifac->ifa_flags & IFF_MULTICAST
-         && ifac->ifa_addr
-         && ifac->ifa_addr->sa_family == AF_INET)
+      if (ifac->ifa_flags & IFF_MULTICAST && ifac->ifa_addr && ifac->ifa_addr->sa_family == AF_INET)
       {
-        if(((sockaddr_in*)ifac->ifa_addr)->sin_addr.s_addr == senderAddr.sin_addr.s_addr)
+        if (((sockaddr_in*)ifac->ifa_addr)->sin_addr.s_addr == senderAddr.sin_addr.s_addr)
           found = true;
       }
     }
@@ -330,21 +351,21 @@ std::string UdpComm::getWifiBroadcastAddress()
 #ifdef TARGET_ROBOT
   char addressBuffer[INET_ADDRSTRLEN];
 
-  ifaddrs * ifAddrStruct = nullptr;
-  ifaddrs * ifa = nullptr;
+  ifaddrs* ifAddrStruct = nullptr;
+  ifaddrs* ifa = nullptr;
 
   //determine ip address
   getifaddrs(&ifAddrStruct);
-  for(ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next)
+  for (ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next)
   {
     // manpage getifaddrs    // check it is IP4
-    if(ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == AF_INET)
+    if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == AF_INET)
     {
       std::string interfaceName(ifa->ifa_name);
-      if(interfaceName.find("wlan") != std::string::npos)
+      if (interfaceName.find("wlan") != std::string::npos)
       {
-        in_addr_t mask = ((sockaddr_in *)ifa->ifa_netmask)->sin_addr.s_addr;
-        in_addr_t addr = ((sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+        in_addr_t mask = ((sockaddr_in*)ifa->ifa_netmask)->sin_addr.s_addr;
+        in_addr_t addr = ((sockaddr_in*)ifa->ifa_addr)->sin_addr.s_addr;
         in_addr_t bcastAddr = ~mask | addr;
 
         in_addr bcast_addr;
@@ -367,14 +388,14 @@ unsigned char UdpComm::getLastByteOfIP()
   ifaddrs* ifa = nullptr;
 
   getifaddrs(&ifAddrStruct);
-  for(ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next)
+  for (ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next)
   {
-    if(ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == AF_INET)
+    if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == AF_INET)
     {
       std::string interfaceName(ifa->ifa_name);
-      if(interfaceName.find("wlan") != std::string::npos)
+      if (interfaceName.find("wlan") != std::string::npos)
       {
-        in_addr_t addr = ((sockaddr_in *)ifa->ifa_addr)->sin_addr.s_addr;
+        in_addr_t addr = ((sockaddr_in*)ifa->ifa_addr)->sin_addr.s_addr;
         return static_cast<unsigned char>(addr >> 24); // Because NetworkByteOrder
       }
     }
@@ -382,4 +403,3 @@ unsigned char UdpComm::getLastByteOfIP()
 #endif
   return 255;
 }
-

@@ -8,29 +8,33 @@
 template <typename T> class FastFilter
 {
 public:
-	FastFilter(void) { buffer=NULL; }
-	FastFilter(const unsigned int size) { buffer=new DynamicRingBuffer<T>(size); }
-	~FastFilter(void) { if (buffer!=NULL) delete buffer; };
+  FastFilter(void) { buffer = NULL; }
+  FastFilter(const unsigned int size) { buffer = new DynamicRingBuffer<T>(size); }
+  ~FastFilter(void)
+  {
+    if (buffer != NULL)
+      delete buffer;
+  };
 
-	T nextValue(T v)
-	{
-		if (buffer==NULL)
-			return 0;
+  T nextValue(T v)
+  {
+    if (buffer == NULL)
+      return 0;
 
-		buffer->add(v);
-		return buffer->getAverage();
-	}
+    buffer->add(v);
+    return buffer->getAverage();
+  }
 
-	bool createBuffer(const unsigned int size)
-	{
-		if (buffer!=NULL)
-			delete buffer;
+  bool createBuffer(const unsigned int size)
+  {
+    if (buffer != NULL)
+      delete buffer;
 
-		buffer=new DynamicRingBuffer<T>(size);
+    buffer = new DynamicRingBuffer<T>(size);
 
-		return true;
-	}
+    return true;
+  }
 
 private:
-	DynamicRingBuffer<T> *buffer;
+  DynamicRingBuffer<T>* buffer;
 };

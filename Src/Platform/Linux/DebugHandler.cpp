@@ -11,21 +11,18 @@
 #include "Tools/Streams/OutStreams.h"
 #include "Tools/Streams/InStreams.h"
 
-DebugHandler::DebugHandler(MessageQueue& in, MessageQueue& out, int maxPackageSendSize, int maxPackageReceiveSize) :
-  TcpConnection(0, 51111, TcpConnection::receiver, maxPackageSendSize, maxPackageReceiveSize),
-  in(in),
-  out(out),
-  sendData(0),
-  sendSize(0)
-{}
+DebugHandler::DebugHandler(MessageQueue& in, MessageQueue& out, int maxPackageSendSize, int maxPackageReceiveSize)
+    : TcpConnection(0, 51111, TcpConnection::receiver, maxPackageSendSize, maxPackageReceiveSize), in(in), out(out), sendData(0), sendSize(0)
+{
+}
 
 void DebugHandler::communicate(bool send)
 {
-  if(send && !sendData && !out.isEmpty())
+  if (send && !sendData && !out.isEmpty())
   {
     OutBinarySize size;
     size << out;
-    sendSize = (int) size.getSize();
+    sendSize = (int)size.getSize();
     sendData = new unsigned char[sendSize];
     ASSERT(sendData);
     OutBinaryMemory memory(sendData);
@@ -36,17 +33,17 @@ void DebugHandler::communicate(bool send)
   unsigned char* receivedData;
   int receivedSize = 0;
 
-  if(sendAndReceive(sendData, sendSize, receivedData, receivedSize) && sendSize)
+  if (sendAndReceive(sendData, sendSize, receivedData, receivedSize) && sendSize)
   {
-    delete [] sendData;
+    delete[] sendData;
     sendData = 0;
     sendSize = 0;
   }
 
-  if(receivedSize > 0)
+  if (receivedSize > 0)
   {
     InBinaryMemory memory(receivedData);
     memory >> in;
-    delete [] receivedData;
+    delete[] receivedData;
   }
 }

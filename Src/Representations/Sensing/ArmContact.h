@@ -18,34 +18,16 @@
 * @class ArmContact
 * A class that represents if an ArmContact exists.
 */
-class ArmContact : public Streamable
-{
-protected:
-  virtual void serialize(In* in, Out* out)
-  {  
-    STREAM_REGISTER_BEGIN;
-    STREAM(timeStampLeft);
-    STREAM(timeStampRight);
-    STREAM(armContactStateLeft);
-    STREAM(armContactStateRight);
-    STREAM_REGISTER_FINISH;
-  }
-
-public:
+STREAMABLE(ArmContact,
   ENUM(ArmContactState,
-  { ,
     None,
     Front,
-    Back,
-  });
-
-  /** 
-  * Default constructor.
-  */
-  ArmContact() : timeStampRight(0),timeStampLeft(0),armContactStateLeft(None),armContactStateRight(None) {}
-
-  unsigned timeStampRight, timeStampLeft;
-  ArmContactState armContactStateLeft, armContactStateRight;
-
-};
+    Back
+  );
+  ,
+  (unsigned)(0) timeStampLeft,
+  (unsigned)(0) timeStampRight,
+  (ArmContactState)(None) armContactStateLeft,
+  (ArmContactState)(None) armContactStateRight
+);
 #endif // __ArmContact_H__

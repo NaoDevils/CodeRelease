@@ -11,12 +11,14 @@
 #pragma once
 
 #include <string>
+#include <climits>
+#include <cstdint>
 
 class Angle;
 
 namespace EnumHelpers
 {
-  template<class T, bool isEnum> struct EnumOrClass;
+  template <class T, bool isEnum> struct EnumOrClass;
 }
 
 /**
@@ -67,6 +69,11 @@ protected:
   virtual void outUInt(unsigned int) = 0;
 
   /**
+  * Virtual redirection for operator<<(const int64_t& value).
+  */
+  virtual void outInt64(int64_t) = 0;
+
+  /**
   * Virtual redirection for operator<<(const uint64_t& value).
   */
   virtual void outUInt64(uint64_t) = 0;
@@ -112,7 +119,7 @@ public:
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return false;}
+  virtual bool isBinary() const { return false; }
 
   virtual void select(const char* name, int type, const char* (*enumToString)(int) = 0) {}
   virtual void deselect() {}
@@ -126,10 +133,7 @@ public:
    * @param t The object, array, or enum to stream.
    * @return The stream.
    */
-  template<class T> Out& operator<<(const T& t)
-  {
-    return EnumHelpers::EnumOrClass<T, std::is_enum<T>::value>::write(*this, t);
-  }
+  template <class T> Out& operator<<(const T& t) { return EnumHelpers::EnumOrClass<T, std::is_enum<T>::value>::write(*this, t); }
 
   friend Out& operator<<(Out& out, const bool value);
   friend Out& operator<<(Out& out, const char value);
@@ -139,7 +143,10 @@ public:
   friend Out& operator<<(Out& out, const unsigned short value);
   friend Out& operator<<(Out& out, const int value);
   friend Out& operator<<(Out& out, const unsigned int value);
-  friend Out& operator<<(Out& out, const uint64_t value);
+  friend Out& operator<<(Out& out, const long value);
+  friend Out& operator<<(Out& out, const unsigned long value);
+  friend Out& operator<<(Out& out, const long long value);
+  friend Out& operator<<(Out& out, const unsigned long long value);
   friend Out& operator<<(Out& out, const float value);
   friend Out& operator<<(Out& out, const double value);
   friend Out& operator<<(Out& out, const char* value);
@@ -155,7 +162,11 @@ public:
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const bool value) {out.outBool(value); return out;}
+inline Out& operator<<(Out& out, const bool value)
+{
+  out.outBool(value);
+  return out;
+}
 
 /**
  * Operator that writes a char into a stream.
@@ -163,7 +174,11 @@ inline Out& operator<<(Out& out, const bool value) {out.outBool(value); return o
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const char value) {out.outChar(value); return out;}
+inline Out& operator<<(Out& out, const char value)
+{
+  out.outChar(value);
+  return out;
+}
 
 /**
  * Operator that writes an signed char into a stream.
@@ -171,7 +186,11 @@ inline Out& operator<<(Out& out, const char value) {out.outChar(value); return o
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const signed char value) {out.outSChar(value); return out;}
+inline Out& operator<<(Out& out, const signed char value)
+{
+  out.outSChar(value);
+  return out;
+}
 
 /**
  * Operator that writes an unsigned char into a stream.
@@ -179,7 +198,11 @@ inline Out& operator<<(Out& out, const signed char value) {out.outSChar(value); 
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const unsigned char value) {out.outUChar(value); return out;}
+inline Out& operator<<(Out& out, const unsigned char value)
+{
+  out.outUChar(value);
+  return out;
+}
 
 /**
  * Operator that writes a short int into a stream.
@@ -187,7 +210,11 @@ inline Out& operator<<(Out& out, const unsigned char value) {out.outUChar(value)
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const short value) {out.outShort(value); return out;}
+inline Out& operator<<(Out& out, const short value)
+{
+  out.outShort(value);
+  return out;
+}
 
 /**
  * Operator that writes an unsigned short int into a stream.
@@ -195,7 +222,11 @@ inline Out& operator<<(Out& out, const short value) {out.outShort(value); return
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const unsigned short value) {out.outUShort(value); return out;}
+inline Out& operator<<(Out& out, const unsigned short value)
+{
+  out.outUShort(value);
+  return out;
+}
 
 /**
  * Operator that writes an int into a stream.
@@ -203,7 +234,11 @@ inline Out& operator<<(Out& out, const unsigned short value) {out.outUShort(valu
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const int value) {out.outInt(value); return out;}
+inline Out& operator<<(Out& out, const int value)
+{
+  out.outInt(value);
+  return out;
+}
 
 /**
  * Operator that writes an unsigned int into a stream.
@@ -211,15 +246,71 @@ inline Out& operator<<(Out& out, const int value) {out.outInt(value); return out
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const unsigned int value) {out.outUInt(value); ; return out;}
+inline Out& operator<<(Out& out, const unsigned int value)
+{
+  out.outUInt(value);
+  return out;
+}
 
+#if INT64_MAX == LONG_MAX
 /**
-* Operator that writes an uint64_t into a stream.
+* Operator that writes an int64_t into a stream. It is only available on platforms
+* that use 8 byte for a long, otherwise this would break streaming to such a platform.
 * @param out The stream to which is written.
 * @param value The value that is written.
 * @return The stream.
 */
-inline Out& operator<<(Out& out, const uint64_t value) { out.outUInt64(value); ; return out; }
+inline Out& operator<<(Out& out, const long value)
+{
+  out.outInt64(value);
+  return out;
+}
+#endif
+
+#if UINT64_MAX == ULONG_MAX
+/**
+* Operator that writes an uint64_t into a stream. It is only available on platforms
+* that use 8 byte for a long, otherwise this would break streaming to such a platform.
+* @param out The stream to which is written.
+* @param value The value that is written.
+* @return The stream.
+*/
+inline Out& operator<<(Out& out, const unsigned long value)
+{
+  out.outUInt64(value);
+  return out;
+}
+#endif
+
+#if INT64_MAX == LLONG_MAX
+/**
+* Operator that writes an uint64_t into a stream. It is only available on platforms
+* that use 8 byte for a long, otherwise this would break streaming to such a platform.
+* @param out The stream to which is written.
+* @param value The value that is written.
+* @return The stream.
+*/
+inline Out& operator<<(Out& out, const long long value)
+{
+  out.outInt64(value);
+  return out;
+}
+#endif
+
+#if UINT64_MAX == ULLONG_MAX
+/**
+ * Operator that writes a value of type unsigned long long into a stream. It is only available on platforms
+ * that use 8 byte for a long, otherwise this would break streaming to such a platform.
+ * @param out The stream to which is written.
+ * @param value The value that is written.
+ * @return The stream.
+ */
+inline Out& operator<<(Out& out, const unsigned long long value)
+{
+  out.outUInt64(value);
+  return out;
+}
+#endif
 
 /**
  * Operator that writes a float into a stream.
@@ -227,7 +318,11 @@ inline Out& operator<<(Out& out, const uint64_t value) { out.outUInt64(value); ;
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const float value) {out.outFloat(value); return out;}
+inline Out& operator<<(Out& out, const float value)
+{
+  out.outFloat(value);
+  return out;
+}
 
 /**
  * Operator that writes a double into a stream.
@@ -235,7 +330,11 @@ inline Out& operator<<(Out& out, const float value) {out.outFloat(value); return
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const double value) {out.outDouble(value); return out;}
+inline Out& operator<<(Out& out, const double value)
+{
+  out.outDouble(value);
+  return out;
+}
 
 /**
  * Operator that writes a string into a stream.
@@ -243,7 +342,11 @@ inline Out& operator<<(Out& out, const double value) {out.outDouble(value); retu
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const char* value) {out.outString(value); return out;}
+inline Out& operator<<(Out& out, const char* value)
+{
+  out.outString(value);
+  return out;
+}
 
 /**
  * Operator that writes a string into a stream.
@@ -251,7 +354,11 @@ inline Out& operator<<(Out& out, const char* value) {out.outString(value); retur
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const std::string& value) {out.outString(value.c_str()); return out;}
+inline Out& operator<<(Out& out, const std::string& value)
+{
+  out.outString(value.c_str());
+  return out;
+}
 
 /**
  * Operator that writes an Angle into a stream.
@@ -259,7 +366,11 @@ inline Out& operator<<(Out& out, const std::string& value) {out.outString(value.
  * @param value The value that is written.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, const Angle& value) {out.outAngle(value); return out;}
+inline Out& operator<<(Out& out, const Angle& value)
+{
+  out.outAngle(value);
+  return out;
+}
 
 /**
  * Operator that calls the function pointed to by f.
@@ -267,7 +378,10 @@ inline Out& operator<<(Out& out, const Angle& value) {out.outAngle(value); retur
  * @param f A function that is normally endl.
  * @return The stream.
  */
-inline Out& operator<<(Out& out, Out& (*f)(Out&)) {return f(out);}
+inline Out& operator<<(Out& out, Out& (*f)(Out&))
+{
+  return f(out);
+}
 
 /**
  * This function can be inserted into a stream to represent an end of line.
@@ -322,6 +436,11 @@ protected:
    * Virtual redirection for operator>>(unsigend int& value).
    */
   virtual void inUInt(unsigned int&) = 0;
+
+  /**
+  * Virtual redirection for operator>>(int64_t& value).
+  */
+  virtual void inInt64(int64_t&) = 0;
 
   /**
   * Virtual redirection for operator>>(uint64_t& value).
@@ -394,7 +513,7 @@ public:
    *             >= 0: array/list element index.
    * @param enumToString A function that translates an enum to a string.
    */
-  virtual void select(const char* name, int type, const char * (*enumToString)(int) = 0) {}
+  virtual void select(const char* name, int type, const char* (*enumToString)(int) = 0) {}
 
   /**
    * Deselects a field for reading.
@@ -411,10 +530,7 @@ public:
    * @param t The object, array, or enum to stream.
    * @return The stream.
    */
-  template<class T> In& operator>>(T& t)
-  {
-    return EnumHelpers::EnumOrClass<T, std::is_enum<T>::value>::read(*this, t);
-  }
+  template <class T> In& operator>>(T& t) { return EnumHelpers::EnumOrClass<T, std::is_enum<T>::value>::read(*this, t); }
 
   friend In& operator>>(In& in, bool& value);
   friend In& operator>>(In& in, char& value);
@@ -424,7 +540,10 @@ public:
   friend In& operator>>(In& in, unsigned short& value);
   friend In& operator>>(In& in, int& value);
   friend In& operator>>(In& in, unsigned int& value);
-  friend In& operator>>(In& in, uint64_t& value);
+  friend In& operator>>(In& in, long& value);
+  friend In& operator>>(In& in, unsigned long& value);
+  friend In& operator>>(In& in, long long& value);
+  friend In& operator>>(In& in, unsigned long long& value);
   friend In& operator>>(In& in, float& value);
   friend In& operator>>(In& in, double& value);
   friend In& operator>>(In& in, std::string& value);
@@ -439,7 +558,11 @@ public:
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, bool& value) {in.inBool(value); return in;}
+inline In& operator>>(In& in, bool& value)
+{
+  in.inBool(value);
+  return in;
+}
 
 /**
  * Operator that reads a char from a stream.
@@ -447,7 +570,11 @@ inline In& operator>>(In& in, bool& value) {in.inBool(value); return in;}
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, char& value) {in.inChar(value); return in;}
+inline In& operator>>(In& in, char& value)
+{
+  in.inChar(value);
+  return in;
+}
 
 /**
  * Operator that reads a signed char from a stream.
@@ -455,7 +582,11 @@ inline In& operator>>(In& in, char& value) {in.inChar(value); return in;}
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, signed char& value) {in.inSChar(value); return in;}
+inline In& operator>>(In& in, signed char& value)
+{
+  in.inSChar(value);
+  return in;
+}
 
 /**
  * Operator that reads an unsigned char from a stream.
@@ -463,7 +594,11 @@ inline In& operator>>(In& in, signed char& value) {in.inSChar(value); return in;
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, unsigned char& value) {in.inUChar(value); return in;}
+inline In& operator>>(In& in, unsigned char& value)
+{
+  in.inUChar(value);
+  return in;
+}
 
 /**
  * Operator that reads a short int from a stream.
@@ -471,7 +606,11 @@ inline In& operator>>(In& in, unsigned char& value) {in.inUChar(value); return i
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, short& value) {in.inShort(value); return in;}
+inline In& operator>>(In& in, short& value)
+{
+  in.inShort(value);
+  return in;
+}
 
 /**
  * Operator that reads an unsigned short int from a stream.
@@ -479,7 +618,11 @@ inline In& operator>>(In& in, short& value) {in.inShort(value); return in;}
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, unsigned short& value) {in.inUShort(value); return in;}
+inline In& operator>>(In& in, unsigned short& value)
+{
+  in.inUShort(value);
+  return in;
+}
 
 /**
  * Operator that reads an int from a stream.
@@ -487,15 +630,71 @@ inline In& operator>>(In& in, unsigned short& value) {in.inUShort(value); return
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, int& value) {in.inInt(value); return in;}
+inline In& operator>>(In& in, int& value)
+{
+  in.inInt(value);
+  return in;
+}
 
+#if INT64_MAX == LONG_MAX
 /**
- * Operator that reads an uint64_t from a stream.
+ * Operator that reads a long from a stream. It is only available on platforms
+ * that use 8 byte for a long, otherwise this would break streaming to such a platform.
  * @param in The stream from which is read.
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, uint64_t& value) {in.inUInt64(value); return in;}
+inline In& operator>>(In& in, long& value)
+{
+  in.inInt64((int64_t&)value);
+  return in;
+}
+#endif
+
+#if UINT64_MAX == ULONG_MAX
+/**
+ * Operator that reads an unsigned long from a stream. It is only available on platforms
+ * that use 8 byte for a long, otherwise this would break streaming to such a platform.
+ * @param in The stream from which is read.
+ * @param value The value that is read.
+ * @return The stream.
+ */
+inline In& operator>>(In& in, unsigned long& value)
+{
+  in.inUInt64((uint64_t&)value);
+  return in;
+}
+#endif
+
+#if INT64_MAX == LLONG_MAX
+/**
+ * Operator that reads a long long from a stream. It is only available on platforms
+ * that use 8 byte for a long, otherwise this would break streaming to such a platform.
+ * @param in The stream from which is read.
+ * @param value The value that is read.
+ * @return The stream.
+ */
+inline In& operator>>(In& in, long long& value)
+{
+  in.inInt64((int64_t&)value);
+  return in;
+}
+#endif
+
+#if UINT64_MAX == ULLONG_MAX
+/**
+ * Operator that reads an unsigned long long from a stream. It is only available on platforms
+* that use 8 byte for a long, otherwise this would break streaming to such a platform.
+ * @param in The stream from which is read.
+ * @param value The value that is read.
+ * @return The stream.
+ */
+inline In& operator>>(In& in, unsigned long long& value)
+{
+  in.inUInt64((uint64_t&)value);
+  return in;
+}
+#endif
 
 /**
 * Operator that reads an unsigned int a stream.
@@ -503,7 +702,11 @@ inline In& operator>>(In& in, uint64_t& value) {in.inUInt64(value); return in;}
 * @param value The value that is read.
 * @return The stream.
 */
-inline In& operator>>(In& in, unsigned int& value) { in.inUInt(value); return in; }
+inline In& operator>>(In& in, unsigned int& value)
+{
+  in.inUInt(value);
+  return in;
+}
 
 /**
  * Operator that reads a float from a stream.
@@ -511,7 +714,11 @@ inline In& operator>>(In& in, unsigned int& value) { in.inUInt(value); return in
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, float& value) {in.inFloat(value); return in;}
+inline In& operator>>(In& in, float& value)
+{
+  in.inFloat(value);
+  return in;
+}
 
 /**
  * Operator that reads a double from a stream.
@@ -519,7 +726,11 @@ inline In& operator>>(In& in, float& value) {in.inFloat(value); return in;}
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, double& value) {in.inDouble(value); return in;}
+inline In& operator>>(In& in, double& value)
+{
+  in.inDouble(value);
+  return in;
+}
 
 /**
  * Operator that reads a string from a stream.
@@ -527,7 +738,11 @@ inline In& operator>>(In& in, double& value) {in.inDouble(value); return in;}
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, std::string& value) {in.inString(value); return in;}
+inline In& operator>>(In& in, std::string& value)
+{
+  in.inString(value);
+  return in;
+}
 
 /**
  * Operator that reads an Angle from a stream.
@@ -535,7 +750,11 @@ inline In& operator>>(In& in, std::string& value) {in.inString(value); return in
  * @param value The value that is read.
  * @return The stream.
  */
-inline In& operator>>(In& in, Angle& value) {in.inAngle(value); return in;}
+inline In& operator>>(In& in, Angle& value)
+{
+  in.inAngle(value);
+  return in;
+}
 
 /**
  * Operator that reads the endl-symbol from a stream.
@@ -543,7 +762,10 @@ inline In& operator>>(In& in, Angle& value) {in.inAngle(value); return in;}
  * @param f A function that is normally endl.
  * @return The stream.
  */
-inline In& operator>>(In& in, In& (*f)(In&)) {return f(in);}
+inline In& operator>>(In& in, In& (*f)(In&))
+{
+  return f(in);
+}
 
 /**
  * This function can be read from a stream to represent an end of line.
@@ -559,8 +781,14 @@ namespace EnumHelpers
    * operators by versions that will never be called. They aren't even
    * implemented.
    */
-  class Out2 : public ::Out {template<class T> Out& operator<<(const int&);};
-  class In2 : public ::In {template<class T> In& operator>>(int&);};
+  class Out2 : public ::Out
+  {
+    template <class T> Out& operator<<(const int&);
+  };
+  class In2 : public ::In
+  {
+    template <class T> In& operator>>(int&);
+  };
 
   /**
    * @class EnumOrClass
@@ -575,11 +803,11 @@ namespace EnumHelpers
    * @tparam T The type of the value to stream.
    * @tparam isEnum Is T an enum type? For this version, this is always false.
    */
-  template<class T, bool isEnum> struct EnumOrClass
+  template <class T, bool isEnum> struct EnumOrClass
   {
     // An error here usually means that you try to stream data that is not streamable
-    static Out& write(Out& out, const T& t) {return (Out2&)out << t;}
-    static In& read(In& in, T& t) {return (In2&)in >> t;}
+    static Out& write(Out& out, const T& t) { return (Out2&)out << t; }
+    static In& read(In& in, T& t) { return (In2&)in >> t; }
   };
 
   /**
@@ -589,16 +817,13 @@ namespace EnumHelpers
    * streaming enums (as integers).
    * @tparam T The type of the value to stream.
    */
-  template<class T> struct EnumOrClass<T, true>
+  template <class T> struct EnumOrClass<T, true>
   {
-    static Out& write(Out& out, const T& t)
-    {
-      return sizeof(t) == 1 ? out << static_cast<unsigned char>(t) : out << static_cast<int>(t);
-    }
+    static Out& write(Out& out, const T& t) { return sizeof(t) == 1 ? out << static_cast<unsigned char>(t) : out << static_cast<int>(t); }
 
     static In& read(In& in, T& t)
     {
-      if(sizeof(t) == 1)
+      if (sizeof(t) == 1)
       {
         unsigned char c = static_cast<unsigned char>(t); // keep old value in case streaming does nothing
         in >> c;
@@ -613,7 +838,7 @@ namespace EnumHelpers
       return in;
     }
   };
-}
+} // namespace EnumHelpers
 
 namespace Streaming
 {

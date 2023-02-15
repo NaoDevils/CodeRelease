@@ -8,24 +8,68 @@
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Settings.h"
 #include "Platform/File.h"
+#include <sstream>
+#include <iomanip>
 
 MAKE_MODULE(KeyFrameEngine, motionControl)
 
+CycleLocal<KeyFrameEngine*> KeyFrameEngine::theInstance(nullptr);
+
+void KeyFrameMotion::KeyFrame::mirror()
+{
+  const auto leftArm = armsAngles.begin();
+  const auto rightArm = leftArm + armsAngles.size() / 2;
+  std::swap_ranges(leftArm, rightArm, rightArm);
+
+  const auto leftLeg = legsAngles.begin();
+  const auto rightLeg = leftLeg + legsAngles.size() / 2;
+  std::swap_ranges(leftLeg, rightLeg, rightLeg);
+
+  const auto leftArmStiffness = stiffnesses.begin() + Joints::Joint::firstLeftArmJoint;
+  const auto rightArmStiffness = stiffnesses.begin() + Joints::Joint::firstRightArmJoint;
+  const auto leftLegStiffness = stiffnesses.begin() + Joints::Joint::lHipYawPitch;
+  const auto rightLegStiffness = stiffnesses.begin() + Joints::Joint::rHipYawPitch;
+  std::swap_ranges(leftArmStiffness, rightArmStiffness, rightArmStiffness);
+  std::swap_ranges(leftLegStiffness, rightLegStiffness, rightLegStiffness);
+
+  const auto m = [](auto it)
+  {
+    auto& v = *it;
+    if (v != JointAngles::off && v != JointAngles::ignore)
+      v = -v;
+  };
+
+  m(headAngles.begin()); // head yaw
+
+  for (size_t i = 1; i <= 4; ++i) // lShoulderRoll, lElbowYaw, lElbowRoll, lWristYaw
+  {
+    m(leftArm + i);
+    m(rightArm + i);
+  }
+
+  m(leftLeg + 0); // hipYawPitch
+  m(rightLeg + 0); // hipYawPitch
+  m(leftLeg + 1); // hipRoll
+  m(rightLeg + 1); // hipRoll
+  m(leftLeg + 5); // ankleRoll
+  m(rightLeg + 5); // ankleRoll
+}
+
 KeyFrameEngine::KeyFrameEngine()
 {
-  
+  theInstance = this;
 }
 
 void KeyFrameEngine::init(SpecialActionsOutput& specialActionsOutput)
 {
   if (!initialized)
   {
-    loadKeyFrameMotions();
+    keyFrameMotions = loadKeyFrameMotions();
     initEngineData(specialActionsOutput);
   }
   // set to current joint angles and default stiffness
   // TODO: what if angles are illegal/undefined? can that even happen?
-  
+
 
   // only relevant on first frame, done bc we could start the framework with keyFrameEngine ratio == 1.f
   initialized = true;
@@ -34,7 +78,7 @@ void KeyFrameEngine::init(SpecialActionsOutput& specialActionsOutput)
 void KeyFrameEngine::initEngineData(SpecialActionsOutput& specialActionsOutput)
 {
   for (int i = 0; i < Joints::numOfJoints; i++)
-    specialActionsOutput.angles[i] = theJointAngles.angles[i];
+    specialActionsOutput.angles[i] = theJointSensorData.angles[i];
   specialActionsOutput.isLeavingPossible = true;
   specialActionsOutput.stiffnessData.stiffnesses = defaultStiffnesses;
   ASSERT(specialActionsOutput.isValid());
@@ -44,19 +88,24 @@ void KeyFrameEngine::initEngineData(SpecialActionsOutput& specialActionsOutput)
   phase = 0.f;
 
   // set originFrame to sensor values and default stiffness
+  originFrame = getKeyFrameFromJointRequest(specialActionsOutput);
   originFrame.stiffnesses = defaultStiffnesses;
-  std::copy(specialActionsOutput.angles.data() + 0, specialActionsOutput.angles.data() + Joints::firstArmJoint - 1, originFrame.headAngles);
-  std::copy(specialActionsOutput.angles.data() + Joints::firstArmJoint, specialActionsOutput.angles.data() + Joints::lHipYawPitch - 1, originFrame.armsAngles);
-  std::copy(specialActionsOutput.angles.data() + Joints::lHipYawPitch, specialActionsOutput.angles.data() + Joints::numOfJoints - 1, originFrame.legsAngles);
+
   // other members are already initialized with defaults
 
   // set correct ID
-  selectActiveMotion(theMotionSelection.specialActionRequest.specialAction, specialActionsOutput);
+  selectActiveMotion(theMotionSelection.specialActionRequest.specialAction, theMotionSelection.specialActionRequest.mirror, specialActionsOutput);
 
   // reset sensor control
   angleYBuffer.fill(0);
   gyroYBuffer.fill(0);
-  hipYawBuffer.fill(theJointAngles.angles[Joints::lHipYawPitch]);
+  gyroXBuffer.fill(0);
+  hipYawBuffer.fill(theJointSensorData.angles[Joints::lHipYawPitch]);
+  lAnkleRollBuffer.fill(theJointSensorData.angles[Joints::lAnkleRoll]);
+  rAnkleRollBuffer.fill(theJointSensorData.angles[Joints::rAnkleRoll]);
+  for (int i = 0; i < 5; i++)
+    for (int j = 0; j < Joints::numOfJoints; j++)
+      jointAngleBuffer[i].angles[j] = theJointSensorData.angles[j];
   engineDataReset = true;
 }
 
@@ -64,12 +113,48 @@ void KeyFrameEngine::update(SpecialActionsOutput& specialActionsOutput)
 {
   DECLARE_PLOT("module:KeyFrameEngine:hipYawPitchError");
 
-  DEBUG_RESPONSE_ONCE("loadKeyFrames") { loadKeyFrameMotions(); }
-  // update sensor buffers
-  angleYBuffer.push_front(useIMUModel ? theIMUModel.orientation.y() : theInertialSensorData.angle.y());
-  gyroYBuffer.push_front(theInertialSensorData.gyro.y());
-  hipYawBuffer.push_front(specialActionsOutput.angles[Joints::lHipYawPitch]);
+  MODIFY("module:KeyFrameEngine:debugMode", debugMode);
+  bool playNextFrameInDebugMode = false;
+  DEBUG_RESPONSE_ONCE("module:KeyFrameEngine:playNextFrame")
+  {
+    playNextFrameInDebugMode = true;
+  }
+  DEBUG_RESPONSE_ONCE("loadKeyFrames")
+  {
+    keyFrameMotions = loadKeyFrameMotions();
+  }
+  DEBUG_RESPONSE_ONCE("printKeyFrame")
+  {
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1);
+    ss << "headAngles = [" << theJointSensorData.angles[Joints::headYaw] << "deg," << theJointSensorData.angles[Joints::headPitch] << "deg];" << std::endl;
+    ss << "armsAngles = [" << toDegrees(theJointSensorData.angles[Joints::lShoulderPitch]) << "deg," << toDegrees(theJointSensorData.angles[Joints::lShoulderRoll]) << "deg,"
+       << toDegrees(theJointSensorData.angles[Joints::lElbowYaw]) << "deg," << toDegrees(theJointSensorData.angles[Joints::lElbowRoll]) << "deg,"
+       << "-90deg"
+       << "," //fixed value
+       << "0deg"
+       << ", " //fixed value
+       << toDegrees(theJointSensorData.angles[Joints::rShoulderPitch]) << "deg," << toDegrees(theJointSensorData.angles[Joints::rShoulderRoll]) << "deg,"
+       << toDegrees(theJointSensorData.angles[Joints::rElbowYaw]) << "deg," << toDegrees(theJointSensorData.angles[Joints::rElbowRoll]) << "deg,"
+       << "90deg"
+       << "," //fixed value
+       << "0deg" << //fixed value
+        "];" << std::endl;
+    ss << "legsAngles = [";
+    for (int i = Joints::lHipYawPitch; i <= Joints::rAnkleRoll; i++)
+      ss << ((i != Joints::rHipYawPitch) ? "" : " ") << toDegrees(theJointSensorData.angles[i]) << "deg" << ((i != Joints::rAnkleRoll) ? "," : "");
+    ss << "];";
 
+    OUTPUT_TEXT(ss.str());
+  }
+
+  // update sensor/request buffers
+  angleYBuffer.push_front(theJoinedIMUData.imuData[anglesource].angle.y());
+  gyroYBuffer.push_front(theJoinedIMUData.imuData[anglesource].gyro.y());
+  gyroXBuffer.push_front(theJoinedIMUData.imuData[anglesource].gyro.x());
+  hipYawBuffer.push_front(specialActionsOutput.angles[Joints::lHipYawPitch]);
+  lAnkleRollBuffer.push_front(specialActionsOutput.angles[Joints::lAnkleRoll]);
+  rAnkleRollBuffer.push_front(specialActionsOutput.angles[Joints::rAnkleRoll]);
   if (!initialized)
   {
     init(specialActionsOutput);
@@ -82,36 +167,41 @@ void KeyFrameEngine::update(SpecialActionsOutput& specialActionsOutput)
   else
   {
     if (theMotionRequest.motion != MotionRequest::specialAction
-      && (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::playDead))
+        && (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::playDead))
     {
-      selectActiveMotion(SpecialActionRequest::stand, specialActionsOutput);
+      initEngineData(specialActionsOutput);
+      selectActiveMotion(SpecialActionRequest::stand, false, specialActionsOutput);
       phase = 0.f;
     }
-    else
+    //else
     {
       specialActionsOutput.isLeavingPossible = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).leavingPossible;
       specialActionsOutput.isMotionStable = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID != SpecialActionRequest::playDead
-        && (specialActionsOutput.isLeavingPossible || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown) && isStable() && std::abs(angleYBuffer.average()) < 15_deg && std::abs(theInertialSensorData.angle.x()) < 15_deg;
+          && (specialActionsOutput.isLeavingPossible || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown
+              || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::penaltyGoaliePrepareDive)
+          && isStable() && std::abs(angleYBuffer.average()) < 15_deg && std::abs(theJoinedIMUData.imuData[anglesource].angle.x()) < 15_deg;
       //keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).leavingPossible&& phase == 1.f;
       specialActionsOutput.executedSpecialAction.specialAction = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID;
+      specialActionsOutput.executedSpecialAction.mirror = currentKeyFrameMirror;
 
-      if (specialActionsOutput.isLeavingPossible
-        && theMotionRequest.motion != MotionRequest::specialAction)
+      if (specialActionsOutput.isLeavingPossible && theMotionRequest.motion != MotionRequest::specialAction)
       {
         return;
       }
 
-      if (interpolate(specialActionsOutput)) // true if phase >= 1.f, i.e. single keyFrame was executed
+      // interpolate returns true if phase >= 1.f, i.e. single keyFrame was executed
+      if (interpolate(specialActionsOutput) && (!debugMode || playNextFrameInDebugMode) && waitForTorso())
       {
+        keyFrameFinishedTimestamp = theFrameInfo.time;
+
         // check if robots joints and upper body are ok after interpolation, otherwise cancel motion
         // TODO Ingmar 12.10.2019: verify if this actually works
         // TODO Janine 13.10.2019: it does not work
         if (!verifyRobotPosition(specialActionsOutput))
         {
-          selectActiveMotion(SpecialActionRequest::playDead, specialActionsOutput);
-          currentKeyFrameIndex = 0;
-          lastFinishedKeyFrameIndex = 0;
-          keyFrameFinishedTimestamp = theFrameInfo.time;
+          lastFinishedKeyFrameIndex = currentKeyFrameIndex;
+          lastFinishedKeyFrameMotionIndex = currentKeyFrameMotionIndex;
+          selectActiveMotion(SpecialActionRequest::playDead, false, specialActionsOutput);
           phase = 0.f;
           return;
         }
@@ -119,26 +209,22 @@ void KeyFrameEngine::update(SpecialActionsOutput& specialActionsOutput)
         {
           lastFinishedKeyFrameIndex = currentKeyFrameIndex;
           lastFinishedKeyFrameMotionIndex = currentKeyFrameMotionIndex;
-          keyFrameFinishedTimestamp = theFrameInfo.time;
         }
         if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).waitForStable
-          && theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) < maxWaitForStableTime
-          && !isStable())
+            && theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) < maxWaitForStableTime && !isStable())
           return;
-        // Set current frame as originFrame for possible transition to next motion! Only angles and stiffnesses needed.
-        originFrame.stiffnesses = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).stiffnesses;
-        memcpy(&originFrame.headAngles[0], &keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).headAngles[0], 2 * sizeof(float));
-        memcpy(&originFrame.armsAngles[0], &keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).armsAngles[0], 12 * sizeof(float));
-        memcpy(&originFrame.legsAngles[0], &keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).legsAngles[0], 12 * sizeof(float));
+
+        // Set current frame as originFrame for possible transition to next motion!
+        originFrame = getKeyFrameFromJointRequest(specialActionsOutput);
+
         phase = 0.f; // reset phase
         currentKeyFrameIndex++; // next keyFrame
         // check if we are finished with the motion. if yes we can leave or run the next or repeat the last output forever
         if (currentKeyFrameIndex >= static_cast<int>(keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.size()))
         {
-          if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID != theMotionSelection.specialActionRequest.specialAction
-            && theMotionSelection.targetMotion == MotionRequest::specialAction) // next motion is selected
+          if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID != theMotionSelection.specialActionRequest.specialAction && theMotionSelection.targetMotion == MotionRequest::specialAction) // next motion is selected
           {
-            selectActiveMotion(theMotionSelection.specialActionRequest.specialAction, specialActionsOutput);
+            selectActiveMotion(theMotionSelection.specialActionRequest.specialAction, theMotionSelection.specialActionRequest.mirror, specialActionsOutput);
           }
           else // same motion, repeat the finished interpolate with phase = 1.f
           {
@@ -146,127 +232,221 @@ void KeyFrameEngine::update(SpecialActionsOutput& specialActionsOutput)
             phase = 1.f;
           }
         }
-        else
-        {
-          KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
-          //KeyFrameMotion::KeyFrame& currentKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex);
-          const KeyFrameMotion::KeyFrame& lastKeyFrameRef = (currentKeyFrameIndex == 0) ?
-            originFrame : currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex - 1);
-          KeyFrameMotion::KeyFrame lastKeyFrame = setKeyFrameAngles(lastKeyFrameRef);
-        }
       }
       stabilize(specialActionsOutput);
+      compensateHipYawPitchError(specialActionsOutput, keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).hipYawErrorCompensation);
     }
     engineDataReset = false;
   }
+
+  currentJointAngleID++;
+  currentJointAngleID = currentJointAngleID % 5;
+  for (int j = 0; j < Joints::numOfJoints; j++)
+    jointAngleBuffer[currentJointAngleID].angles[j] = specialActionsOutput.angles[j];
+}
+
+bool KeyFrameEngine::waitForTorso()
+{
+  KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
+  KeyFrameMotion::KeyFrame& currentKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex);
+  Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.y();
+  if (keyFrameWasFinished)
+  {
+    keyFrameFinishedTimestamp = theFrameInfo.time;
+    keyFrameWasFinished = false;
+  }
+  return currentKeyFrame.waitForTorsoTime <= theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) || std::abs(currentAngle) <= std::abs(currentKeyFrame.angleAtKeyFrameTarget);
 }
 
 bool KeyFrameEngine::interpolate(SpecialActionsOutput& specialActionsOutput)
 {
+  JointRequest currentRequest = specialActionsOutput;
+  // do not run this method if interpolation is already finished;
+  if (phase == 1.f)
+    return true;
   KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
-  KeyFrameMotion::KeyFrame& currentKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex);
+  KeyFrameMotion::KeyFrame currentKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex);
+  if (currentKeyFrameMirror)
+    currentKeyFrame.mirror();
+
   if (phase == 0.f)
   {
-    const KeyFrameMotion::KeyFrame& lastKeyFrameRef = (currentKeyFrameIndex == 0) ?
-      originFrame : currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex - 1);
-    lastKeyFrame = setKeyFrameAngles(lastKeyFrameRef);
+    keyFrameWasFinished = false;
+    if (currentKeyFrameIndex == 0)
+    {
+      lastKeyFrame = originFrame;
+    }
+    else
+    {
+      lastKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex - 1);
+      if (currentKeyFrameMirror)
+        lastKeyFrame.mirror();
+    }
+    lastKeyFrame = setKeyFrameAngles(lastKeyFrame);
   }
-  phase += (1000.f/ currentKeyFrame.duration) * theFrameInfo.cycleTime;
+  phase += (1000.f / currentKeyFrame.duration) * theFrameInfo.cycleTime;
   phase = std::min(1.f, phase);
+  // interpolation type linear or sine for now
   float ratio = (currentKeyFrame.intType == KeyFrameMotion::KeyFrame::KeyFrameInterpolationType::linear) ? phase : (std::cos(phase * pi) - 1.f) / -2.f;
   for (int i = 0; i < Joints::firstArmJoint; i++)
   {
     if (currentKeyFrame.headAngles[i] == JointAngles::off)
-      specialActionsOutput.angles[i] = theJointAngles.angles[i];
+      currentRequest.angles[i] = theJointSensorData.angles[i];
     else if (currentKeyFrame.headAngles[i] == JointAngles::ignore)
-      specialActionsOutput.angles[i] = JointAngles::ignore;
+      currentRequest.angles[i] = JointAngles::ignore;
     else
-      specialActionsOutput.angles[i] = currentKeyFrame.headAngles[i] * ratio + lastKeyFrame.headAngles[i] * (1.f - ratio);
+      currentRequest.angles[i] = currentKeyFrame.headAngles[i] * ratio + lastKeyFrame.headAngles[i] * (1.f - ratio);
   }
   for (int i = Joints::firstArmJoint; i < Joints::lHipYawPitch; i++)
   {
     if (currentKeyFrame.armsAngles[i - Joints::firstArmJoint] == JointAngles::off)
-      specialActionsOutput.angles[i] = theJointAngles.angles[i];
+      currentRequest.angles[i] = theJointSensorData.angles[i];
     else if (currentKeyFrame.armsAngles[i - Joints::firstArmJoint] == JointAngles::ignore)
-      specialActionsOutput.angles[i] = JointAngles::ignore;
+      currentRequest.angles[i] = JointAngles::ignore;
     else
-      specialActionsOutput.angles[i] = currentKeyFrame.armsAngles[i - Joints::firstArmJoint] * ratio + lastKeyFrame.armsAngles[i - Joints::firstArmJoint] * (1.f - ratio);
+      currentRequest.angles[i] = currentKeyFrame.armsAngles[i - Joints::firstArmJoint] * ratio + lastKeyFrame.armsAngles[i - Joints::firstArmJoint] * (1.f - ratio);
   }
   for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
   {
     if (currentKeyFrame.legsAngles[i - Joints::lHipYawPitch] == JointAngles::off)
-      specialActionsOutput.angles[i] = theJointAngles.angles[i];
+      currentRequest.angles[i] = theJointSensorData.angles[i];
     else if (currentKeyFrame.legsAngles[i - Joints::lHipYawPitch] == JointAngles::ignore)
-      specialActionsOutput.angles[i] = JointAngles::ignore;
+      currentRequest.angles[i] = JointAngles::ignore;
     else
-      specialActionsOutput.angles[i] = currentKeyFrame.legsAngles[i - Joints::lHipYawPitch] * ratio + lastKeyFrame.legsAngles[i - Joints::lHipYawPitch] * (1.f - ratio);
+      currentRequest.angles[i] = currentKeyFrame.legsAngles[i - Joints::lHipYawPitch] * ratio + lastKeyFrame.legsAngles[i - Joints::lHipYawPitch] * (1.f - ratio);
   }
-  for (int i = 0; i < Joints::numOfJoints; i++)
+
+  // do not use playDead stiffnesses when transitioning to another motion
+  if (currentKeyFrameMotion.keyFrameID != SpecialActionRequest::SpecialActionID::playDead || theMotionSelection.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::playDead)
   {
-    if (currentKeyFrame.stiffnesses[i] > 0 && currentKeyFrame.stiffnesses[i] <= 100)
-      specialActionsOutput.stiffnessData.stiffnesses[i] =
-      std::min(specialActionsOutput.stiffnessData.stiffnesses[i] + 10, std::max(specialActionsOutput.stiffnessData.stiffnesses[i] - 10, currentKeyFrame.stiffnesses[i]));
-    else
-      specialActionsOutput.stiffnessData.stiffnesses[i] = currentKeyFrame.stiffnesses[i];
+    for (int i = 0; i < Joints::numOfJoints; i++)
+    {
+      if (currentKeyFrame.stiffnesses[i] > 0 && currentKeyFrame.stiffnesses[i] <= 100)
+        currentRequest.stiffnessData.stiffnesses[i] =
+            std::min(currentRequest.stiffnessData.stiffnesses[i] + 10, std::max(specialActionsOutput.stiffnessData.stiffnesses[i] - 10, currentKeyFrame.stiffnesses[i]));
+      else
+        currentRequest.stiffnessData.stiffnesses[i] = currentKeyFrame.stiffnesses[i];
+    }
   }
+
+  specialActionsOutput.angles = currentRequest.angles;
+  specialActionsOutput.stiffnessData = currentRequest.stiffnessData;
+
+  // check if interpolation is done
+  if (phase >= 1.f)
+    keyFrameWasFinished = true;
   return phase >= 1.f;
 }
 
 void KeyFrameEngine::stabilize(SpecialActionsOutput& specialActionsOutput)
 {
-  static Angle lastError = 0;
-  static Angle errorSum = 0;
-  static unsigned int lastKeyFrameFinishedTimestamp = 0;
-  
+  static Angle lastErrorY = 0;
+  static Angle errorSumY = 0;
+  static Angle lastErrorX = 0;
+  static Angle errorSumX = 0;
+
+  Rangef angleErrorLimit(-5_deg, 5_deg);
+
   KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
   KeyFrameMotion::KeyFrame& currentKeyFrame = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex);
 
-  if (!currentKeyFrame.stabilize || lastKeyFrameFinishedTimestamp != keyFrameFinishedTimestamp)
+  if (!currentKeyFrame.stabilize)
   {
-    lastError = 0;
-    errorSum = 0;
+    lastErrorY = 0;
+    errorSumY = 0;
+    lastErrorX = 0;
+    errorSumX = 0;
     return;
   }
 
-  
+  // set desired stance with joint request data from <sensorDelay> frames ago
+  // newest data is not set yet, so use current request if sensorDelay == 0
+  ASSERT(theWalkingEngineParams.jointSensorDelayFrames <= MAX_DELAY_FRAMES);
+  RobotModel desiredStance;
+  if (theWalkingEngineParams.jointSensorDelayFrames == 0)
+    desiredStance.setJointData((JointAngles&)specialActionsOutput, theRobotDimensions, theMassCalibration);
+  else
+    desiredStance.setJointData(jointAngleBuffer[(currentJointAngleID + 5 - (theWalkingEngineParams.jointSensorDelayFrames - 1)) % 5], theRobotDimensions, theMassCalibration);
+
+  // get desired gyro with request data from <sensorDelay - 1> frames ago
+  RobotModel lastDesiredStance;
+  lastDesiredStance.setJointData(jointAngleBuffer[(currentJointAngleID + 5 - (theWalkingEngineParams.jointSensorDelayFrames - 2)) % 5], theRobotDimensions, theMassCalibration);
+  Angle desiredGyroY = desiredStance.limbs[Limbs::torso].rotation.getYAngle() - lastDesiredStance.limbs[Limbs::torso].rotation.getYAngle();
+
+  //Y - using body angle and desired gyro for stabilization
   {
-    Angle currentAngle = useIMUModel ? theIMUModel.orientation.y() : theInertialSensorData.angle.y();
-    Angle error = currentKeyFrame.angleAtKeyFrameTarget - currentAngle;
-    Angle controlledCorrection = currentKeyFrameMotion.stabilizationP * error + currentKeyFrameMotion.stabilizationI * errorSum + currentKeyFrameMotion.stabilizationD * (lastError - error);
+    Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.y();
+    Angle error = (1 - gyroToAngleRatio) * (desiredStance.limbs[Limbs::torso].rotation.getYAngle() - currentAngle) + gyroToAngleRatio * (desiredGyroY - gyroYBuffer.average());
+    if (error > maxAngleDifference)
+      error = maxAngleDifference;
+    if (error < -maxAngleDifference)
+      error = -maxAngleDifference;
+    Angle controlledCorrection = currentKeyFrameMotion.YstabilizationP * error + currentKeyFrameMotion.YstabilizationI * errorSumY + currentKeyFrameMotion.YstabilizationD * (lastErrorY - error);
 
-    Angle anklePitchCorrection = specialActionsOutput.angles[Joints::lAnklePitch] + ankleInfluence * controlledCorrection;
-    
-    if (currentKeyFrame.useAngleAtKeyFrameTarget && std::abs(error) > 15_deg)
+    // TODO: verify if this makes sense
+    Angle anklePitchCorrected = specialActionsOutput.angles[Joints::lAnklePitch] - ankleInfluence * controlledCorrection;
+    if (anklePitchCorrected > minAnklePitchAngle)
     {
-      abortMotion = true;
-    }
-    else
-    {
-      specialActionsOutput.angles[Joints::lHipPitch] += hipInfluence * controlledCorrection;
-      specialActionsOutput.angles[Joints::rHipPitch] += hipInfluence * controlledCorrection;
+      specialActionsOutput.angles[Joints::lHipPitch] -= hipInfluence * controlledCorrection;
+      specialActionsOutput.angles[Joints::rHipPitch] -= hipInfluence * controlledCorrection;
 
-      specialActionsOutput.angles[Joints::lAnklePitch] += (anklePitchCorrection > minAnklePitchAngle) ? ankleInfluence * controlledCorrection : 0.f;
-      specialActionsOutput.angles[Joints::rAnklePitch] += (anklePitchCorrection > minAnklePitchAngle) ? ankleInfluence * controlledCorrection : 0.f;
+      specialActionsOutput.angles[Joints::lKneePitch] += kneeInfluence * controlledCorrection;
+      specialActionsOutput.angles[Joints::rKneePitch] += kneeInfluence * controlledCorrection;
+
+      specialActionsOutput.angles[Joints::lAnklePitch] = anklePitchCorrected;
+      specialActionsOutput.angles[Joints::rAnklePitch] -= ankleInfluence * controlledCorrection;
     }
 
-    lastError = error;
-    errorSum += error;
+    lastErrorY = error;
+    errorSumY += error;
+    errorSumY = angleErrorLimit.limit(errorSumY);
   }
 
-
-  if (useHipYawCorrection 
-    && specialActionsOutput.angles[Joints::lHipYawPitch] <= theJointCalibration.joints[Joints::lHipYawPitch].maxAngle
-    && specialActionsOutput.angles[Joints::lHipYawPitch] >= theJointCalibration.joints[Joints::lHipYawPitch].minAngle)
+  //X - using gyro and angle here for immediate stabilization
   {
-    Angle hipYawError = hipYawBuffer[4] - theJointAngles.angles[Joints::lHipYawPitch];
+    Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.x();
+    float footZDiff = theRobotModel.soleLeft.translation.z() - theRobotModel.soleRight.translation.z();
+
+    Angle desiredAngle = footZDiff > 0 ? desiredStance.limbs[Limbs::footLeft].rotation.getXAngle() : desiredStance.limbs[Limbs::footRight].rotation.getXAngle();
+    Angle error = (1.f - gyroToAngleRatio) * (currentAngle - desiredAngle) + gyroToAngleRatio * gyroXBuffer.average();
+    if (error > maxAngleDifference)
+      error = maxAngleDifference;
+    if (error < -maxAngleDifference)
+      error = -maxAngleDifference;
+    Angle controlledCorrection = currentKeyFrameMotion.XstabilizationP * error + currentKeyFrameMotion.XstabilizationI * errorSumX + currentKeyFrameMotion.XstabilizationD * (lastErrorX - error);
+    if (footZDiff < 5.f)
+    {
+      specialActionsOutput.angles[Joints::lAnkleRoll] += ankleRollInfluence * controlledCorrection;
+      Angle ankleRollError = lAnkleRollBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1] - specialActionsOutput.angles[Joints::lAnkleRoll];
+      specialActionsOutput.angles[Joints::lHipRoll] += hipRollInfluence * controlledCorrection + ankleRollError;
+    }
+    if (footZDiff > -5.f)
+    {
+      specialActionsOutput.angles[Joints::rAnkleRoll] += ankleRollInfluence * controlledCorrection;
+      Angle ankleRollError = rAnkleRollBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1] - specialActionsOutput.angles[Joints::rAnkleRoll];
+      specialActionsOutput.angles[Joints::rHipRoll] += hipRollInfluence * controlledCorrection + ankleRollError;
+    }
+
+    lastErrorX = error;
+    errorSumX += error;
+    errorSumX = angleErrorLimit.limit(errorSumX);
+  }
+}
+
+void KeyFrameEngine::compensateHipYawPitchError(SpecialActionsOutput& specialActionsOutput, const float factor)
+{
+  if (useHipYawCorrection && specialActionsOutput.angles[Joints::lHipYawPitch] <= theJointCalibration.joints[Joints::lHipYawPitch].maxAngle
+      && specialActionsOutput.angles[Joints::lHipYawPitch] >= theJointCalibration.joints[Joints::lHipYawPitch].minAngle)
+  {
+    Angle hipYawError = hipYawBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1] - theJointSensorData.angles[Joints::lHipYawPitch];
     specialActionsOutput.angles[Joints::lHipPitch] = std::max(
-      std::min<Angle>(theJointCalibration.joints[Joints::lHipPitch].maxAngle, specialActionsOutput.angles[Joints::lHipPitch] + hipYawError), 
+        std::min<Angle>(theJointCalibration.joints[Joints::lHipPitch].maxAngle, specialActionsOutput.angles[Joints::lHipPitch] + hipYawError * factor),
         theJointCalibration.joints[Joints::lHipPitch].minAngle);
     specialActionsOutput.angles[Joints::rHipPitch] = std::max(
-      std::min<Angle>(theJointCalibration.joints[Joints::rHipPitch].maxAngle, specialActionsOutput.angles[Joints::rHipPitch] + hipYawError),
-      theJointCalibration.joints[Joints::rHipPitch].minAngle);
+        std::min<Angle>(theJointCalibration.joints[Joints::rHipPitch].maxAngle, specialActionsOutput.angles[Joints::rHipPitch] + hipYawError * factor),
+        theJointCalibration.joints[Joints::rHipPitch].minAngle);
   }
-  PLOT("module:KeyFrameEngine:hipYawPitchError", hipYawBuffer[4] - theJointAngles.angles[Joints::lHipYawPitch]);
+  PLOT("module:KeyFrameEngine:hipYawPitchError", hipYawBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1] - theJointSensorData.angles[Joints::lHipYawPitch]);
 }
 
 bool KeyFrameEngine::isStable()
@@ -274,9 +454,9 @@ bool KeyFrameEngine::isStable()
   return std::abs(gyroYBuffer.average()) < maxAvgGyroForStable;
 }
 
-void KeyFrameEngine::loadKeyFrameMotions()
+std::vector<KeyFrameMotion> KeyFrameEngine::loadKeyFrameMotions()
 {
-  keyFrameMotions.clear();
+  std::vector<KeyFrameMotion> keyFrameMotions;
   for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
   {
     std::string name = SpecialActionRequest::getName((SpecialActionRequest::SpecialActionID)i);
@@ -286,16 +466,19 @@ void KeyFrameEngine::loadKeyFrameMotions()
     {
       KeyFrameMotion kfm;
       stream >> kfm;
-      keyFrameMotions.push_back(kfm);
+      // Forces correct keyFrameID. Otherwise, e.g., malformed files are set to playDead by default.
+      kfm.keyFrameID = static_cast<SpecialActionRequest::SpecialActionID>(i);
+      keyFrameMotions.push_back(std::move(kfm));
     }
     else
     {
       OUTPUT_WARNING("KeyFrameEngine: missing ID " << name << " on load");
     }
   }
+  return keyFrameMotions;
 }
 
-void KeyFrameEngine::selectActiveMotion(SpecialActionRequest::SpecialActionID id, SpecialActionsOutput& specialActionsOutput)
+void KeyFrameEngine::selectActiveMotion(SpecialActionRequest::SpecialActionID id, bool mirror, SpecialActionsOutput& specialActionsOutput)
 {
   const SpecialActionRequest::SpecialActionID defaultMotion = SpecialActionRequest::playDead;
   bool foundMotion = false;
@@ -310,8 +493,10 @@ void KeyFrameEngine::selectActiveMotion(SpecialActionRequest::SpecialActionID id
   else if (id == defaultMotion)
     specialActionsOutput.executedSpecialAction.specialAction = keyFrameMotions.at(0).keyFrameID; // we should at least have one motion loaded..
   else
-    selectActiveMotion(defaultMotion, specialActionsOutput);
+    selectActiveMotion(defaultMotion, mirror, specialActionsOutput);
+  specialActionsOutput.executedSpecialAction.mirror = mirror;
   currentKeyFrameIndex = 0;
+  currentKeyFrameMirror = mirror;
 }
 
 KeyFrameMotion::KeyFrame KeyFrameEngine::setKeyFrameAngles(const KeyFrameMotion::KeyFrame& keyFrame)
@@ -319,17 +504,17 @@ KeyFrameMotion::KeyFrame KeyFrameEngine::setKeyFrameAngles(const KeyFrameMotion:
   KeyFrameMotion::KeyFrame result;
   for (int i = 0; i < 2; i++)
     if (keyFrame.headAngles[i] == JointAngles::off || keyFrame.headAngles[i] == JointAngles::ignore)
-      result.headAngles[i] = theJointAngles.angles[i];
+      result.headAngles[i] = theJointSensorData.angles[i];
     else
       result.headAngles[i] = keyFrame.headAngles[i];
   for (int i = 0; i < 12; i++)
     if (keyFrame.armsAngles[i] == JointAngles::off || keyFrame.armsAngles[i] == JointAngles::ignore)
-      result.armsAngles[i] = theJointAngles.angles[i + 2];
+      result.armsAngles[i] = theJointSensorData.angles[i + 2];
     else
       result.armsAngles[i] = keyFrame.armsAngles[i];
   for (int i = 0; i < 12; i++)
     if (keyFrame.legsAngles[i] == JointAngles::off || keyFrame.legsAngles[i] == JointAngles::ignore)
-      result.legsAngles[i] = theJointAngles.angles[i + 14];
+      result.legsAngles[i] = theJointSensorData.angles[i + 14];
     else
       result.legsAngles[i] = keyFrame.legsAngles[i];
   return result;
@@ -337,19 +522,57 @@ KeyFrameMotion::KeyFrame KeyFrameEngine::setKeyFrameAngles(const KeyFrameMotion:
 
 bool KeyFrameEngine::verifyRobotPosition(SpecialActionsOutput& specialActionsOutput)
 {
+  //KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
+  KeyFrameMotion::KeyFrame& currentKeyFrame = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex);
+
+  Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.y();
   // check if sensor y angle of upper body is too different from intended angle for this key frame
-  /*
+
   if (currentKeyFrame.useAngleAtKeyFrameTarget && std::abs(currentAngle - currentKeyFrame.angleAtKeyFrameTarget) > maxAngleDifference)
   {
     return false;
-  }*/
+  }
   Angle maxArmAngleDiff = 0_deg;
   Angle maxLegAngleDiff = 0_deg;
   for (int i = Joints::firstArmJoint; i < Joints::lHipYawPitch; i++)
-    maxArmAngleDiff = std::max<Angle>(maxArmAngleDiff, std::abs(specialActionsOutput.angles[i] - theJointAngles.angles[i]));
+    maxArmAngleDiff = std::max<Angle>(maxArmAngleDiff, std::abs(specialActionsOutput.angles[i] - theJointSensorData.angles[i]));
   for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
-    maxLegAngleDiff = std::max<Angle>(maxLegAngleDiff, std::abs(specialActionsOutput.angles[i] - theJointAngles.angles[i]));
+    maxLegAngleDiff = std::max<Angle>(maxLegAngleDiff, std::abs(specialActionsOutput.angles[i] - theJointSensorData.angles[i]));
   //if (maxArmAngleDiff > 30_deg || maxLegAngleDiff > 30_deg) // arm or leg might have started in wrong/strange position so that key frame was not reachable
   //  return false;
   return true;
+}
+
+KeyFrameMotion::KeyFrame KeyFrameEngine::getKeyFrameFromJointRequest(const JointRequest& jointRequest)
+{
+  KeyFrameMotion::KeyFrame kf;
+
+  kf.stiffnesses = jointRequest.stiffnessData.stiffnesses;
+  for (int i = 0; i < Joints::numOfJoints; i++)
+  {
+    if (i < Joints::firstArmJoint)
+      kf.headAngles[i] = jointRequest.angles[i];
+    else if (i < Joints::lHipYawPitch)
+      kf.armsAngles[i - Joints::firstArmJoint] = jointRequest.angles[i];
+    else
+      kf.legsAngles[i - Joints::lHipYawPitch] = jointRequest.angles[i];
+  }
+
+  return kf;
+}
+
+bool KeyFrameEngine::handleMessage(InMessage& message)
+{
+  return *theInstance && (*theInstance)->handleMessage2(message);
+}
+
+bool KeyFrameEngine::handleMessage2(InMessage& message)
+{
+  if (message.getMessageID() == idKeyFrameMotions)
+  {
+    STREAM_EXT(message.bin, keyFrameMotions);
+    return true;
+  }
+  else
+    return false;
 }

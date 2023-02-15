@@ -44,8 +44,12 @@ public:
   void updateEditorView();
   void fillModelWithPhaseData(int i);
   void updateCommon();
-  void updateGL() {glWidget->update();}
-  void update() {QWidget::update(); glWidget->update();}
+  void updateGL() { glWidget->update(); }
+  void update()
+  {
+    QWidget::update();
+    glWidget->update();
+  }
 
 private slots:
   //Buttons
@@ -65,7 +69,8 @@ private slots:
   void playMotionTilActive();
   void resetRobot();
   void standRobot();
-  void setMirrored(int state);;
+  void setMirrored(int state);
+  ;
   void recordPose();
   void setStiffness(int limb);
   //Sliders
@@ -84,18 +89,17 @@ private:
   KickViewGLWidget* glWidget;
 
   //TreeView, StandardModel and Editor
-  QList <QStandardItem*> makeStringAndValueRow(QString string, QVariant value);
-  void addStringAndValueToList(QList <QStandardItem*> &list, QString string, QVariant value);
+  QList<QStandardItem*> makeStringAndValueRow(QString string, QVariant value);
+  void addStringAndValueToList(QList<QStandardItem*>& list, QString string, QVariant value);
   QStandardItemModel* makeNewModelWithLabels();
 
 private:
-
   bool deleteKids(QStandardItem* rootItem);
   void addControlPoints(QStandardItem* item);
   void makeNewPhaseWithModelAndTree(const int& phaseNumber);
   QStandardItem* makeLabel(QString string);
   QStandardItem* makeValue(QVariant var);
-  QList <QStandardItem*> addXYZLabel(QStandardItem* item);
+  QList<QStandardItem*> addXYZLabel(QStandardItem* item);
   void playMotion(int phase);
 
   KickView& kickView;
@@ -110,28 +114,21 @@ private:
   std::vector<QTreeView*> treeView; //TreeView for the PhaseParameters
   QStandardItemModel* modelCommon; //Model for the Common Parameters
   std::vector<QStandardItemModel*> phaseTab; //Model for the PhaseParameters
-  QPushButton* addPhase, //add one phase after the actual phase
-               * deletePhase; //delete actual phase
-  QAction* lftra,
-           * rftra,
-           * lfrot,
-           * rfrot,
-           * lhtra,
-           * rhtra,
-           * lhrot,
-           * rhrot;
+  QPushButton *addPhase, //add one phase after the actual phase
+      *deletePhase; //delete actual phase
+  QAction *lftra, *rftra, *lfrot, *rfrot, *lhtra, *rhtra, *lhrot, *rhrot;
   QString fileName; //the actual fileName
   KickEngineParameters& parameters; //the actual Parameters
 
   //Drawings and openGl
   bool phaseDrawings, //show phaseDrawings
-       singleDraw, //show only the drawings of the actual Phase
-       reachedDraw,
-       tra2dWindows, //show 2D-View of phaseDrawings for actual Phase and Limb
-       tra1dWindows, //show 1D-View of phaseDrawings for actual Phase and Limb
-       velocityWindows,//show one curves velocity
-       accelWindows, //show one curves acceleration
-       followMode;
+      singleDraw, //show only the drawings of the actual Phase
+      reachedDraw,
+      tra2dWindows, //show 2D-View of phaseDrawings for actual Phase and Limb
+      tra1dWindows, //show 1D-View of phaseDrawings for actual Phase and Limb
+      velocityWindows, //show one curves velocity
+      accelWindows, //show one curves acceleration
+      followMode;
   Vector3f dragPlane = Vector3f::Zero(); //plane for the 3D View where a selected point is moved
   Selected selectedPoint; //Infos about the actual selected Point
 
@@ -145,6 +142,7 @@ private:
   //Contextmenu
   KickMenuBar* kickMenuBar; //the contextMenubar
   QSignalMapper dragPlaneMapper, softenMapper;
+
 public:
   bool mirror;
 

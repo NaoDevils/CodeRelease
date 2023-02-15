@@ -6,7 +6,6 @@
 #include "Tools/Range.h"
 
 STREAMABLE(Pose2f,
-{
   Pose2f() = default;
   Pose2f(const Pose2f& other) = default;
   Pose2f(const float x, const float y);
@@ -87,33 +86,26 @@ STREAMABLE(Pose2f,
   static Pose2f random(const Rangef& angle, const Rangef& x, const Rangef& y),
 
   (Angle)(0) rotation,
-  (Vector2f)(Vector2f::Zero()) translation,
-});
+  (Vector2f)(Vector2f::Zero()) translation
+);
 
-inline Pose2f::Pose2f(const float x, const float y) :
-  translation(x, y)
-{}
+inline Pose2f::Pose2f(const float x, const float y) : translation(x, y) {}
 
-inline Pose2f::Pose2f(const Vector2f& translation) :
-  translation(translation)
-{}
+inline Pose2f::Pose2f(const Vector2f& translation) : translation(translation) {}
 
-inline Pose2f::Pose2f(const Angle rotation) :
-  rotation(rotation)
-{}
+inline Pose2f::Pose2f(const Angle rotation) : rotation(rotation) {}
 
-inline Pose2f::Pose2f(const Angle rotation, const Vector2f& translation) :
-  rotation(rotation), translation(translation)
-{}
+inline Pose2f::Pose2f(const Angle rotation, const Vector2f& translation) : rotation(rotation), translation(translation) {}
 
-inline Pose2f::Pose2f(const Angle rotation, const float x, const float y) :
-  rotation(rotation), translation(x, y)
-{}
+inline Pose2f::Pose2f(const Angle rotation, const float x, const float y) : rotation(rotation), translation(x, y) {}
 
-inline Pose2f::Pose2f(const float rot, const float x, const float y) :
-  rotation(rot), translation(x, y)
-{}
+inline Pose2f::Pose2f(const float rot, const float x, const float y) : rotation(rot), translation(x, y) {}
 
+/**
+ * Use the vector to translate the pose. The translation happens on the Poses coordinate system, not the field coordinate system.
+ *
+ * For example: Left on the field is, for a Pose with an angle of 180 degrees, the right side.
+ */
 inline Vector2f Pose2f::operator*(const Vector2f& other) const
 {
   const float s = std::sin(rotation);
@@ -213,8 +205,5 @@ inline Pose2f Pose2f::dotMirror() const
 inline Pose2f Pose2f::random(const Rangef& angle, const Rangef& x, const Rangef& y)
 {
   // angle should even work in wrap around case!
-  return Pose2f(float(::randomFloat() * (angle.max - angle.min) + angle.min),
-                Vector2f(float(::randomFloat() * (x.max - x.min) + x.min),
-                         float(::randomFloat() * (y.max - y.min) + y.min))
-               );
+  return Pose2f(float(::randomFloat() * (angle.max - angle.min) + angle.min), Vector2f(float(::randomFloat() * (x.max - x.min) + x.min), float(::randomFloat() * (y.max - y.min) + y.min)));
 }

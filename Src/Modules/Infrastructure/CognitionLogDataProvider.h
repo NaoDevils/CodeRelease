@@ -10,6 +10,7 @@
 #include "Representations/BehaviorControl/ActivationGraph.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/BehaviorControl/PositioningSymbols.h"
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -44,70 +45,69 @@
 #include "Representations/Perception/ImageCoordinateSystem.h"
 #include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Sensing/GroundContactState.h"
-#include "Representations/Modeling/MocapBallModel.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Tools/Module/Module.h"
+#include "Tools/ProcessFramework/CycleLocal.h"
 
 #include <memory>
 
 MODULE(CognitionLogDataProvider,
-{,
-  REQUIRES(OwnTeamInfo),
   USES(CameraInfo),
   USES(CameraInfoUpper),
   USES(FrameInfo),
-  PROVIDES(ActivationGraph),
-  PROVIDES_WITHOUT_MODIFY(AudioData),
-  PROVIDES(BallModel),
-  PROVIDES(BallPercept),
-  PROVIDES(BallSymbols),
-  PROVIDES(BehaviorData),
-  PROVIDES(BodyContour),
-  PROVIDES(CameraInfo),
-  PROVIDES(CameraInfoUpper),
-  PROVIDES(CameraMatrix),
-  PROVIDES(CameraMatrixUpper),
-  PROVIDES(CLIPCenterCirclePercept),
-  PROVIDES(CLIPFieldLinesPercept),
-  PROVIDES(CLIPGoalPercept),
-  PROVIDES(FrameInfo),
-  PROVIDES(GameInfo),
-  PROVIDES(GroundContactState),
-  PROVIDES(GroundTruthWorldState),
-  PROVIDES_WITHOUT_MODIFY(Image),
-  PROVIDES_WITHOUT_MODIFY(ImageUpper),
-  PROVIDES_WITHOUT_MODIFY(SequenceImage),
-  PROVIDES_WITHOUT_MODIFY(SequenceImageUpper),
-  PROVIDES(ImageCoordinateSystem),
-  PROVIDES(ImageCoordinateSystemUpper),
-  PROVIDES(JointSensorData),
-  PROVIDES(MotionInfo),
-  PROVIDES(MotionRequest),
-  PROVIDES(MocapRobotPose),
-  PROVIDES(MocapBallModel),
-  PROVIDES(OdometryData),
-  PROVIDES(OpponentTeamInfo),
-  PROVIDES(OwnTeamInfo),
-  PROVIDES(PenaltyCrossPercept),
-  PROVIDES(PositioningSymbols),
-  PROVIDES(RawGameInfo),
-  PROVIDES(RemoteBallModel),
-  PROVIDES(RobotHealth),
-  PROVIDES(RobotInfo),
-  PROVIDES(RobotMap),
-  PROVIDES(RobotsPercept),
-  PROVIDES(RobotsPerceptUpper),
-  PROVIDES(RobotPose),
-  PROVIDES_WITHOUT_MODIFY(RobotPoseHypotheses),
-  PROVIDES(SideConfidence),
-  PROVIDES(TeamBallModel),
-  PROVIDES(TeammateData),
-});
+  PROVIDES_CONCURRENT(ActivationGraph),
+  PROVIDES_CONCURRENT(AudioData),
+  PROVIDES_CONCURRENT(BallModel),
+  PROVIDES_CONCURRENT(BallPercept),
+  PROVIDES_CONCURRENT(MultipleBallPercept),
+  PROVIDES_CONCURRENT(BallSymbols),
+  PROVIDES_CONCURRENT(BehaviorData),
+  PROVIDES_CONCURRENT(BodyContour),
+  PROVIDES_CONCURRENT(CameraInfo),
+  PROVIDES_CONCURRENT(CameraInfoUpper),
+  PROVIDES_CONCURRENT(CameraMatrix),
+  PROVIDES_CONCURRENT(CameraMatrixUpper),
+  PROVIDES_CONCURRENT(CLIPCenterCirclePercept),
+  PROVIDES_CONCURRENT(CLIPFieldLinesPercept),
+  PROVIDES_CONCURRENT(CLIPGoalPercept),
+  PROVIDES_CONCURRENT(FrameInfo),
+  PROVIDES_CONCURRENT(GameInfo),
+  PROVIDES_CONCURRENT(GroundContactState),
+  PROVIDES_CONCURRENT(GroundTruthWorldState),
+  PROVIDES_CONCURRENT(HeadControlRequest),
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(Image),
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(ImageUpper),
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(SequenceImage),
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(SequenceImageUpper),
+  PROVIDES_CONCURRENT(ImageCoordinateSystem),
+  PROVIDES_CONCURRENT(ImageCoordinateSystemUpper),
+  PROVIDES_CONCURRENT(JointSensorData),
+  PROVIDES_CONCURRENT(MotionInfo),
+  PROVIDES_CONCURRENT(MotionRequest),
+  PROVIDES_CONCURRENT(OdometryData),
+  PROVIDES_CONCURRENT(OpponentTeamInfo),
+  PROVIDES_CONCURRENT(OwnTeamInfo),
+  PROVIDES_CONCURRENT(PenaltyCrossPercept),
+  PROVIDES_CONCURRENT(ProcessedBallPatches),
+  PROVIDES_CONCURRENT(PositioningSymbols),
+  PROVIDES_CONCURRENT(RawGameInfo),
+  PROVIDES_CONCURRENT(RemoteBallModel),
+  PROVIDES_CONCURRENT(RobotHealth),
+  PROVIDES_CONCURRENT(RobotInfo),
+  PROVIDES_CONCURRENT(RobotMap),
+  PROVIDES_CONCURRENT(RobotsPercept),
+  PROVIDES_CONCURRENT(RobotsPerceptUpper),
+  PROVIDES_CONCURRENT(RobotPose),
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(RobotPoseHypotheses),
+  PROVIDES_CONCURRENT(SideConfidence),
+  PROVIDES_CONCURRENT(TeamBallModel),
+  PROVIDES_CONCURRENT(TeammateData)
+);
 
 class CognitionLogDataProvider : public CognitionLogDataProviderBase, public LogDataProvider
 {
 private:
-  static PROCESS_LOCAL CognitionLogDataProvider* theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
+  static CycleLocal<CognitionLogDataProvider*> theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
   bool frameDataComplete; /**< Were all messages of the current frame received? */
   LowFrameRateImage* lowFrameRateImage; /**< This will be allocated when a low frame rate image was received. */
   LowFrameRateImageUpper* lowFrameRateImageUpper; /**< This will be allocated when a low frame rate image was received. */
@@ -125,6 +125,7 @@ private:
   void update(AudioData&) override {}
   void update(BallModel&) override {}
   void update(BallPercept&) override {}
+  void update(MultipleBallPercept&) override {}
   void update(BallSymbols&) override {}
   void update(BehaviorData&) override {}
   void update(BodyContour&) override {}
@@ -139,15 +140,15 @@ private:
   void update(GameInfo&) override {}
   void update(GroundContactState&) override {}
   void update(GroundTruthWorldState&) override {}
+  void update(HeadControlRequest&) override {}
   void update(JointSensorData&) override {}
   void update(MotionInfo&) override {}
   void update(MotionRequest&) override {}
-  void update(MocapRobotPose&) override {}
-  void update(MocapBallModel&) override {}
   void update(OdometryData&) override {}
   void update(OpponentTeamInfo&) override {}
   void update(OwnTeamInfo&) override {}
   void update(PenaltyCrossPercept&) override {}
+  void update(ProcessedBallPatches&) override {}
   void update(PositioningSymbols&) override {}
   void update(RawGameInfo&) override {}
   void update(RemoteBallModel&) override {}

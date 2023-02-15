@@ -7,13 +7,9 @@
 #include "Utils/dorsh/cmdlib/Context.h"
 #include <iostream>
 
-Session::Session()
-  : console(0),
-    logLevel(ALL),
-    dataAgent(0),
-    robotsByName()
-{
-}
+Session::Session() : console(0), logLevel(ALL), dataAgent(0), robotsByName() {}
+
+Session::~Session() = default;
 
 void Session::setTeamNumber(Team* team)
 {
@@ -56,9 +52,9 @@ IConsole* Session::getConsole()
 
 void Session::log(LogLevel logLevel, const std::string& error)
 {
-  if(logLevel >= this->logLevel)
+  if (logLevel >= this->logLevel)
   {
-    if(console)
+    if (console)
       console->errorLine(error);
     else
       std::cerr << error << std::endl;
@@ -104,15 +100,12 @@ ENetwork Session::getBestNetwork(const RobotConfigDorsh* robot)
   }
 }
 
-
 void Session::registerDataListener(QObject* qObject, RobotConfigDorsh* robot)
 {
   if (dataAgent)
   {
     log(TRACE, "Session: Registered data listener.");
-    QObject::connect(dataAgent, SIGNAL(newSensorData(std::map<std::string, std::string>)),
-      qObject, SLOT(changeData(std::map<std::string, std::string>)));
-    dataAgent->reset(robot);
+    QObject::connect(dataAgent.data(), SIGNAL(newData(const nlohmann::json&)), qObject, SLOT(changeData(const nlohmann::json&)));
   }
   else
   {
@@ -123,30 +116,25 @@ void Session::registerDataListener(QObject* qObject, RobotConfigDorsh* robot)
 void Session::removeDataListener(QObject* qObject, RobotConfigDorsh* robot)
 {
   log(TRACE, "Session: Removed data listener.");
-  QObject::disconnect(dataAgent, SIGNAL(newSensorData(std::map<std::string, std::string>)),
-    qObject, SLOT(changeData(std::map<std::string, std::string>)));
-  dataAgent->reset(robot);
+  QObject::disconnect(dataAgent.data(), SIGNAL(newData(const nlohmann::json&)), qObject, SLOT(changeData(const nlohmann::json&)));
 }
 
-void Session::registerWifiListener(QObject* qObject, RobotConfigDorsh* robot)
+
+void Session::registerGCStatusListener(QObject* qObject)
 {
   if (dataAgent)
   {
-    log(TRACE, "Session: Registered wifi listener.");
-    QObject::connect(dataAgent, SIGNAL(wifiConnection(std::string, bool)),
-                     qObject, SLOT(changeWifi(std::string, bool)));
-    dataAgent->reset(robot);
+    log(TRACE, "Session: Registered data listener.");
+    QObject::connect(dataAgent.data(), SIGNAL(updateGCStatus(bool)), qObject, SLOT(gcStatusChanged(bool)));
   }
   else
   {
-    log(WARN, "Session: Could not register wifi listener. No dataAgent initialized.");
+    log(WARN, "Session: Could not register data listener. No dataAgent initialized.");
   }
 }
 
-void Session::removeWifiListener(QObject* qObject, RobotConfigDorsh* robot)
+void Session::removeGCStatusListener(QObject* qObject)
 {
-  log(TRACE, "Session: Removed wifi listener.");
-  QObject::disconnect(dataAgent, SIGNAL(wifiConnection(std::string, bool)),
-                      qObject, SLOT(changeWifi(std::string, bool)));
-  dataAgent->reset(robot);
+  log(TRACE, "Session: Removed data listener.");
+  QObject::disconnect(dataAgent.data(), SIGNAL(updateGCStatus(bool)), qObject, SLOT(gcStatusChanged(bool)));
 }

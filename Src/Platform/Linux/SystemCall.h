@@ -15,13 +15,6 @@
 #include <string>
 
 /**
-* All process-local global variable declarations have to be preceeded
-* by this macro. Only variables of simple types can be defined, i.e.
-* no class instantiations are allowed.
-*/
-#define PROCESS_LOCAL __thread
-
-/**
 * static class for system calls
 * @attention the implementation is system specific!
 */
@@ -70,16 +63,10 @@ public:
   static uint64_t getCurrentThreadTime();
 
   /** returns the time since aTime*/
-  static int getTimeSince(unsigned aTime)
-  {
-    return (int)(getCurrentSystemTime() - aTime);
-  }
+  static int getTimeSince(unsigned aTime) { return (int)(getCurrentSystemTime() - aTime); }
 
   /** returns the real time since aTime*/
-  static int getRealTimeSince(unsigned aTime)
-  {
-    return (int)(getRealSystemTime() - aTime);
-  }
+  static int getRealTimeSince(unsigned aTime) { return (int)(getRealSystemTime() - aTime); }
 
   /** returns the name of the local machine*/
   static const char* getHostName();
@@ -114,4 +101,21 @@ public:
    * @param name The filename of the sound file.
    */
   static int playSound(const char* name);
+
+  /**
+   * Text to speech synthesis using flite. Language is english.
+   * Max length of text is 200 chars
+   * Example: text2Speech("Hello World!");
+   * @param text The text to speak.
+   */
+  static int text2Speech(std::string text);
+
+
+  /**
+   * Text to speech synthesis using espeak. Language is english.
+   * Max length of text is 200 chars
+   * Example: text2SpeechESpeak("Hello World!");
+   * @param text The text to speak.
+   */
+  static int text2SpeechESpeak(const char* text);
 };

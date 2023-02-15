@@ -15,11 +15,11 @@
 #include "Tools/Joints.h"
 #include "Tools/Math/Eigen.h"
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
 
 class KickViewWidget;
 
-class KickViewGLWidget : public QGLWidget
+class KickViewGLWidget : public QOpenGLWidget
 {
   Q_OBJECT
 
@@ -31,22 +31,21 @@ private:
   KickViewWidget& widget;
   KickView& kickView;
   SimRobotCore2::Renderer& renderer;
-  Vector3f targetPosOffset = Vector3f::Zero(),
-           cameraPosOffset = Vector3f::Zero();
+  Vector3f targetPosOffset = Vector3f::Zero(), cameraPosOffset = Vector3f::Zero();
   RotationMatrix originRot;
   KickEngineParameters& parameters; //the actual Parameters
   std::vector<Vector3f> reachedPositions[Phase::numOfLimbs];
 
-  bool moveDrag,  //a Point in the 3DView is moved or not
-       moveViewOfViewDragXY, //a Point in the XY(t)View (2D) is moved or not
-       moveViewOfViewDragXZ, //a Point in the XZ(t)View (2D)is moved or not
-       moveViewOfViewDragYZ, //a Point in the YZ(t)View (2D)is moved or not
-       moveViewOfViewDragXP, //a Point in the X:Phase View (1D) is moved or not
-       moveViewOfViewDragYP, //a Point in the Y:Phase View (1D) is moved or not
-       moveViewOfViewDragZP;  //a Point in the Z:Phase View (1D) is moved or not
+  bool moveDrag, //a Point in the 3DView is moved or not
+      moveViewOfViewDragXY, //a Point in the XY(t)View (2D) is moved or not
+      moveViewOfViewDragXZ, //a Point in the XZ(t)View (2D)is moved or not
+      moveViewOfViewDragYZ, //a Point in the YZ(t)View (2D)is moved or not
+      moveViewOfViewDragXP, //a Point in the X:Phase View (1D) is moved or not
+      moveViewOfViewDragYP, //a Point in the Y:Phase View (1D) is moved or not
+      moveViewOfViewDragZP; //a Point in the Z:Phase View (1D) is moved or not
 
   float actualX, //the captured mousePosition when contextMenu is open
-        actualY;
+      actualY;
 
   GLubyte stippleMask[17][128]; //The opacity mask
 
@@ -59,9 +58,19 @@ private:
   void calculateControlPointRot(const Vector3f& point0, const Vector3f& point1, const Vector3f& point2, Vector3f& rotation);
   void drawArrow(const Vector3f& point, const Vector3f& rotation);
   void drawControlPoint(const Vector3f& point, const float& cubeFaktor);
-  void draw2dCurves(const float& minA, const float& minB, const float& maxA, const float& maxB, const float& scaleFactorA,
-                    const float& scaleFactorB, const float& transA, const float& transB, float* colorA, float* colorB,
-                    const float& window, const std::vector<Vector2f>& cp, const std::vector<Vector2f>& point);
+  void draw2dCurves(const float& minA,
+      const float& minB,
+      const float& maxA,
+      const float& maxB,
+      const float& scaleFactorA,
+      const float& scaleFactorB,
+      const float& transA,
+      const float& transB,
+      float* colorA,
+      float* colorB,
+      const float& window,
+      const std::vector<Vector2f>& cp,
+      const std::vector<Vector2f>& point);
   bool clickControlPoint(const int& x, const int& y);
   void gluUnProjectClick(int x, int y, Vector3f& vecFar, Vector3f& vecNear);
 

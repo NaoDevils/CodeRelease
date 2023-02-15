@@ -11,38 +11,16 @@
 
 GameInfo::GameInfo()
 {
-  memset((RoboCup::RoboCupGameControlData*) this, 0, sizeof(RoboCup::RoboCupGameControlData));
+  memset((RoboCup::RoboCupGameControlData*)this, 0, sizeof(RoboCup::RoboCupGameControlData));
 }
 
 static void drawDigit(int digit, const Vector3f& pos, float size, const ColorRGBA& color)
 {
-  static const Vector3f points[8] =
-  {
-    Vector3f(1, 0, 1),
-    Vector3f(1, 0, 0),
-    Vector3f(0, 0, 0),
-    Vector3f(0, 0, 1),
-    Vector3f(0, 0, 2),
-    Vector3f(1, 0, 2),
-    Vector3f(1, 0, 1),
-    Vector3f(0, 0, 1)
-  };
-  static const unsigned char digits[10] =
-  {
-    0x3f,
-    0x0c,
-    0x76,
-    0x5e,
-    0x4d,
-    0x5b,
-    0x7b,
-    0x0e,
-    0x7f,
-    0x5f
-  };
+  static const Vector3f points[8] = {Vector3f(1, 0, 1), Vector3f(1, 0, 0), Vector3f(0, 0, 0), Vector3f(0, 0, 1), Vector3f(0, 0, 2), Vector3f(1, 0, 2), Vector3f(1, 0, 1), Vector3f(0, 0, 1)};
+  static const unsigned char digits[10] = {0x3f, 0x0c, 0x76, 0x5e, 0x4d, 0x5b, 0x7b, 0x0e, 0x7f, 0x5f};
   digit = digits[std::abs(digit)];
-  for(int i = 0; i < 7; ++i)
-    if(digit & (1 << i))
+  for (int i = 0; i < 7; ++i)
+    if (digit & (1 << i))
     {
       Vector3f from = pos - points[i] * size;
       Vector3f to = pos - points[i + 1] * size;
@@ -75,36 +53,60 @@ void GameInfo::draw() const
 
 std::string GameInfo::getStateAsString() const
 {
-  switch(state)
+  switch (state)
   {
-    case STATE_INITIAL:
-      return "Initial";
-    case STATE_READY:
-      return "Ready";
-    case STATE_SET:
-      return "Set";
-    case STATE_PLAYING:
-      return "Playing";
-    case STATE_FINISHED:
-      return "Finished";
-    default:
-      return "Unknown";
+  case STATE_INITIAL:
+    return "Initial";
+  case STATE_READY:
+    return "Ready";
+  case STATE_SET:
+    return "Set";
+  case STATE_PLAYING:
+    return "Playing";
+  case STATE_FINISHED:
+    return "Finished";
+  default:
+    return "Unknown";
   }
+}
+
+std::string GameInfo::getSetPlayAsString() const
+{
+  switch (setPlay)
+  {
+  case SET_PLAY_GOAL_KICK:
+    return "Goal Free Kick";
+  case SET_PLAY_PUSHING_FREE_KICK:
+    return "Pushing Free Kick";
+  case SET_PLAY_CORNER_KICK:
+    return "Corner Kick";
+  case SET_PLAY_KICK_IN:
+    return "Kick In";
+  case SET_PLAY_PENALTY_KICK:
+    return "Penalty Kick";
+  default:
+    return "";
+  }
+}
+
+Streamable& GameInfo::operator=(const Streamable& other) noexcept
+{
+  return *this = dynamic_cast<const GameInfo&>(other);
 }
 
 void GameInfo::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
   STREAM(competitionPhase); // phase of the game (COMPETITION_PHASE_ROUNDROBIN, COMPETITION_PHASE_PLAYOFF)
-  STREAM(competitionType); // type of game (COMPETITION_TYPE_NORMAL, COMPETITION_TYPE_MIXEDTEAM, ..)
+  STREAM(competitionType); // type of game (COMPETITION_TYPE_NORMAL, COMPETITION_TYPE_GENERAL_PENALTY_KICK, ..)
   STREAM(state); // STATE_READY, STATE_PLAYING, ...
   STREAM(firstHalf); // 1 = game in first half, 0 otherwise
   STREAM(kickingTeam); // team number of team with kick off/free kick off
-  STREAM(gamePhase);  // game phase - (GAME_PHASE_NORMAL, GAME_PHASE_PENALTYSHOOT, etc)
-  STREAM(setPlay); // special set phases within game i.e. setting up for free kick (SET_PLAY_NONE, SET_PLAY_GOAL_FREE_KICK, ..)
+  STREAM(gamePhase); // game phase - (GAME_PHASE_NORMAL, GAME_PHASE_PENALTYSHOOT, etc)
+  STREAM(setPlay); // special set phases within game i.e. setting up for free kick (SET_PLAY_NONE, SET_PLAY_GOAL_KICK, ..)
   STREAM(secsRemaining); // estimate of number of seconds remaining in the half.
-  STREAM(timeLastPackageReceived) // used to decide whether a gameController is running
-  STREAM(whistleCausedPlay);
+  STREAM(timeLastPackageReceived); // used to decide whether a gameController is running
+  STREAM(timeFirstReadyState);
   STREAM(oppTeamNumber);
   STREAM_REGISTER_FINISH;
 }

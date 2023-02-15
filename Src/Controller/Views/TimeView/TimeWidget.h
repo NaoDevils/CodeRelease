@@ -29,12 +29,15 @@ public:
   virtual QWidget* getWidget();
   virtual void update();
 
+  virtual void saveLayout();
+
 private slots:
   void filterChanged(const QString& newFilter);
 
 private:
   /**Hides all rows from the table that fit the filter*/
   void applyFilter();
+
 private:
   QLabel* frequency;
   TimeView& timeView;

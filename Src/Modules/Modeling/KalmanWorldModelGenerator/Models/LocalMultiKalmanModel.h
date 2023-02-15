@@ -19,8 +19,7 @@
  * Local models stores positions and velocities in relative robot coordinates.
  * \see MultiKalmanModel, KalmanPositionHypothesis
  */
-template <typename hypothesis_t = KalmanPositionHypothesis, bool towardsOneModel = true>
-class LocalMultiKalmanModel : public MultiKalmanModel<hypothesis_t, towardsOneModel>
+template <typename hypothesis_t = KalmanPositionHypothesis, bool towardsOneModel = true> class LocalMultiKalmanModel : public MultiKalmanModel<hypothesis_t, towardsOneModel>
 {
 public:
   /**
@@ -38,7 +37,7 @@ public:
    * Destructor.
    */
   ~LocalMultiKalmanModel() {}
-  
+
   /**
    * States whether this model use relative robot coordinates or global field 
    * coordinates. Local models use always relative robot coordinates while remote

@@ -5,7 +5,7 @@
 
 #include "CameraSettingsV6.h"
 #include "Platform/BHAssert.h"
-#include "Platform/Camera.h"
+#include "Platform/CameraV6.h"
 
 #include <limits>
 
@@ -17,15 +17,12 @@
 #include "Representations/Infrastructure/CameraRegisters.h"
 #endif
 
-CameraSettingsV6::V4L2Setting::V4L2Setting() :
-  V4L2Setting(0, 0, std::numeric_limits<int>::min(), std::numeric_limits<int>::max())
-{}
+CameraSettingsV6::V4L2Setting::V4L2Setting() : V4L2Setting(0, 0, std::numeric_limits<int>::min(), std::numeric_limits<int>::max()) {}
 
-CameraSettingsV6::V4L2Setting::V4L2Setting(int command, int value, int min, int max) :
-  command(command), min(min), max(max), value(value)
+CameraSettingsV6::V4L2Setting::V4L2Setting(int command, int value, int min, int max) : command(command), min(min), max(max), value(value)
 {
   ASSERT(min <= max);
-  for(CameraSetting& influenced : influencingSettings)
+  for (CameraSetting& influenced : influencingSettings)
     influenced = numOfCameraSettings;
 }
 
@@ -50,9 +47,9 @@ CameraSettingsV6& CameraSettingsV6::operator=(const CameraSettingsV6& other)
   }
   for (int i = 0; i < numOfCameraSettings; ++i)
   {
-	  settings[i] = other.settings[i];
+    settings[i] = other.settings[i];
   }
-  
+
   windowPosition = other.windowPosition;
   windowSize = other.windowSize;
   windowWeights = other.windowWeights;
@@ -72,9 +69,9 @@ bool CameraSettingsV6::V4L2Setting::operator!=(const V4L2Setting& other) const
 
 void CameraSettingsV6::V4L2Setting::enforceBounds()
 {
-  if(value < min)
+  if (value < min)
     value = min;
-  else if(value > max)
+  else if (value > max)
     value = max;
 }
 
@@ -113,14 +110,15 @@ CameraSettingsV6::CameraSettingsV6()
   windowWeights.fill(1);
 }
 #else
-{}
+{
+}
 #endif
 
 bool CameraSettingsV6::operator==(const CameraSettingsV6& other) const
 {
-  for(int i = 0; i < numOfCameraSettings; ++i)
+  for (int i = 0; i < numOfCameraSettings; ++i)
   {
-    if(settings[i] != other.settings[i])
+    if (settings[i] != other.settings[i])
       return false;
   }
   return true;
@@ -133,7 +131,7 @@ bool CameraSettingsV6::operator!=(const CameraSettingsV6& other) const
 
 void CameraSettingsV6::enforceBounds()
 {
-  for(int i = 0; i < numOfCameraSettings; ++i)
+  for (int i = 0; i < numOfCameraSettings; ++i)
     settings[i].enforceBounds();
 }
 
@@ -191,6 +189,6 @@ void CameraSettingsV6::serialize(In* in, Out* out)
   STREAM(registers);
   STREAM_REGISTER_FINISH;
 
-  if(in)
+  if (in)
     enforceBounds();
 }

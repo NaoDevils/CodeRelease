@@ -9,6 +9,7 @@
 
 #include "Tools/Streams/Streamable.h"
 #include "Platform/SystemCall.h"
+#include "Tools/ProcessFramework/CycleLocal.h"
 
 class StreamHandler;
 
@@ -29,7 +30,7 @@ private:
   std::string type; /**< The string representation of the type of the next data streamed. */
   const char* name; /**< The name of the next entry streamed. 0 if it does not have a name, because it is an array element. */
   int index = -2; /**< The index of the next element streamed or -2 if we are currently not streaming an array. */
-  static PROCESS_LOCAL const std::vector<const char*>* enumNames; /**< Helper to provide element names for the enum currently streamed. */
+  static thread_local const std::vector<const char*>* enumNames; /**< Helper to provide element names for the enum currently streamed. */
 
   /**
    * The method streams the debug data according to its specification.
@@ -52,7 +53,7 @@ private:
    * @param out The stream to which the object is written. Must be 0 if this object was constructed for a writing stream.
    * @param enumToString A function that can provide element names if we are stream an enum value. Otherwise 0.
    */
-  template<typename T> void streamIt(In* in, Out* out, const char* (*enumToString)(int) = 0);
+  template <typename T> void streamIt(In* in, Out* out, const char* (*enumToString)(int) = 0);
 
 public:
   /**
@@ -76,10 +77,10 @@ public:
   DebugDataStreamer(StreamHandler& streamHandler, Out& stream, const std::string& type, const char* name = 0);
 };
 
-template<typename T> void DebugDataStreamer::streamIt(In* in, Out* out, const char* (*enumToString)(int))
+template <typename T> void DebugDataStreamer::streamIt(In* in, Out* out, const char* (*enumToString)(int))
 {
   T t = T();
-  if(in)
+  if (in)
   {
     in->select(name, index, enumToString);
     *in >> t;

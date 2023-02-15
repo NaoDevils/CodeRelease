@@ -20,43 +20,42 @@ double GaussianDistribution2D::distanceTo(const GaussianDistribution2D& other) c
 double GaussianDistribution2D::probabilityAt(const Vector2d& pos) const
 {
   Vector2d diff(pos - mean);
-  double exponent(diff.dot((covariance.inverse()*diff)));
+  double exponent(diff.dot((covariance.inverse() * diff)));
   double probability(1.0 / (pi2 * sqrt(covariance.determinant())));
   probability *= exp(-0.5 * exponent);
   return std::max<double>(probability, (double)0.000001);
 }
 
-void GaussianDistribution2D::generateDistributionFromMeasurements(
-  double* x, int numOfX, double* y, int numOfY)
+void GaussianDistribution2D::generateDistributionFromMeasurements(double* x, int numOfX, double* y, int numOfY)
 {
-  if(numOfX < 2 || numOfY < 2)
+  if (numOfX < 2 || numOfY < 2)
     return;
   mean.x() = mean.y() = 0.0f;
-  for(int i = 0; i < numOfX; i++)
+  for (int i = 0; i < numOfX; i++)
     mean.x() += x[i];
-  for(int i = 0; i < numOfY; i++)
+  for (int i = 0; i < numOfY; i++)
     mean.y() += y[i];
   mean.x() /= numOfX;
   mean.y() /= numOfY;
   double varianceX(0.0f);
   double varianceY(0.0f);
-  for(int i = 0; i < numOfX; i++)
+  for (int i = 0; i < numOfX; i++)
     varianceX += (x[i] - mean.x()) * (x[i] - mean.x());
   varianceX *= 1.0f / (numOfX - 1);
-  for(int i = 0; i < numOfY; i++)
+  for (int i = 0; i < numOfY; i++)
     varianceY += (y[i] - mean.y()) * (y[i] - mean.y());
   varianceY *= 1.0f / (numOfY - 1);
-  covariance(0,0) = varianceX;
-  covariance(1,1) = varianceY;
+  covariance(0, 0) = varianceX;
+  covariance(1, 1) = varianceY;
   double cov_xy(0.0f);
   int maxXY = numOfX > numOfY ? numOfY : numOfX;
-  for(int i = 0; i < maxXY; i++)
+  for (int i = 0; i < maxXY; i++)
     cov_xy += (x[i] - mean.x()) * (y[i] - mean.y());
   cov_xy *= 1.0f / (maxXY - 1);
-  covariance(0,1) = covariance(1,0) = cov_xy;
+  covariance(0, 1) = covariance(1, 0) = cov_xy;
 }
 
-GaussianDistribution2D& GaussianDistribution2D::operator +=(const GaussianDistribution2D& other)
+GaussianDistribution2D& GaussianDistribution2D::operator+=(const GaussianDistribution2D& other)
 {
   Matrix2d K(covariance);
   K *= (covariance + other.covariance).inverse();
@@ -92,39 +91,37 @@ Vector2d GaussianDistribution2D::rand() const
   return L * xRaw;
 }
 
-bool GaussianDistribution2D::choleskyDecomposition(const Matrix2d& A, 
-                                                   Matrix2d& L, double eps) const
+bool GaussianDistribution2D::choleskyDecomposition(const Matrix2d& A, Matrix2d& L, double eps) const
 {
   double sum(A.col(0).x());
-  if(sum < -eps)
+  if (sum < -eps)
     return false;
-  if(sum > 0)
+  if (sum > 0)
   {
     // (0,0)
-    L(0,0) = sqrt(sum);
+    L(0, 0) = sqrt(sum);
     // (1,0)
     sum = A.col(1).x();
-    L(1,0) = sum / L(0,0);
+    L(1, 0) = sum / L(0, 0);
   }
   else
-    L(0,0) = L(1,0) = 0;
+    L(0, 0) = L(1, 0) = 0;
 
   // (0,1)
-  L(0,1) = 0;
+  L(0, 1) = 0;
   // (1,1)
-  sum = A.col(1).y() - L(1,0) * L(1,0);
-  if(sum < -eps)
+  sum = A.col(1).y() - L(1, 0) * L(1, 0);
+  if (sum < -eps)
     return false;
-  if(sum > 0)
-    L(1,1) = sqrt(sum);
+  if (sum > 0)
+    L(1, 1) = sqrt(sum);
   else
-    L(1,1) = 0;
+    L(1, 1) = 0;
 
   return true;
 }
 
-void GaussianDistribution2D::getEigenVectorsAndEigenValues(Vector2d& eVec1, Vector2d& eVec2, 
-  double& eValue1, double& eValue2) const
+void GaussianDistribution2D::getEigenVectorsAndEigenValues(Vector2d& eVec1, Vector2d& eVec2, double& eValue1, double& eValue2) const
 {
   // Compute eigenvalues
   double cmTrace(covariance.trace());

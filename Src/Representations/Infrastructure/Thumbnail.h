@@ -12,8 +12,7 @@
 
 struct Thumbnail : public Streamable
 {
-  template<typename Pixel>
-  struct TImage : public Streamable
+  template <typename Pixel> struct TImage : public Streamable
   {
     using PixelType = Pixel;
     static const int maxWidth = Image::maxResolutionWidth;
@@ -22,8 +21,8 @@ struct Thumbnail : public Streamable
     int height = maxHeight;
 
   private:
-    static const int padding = 16;      /**< Some padding needed for the SSE instructions. */
-    Pixel* imagePadding;                /**< A pointer to the memory for the image including some padding at the front and back. */
+    static const int padding = 16; /**< Some padding needed for the SSE instructions. */
+    Pixel* imagePadding; /**< A pointer to the memory for the image including some padding at the front and back. */
     Pixel* image;
 
   public:
@@ -33,15 +32,9 @@ struct Thumbnail : public Streamable
 
     TImage& operator=(const TImage& other);
 
-    Pixel* operator[](const int y)
-    {
-      return image + y * width;
-    }
+    Pixel* operator[](const int y) { return image + y * width; }
 
-    const Pixel* operator[](const int y) const
-    {
-      return image + y * width;
-    }
+    const Pixel* operator[](const int y) const { return image + y * width; }
 
     void setResolution(int width, int height);
 
@@ -49,8 +42,7 @@ struct Thumbnail : public Streamable
     virtual void serialize(In* in, Out* out);
   };
 
-  template<typename Pixel, typename PixelUncompressed>
-  struct TImageCompressed : public TImage<Pixel>
+  template <typename Pixel, typename PixelUncompressed> struct TImageCompressed : public TImage<Pixel>
   {
     void compress(const TImage<PixelUncompressed>& uncompressedImage);
     void uncompress(TImage<PixelUncompressed>& uncompressedImage) const;
@@ -74,30 +66,23 @@ private:
   virtual void serialize(In* in, Out* out);
 };
 
-template<typename Pixel>
-Thumbnail::TImage<Pixel>::TImage() : 
-  width(maxWidth), height(maxHeight)
+template <typename Pixel> Thumbnail::TImage<Pixel>::TImage() : width(maxWidth), height(maxHeight)
 {
   imagePadding = static_cast<Pixel*>(SystemCall::alignedMalloc(maxWidth * maxHeight * sizeof(Pixel) + (padding * 2), 16));
   image = imagePadding + (padding / sizeof(Pixel));
 }
 
-template<typename Pixel>
-Thumbnail::TImage<Pixel>::TImage(const TImage& other) : 
-  Thumbnail::TImage<Pixel>::TImage(),
-  width(other.width), height(other.height)
+template <typename Pixel> Thumbnail::TImage<Pixel>::TImage(const TImage& other) : Thumbnail::TImage<Pixel>::TImage(), width(other.width), height(other.height)
 {
   memcpy(image, other.image, maxWidth * maxHeight * sizeof(Pixel));
 }
 
-template<typename Pixel>
-Thumbnail::TImage<Pixel>::~TImage()
+template <typename Pixel> Thumbnail::TImage<Pixel>::~TImage()
 {
   SystemCall::alignedFree(imagePadding);
 }
 
-template<typename Pixel>
-Thumbnail::TImage<Pixel>& Thumbnail::TImage<Pixel>::operator=(const TImage& other)
+template <typename Pixel> Thumbnail::TImage<Pixel>& Thumbnail::TImage<Pixel>::operator=(const TImage& other)
 {
   width = other.width;
   height = other.height;
@@ -105,8 +90,7 @@ Thumbnail::TImage<Pixel>& Thumbnail::TImage<Pixel>::operator=(const TImage& othe
   return *this;
 }
 
-template<typename Pixel>
-void Thumbnail::TImage<Pixel>::setResolution(int width, int height)
+template <typename Pixel> void Thumbnail::TImage<Pixel>::setResolution(int width, int height)
 {
   ASSERT(width <= maxWidth);
   ASSERT(height <= maxHeight);
@@ -114,14 +98,13 @@ void Thumbnail::TImage<Pixel>::setResolution(int width, int height)
   this->height = height;
 }
 
-template<typename Pixel>
-void Thumbnail::TImage<Pixel>::serialize(In* in, Out* out)
+template <typename Pixel> void Thumbnail::TImage<Pixel>::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
   STREAM(width);
   STREAM(height);
 
-  if(out)
+  if (out)
     out->write(image, width * height * sizeof(Pixel));
   else
     in->read(image, width * height * sizeof(Pixel));
@@ -129,8 +112,7 @@ void Thumbnail::TImage<Pixel>::serialize(In* in, Out* out)
   STREAM_REGISTER_FINISH;
 }
 
-template<typename Pixel, typename PixelUncompressed>
-void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::compress(const TImage<PixelUncompressed>& uncompressedImage)
+template <typename Pixel, typename PixelUncompressed> void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::compress(const TImage<PixelUncompressed>& uncompressedImage)
 {
   ASSERT(this->maxWidth >= uncompressedImage.width);
   ASSERT(this->maxHeight >= uncompressedImage.height);
@@ -138,9 +120,9 @@ void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::compress(const TImag
   this->width = uncompressedImage.width;
   this->height = uncompressedImage.height;
 
-  for(int y = 0; y < this->height; ++y)
+  for (int y = 0; y < this->height; ++y)
   {
-    for(int x = 0; x < this->width; ++x)
+    for (int x = 0; x < this->width; ++x)
     {
       //  6 y   5 cb    5 cr
       const PixelUncompressed& p = uncompressedImage[y][x];
@@ -152,8 +134,7 @@ void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::compress(const TImag
   }
 }
 
-template<typename Pixel, typename PixelUncompressed>
-void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::uncompress(TImage<PixelUncompressed>& uncompressedImage) const
+template <typename Pixel, typename PixelUncompressed> void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::uncompress(TImage<PixelUncompressed>& uncompressedImage) const
 {
   ASSERT(uncompressedImage.maxWidth >= this->width);
   ASSERT(uncompressedImage.maxHeight >= this->height);
@@ -161,9 +142,9 @@ void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::uncompress(TImage<Pi
   uncompressedImage.width = this->width;
   uncompressedImage.height = this->height;
 
-  for(int y = 0; y < this->height; ++y)
+  for (int y = 0; y < this->height; ++y)
   {
-    for(int x = 0; x < this->width; ++x)
+    for (int x = 0; x < this->width; ++x)
     {
       const Pixel& comp = (*this)[y][x];
       PixelUncompressed& uncomp = uncompressedImage[y][x];
@@ -176,5 +157,4 @@ void Thumbnail::TImageCompressed<Pixel, PixelUncompressed>::uncompress(TImage<Pi
 
 struct ThumbnailUpper : public Thumbnail
 {
-
 };

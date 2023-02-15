@@ -13,28 +13,25 @@
 #include <vector>
 #include <array>
 #include "InOut.h"
-#if defined(TARGET_ROBOT)
-#include "Tools/AlignedMemory.h"
-#endif
 
 #define STREAM_REGISTER_FINISH Streaming::finishRegistration();
 
 #define STREAM_REGISTER_BEGIN Streaming::startRegistration(typeid(*this), false);
 
-#define STREAM_BASE(s) \
+#define STREAM_BASE(s)       \
   Streaming::registerBase(); \
   this->s::serialize(in, out);
 
 #define STREAM_REGISTER_BEGIN_EXT(s) Streaming::startRegistration(typeid(s), true);
 
-#define STREAM_BASE_EXT(stream, s, type) \
-  Streaming::registerBase(); \
+#define STREAM_BASE_EXT(stream, s, type)                       \
+  Streaming::registerBase();                                   \
   type& _base(const_cast<type&>(static_cast<const type&>(s))); \
-  Out* _out = dynamic_cast<Out*>(&stream); \
-  In* _in = dynamic_cast<In*>(&stream); \
-  if(_out) \
-    *_out << _base; \
-  else \
+  Out* _out = dynamic_cast<Out*>(&stream);                     \
+  In* _in = dynamic_cast<In*>(&stream);                        \
+  if (_out)                                                    \
+    *_out << _base;                                            \
+  else                                                         \
     *_in >> _base;
 
 /**
@@ -44,17 +41,14 @@
  * in the current class, the name of the class in which it is defined
  * has to be specified as second parameter.
  */
-#define STREAM(...) \
-  _STREAM_EXPAND(_STREAM_EXPAND(_STREAM_THIRD(__VA_ARGS__, _STREAM_WITH_CLASS, _STREAM_WITHOUT_CLASS))(__VA_ARGS__))
+#define STREAM(...) _STREAM_EXPAND(_STREAM_EXPAND(_STREAM_THIRD(__VA_ARGS__, _STREAM_WITH_CLASS, _STREAM_WITHOUT_CLASS))(__VA_ARGS__))
 
 #define _STREAM_THIRD(first, second, third, ...) third
 #define _STREAM_EXPAND(s) s // needed for Visual Studio
 
-#define _STREAM_WITHOUT_CLASS(s) \
-  Streaming::streamIt(in, out, #s, s, Streaming::Casting<std::is_enum<decltype(Streaming::unwrap(s))>::value>::getNameFunction(*this, s));
+#define _STREAM_WITHOUT_CLASS(s) Streaming::streamIt(in, out, #s, s, Streaming::Casting<std::is_enum<decltype(Streaming::unwrap(s))>::value>::getNameFunction(*this, s));
 
-#define _STREAM_WITH_CLASS(s, class) \
-  Streaming::streamIt(in, out, #s, s, Streaming::castFunction(s, class::getName));
+#define _STREAM_WITH_CLASS(s, class) Streaming::streamIt(in, out, #s, s, Streaming::castFunction(s, class ::getName));
 
 /**
  * Registration and streaming of a member in an external streaming operator
@@ -64,20 +58,16 @@
  * in which it is defined has to be specified as third parameter.
  * @param stream Reference to the stream, that should be streamed to.
  */
-#define STREAM_EXT(stream, ...) \
-  _STREAM_EXPAND(_STREAM_EXPAND(_STREAM_THIRD(__VA_ARGS__, _STREAM_EXT_ENUM, _STREAM_EXT_NORMAL))(stream, __VA_ARGS__))
+#define STREAM_EXT(stream, ...) _STREAM_EXPAND(_STREAM_EXPAND(_STREAM_THIRD(__VA_ARGS__, _STREAM_EXT_ENUM, _STREAM_EXT_NORMAL))(stream, __VA_ARGS__))
 
 #define _STREAM_EXT_NORMAL(stream, s) Streaming::streamIt(stream, #s, s, Streaming::Casting<std::is_enum<decltype(Streaming::unwrap(s))>::value>::getNameFunction(stream, s));
 
-#define _STREAM_EXT_ENUM(stream, s, class) Streaming::streamIt(stream, #s, s, Streaming::castFunction(s, class::getName));
+#define _STREAM_EXT_ENUM(stream, s, class) Streaming::streamIt(stream, #s, s, Streaming::castFunction(s, class ::getName));
 
 /**
  * Base class for all classes using the STREAM macros for streaming instances.
  */
 class Streamable
-#if defined(TARGET_ROBOT)
-  : public AlignedMemory
-#endif
 {
 protected:
   virtual void serialize(In*, Out*) = 0;
@@ -86,6 +76,8 @@ public:
   virtual ~Streamable() = default;
   void streamOut(Out&) const;
   void streamIn(In&);
+
+  virtual Streamable& operator=(const Streamable&) = default;
 };
 
 In& operator>>(In& in, Streamable& streamable);
@@ -98,18 +90,16 @@ namespace Streaming
 {
   Out& dummyStream();
 
-  template<typename T, typename A>
-  static void registerDefaultElement(const std::vector<T, A>&)
+  template <typename T, typename A> static void registerDefaultElement(const std::vector<T, A>&)
   {
     static T dummy;
     dummyStream() << dummy;
   }
 
-  template<class T>
-  In& streamComplexStaticArray(In& in, T inArray[], size_t size, const char* (*enumToString)(int))
+  template <class T> In& streamComplexStaticArray(In& in, T inArray[], size_t size, const char* (*enumToString)(int))
   {
     int numberOfEntries = int(size / sizeof(T));
-    for(int i = 0; i < numberOfEntries; ++i)
+    for (int i = 0; i < numberOfEntries; ++i)
     {
       in.select(0, i, enumToString);
       in >> inArray[i];
@@ -118,11 +108,10 @@ namespace Streaming
     return in;
   }
 
-  template<class T>
-  Out& streamComplexStaticArray(Out& out, T outArray[], size_t size, const char* (*enumToString)(int))
+  template <class T> Out& streamComplexStaticArray(Out& out, T outArray[], size_t size, const char* (*enumToString)(int))
   {
     int numberOfEntries = int(size / sizeof(T));
-    for(int i = 0; i < numberOfEntries; ++i)
+    for (int i = 0; i < numberOfEntries; ++i)
     {
       out.select(0, i, enumToString);
       out << outArray[i];
@@ -131,10 +120,9 @@ namespace Streaming
     return out;
   }
 
-  template<class T>
-  In& streamBasicStaticArray(In& in, T inArray[], size_t size, const char* (*enumToString)(int))
+  template <class T> In& streamBasicStaticArray(In& in, T inArray[], size_t size, const char* (*enumToString)(int))
   {
-    if(in.isBinary())
+    if (in.isBinary())
     {
       in.read(inArray, size);
       return in;
@@ -143,10 +131,9 @@ namespace Streaming
       return streamComplexStaticArray(in, inArray, size, enumToString);
   }
 
-  template<class T>
-  Out& streamBasicStaticArray(Out& out, T outArray[], size_t size, const char* (*enumToString)(int))
+  template <class T> Out& streamBasicStaticArray(Out& out, T outArray[], size_t size, const char* (*enumToString)(int))
   {
-    if(out.isBinary())
+    if (out.isBinary())
     {
       out.write(outArray, size);
       return out;
@@ -155,30 +142,91 @@ namespace Streaming
       return streamComplexStaticArray(out, outArray, size, enumToString);
   }
 
-  inline In& streamStaticArray(In& in, unsigned char inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, unsigned char outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, signed char inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, signed char outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, char inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, char outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, unsigned short inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, unsigned short outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, short inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, short outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, unsigned int inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, unsigned int outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, int inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, int outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, float inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, float outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  inline In& streamStaticArray(In& in, double inArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(in, inArray, size, enumToString);}
-  inline Out& streamStaticArray(Out& out, double outArray[], size_t size, const char* (*enumToString)(int)) {return streamBasicStaticArray(out, outArray, size, enumToString);}
-  template<class T>
-  In& streamStaticArray(In& in, T inArray[], size_t size, const char* (*enumToString)(int)) {return streamComplexStaticArray(in, inArray, size, enumToString);}
-  template<class T>
-  Out& streamStaticArray(Out& out, T outArray[], size_t size, const char* (*enumToString)(int)) {return streamComplexStaticArray(out, outArray, size, enumToString);}
+  inline In& streamStaticArray(In& in, unsigned char inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, unsigned char outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, signed char inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, signed char outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, char inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, char outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, unsigned short inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, unsigned short outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, short inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, short outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, unsigned int inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, unsigned int outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, int inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, int outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, float inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, float outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  inline In& streamStaticArray(In& in, double inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(in, inArray, size, enumToString);
+  }
+  inline Out& streamStaticArray(Out& out, double outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamBasicStaticArray(out, outArray, size, enumToString);
+  }
+  template <class T> In& streamStaticArray(In& in, T inArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamComplexStaticArray(in, inArray, size, enumToString);
+  }
+  template <class T> Out& streamStaticArray(Out& out, T outArray[], size_t size, const char* (*enumToString)(int))
+  {
+    return streamComplexStaticArray(out, outArray, size, enumToString);
+  }
 
-  template<class T, class U> void cast(T& t, const U& u) {t = static_cast<T>(u);}
+  template <class T, class U> void cast(T& t, const U& u)
+  {
+    t = static_cast<T>(u);
+  }
 
   void finishRegistration();
 
@@ -194,14 +242,14 @@ namespace Streaming
 
   const char* skipDot(const char* name);
 
-  template<typename S> struct Streamer
+  template <typename S> struct Streamer
   {
     static void stream(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int))
     {
       registerWithSpecification(name, typeid(s));
-      if(enumToString)
-        Streaming::registerEnum(typeid(s), (const char* (*)(int)) enumToString);
-      if(in)
+      if (enumToString)
+        Streaming::registerEnum(typeid(s), (const char* (*)(int))enumToString);
+      if (in)
       {
         in->select(name, -2, enumToString);
         *in >> s;
@@ -216,15 +264,15 @@ namespace Streaming
     }
   };
 
-  template<typename E, size_t N> struct Streamer<E[N]>
+  template <typename E, size_t N> struct Streamer<E[N]>
   {
     typedef E S[N];
     static void stream(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int))
     {
       registerWithSpecification(name, typeid(s));
-      if(enumToString)
-        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int)) enumToString);
-      if(in)
+      if (enumToString)
+        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int))enumToString);
+      if (in)
       {
         in->select(name, -1);
         streamStaticArray(*in, s, sizeof(s), enumToString);
@@ -240,14 +288,14 @@ namespace Streaming
   };
 
   // This one is used by MSC
-  template<typename E, size_t N> struct Streamer<const E[N]>
+  template <typename E, size_t N> struct Streamer<const E[N]>
   {
     typedef const E S[N];
     static void stream(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int))
     {
       registerWithSpecification(name, typeid(s));
-      if(enumToString)
-        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int)) enumToString);
+      if (enumToString)
+        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int))enumToString);
       out->select(name, -1);
       streamStaticArray(*out, (E*)s, N * sizeof(E), enumToString);
       out->deselect();
@@ -255,15 +303,15 @@ namespace Streaming
   };
 
   // This one is used by clang
-  template<typename E, size_t N> struct Streamer<E(*)[N]>
+  template <typename E, size_t N> struct Streamer<E (*)[N]>
   {
-    typedef E(*S)[N];
+    typedef E (*S)[N];
     static void stream(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int))
     {
       registerWithSpecification(name, typeid(s));
-      if(enumToString)
-        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int)) enumToString);
-      if(in)
+      if (enumToString)
+        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int))enumToString);
+      if (in)
       {
         in->select(name, -1);
         streamStaticArray(*in, (E*)s, N * sizeof(E), enumToString);
@@ -278,22 +326,22 @@ namespace Streaming
     }
   };
 
-  template<typename E, typename A> struct Streamer<std::vector<E, A>>
+  template <typename E, typename A> struct Streamer<std::vector<E, A>>
   {
     typedef std::vector<E, A> S;
     static void stream(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int))
     {
       registerDefaultElement(s);
       registerWithSpecification(name, typeid(s.data()));
-      if(enumToString)
-        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int)) enumToString);
-      if(in)
+      if (enumToString)
+        Streaming::registerEnum(typeid(s[0]), (const char* (*)(int))enumToString);
+      if (in)
       {
         in->select(name, -1);
         unsigned size;
         *in >> size;
         s.resize(size);
-        if(!s.empty())
+        if (!s.empty())
           streamStaticArray(*in, &s[0], s.size() * sizeof(E), enumToString);
         in->deselect();
       }
@@ -301,27 +349,30 @@ namespace Streaming
       {
         out->select(name, -1);
         *out << static_cast<unsigned>(s.size());
-        if(!s.empty())
+        if (!s.empty())
           streamStaticArray(*out, &s[0], s.size() * sizeof(E), enumToString);
         out->deselect();
       }
     }
   };
 
-  template<typename E, size_t n> struct Streamer<std::array<E, n>>
+  template <typename E, size_t n> struct Streamer<std::array<E, n>>
   {
     using S = std::array<E, n>;
     static void stream(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int))
     {
       registerWithSpecification(name, typeid(s.data()));
-      if(enumToString)
-        Streaming::registerEnum(typeid(s.data()), (const char* (*)(int)) enumToString);
-      if(in)
+      if (enumToString)
+        Streaming::registerEnum(typeid(s.data()), (const char* (*)(int))enumToString);
+      if (in)
       {
         in->select(name, -1);
         unsigned size;
         *in >> size;
-        streamStaticArray(*in, s.data(), n * sizeof(E), enumToString);
+        // This is not a very clean solution, but it fixes streaming arrays with different sizes.
+        streamStaticArray(*in, s.data(), std::min<size_t>(n, size) * sizeof(E), enumToString);
+        if (n > size)
+          in->skip((n - size) * sizeof(E));
         in->deselect();
       }
       else
@@ -346,19 +397,19 @@ namespace Streaming
    *                     type, this parameter is 0.
    * This is the version for using inside of serialize methods.
    */
-  template<typename S> void streamIt(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int) = 0)
+  template <typename S> void streamIt(In* in, Out* out, const char* name, S& s, const char* (*enumToString)(int) = 0)
   {
     Streamer<S>::stream(in, out, name, s, enumToString);
   }
 
   /** This is the version for using inside operator>>. */
-  template<typename S> void streamIt(In& in, const char* name, S& s, const char* (*enumToString)(int) = 0)
+  template <typename S> void streamIt(In& in, const char* name, S& s, const char* (*enumToString)(int) = 0)
   {
     Streamer<S>::stream(&in, 0, skipDot(name), s, enumToString);
   }
 
   /** This is the version for using inside operator<<. */
-  template<typename S> void streamIt(Out& out, const char* name, const S& s, const char* (*enumToString)(int) = 0)
+  template <typename S> void streamIt(Out& out, const char* name, const S& s, const char* (*enumToString)(int) = 0)
   {
     Streamer<S>::stream(0, &out, skipDot(name), const_cast<S&>(s), enumToString);
   }
@@ -368,12 +419,9 @@ namespace Streaming
    * a function with an int parameter. However, the only method of the following template struct ensures that the
    * correct overloaded version is picked, i.e. the one that accepts the enum T.
    */
-  template<typename T> struct Function
+  template <typename T> struct Function
   {
-    static const char* (*cast(const char* (*enumToString)(T)))(int)
-    {
-      return (const char* (*)(int)) enumToString;
-    }
+    static const char* (*cast(const char* (*enumToString)(T)))(int) { return (const char* (*)(int))enumToString; }
   };
 
   /**
@@ -383,21 +431,21 @@ namespace Streaming
    * used in the case it is known that a type is an enum.
    * This is the implementation for plain enums.
    */
-  template<typename T> inline const char* (*castFunction(const T&, const char* (*enumToString)(T)))(int)
+  template <typename T> inline const char* (*castFunction(const T&, const char* (*enumToString)(T)))(int)
   {
-    return (const char* (*)(int)) enumToString;
+    return (const char* (*)(int))enumToString;
   }
 
   /** Implementation for fixed-size arrays of enums. */
-  template<typename T, size_t N> inline const char* (*castFunction(const T(&)[N], const char* (*enumToString)(T)))(int)
+  template <typename T, size_t N> inline const char* (*castFunction(const T (&)[N], const char* (*enumToString)(T)))(int)
   {
-    return (const char* (*)(int)) enumToString;
+    return (const char* (*)(int))enumToString;
   }
 
   /** Implementation for vectors of enums. */
-  template<typename T, typename A> inline const char* (*castFunction(const std::vector<T, A>&, const char* (*enumToString)(T)))(int)
+  template <typename T, typename A> inline const char* (*castFunction(const std::vector<T, A>&, const char* (*enumToString)(T)))(int)
   {
-    return (const char* (*)(int)) enumToString;
+    return (const char* (*)(int))enumToString;
   }
 
   /**
@@ -407,55 +455,34 @@ namespace Streaming
    * value outside the enums range.
    * Here, the versions for enums is implemented.
    */
-  template<bool isEnum = true> struct Casting
+  template <bool isEnum = true> struct Casting
   {
     /** Implementation for plain enums. */
-    template<typename T, typename E> static const char* (*getNameFunction(const T&, const E&))(int)
-    {
-      return Function<E>::cast(T::getName);
-    }
+    template <typename T, typename E> static const char* (*getNameFunction(const T&, const E&))(int) { return Function<E>::cast(T::getName); }
 
     /** Implementation for fixed-size arrays of enums. */
-    template<typename T, typename E, size_t N> static const char* (*getNameFunction(const T&, const E(&)[N]))(int)
-    {
-      return Function<E>::cast(T::getName);
-    }
+    template <typename T, typename E, size_t N> static const char* (*getNameFunction(const T&, const E (&)[N]))(int) { return Function<E>::cast(T::getName); }
 
     /** Implementation for vectors of enums. */
-    template<typename T, typename E, typename A> static const char* (*getNameFunction(const T&, const std::vector<E, A>&))(int)
-    {
-      return Function<E>::cast(T::getName);
-    }
+    template <typename T, typename E, typename A> static const char* (*getNameFunction(const T&, const std::vector<E, A>&))(int) { return Function<E>::cast(T::getName); }
 
     /** Plain ints are misclassified as enums. Do not return a function in this case. */
-    template<typename T> static const char* (*getNameFunction(const T&, const int&))(int)
-    {
-      return 0;
-    }
+    template <typename T> static const char* (*getNameFunction(const T&, const int&))(int) { return 0; }
 
     /** int arrays are misclassified as enum arrays. Do not return a function in this case. */
-    template<typename T, size_t N> static const char* (*getNameFunction(const T&, const int(&)[N]))(int)
-    {
-      return 0;
-    }
+    template <typename T, size_t N> static const char* (*getNameFunction(const T&, const int (&)[N]))(int) { return 0; }
 
     /** int vectors are misclassified as enum vectors. Do not return a function in this case. */
-    template<typename T, typename A> static const char* (*getNameFunction(const T&, const std::vector<int, A>&))(int)
-    {
-      return 0;
-    }
+    template <typename T, typename A> static const char* (*getNameFunction(const T&, const std::vector<int, A>&))(int) { return 0; }
   };
 
   /**
    * Specialization of template struct Casting for the case that a type is not an enum type.
    * In that case, there is no function that can return names for enum elements.
    */
-  template<> struct Casting<false>
+  template <> struct Casting<false>
   {
-    template<typename T, typename E> static const char* (*getNameFunction(const T&, const E&))(int)
-    {
-      return 0;
-    }
+    template <typename T, typename E> static const char* (*getNameFunction(const T&, const E&))(int) { return 0; }
   };
 
   /**
@@ -465,10 +492,10 @@ namespace Streaming
    * The functions will only be used for resolving types. They are never called. Therefore, they are not
    * implemented.
    */
-  template<typename T> const T unwrap(const T&);
-  template<typename T, size_t N> const T unwrap(const T(&)[N]);
-  template<typename T, typename A> const T unwrap(const std::vector<T, A>&);
-  template<typename T, size_t n> const T unwrap(const std::array<T, n>&);
+  template <typename T> const T unwrap(const T&);
+  template <typename T, size_t N> const T unwrap(const T (&)[N]);
+  template <typename T, typename A> const T unwrap(const std::vector<T, A>&);
+  template <typename T, size_t n> const T unwrap(const std::array<T, n>&);
 
   /**
    * Together with decltype, the following template allows to use any type
@@ -476,5 +503,8 @@ namespace Streaming
    * template parameters without the use of typename.
    * decltype(Streaming::TypeWrapper<myType>::type) myVar;
    */
-  template<typename T> struct TypeWrapper {static T type;};
-}
+  template <typename T> struct TypeWrapper
+  {
+    static T type;
+  };
+} // namespace Streaming

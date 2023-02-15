@@ -21,9 +21,7 @@
 #include <map>
 using namespace std;
 
-LogPlayer::LogPlayer(MessageQueue& targetQueue) :
-  targetQueue(targetQueue),
-  streamHandler(nullptr)
+LogPlayer::LogPlayer(MessageQueue& targetQueue) : targetQueue(targetQueue), streamHandler(nullptr)
 {
   init();
 }
@@ -37,7 +35,7 @@ void LogPlayer::init()
   replayOffset = 0;
   state = initial;
   loop = true; //default: loop enabled
-  if(streamHandler)
+  if (streamHandler)
   {
     delete streamHandler;
     streamHandler = nullptr;
@@ -48,57 +46,60 @@ void LogPlayer::init()
 bool LogPlayer::open(const char* fileName)
 {
   InBinaryFile file(fileName);
-  if(file.exists())
+  if (file.exists())
   {
     init();
 
     char magicByte;
     file >> magicByte;
 
-    if(magicByte == logFileMessageIDs)
+    if (magicByte == logFileMessageIDs)
     {
       readMessageIDMapping(file);
       file >> magicByte;
     }
 
-    if(magicByte == logFileStreamSpecification)
+    while (magicByte == logFileStreamSpecification)
     {
-      streamHandler = new StreamHandler;
+      if (!streamHandler)
+        streamHandler = new StreamHandler;
+
       file >> *streamHandler;
       file >> magicByte;
     }
 
-    switch(magicByte)
+    switch (magicByte)
     {
-      case logFileUncompressed: //regular log file
-        file >> *this;
-        break;
-      case logFileCompressed://compressed log file
-        while(!file.eof())
-        {
-          unsigned compressedSize;
-          file >> compressedSize;
-          ASSERT(compressedSize > 0);
-          std::vector<char> compressedBuffer;
-          compressedBuffer.resize(compressedSize);
-          file.read(&compressedBuffer[0], (int)compressedSize);
+    case logFileUncompressed: //regular log file
+      //file >> *this; // copy data to memory
+      mapFile(file); // map data to memory
+      break;
+    case logFileCompressed: //compressed log file
+      while (!file.eof())
+      {
+        unsigned compressedSize;
+        file >> compressedSize;
+        ASSERT(compressedSize > 0);
+        std::vector<char> compressedBuffer;
+        compressedBuffer.resize(compressedSize);
+        file.read(&compressedBuffer[0], (int)compressedSize);
 
-          size_t uncompressedSize = 0;
-          snappy_uncompressed_length(&compressedBuffer[0], compressedSize, &uncompressedSize);
-          std::vector<char> uncompressBuffer;
-          uncompressBuffer.resize(uncompressedSize);
-          if(snappy_uncompress(&compressedBuffer[0], compressedSize, &uncompressBuffer[0], &uncompressedSize) != SNAPPY_OK)
-            break;
-          InBinaryMemory mem(&uncompressBuffer[0], uncompressedSize);
-          mem >> *this;
-        }
-        break;
-      default:
-        ASSERT(false); //unknown magic byte
+        size_t uncompressedSize = 0;
+        snappy_uncompressed_length(&compressedBuffer[0], compressedSize, &uncompressedSize);
+        std::vector<char> uncompressBuffer;
+        uncompressBuffer.resize(uncompressedSize);
+        if (snappy_uncompress(&compressedBuffer[0], compressedSize, &uncompressBuffer[0], &uncompressedSize) != SNAPPY_OK)
+          break;
+        InBinaryMemory mem(&uncompressBuffer[0], uncompressedSize);
+        mem >> *this;
+      }
+      break;
+    default:
+      ASSERT(false); //unknown magic byte
     }
 
     stop();
-    countFrames();
+    countFramesAndMessages();
     createFrameIndex();
     return true;
   }
@@ -112,7 +113,7 @@ void LogPlayer::play()
 
 void LogPlayer::stop()
 {
-  if(state == recording)
+  if (state == recording)
   {
     recordStop();
     return;
@@ -125,7 +126,7 @@ void LogPlayer::stop()
 
 void LogPlayer::pause()
 {
-  if(getNumberOfMessages() == 0)
+  if (getNumberOfMessages() == 0)
     state = initial;
   else
     state = paused;
@@ -134,11 +135,11 @@ void LogPlayer::pause()
 void LogPlayer::stepBackward()
 {
   pause();
-  if(state == paused)
+  if (state == paused)
   {
-    if(currentFrameNumber > 0)
+    if (currentFrameNumber > 0)
       --currentFrameNumber;
-    else if(loop && numberOfFrames > 0)
+    else if (loop && numberOfFrames > 0)
       currentFrameNumber = numberOfFrames - 1;
     else
       return;
@@ -151,23 +152,23 @@ void LogPlayer::stepBackward()
 void LogPlayer::stepImageBackward()
 {
   pause();
-  if(state == paused && (currentFrameNumber > 0 || (loop && numberOfFrames > 0)))
+  if (state == paused && (currentFrameNumber > 0 || (loop && numberOfFrames > 0)))
   {
     int lastImageFrameNumber = this->lastImageFrameNumber;
     do
       stepBackward();
-    while(lastImageFrameNumber == this->lastImageFrameNumber && (currentFrameNumber > 0 || (loop && numberOfFrames > 0)));
+    while (lastImageFrameNumber == this->lastImageFrameNumber && (currentFrameNumber > 0 || (loop && numberOfFrames > 0)));
   }
 }
 
 void LogPlayer::stepForward()
 {
   pause();
-  if(state == paused)
+  if (state == paused)
   {
-    if(currentFrameNumber >= numberOfFrames - 1 || currentMessageNumber >= numberOfMessagesWithinCompleteFrames - 1)
+    if (currentFrameNumber >= numberOfFrames - 1 || currentMessageNumber >= numberOfMessagesWithinCompleteFrames - 1)
     {
-      if(loop && numberOfFrames > 0)
+      if (loop && numberOfFrames > 0)
       {
         currentMessageNumber = -1;
         currentFrameNumber = -1;
@@ -179,17 +180,12 @@ void LogPlayer::stepForward()
     do
     {
       copyMessage(++currentMessageNumber, targetQueue);
-      if(queue.getMessageID() == idImage || queue.getMessageID() == idImageUpper || 
-        queue.getMessageID() == idJPEGImage || queue.getMessageID() == idJPEGImageUpper || 
-        queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper ||
-        queue.getMessageID() == idYoloInput || queue.getMessageID() == idYoloInputUpper ||
-       (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
-       (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000) ||
-       (queue.getMessageID() == idSequenceImage && queue.getMessageSize() > 1000) ||
-       (queue.getMessageID() == idSequenceImageUpper && queue.getMessageSize() > 1000))
+      if (queue.getMessageID() == idImage || queue.getMessageID() == idImageUpper || queue.getMessageID() == idJPEGImage || queue.getMessageID() == idJPEGImageUpper
+          || queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper || queue.getMessageID() == idYoloInput || queue.getMessageID() == idYoloInputUpper
+          || (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) || (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000)
+          || (queue.getMessageID() == idSequenceImage && queue.getMessageSize() > 1000) || (queue.getMessageID() == idSequenceImageUpper && queue.getMessageSize() > 1000))
         lastImageFrameNumber = currentFrameNumber;
-    }
-    while(queue.getMessageID() != idProcessFinished);
+    } while (queue.getMessageID() != idProcessFinished);
     ++currentFrameNumber;
   }
 }
@@ -197,23 +193,22 @@ void LogPlayer::stepForward()
 void LogPlayer::stepImageForward()
 {
   pause();
-  if(state == paused && (currentFrameNumber < numberOfFrames - 1 || (loop && numberOfFrames > 0)))
+  if (state == paused && (currentFrameNumber < numberOfFrames - 1 || (loop && numberOfFrames > 0)))
   {
     int lastImageFrameNumber = this->lastImageFrameNumber;
     do
       stepForward();
-    while(lastImageFrameNumber == this->lastImageFrameNumber && (currentFrameNumber < numberOfFrames - 1 || (loop && numberOfFrames > 0)));
+    while (lastImageFrameNumber == this->lastImageFrameNumber && (currentFrameNumber < numberOfFrames - 1 || (loop && numberOfFrames > 0)));
   }
 }
 
 void LogPlayer::stepRepeat()
 {
   pause();
-  if(state == paused && currentFrameNumber >= 0)
+  if (state == paused && currentFrameNumber >= 0)
   {
     --currentFrameNumber;
-    currentMessageNumber = currentFrameNumber >= 0 ? frameIndex[currentFrameNumber] : 0;
-    queue.setSelectedMessageForReading(currentMessageNumber);
+    currentMessageNumber = currentFrameNumber >= 0 ? frameIndex[currentFrameNumber] - 1 : 0;
     stepForward();
   }
 }
@@ -221,29 +216,28 @@ void LogPlayer::stepRepeat()
 void LogPlayer::gotoFrame(int frame)
 {
   pause();
-  if(state == paused && frame < numberOfFrames)
+  if (state == paused && frame < numberOfFrames)
   {
     currentFrameNumber = frame - 1;
-    currentMessageNumber = currentFrameNumber >= 0 ? frameIndex[currentFrameNumber] : 0;
-    queue.setSelectedMessageForReading(currentMessageNumber);
+    currentMessageNumber = currentFrameNumber >= 0 ? frameIndex[currentFrameNumber] - 1 : 0;
     stepForward();
   }
 }
 
 bool LogPlayer::save(const char* fileName, const StreamHandler* streamHandler)
 {
-  if(state == recording)
+  if (state == recording)
     recordStop();
 
-  if(!getNumberOfMessages())
+  if (!getNumberOfMessages())
     return false;
 
   OutBinaryFile file(fileName);
-  if(file.exists())
+  if (file.exists())
   {
     file << logFileMessageIDs; // write magic byte to indicate message id table
     writeMessageIDs(file);
-    if(streamHandler || this->streamHandler)
+    if (streamHandler || this->streamHandler)
     {
       file << logFileStreamSpecification;
       file << (this->streamHandler ? *this->streamHandler : *streamHandler);
@@ -259,10 +253,10 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
 {
   int i = 0;
   Image image;
-  for(currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); currentMessageNumber++)
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); currentMessageNumber++)
   {
     queue.setSelectedMessageForReading(currentMessageNumber);
-    if(queue.getMessageID() == idImage)
+    if (queue.getMessageID() == idImage)
     {
       in.bin >> image;
     }
@@ -270,7 +264,7 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
     {
       in.bin >> image;
     }
-    else if(queue.getMessageID() == idJPEGImage)
+    else if (queue.getMessageID() == idJPEGImage)
     {
       JPEGImage jpegImage;
       in.bin >> jpegImage;
@@ -282,11 +276,11 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
       in.bin >> jpegImage;
       jpegImage.toImage(image);
     }
-    else if(queue.getMessageID() == idLowFrameRateImage)
+    else if (queue.getMessageID() == idLowFrameRateImage)
     {
       LowFrameRateImage lowFrameRateImage;
       in.bin >> lowFrameRateImage;
-      if(lowFrameRateImage.imageUpdated)
+      if (lowFrameRateImage.imageUpdated)
         image = lowFrameRateImage.image;
       else
         continue;
@@ -300,11 +294,11 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
       else
         continue;
     }
-    else if(queue.getMessageID() == idSequenceImage)
+    else if (queue.getMessageID() == idSequenceImage)
     {
       SequenceImage sequenceImage;
       in.bin >> sequenceImage;
-      if(sequenceImage.noInSequence > 0)
+      if (sequenceImage.noInSequence > 0)
         image = sequenceImage.image;
       else
         continue;
@@ -321,7 +315,7 @@ bool LogPlayer::saveImages(const bool raw, const char* fileName)
     else
       continue;
 
-    if(!saveImage(image, fileName, i++, !raw))
+    if (!saveImage(image, fileName, i++, !raw))
     {
       stop();
       return false;
@@ -338,7 +332,7 @@ void LogPlayer::recordStart()
 
 void LogPlayer::recordStop()
 {
-  while(getNumberOfMessages() > numberOfMessagesWithinCompleteFrames)
+  while (getNumberOfMessages() > numberOfMessagesWithinCompleteFrames)
     removeLastMessage();
   currentMessageNumber = -1;
   currentFrameNumber = -1;
@@ -352,10 +346,10 @@ void LogPlayer::setLoop(bool loop)
 
 void LogPlayer::handleMessage(InMessage& message)
 {
-  if(state == recording)
+  if (state == recording)
   {
     message >> *this;
-    if(message.getMessageID() == idProcessFinished)
+    if (message.getMessageID() == idProcessFinished)
     {
       numberOfMessagesWithinCompleteFrames = getNumberOfMessages();
       ++numberOfFrames;
@@ -365,49 +359,49 @@ void LogPlayer::handleMessage(InMessage& message)
 
 bool LogPlayer::replay()
 {
-  if(state == playing)
+  if (state == playing)
   {
-    if(currentFrameNumber < numberOfFrames - 1)
+    if (currentFrameNumber < numberOfFrames - 1)
     {
       replayStreamSpecification();
       do
       {
         copyMessage(++currentMessageNumber, targetQueue);
-        if(queue.getMessageID() == idImage || queue.getMessageID() == idJPEGImage || 
-          queue.getMessageID() == idImageUpper || queue.getMessageID() == idJPEGImageUpper || 
-          queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper ||
-          queue.getMessageID() == idYoloInput || queue.getMessageID() == idYoloInputUpper ||
-         (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) ||
-         (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000) ||
-         (queue.getMessageID() == idSequenceImage && queue.getMessageSize() > 1000) ||
-         (queue.getMessageID() == idSequenceImageUpper && queue.getMessageSize() > 1000))
+        if (queue.getMessageID() == idImage || queue.getMessageID() == idJPEGImage || queue.getMessageID() == idImageUpper || queue.getMessageID() == idJPEGImageUpper
+            || queue.getMessageID() == idThumbnail || queue.getMessageID() == idThumbnailUpper || queue.getMessageID() == idYoloInput || queue.getMessageID() == idYoloInputUpper
+            || (queue.getMessageID() == idLowFrameRateImage && queue.getMessageSize() > 1000) || (queue.getMessageID() == idLowFrameRateImageUpper && queue.getMessageSize() > 1000)
+            || (queue.getMessageID() == idSequenceImage && queue.getMessageSize() > 1000) || (queue.getMessageID() == idSequenceImageUpper && queue.getMessageSize() > 1000))
           lastImageFrameNumber = currentFrameNumber;
-      }
-      while(queue.getMessageID() != idProcessFinished && currentMessageNumber < numberOfMessagesWithinCompleteFrames - 1);
+
+      } while (queue.getMessageID() != idProcessFinished && currentMessageNumber < numberOfMessagesWithinCompleteFrames - 1);
       ++currentFrameNumber;
-      if(currentFrameNumber == numberOfFrames - 1)
+      if (currentFrameNumber == numberOfFrames - 1)
       {
-        SystemCall::playSound("allright.wav");
-        if(loop)  //restart in loop mode
+        SystemCall::text2Speech("allright");
+        if (loop) //restart in loop mode
         {
           gotoFrame(0);
           play();
         }
         else
+        {
           stop();
+        }
       }
       return true;
     }
     else
     {
-      SystemCall::playSound("allright.wav");
-      if(loop)  //restart in loop mode
+      SystemCall::text2Speech("allright");
+      if (loop) //restart in loop mode
       {
         gotoFrame(0);
         play();
       }
       else
+      {
         stop();
+      }
     }
   }
   return false;
@@ -416,18 +410,16 @@ bool LogPlayer::replay()
 void LogPlayer::keep(MessageID* messageIDs)
 {
   stop();
-  LogPlayer temp((MessageQueue&) *this);
+  LogPlayer temp((MessageQueue&)*this);
   temp.setSize(queue.getSize());
   moveAllMessages(temp);
-  for(temp.currentMessageNumber = 0; temp.currentMessageNumber < temp.getNumberOfMessages(); ++temp.currentMessageNumber)
+  for (temp.currentMessageNumber = 0; temp.currentMessageNumber < temp.getNumberOfMessages(); ++temp.currentMessageNumber)
   {
     temp.queue.setSelectedMessageForReading(temp.currentMessageNumber);
     MessageID* m = messageIDs;
-    while(*m)
+    while (*m)
     {
-      if(temp.queue.getMessageID() == *m ||
-         temp.queue.getMessageID() == idProcessBegin ||
-         temp.queue.getMessageID() == idProcessFinished)
+      if (temp.queue.getMessageID() == *m || temp.queue.getMessageID() == idProcessBegin || temp.queue.getMessageID() == idProcessFinished)
       {
         temp.copyMessage(temp.currentMessageNumber, *this);
         break;
@@ -435,57 +427,108 @@ void LogPlayer::keep(MessageID* messageIDs)
       ++m;
     }
   }
-  countFrames();
-  if(!frameIndex.empty())
+  countFramesAndMessages();
+  if (!frameIndex.empty())
+    createFrameIndex();
+}
+
+void LogPlayer::keep(int startFrame, int endFrame)
+{
+  if (startFrame < 0 || startFrame >= numberOfFrames)
+    return;
+  if (endFrame < 0 || endFrame >= numberOfFrames)
+    return;
+
+  stop();
+
+  LogPlayer temp((MessageQueue&)*this);
+  temp.setSize(queue.getSize());
+  moveAllMessages(temp);
+
+  const int begin = frameIndex[startFrame];
+  const int end = endFrame == numberOfFrames - 1 ? numberOfMessagesWithinCompleteFrames : frameIndex[endFrame + 1];
+
+  for (temp.currentMessageNumber = begin; temp.currentMessageNumber < end; ++temp.currentMessageNumber)
+    temp.copyMessage(temp.currentMessageNumber, *this);
+
+  countFramesAndMessages();
+  if (!frameIndex.empty())
     createFrameIndex();
 }
 
 void LogPlayer::remove(MessageID* messageIDs)
 {
   stop();
-  LogPlayer temp((MessageQueue&) *this);
+  LogPlayer temp((MessageQueue&)*this);
   temp.setSize(queue.getSize());
   moveAllMessages(temp);
-  for(temp.currentMessageNumber = 0; temp.currentMessageNumber < temp.getNumberOfMessages(); ++temp.currentMessageNumber)
+  for (temp.currentMessageNumber = 0; temp.currentMessageNumber < temp.getNumberOfMessages(); ++temp.currentMessageNumber)
   {
     temp.queue.setSelectedMessageForReading(temp.currentMessageNumber);
     MessageID* m = messageIDs;
-    while(*m)
+    while (*m)
     {
-      if(temp.queue.getMessageID() == *m)
+      if (temp.queue.getMessageID() == *m)
         break;
       ++m;
     }
-    if(!*m)
+    if (!*m)
       temp.copyMessage(temp.currentMessageNumber, *this);
   }
-  countFrames();
-  if(!frameIndex.empty())
+  countFramesAndMessages();
+  if (!frameIndex.empty())
+    createFrameIndex();
+}
+
+void LogPlayer::remove(int startFrame, int endFrame)
+{
+  if (startFrame < 0 || startFrame >= numberOfFrames)
+    return;
+  if (endFrame < 0 || endFrame >= numberOfFrames)
+    return;
+
+  stop();
+
+  LogPlayer temp((MessageQueue&)*this);
+  temp.setSize(queue.getSize());
+  moveAllMessages(temp);
+
+  const int begin = frameIndex[startFrame];
+  const int end = endFrame == numberOfFrames - 1 ? numberOfMessagesWithinCompleteFrames : frameIndex[endFrame + 1];
+
+  for (temp.currentMessageNumber = 0; temp.currentMessageNumber < begin; ++temp.currentMessageNumber)
+    temp.copyMessage(temp.currentMessageNumber, *this);
+
+  for (temp.currentMessageNumber = end; temp.currentMessageNumber < temp.getNumberOfMessages(); ++temp.currentMessageNumber)
+    temp.copyMessage(temp.currentMessageNumber, *this);
+
+  countFramesAndMessages();
+  if (!frameIndex.empty())
     createFrameIndex();
 }
 
 void LogPlayer::statistics(int frequencies[numOfDataMessageIDs], unsigned* sizes, char processIdentifier)
 {
-  for(int i = 0; i < numOfDataMessageIDs; ++i)
+  for (int i = 0; i < numOfDataMessageIDs; ++i)
     frequencies[i] = 0;
-  if(sizes)
-    for(int i = 0; i < numOfDataMessageIDs; ++i)
+  if (sizes)
+    for (int i = 0; i < numOfDataMessageIDs; ++i)
       sizes[i] = 0;
 
-  if(getNumberOfMessages() > 0)
+  if (getNumberOfMessages() > 0)
   {
     int current = queue.getSelectedMessageForReading();
     char currentProcess = 0;
-    for(int i = 0; i < getNumberOfMessages(); ++i)
+    for (int i = 0; i < getNumberOfMessages(); ++i)
     {
       queue.setSelectedMessageForReading(i);
       ASSERT(queue.getMessageID() < numOfDataMessageIDs);
-      if(queue.getMessageID() == idProcessBegin)
+      if (queue.getMessageID() == idProcessBegin)
         currentProcess = queue.getData()[0];
-      if(!processIdentifier || processIdentifier == currentProcess)
+      if (!processIdentifier || processIdentifier == currentProcess)
       {
         ++frequencies[queue.getMessageID()];
-        if(sizes)
+        if (sizes)
           sizes[queue.getMessageID()] += queue.getMessageSize() + 4;
       }
     }
@@ -498,24 +541,26 @@ void LogPlayer::createFrameIndex()
   queue.createIndex();
   frameIndex.clear();
   frameIndex.reserve(numberOfFrames);
-  for(int i = 0; i < getNumberOfMessages(); ++i)
+  for (int i = 0; i < getNumberOfMessages(); ++i)
   {
     queue.setSelectedMessageForReading(i);
-    if(queue.getMessageID() == idProcessBegin)
+    if (queue.getMessageID() == idProcessBegin)
       frameIndex.push_back(i);
   }
 }
 
-void LogPlayer::countFrames()
+void LogPlayer::countFramesAndMessages()
 {
+  queue.numberOfMessages = 0;
   numberOfFrames = 0;
-  for(int i = 0; i < getNumberOfMessages(); ++i)
+  for (queue.selectedMessageForReadingPosition = 0; queue.selectedMessageForReadingPosition < queue.usedSize;
+       queue.selectedMessageForReadingPosition += queue.getMessageSize() + queue.headerSize)
   {
-    queue.setSelectedMessageForReading(i);
-    if(queue.getMessageID() == idProcessFinished)
+    ++queue.numberOfMessages;
+    if (queue.getMessageID() == idProcessFinished)
     {
       ++numberOfFrames;
-      numberOfMessagesWithinCompleteFrames = i + 1;
+      numberOfMessagesWithinCompleteFrames = queue.numberOfMessages + 1;
     }
   }
 }
@@ -524,14 +569,14 @@ std::string LogPlayer::expandImageFileName(const char* fileName, int imageNumber
 {
   std::string name(fileName);
   std::string ext(".png");
-  std::string::size_type p = (int) name.rfind('.');
-  if((int) p > (int) name.find_last_of("\\/"))
+  std::string::size_type p = (int)name.rfind('.');
+  if ((int)p > (int)name.find_last_of("\\/"))
   {
     ext = name.substr(p);
     name = name.substr(0, p);
   }
 
-  if(imageNumber >= 0)
+  if (imageNumber >= 0)
   {
     char num[12];
     sprintf(num, "%03d", imageNumber);
@@ -540,10 +585,10 @@ std::string LogPlayer::expandImageFileName(const char* fileName, int imageNumber
   else
     name += ext;
 
-  for(unsigned i = 0; i < name.size(); ++i)
-    if(name[i] == '\\')
+  for (unsigned i = 0; i < name.size(); ++i)
+    if (name[i] == '\\')
       name[i] = '/';
-  if(name[0] != '/' && (name.size() < 2 || name[1] != ':'))
+  if (name[0] != '/' && (name.size() < 2 || name[1] != ':'))
     name = File::getBHDir() + std::string("/Config/") + name;
   return name;
 }
@@ -552,19 +597,18 @@ bool LogPlayer::saveImage(const Image& image, const char* fileName, int imageNum
 {
   std::string name = expandImageFileName(fileName, imageNumber);
   const Image* r = &image;
-  if(YUV2RGB)
+  if (YUV2RGB)
   {
     r = new Image;
     const_cast<Image*>(r)->convertFromYCbCrToRGB(image);
   }
   QImage img(image.width, image.height, QImage::Format_RGB888);
-  for(int y = 0; y < image.height; ++y)
+  for (int y = 0; y < image.height; ++y)
   {
     const Image::Pixel* pSrc = &(*r)[y][0];
-    unsigned char* p = img.scanLine(y),
-                 * pEnd = p + 3 * image.width;
-    if(YUV2RGB)
-      while(p != pEnd)
+    unsigned char *p = img.scanLine(y), *pEnd = p + 3 * image.width;
+    if (YUV2RGB)
+      while (p != pEnd)
       {
         *p++ = pSrc->r;
         *p++ = pSrc->g;
@@ -572,7 +616,7 @@ bool LogPlayer::saveImage(const Image& image, const char* fileName, int imageNum
         ++pSrc;
       }
     else
-      while(p != pEnd)
+      while (p != pEnd)
       {
         *p++ = pSrc->y;
         *p++ = pSrc->cb;
@@ -580,7 +624,7 @@ bool LogPlayer::saveImage(const Image& image, const char* fileName, int imageNum
         ++pSrc;
       }
   }
-  if(YUV2RGB)
+  if (YUV2RGB)
     delete r;
   return img.save(name.c_str());
 }
@@ -589,25 +633,25 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
 {
   stop();
 
-  map<unsigned short, string> names;/**<contains a mapping from watch id to watch name */
-  map<unsigned, map<unsigned short, unsigned>> timings;/**<Contains a map from watch id to timing for each existing frame*/
-  map<unsigned, unsigned> processStartTimes;/**< After parsing this contains the start time of each frame (frames may be missing) */
-  for(int currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); currentMessageNumber++)
+  map<unsigned short, string> names; /**<contains a mapping from watch id to watch name */
+  map<unsigned, map<unsigned short, unsigned>> timings; /**<Contains a map from watch id to timing for each existing frame*/
+  map<unsigned, unsigned> processStartTimes; /**< After parsing this contains the start time of each frame (frames may be missing) */
+  for (int currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); currentMessageNumber++)
   {
     queue.setSelectedMessageForReading(currentMessageNumber);
-    if(queue.getMessageID() == idStopwatch)
-    {//NOTE: this parser is a slightly modified version of the on in TimeInfo
+    if (queue.getMessageID() == idStopwatch)
+    { //NOTE: this parser is a slightly modified version of the on in TimeInfo
       //first get the names
       unsigned short nameCount;
       in.bin >> nameCount;
 
-      for(int i = 0; i < nameCount; ++i)
+      for (int i = 0; i < nameCount; ++i)
       {
         string watchName;
         unsigned short watchId;
         in.bin >> watchId;
         in.bin >> watchName;
-        if(names.find(watchId) == names.end()) //new name
+        if (names.find(watchId) == names.end()) //new name
         {
           names[watchId] = watchName;
         }
@@ -618,7 +662,7 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
       in.bin >> dataCount;
 
       map<unsigned short, unsigned> frameTiming;
-      for(int i = 0; i < dataCount; ++i)
+      for (int i = 0; i < dataCount; ++i)
       {
         unsigned short watchId;
         unsigned time;
@@ -639,7 +683,7 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
 
   //now write the data to disk
   OutTextRawFile file(fileName);
-  if(!file.exists())
+  if (!file.exists())
     return false;
 
   unordered_map<unsigned short, int> columns; /**< mapping from stopwatch id to table column*/
@@ -647,7 +691,7 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
   //write header
   file << "Frame" << sep << "StartTime" << sep;
   int column = 0;
-  for(map<unsigned short, string>::iterator it = names.begin(); it != names.end(); ++it, ++column)
+  for (map<unsigned short, string>::iterator it = names.begin(); it != names.end(); ++it, ++column)
   {
     columns[it->first] = column;
     file << it->second << sep;
@@ -656,22 +700,22 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
 
   //write data
   map<unsigned, unsigned>::iterator it;
-  for(it = processStartTimes.begin(); it != processStartTimes.end(); ++it)
+  for (it = processStartTimes.begin(); it != processStartTimes.end(); ++it)
   {
     const unsigned frameNo = it->first;
     vector<long> row;
     row.resize(column, -42); //-42 is a value that can never happen because all timings are unsigned
     map<unsigned short, unsigned>& timing = timings[frameNo];
-    for(const auto& t : timing)
+    for (const auto& t : timing)
     {
       int colIndex = columns[t.first];
       row[colIndex] = t.second;
     }
 
     file << frameNo << sep << it->second << sep;
-    for(long value : row)
-    {//write timing data
-      if(value == -42)
+    for (long value : row)
+    { //write timing data
+      if (value == -42)
       {
         file << "NO DATA" << sep;
       }
@@ -688,18 +732,19 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
 bool LogPlayer::saveAudioFile(const char* fileName)
 {
   OutBinaryFile stream(fileName);
-  if(!stream.exists())
+  if (!stream.exists())
     return false;
 
   int frames = 0;
   AudioData audioData;
-  for(currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
   {
     queue.setSelectedMessageForReading(currentMessageNumber);
-    if(queue.getMessageID() == idAudioData)
+    if (queue.getMessageID() == idAudioData)
     {
       in.bin >> audioData;
-      frames += unsigned(audioData.samples.size()) / audioData.channels;
+      if (audioData.channels > 0)
+        frames += unsigned(audioData.samples.size()) / audioData.channels;
     }
   }
 
@@ -721,28 +766,28 @@ bool LogPlayer::saveAudioFile(const char* fileName)
   };
 
   int length = sizeof(WAVHeader) + sizeof(float) * frames * audioData.channels;
-  WAVHeader* header = (WAVHeader*) new char[length];
-  *(unsigned*) header->chunkId = *(const unsigned*) "RIFF";
+  WAVHeader* header = (WAVHeader*)new char[length];
+  *(unsigned*)header->chunkId = *(const unsigned*)"RIFF";
   header->chunkSize = length - 8;
-  *(unsigned*) header->format = *(const unsigned*) "WAVE";
+  *(unsigned*)header->format = *(const unsigned*)"WAVE";
 
-  *(unsigned*) header->subchunk1Id = *(const unsigned*) "fmt ";
+  *(unsigned*)header->subchunk1Id = *(const unsigned*)"fmt ";
   header->subchunk1Size = 16;
   header->audioFormat = 3;
-  header->numChannels = (short) audioData.channels;
+  header->numChannels = (short)audioData.channels;
   header->sampleRate = audioData.sampleRate;
   header->byteRate = audioData.sampleRate * audioData.channels * sizeof(float);
   header->blockAlign = short(audioData.channels * sizeof(float));
   header->bitsPerSample = 32;
 
-  *(unsigned*) header->subchunk2Id = *(const unsigned*) "data";
+  *(unsigned*)header->subchunk2Id = *(const unsigned*)"data";
   header->subchunk2Size = frames * audioData.channels * sizeof(float);
 
-  char* p = (char*) (header + 1);
-  for(currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  char* p = (char*)(header + 1);
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
   {
     queue.setSelectedMessageForReading(currentMessageNumber);
-    if(queue.getMessageID() == idAudioData)
+    if (queue.getMessageID() == idAudioData)
     {
       in.bin >> audioData;
       memcpy(p, audioData.samples.data(), audioData.samples.size() * sizeof(float));
@@ -751,7 +796,7 @@ bool LogPlayer::saveAudioFile(const char* fileName)
   }
 
   stream.write(header, length);
-  delete [] header;
+  delete[] header;
 
   stop();
 
@@ -760,7 +805,7 @@ bool LogPlayer::saveAudioFile(const char* fileName)
 
 void LogPlayer::replayStreamSpecification()
 {
-  if(streamHandler && !streamSpecificationReplayed)
+  if (streamHandler && !streamSpecificationReplayed)
   {
     targetQueue.out.bin << *streamHandler;
     targetQueue.out.finishMessage(idStreamSpecification);

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Eigen.h"
 
 /**
@@ -27,14 +27,27 @@
  * \tparam z The size of the measurement vector (z).
  */
 template <class V = double, unsigned int x = 1, unsigned int u = 1, unsigned int z = 1>
-class KalmanMultiDimensional : public Streamable
-{
-public:
-  /// The estimated state (x).
-  Eigen::Matrix<V, x, 1> state;
-  /// The current covariance matrix (P).
-  Eigen::Matrix<V, x, x> covarianceMatrix;
-  
+STREAMABLE(KalmanMultiDimensional,
+  /**
+   * \struct KalmanMatrices::Noise
+   *
+   * \brief Noise matrices of the kalman filter.
+   *
+   * Included matrices:
+   * - process noise covariance matrix (Q)
+   * - measurement noise matrix (R)
+   */
+  STREAMABLE(Noise,,
+    /// The process noise covariance matrix (Q).
+    (Eigen::Matrix<V, x, x>) processNoiseCovarianceMatrix,
+    /// The measurement noise matrix (R).
+    (Eigen::Matrix<V, z, z>) measurementNoiseMatrix,
+
+    /// The maximum measurement noise as a scalar value.
+    /// The actual values of the \c measurementNoiseMatrix can vary.
+    (V)(0) maxMeasurementNoise
+  );
+
   /**
    * \struct KalmanMatrices
    * 
@@ -48,74 +61,21 @@ public:
    *   - process noise covariance matrix (Q)
    *   - measurement noise matrix (R)
    */
-  struct KalmanMatrices : Streamable
-  {
+  STREAMABLE(KalmanMatrices,
+    using Noise = Noise;
+    ,
     /// The system matrix (A).
-    Eigen::Matrix<V, x, x> systemMatrix;
+    (Eigen::Matrix<V, x, x>) systemMatrix,
     /// The input matrix (B).
-    Eigen::Matrix<V, x, u> inputMatrix;
+    (Eigen::Matrix<V, x, u>) inputMatrix,
     /// The measurement matrix (H).
-    Eigen::Matrix<V, z, x> measurementMatrix;
-
-    /**
-     * \struct KalmanMatrices::Noise
-     *
-     * \brief Noise matrices of the kalman filter.
-     *
-     * Included matrices:
-     * - process noise covariance matrix (Q)
-     * - measurement noise matrix (R)
-     */
-    struct Noise : Streamable
-    {
-      /// The process noise covariance matrix (Q).
-      Eigen::Matrix<V, x, x> processNoiseCovarianceMatrix;
-      /// The measurement noise matrix (R).
-      Eigen::Matrix<V, z, z> measurementNoiseMatrix;
-
-      /// The maximum measurement noise as a scalar value.
-      /// The actual values of the \c measurementNoiseMatrix can vary.
-      V maxMeasurementNoise = static_cast<V>(0);
-
-      /** Streaming */
-      virtual void serialize(In *in, Out *out)
-      {
-        STREAM_REGISTER_BEGIN;
-        STREAM(processNoiseCovarianceMatrix);
-        STREAM(measurementNoiseMatrix);
-        STREAM(maxMeasurementNoise);
-        STREAM_REGISTER_FINISH;
-      }
-    };
+    (Eigen::Matrix<V, z, x>) measurementMatrix,
     /// Noise matrices of the kalman filter.
-    Noise noise;
-
-    /** Streaming */
-    virtual void serialize(In *in, Out *out)
-    {
-      STREAM_REGISTER_BEGIN;
-      STREAM(systemMatrix);
-      STREAM(inputMatrix);
-      STREAM(measurementMatrix);
-      STREAM(noise);
-      STREAM_REGISTER_FINISH;
-    }
-  };
+    (Noise) noise
+  );
 
   /// Fix matrices of the kalman filter.
   KalmanMatrices matrices;
-  
-
-  /** Streaming */
-  virtual void serialize(In *in, Out *out)
-  {
-    STREAM_REGISTER_BEGIN;
-    STREAM(state);
-    STREAM(covarianceMatrix);
-    //STREAM(matrices);
-    STREAM_REGISTER_FINISH;
-  }
-
 
   /**
    * Default constructor.
@@ -166,17 +126,7 @@ public:
    * \param [in] measurementNoiseFactor Increase measurement noise by 
    *                                    multiplication with this factor (> 0).
    */
-  void correct(const Eigen::Matrix<V, z, 1>& measurement, V measurementNoiseFactor = 1)
-  {
-    // S = HPH^T + R
-    Eigen::Matrix<V, z, z> innovationCovarianceMatrix = matrices.measurementMatrix * covarianceMatrix * matrices.measurementMatrix.transpose() + matrices.noise.measurementNoiseMatrix * measurementNoiseFactor;
-    // K = P*H^T*S^(-1)
-    Eigen::Matrix<V, x, z> K = covarianceMatrix * matrices.measurementMatrix.transpose() * innovationCovarianceMatrix.inverse();
-    // x = x + K(z - Hx)
-    state = state + K * (measurement - (matrices.measurementMatrix * state));
-    // P = (I - KH)P
-    covarianceMatrix = (Eigen::Matrix<V, x, x>::Identity() - K * matrices.measurementMatrix) * covarianceMatrix;
-  }
+  void correct(const Eigen::Matrix<V, z, 1>& measurement, V measurementNoiseFactor = 1);
   
   /**
    * \brief Correction: x = x + K(z - Hx), P = (I - KH)P
@@ -195,17 +145,7 @@ public:
   void correct(const Eigen::Matrix<V, z_tmp, 1>& measurement,
                const Eigen::Matrix<V, z_tmp, x> measurementMatrix_tmp,
                const Eigen::Matrix<V, z_tmp, z_tmp> measurementNoiseMatrix_tmp,
-	           V measurementNoiseFactor = 1)
-  {
-    // S = HPH^T + R
-    Eigen::Matrix<V, z_tmp, z_tmp> innovationCovarianceMatrix = measurementMatrix_tmp * covarianceMatrix * measurementMatrix_tmp.transpose() + measurementNoiseMatrix_tmp * measurementNoiseFactor;
-    // K = P*H^T*S^(-1)
-    Eigen::Matrix<V, x, z_tmp> K = covarianceMatrix * measurementMatrix_tmp.transpose() * innovationCovarianceMatrix.inverse();
-    // x = x + K(z - Hx)
-    state = state + K * (measurement - (measurementMatrix_tmp * state));
-    // P = (I - KH)P
-    covarianceMatrix = (Eigen::Matrix<V, x, x>::Identity() - K * measurementMatrix_tmp) * covarianceMatrix;
-  }
+	           V measurementNoiseFactor = 1);
     
   /**
    * \struct KalmanStateTransformation
@@ -215,14 +155,13 @@ public:
    * Encapsulates matrices describing a transformation (translation and rotation)
    * of the kalman state which can be used to compensate a changing reference frame.
    */
-  struct KalmanStateTransformation
-  {
+  STREAMABLE(KalmanStateTransformation,,
     /// This rotation matrix (R) is applied to the state vector.
-    Eigen::Matrix<V, x, x> stateRotationMatrix;
+    (Eigen::Matrix<V, x, x>) stateRotationMatrix,
 
     /// This translation vector (t) is added to the state vector.
-    Eigen::Matrix<V, x, 1> stateTranslationVector;
-  };
+    (Eigen::Matrix<V, x, 1>) stateTranslationVector
+  );
 
   /**
    * Transforms the kalman filter state and covariance matrix to compensate a 
@@ -251,10 +190,46 @@ public:
    * \param other Another kalman filter
    * \return Distance between \c *this and \c other (value without any unit).
    */
-  V distanceTo(const KalmanMultiDimensional<V, x, u, z>& other) const
-  {
-    Eigen::Matrix<V, x, 1> diff(state - other.state);
-    Eigen::Matrix<V, x, x> cov(covarianceMatrix + other.covarianceMatrix);
-    return diff.dot((cov.inverse() * diff));
-  }
-};
+  V distanceTo(const KalmanMultiDimensional<V, x, u, z>& other) const;
+  ,
+
+  /// The estimated state (x).
+  (Eigen::Matrix<V, x, 1>) state,
+  /// The current covariance matrix (P).
+  (Eigen::Matrix<V, x, x>) covarianceMatrix
+);
+
+template <class V, unsigned int x, unsigned int u, unsigned int z>
+void KalmanMultiDimensional<V, x, u, z>::correct(const Eigen::Matrix<V, z, 1>& measurement, V measurementNoiseFactor)
+{
+  // S = HPH^T + R
+  Eigen::Matrix<V, z, z> innovationCovarianceMatrix = matrices.measurementMatrix * covarianceMatrix * matrices.measurementMatrix.transpose() + matrices.noise.measurementNoiseMatrix * measurementNoiseFactor;
+  // K = P*H^T*S^(-1)
+  Eigen::Matrix<V, x, z> K = covarianceMatrix * matrices.measurementMatrix.transpose() * innovationCovarianceMatrix.inverse();
+  // x = x + K(z - Hx)
+  state = state + K * (measurement - (matrices.measurementMatrix * state));
+  // P = (I - KH)P
+  covarianceMatrix = (Eigen::Matrix<V, x, x>::Identity() - K * matrices.measurementMatrix) * covarianceMatrix;
+}
+
+template <class V, unsigned int x, unsigned int u, unsigned int z>
+template <unsigned int z_tmp>
+void KalmanMultiDimensional<V, x, u, z>::correct(
+    const Eigen::Matrix<V, z_tmp, 1>& measurement, const Eigen::Matrix<V, z_tmp, x> measurementMatrix_tmp, const Eigen::Matrix<V, z_tmp, z_tmp> measurementNoiseMatrix_tmp, V measurementNoiseFactor)
+{
+  // S = HPH^T + R
+  Eigen::Matrix<V, z_tmp, z_tmp> innovationCovarianceMatrix = measurementMatrix_tmp * covarianceMatrix * measurementMatrix_tmp.transpose() + measurementNoiseMatrix_tmp * measurementNoiseFactor;
+  // K = P*H^T*S^(-1)
+  Eigen::Matrix<V, x, z_tmp> K = covarianceMatrix * measurementMatrix_tmp.transpose() * innovationCovarianceMatrix.inverse();
+  // x = x + K(z - Hx)
+  state = state + K * (measurement - (measurementMatrix_tmp * state));
+  // P = (I - KH)P
+  covarianceMatrix = (Eigen::Matrix<V, x, x>::Identity() - K * measurementMatrix_tmp) * covarianceMatrix;
+}
+
+template <class V, unsigned int x, unsigned int u, unsigned int z> V KalmanMultiDimensional<V, x, u, z>::distanceTo(const KalmanMultiDimensional<V, x, u, z>& other) const
+{
+  Eigen::Matrix<V, x, 1> diff(state - other.state);
+  Eigen::Matrix<V, x, x> cov(covarianceMatrix + other.covarianceMatrix);
+  return diff.dot((cov.inverse() * diff));
+}

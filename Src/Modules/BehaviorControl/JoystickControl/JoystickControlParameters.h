@@ -6,72 +6,51 @@
  */
 #pragma once
 
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Settings.h"
 #include "Tools/Streams/InStreams.h"
 
 #include "JoystickDeviceParameters.h"
 
-class JoystickControlParameters : public Streamable
-{
-
-public:
-
+STREAMABLE(JoystickControlParameters,
   JoystickControlParameters()
   {
     // Load general parameters.
     InMapFile stream("joystickControl.cfg");
-	  ASSERT(stream.exists());
-	  stream >> *this;
+    ASSERT(stream.exists());
+    stream >> *this;
 
     // Load device-specific parameters.
     device.loadConfigFile(deviceParametersFileName);
   }
-  
-  /// Name of the config file with device-specific parameters.
-  /// \see JoystickDeviceParameters
-  std::string deviceParametersFileName;
 
   /// Device-specific parameters loaded from config file with
   /// name \c deviceParametersFileName.
   JoystickDeviceParameters device;
+  ,
+  
+  /// Name of the config file with device-specific parameters.
+  /// \see JoystickDeviceParameters
+  (std::string)("") deviceParametersFileName,
 
   /// Maximum walking velocity in x direction.
-  float maxVelocityX;
+  (float)(0.f) maxVelocityX,
 
   /// Minimum walking velocity in x direction.
-  float minVelocityX;
+  (float)(0.f) minVelocityX,
 
   /// Maximum walking velocity in y direction.
-  float maxVelocityY;
+  (float)(0.f) maxVelocityY,
 
   /// Maximum rotational walking velocity.
-  float maxVelocityRot;
+  (float)(0.f) maxVelocityRot,
 
   /// Maximum (= -minimum) value of HeadAngleRequest pan.
-  float maxHeadPan;
+  (float)(0.f) maxHeadPan,
 
   /// Minimum value of HeadAngleRequest tilt.
-  float minHeadTilt;
+  (float)(0.f) minHeadTilt,
 
   /// Maximum value of HeadAngleRequest tilt.
-  float maxHeadTilt;
-
-  virtual void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-
-    STREAM(deviceParametersFileName);
-
-    STREAM(maxVelocityX);
-    STREAM(minVelocityX);
-    STREAM(maxVelocityY);
-    STREAM(maxVelocityRot);
-
-    STREAM(maxHeadPan);
-    STREAM(minHeadTilt);
-    STREAM(maxHeadTilt);
-
-    STREAM_REGISTER_FINISH;
-  }
-};
+  (float)(0.f) maxHeadTilt
+);

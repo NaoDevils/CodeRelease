@@ -7,16 +7,13 @@
 
 #include "JoystickControl.h"
 
-#include "Tools/Module/Logger.h"
 #include <sstream>
 #include <iostream>
 
 MAKE_MODULE(JoystickControl, behaviorControl)
 
 
-JoystickControl::JoystickControl() :
-    lastExecuteTimeStamp(0),
-    m_inCustomStepTest(false)
+JoystickControl::JoystickControl() : lastExecuteTimeStamp(0), m_inCustomStepTest(false)
 {
   initialize();
 }
@@ -106,6 +103,7 @@ void JoystickControl::execute()
 
 void JoystickControl::parseJoystickEvents()
 {
+#ifdef LINUX
   // Check if joystick is connected.
   if (!joystick.isFound())
   {
@@ -156,8 +154,7 @@ void JoystickControl::parseJoystickEvents()
       state.axes[event.number] = (float)event.value / (float)SHRT_MAX;
 
       // Cut off the axis value at about -1 if the axis is combined with another one.
-      if (parameters.device.walkRotAxisSplit() &&
-        (event.number == parameters.device.walkRotLeftAxis || event.number == parameters.device.walkRotRightAxis))
+      if (parameters.device.walkRotAxisSplit() && (event.number == parameters.device.walkRotLeftAxis || event.number == parameters.device.walkRotRightAxis))
       {
         if (state.axes[event.number] < (-1.f + parameters.device.minAxisValue))
         {
@@ -176,14 +173,14 @@ void JoystickControl::parseJoystickEvents()
       }
     }
   }
+#endif
 }
 
 void JoystickControl::processChestButton()
 {
   // Was the chest button pressed?
-  if (theKeyStates.pressed[KeyStates::chest] ||
-      (parameters.device.startButton >= 0 && (unsigned int)parameters.device.startButton <= parameters.device.buttonsCount && 
-       state.pressedButtons[parameters.device.startButton]))
+  if (theKeyStates.pressed[KeyStates::chest]
+      || (parameters.device.startButton >= 0 && (unsigned int)parameters.device.startButton <= parameters.device.buttonsCount && state.pressedButtons[parameters.device.startButton]))
   {
     // Ignore all incoming button events when the chest button was pressed.
     state.deleteEvents(parameters);
@@ -211,11 +208,10 @@ void JoystickControl::processChestButton()
 void JoystickControl::generateHeadControlRequest()
 {
   localHeadControlRequest.controlType = HeadControlRequest::direct;
-  
+
   // Set pan.
   if (parameters.device.headPanAxis >= 0 && (unsigned int)parameters.device.headPanAxis <= parameters.device.axesCount)
-    localHeadControlRequest.pan =
-    -state.axes[parameters.device.headPanAxis] * parameters.maxHeadPan;
+    localHeadControlRequest.pan = -state.axes[parameters.device.headPanAxis] * parameters.maxHeadPan;
   else
     localHeadControlRequest.pan = 0.f;
 
@@ -223,8 +219,7 @@ void JoystickControl::generateHeadControlRequest()
   if (parameters.device.headTiltAxis >= 0 && (unsigned int)parameters.device.headTiltAxis <= parameters.device.axesCount)
   {
     float maxTilt = std::fmaxf(fabsf(parameters.maxHeadTilt), fabsf(parameters.minHeadTilt));
-    localHeadControlRequest.tilt =
-      -state.axes[parameters.device.headTiltAxis] * maxTilt;
+    localHeadControlRequest.tilt = -state.axes[parameters.device.headTiltAxis] * maxTilt;
     if (localHeadControlRequest.tilt < parameters.minHeadTilt)
       localHeadControlRequest.tilt = parameters.minHeadTilt;
     if (localHeadControlRequest.tilt > parameters.maxHeadTilt)
@@ -249,7 +244,8 @@ void JoystickControl::generateMotionRequest()
   // Don't allow any other action while the robot does not stand.
   if (!standing())
   {
-    if (!actionRunning()) playDead();
+    if (!actionRunning())
+      playDead();
     return;
   }
 
@@ -259,13 +255,12 @@ void JoystickControl::generateMotionRequest()
   localMotionRequest.motion = MotionRequest::walk;
   localMotionRequest.walkRequest.requestType = WalkRequest::speed;
 
-  if (parameters.device.backButton >= 0 && (unsigned int)parameters.device.backButton <= parameters.device.buttonsCount &&
-      state.pressedButtons[parameters.device.backButton])
+  if (parameters.device.backButton >= 0 && (unsigned int)parameters.device.backButton <= parameters.device.buttonsCount && state.pressedButtons[parameters.device.backButton])
   {
     m_inCustomStepTest = !m_inCustomStepTest;
   }
 
-  if(m_inCustomStepTest)
+  if (m_inCustomStepTest)
   {
     localMotionRequest.walkRequest.request.translation[0] = 0.5f;
   }
@@ -310,8 +305,7 @@ void JoystickControl::generateActionRequest()
     {
       if (state.pressedButtons[parameters.device.specialActions[s].button])
       {
-        specialAction(parameters.device.specialActions[s].specialAction,
-                      parameters.device.specialActions[s].duration);
+        specialAction(parameters.device.specialActions[s].specialAction, parameters.device.specialActions[s].duration);
         return;
       }
     }
@@ -351,7 +345,7 @@ bool JoystickControl::actionRunning()
       }
     }
 
-    // Other motion leaves after time is out. This should not be reached, for 
+    // Other motion leaves after time is out. This should not be reached, for
     // there is no other motion type which causes an JoystickControl action.
     else
     {
@@ -363,81 +357,78 @@ bool JoystickControl::actionRunning()
 
 void JoystickControl::generateWalkRequest()
 {
-  if(!m_inCustomStepTest) {
+  if (!m_inCustomStepTest)
+  {
     // Walk at speed.
     localMotionRequest.motion = MotionRequest::walk;
     localMotionRequest.walkRequest.requestType = WalkRequest::speed;
 
-    if (parameters.device.backButton >= 0 &&
-        (unsigned int) parameters.device.backButton <= parameters.device.buttonsCount &&
-        state.pressedButtons[parameters.device.backButton]) {
+    if (parameters.device.backButton >= 0 && (unsigned int)parameters.device.backButton <= parameters.device.buttonsCount && state.pressedButtons[parameters.device.backButton])
+    {
       m_inCustomStepTest = !m_inCustomStepTest;
     }
 
-    if (m_inCustomStepTest) {
+    if (m_inCustomStepTest)
+    {
       localMotionRequest.walkRequest.request.translation[0] = 10.f;
     }
 
     // Walking direction x.
-    if (parameters.device.walkXAxis >= 0 &&
-        static_cast<unsigned int>(parameters.device.walkXAxis) <= parameters.device.axesCount)
-      localMotionRequest.walkRequest.request.translation[0] =
-        -state.axes[parameters.device.walkXAxis] * parameters.maxVelocityX;
+    if (parameters.device.walkXAxis >= 0 && static_cast<unsigned int>(parameters.device.walkXAxis) <= parameters.device.axesCount)
+      localMotionRequest.walkRequest.request.translation[0] = -state.axes[parameters.device.walkXAxis] * parameters.maxVelocityX;
     else
       localMotionRequest.walkRequest.request.translation[0] = 0.f;
 
     // Add value of additional walkXAxis.
-    if (parameters.device.additionalWalkXAxis >= 0 &&
-        static_cast<unsigned int>(parameters.device.additionalWalkXAxis) <= parameters.device.axesCount) {
-      localMotionRequest.walkRequest.request.translation[0] =
-        localMotionRequest.walkRequest.request.translation.x() -
-        state.axes[parameters.device.additionalWalkXAxis] * parameters.maxVelocityX;
+    if (parameters.device.additionalWalkXAxis >= 0 && static_cast<unsigned int>(parameters.device.additionalWalkXAxis) <= parameters.device.axesCount)
+    {
+      localMotionRequest.walkRequest.request.translation[0] = localMotionRequest.walkRequest.request.translation.x()
+          - state.axes[parameters.device.additionalWalkXAxis] * parameters.maxVelocityX;
     }
-    if (localMotionRequest.walkRequest.request.translation.x() > 0.0 &&
-        localMotionRequest.walkRequest.request.translation.x() > parameters.maxVelocityX)
+    if (localMotionRequest.walkRequest.request.translation.x() > 0.0 && localMotionRequest.walkRequest.request.translation.x() > parameters.maxVelocityX)
       localMotionRequest.walkRequest.request.translation[0] = parameters.maxVelocityX;
-    if (localMotionRequest.walkRequest.request.translation.x() < 0.0 &&
-        localMotionRequest.walkRequest.request.translation.x() < parameters.minVelocityX)
+    if (localMotionRequest.walkRequest.request.translation.x() < 0.0 && localMotionRequest.walkRequest.request.translation.x() < parameters.minVelocityX)
       localMotionRequest.walkRequest.request.translation[0] = parameters.minVelocityX;
 
     // Walking direction y.
-    if (parameters.device.walkYAxis >= 0 &&
-        static_cast<unsigned int>(parameters.device.walkYAxis) <= parameters.device.axesCount)
-      localMotionRequest.walkRequest.request.translation[1] =
-        -state.axes[parameters.device.walkYAxis] * parameters.maxVelocityY;
+    if (parameters.device.walkYAxis >= 0 && static_cast<unsigned int>(parameters.device.walkYAxis) <= parameters.device.axesCount)
+      localMotionRequest.walkRequest.request.translation[1] = -state.axes[parameters.device.walkYAxis] * parameters.maxVelocityY;
     else
       localMotionRequest.walkRequest.request.translation[1] = 0.f;
 
     // Walking rotation.
-    if (parameters.device.walkRotAxis >= 0 &&
-        static_cast<unsigned int>(parameters.device.walkRotAxis) <= parameters.device.axesCount)
-      localMotionRequest.walkRequest.request.rotation =
-        -state.axes[parameters.device.walkRotAxis] * parameters.maxVelocityRot;
-    else if (parameters.device.walkRotAxisSplit()) {
+    if (parameters.device.walkRotAxis >= 0 && static_cast<unsigned int>(parameters.device.walkRotAxis) <= parameters.device.axesCount)
+      localMotionRequest.walkRequest.request.rotation = -state.axes[parameters.device.walkRotAxis] * parameters.maxVelocityRot;
+    else if (parameters.device.walkRotAxisSplit())
+    {
       float left = (state.axes[parameters.device.walkRotLeftAxis] + 1.f) / 2.f; // range [0,1]
       float right = (state.axes[parameters.device.walkRotRightAxis] + 1.f) / 2.f; // range [0,1]
       localMotionRequest.walkRequest.request.rotation = (left - right) * parameters.maxVelocityRot;
-    } else
+    }
+    else
       localMotionRequest.walkRequest.request.rotation = 0.0;
   }
 }
 
-void JoystickControl::generateCustomStep() {
+void JoystickControl::generateCustomStep()
+{
   localMotionRequest.walkRequest.stepRequest = currentExecutedCustomStep;
   localMotionRequest.kickRequest.mirror = currentExecutedCustomStepMirror;
 
   float stateValueX = 0.0f;
   float stateValueY = 0.0f;
 
-  if (parameters.device.customStepXAxis >= 0 && static_cast<unsigned int>(parameters.device.customStepXAxis) <= parameters.device.axesCount) {
+  if (parameters.device.customStepXAxis >= 0 && static_cast<unsigned int>(parameters.device.customStepXAxis) <= parameters.device.axesCount)
+  {
     stateValueX = state.axes[parameters.device.customStepXAxis];
   }
 
-  if (parameters.device.customStepYAxis >= 0 && static_cast<unsigned int>(parameters.device.customStepYAxis) <= parameters.device.axesCount) {
+  if (parameters.device.customStepYAxis >= 0 && static_cast<unsigned int>(parameters.device.customStepYAxis) <= parameters.device.axesCount)
+  {
     stateValueY = state.axes[parameters.device.customStepYAxis];
   }
 
-  if( startOfCustomStep == 0)
+  if (startOfCustomStep == 0)
   {
     currentExecutedCustomStep = WalkRequest::StepRequest::none;
     currentExecutedCustomStepMirror = false;
@@ -482,7 +473,7 @@ void JoystickControl::specialAction(SpecialActionRequest::SpecialActionID id, bo
   m_actionRunning = true;
 }
 
-void JoystickControl::specialAction(SpecialActionRequest &specialAction, unsigned duration)
+void JoystickControl::specialAction(SpecialActionRequest& specialAction, unsigned duration)
 {
   localMotionRequest.motion = MotionRequest::specialAction;
   localMotionRequest.specialActionRequest = specialAction;
@@ -538,10 +529,10 @@ void JoystickControl::standUpFallen()
   }
   else
   {
-    // Prevent running other motions while the robot is falling and none of the 
-    // stand up actions can be executed. This causes, that the last motion 
+    // Prevent running other motions while the robot is falling and none of the
+    // stand up actions can be executed. This causes, that the last motion
     // before falling is still executed until the stand up action starts.
-    // Without this, the special action 'playDead' would be executed while the 
+    // Without this, the special action 'playDead' would be executed while the
     // robot is falling, what causes a delayed start of the stand up action.
     m_actionEndTime = theFrameInfo.time + 1000;
     m_actionRunning = true;
@@ -552,7 +543,7 @@ void JoystickControl::kick(bool kickLeft)
 {
   localMotionRequest.motion = MotionRequest::kick;
   localMotionRequest.kickRequest.mirror = !kickLeft;
-  localMotionRequest.kickRequest.kickMotionType = KickRequest::kickForward;
+  localMotionRequest.kickRequest.kickMotionType = KickRequest::kickMiddleFast;
   localMotionRequest.kickRequest.dynamical = true;
   localMotionRequest.kickRequest.kickTarget << 1000.f, 0.f;
   // Set duration of action.

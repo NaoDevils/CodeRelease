@@ -1,0 +1,8 @@
+vp ArmContactProvider:buffer 830 -80 80
+vpd ArmContactProvider:buffer module:ArmContactProvider:bufferLeft red
+vpd ArmContactProvider:buffer module:ArmContactProvider:bufferRight blue
+
+vd module:ArmContactProvider:leftState
+vd module:ArmContactProvider:rightState
+
+vd parameters:ArmContactProvider 

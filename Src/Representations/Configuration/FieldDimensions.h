@@ -16,27 +16,25 @@
 #include "Tools/Math/Geometry.h"
 
 STREAMABLE(SimpleFieldDimensions,
-{
   ENUM(BallType,
-  {,
     orange,
     whiteBlack,
-    any,
-  }),
+    any
+  ),
   (float) xPosOpponentFieldBorder,
   (float) xPosOpponentGoal,
+  (float) xPosOpponentGoalArea,
   (float) xPosOpponentGoalPost,
   (float) xPosOpponentGroundline,
   (float) xPosOpponentPenaltyArea,
-  (float) xPosOpponentDropInLine,
   (float) xPosOpponentPenaltyMark,
   (float) xPosPenaltyStrikerStartPosition,
   (float) xPosHalfWayLine,
   (float) xPosOwnPenaltyArea,
-  (float) xPosOwnDropInLine,
   (float) xPosOwnPenaltyMark,
   (float) xPosOwnGroundline,
   (float) xPosOwnGoalPost,
+  (float) xPosOwnGoalArea,
   (float) xPosOwnGoal,
   (float) xPosOwnFieldBorder,
   // Begin: Added by Dortmund. Used by module BallModelProvider.
@@ -45,13 +43,13 @@ STREAMABLE(SimpleFieldDimensions,
 
   (float) yPosLeftFieldBorder,
   (float) yPosLeftSideline,
-  (float) yPosLeftDropInLine,
   (float) yPosLeftPenaltyArea,
+  (float) yPosLeftGoalArea,
   (float) yPosLeftGoal,
   (float) yPosCenterGoal,
   (float) yPosRightGoal,
+  (float) yPosRightGoalArea,
   (float) yPosRightPenaltyArea,
-  (float) yPosRightDropInLine,
   (float) yPosRightSideline,
   (float) yPosRightFieldBorder,
   // Begin: Added by Dortmund. Used by module BallModelProvider.
@@ -66,12 +64,8 @@ STREAMABLE(SimpleFieldDimensions,
   (float) goalHeight,
   (BallType) ballType,
   (float) ballRadius,
-  (float) ballFriction, // in 1/s
-  (float) penaltyMarkSize, //vertical (and horizontal) size of a penaltyMark
-  (float) penaltyMarkDistance, //distance between penaltyMark and Goal line
-  (float) penaltyAreaLength, //length of penaltyArea
-  (float) penaltyAreaWidth, //width of penaltyArea
-});
+  (float) penaltyMarkSize //vertical (and horizontal) size of a penaltyMark
+);
 
 /**
  * Class containing definitions and functions
@@ -87,20 +81,25 @@ struct FieldDimensions : public SimpleFieldDimensions
   struct LinesTable
   {
     STREAMABLE(Line,
-    {
+      Line() = default;
+      Line(Vector2f from, Vector2f to, bool isPartOfCircle = false);
+
       float length;
-      bool isPartOfCircle = false, /**< Whether the line is a part of a circle. */
+      bool isPartOfCircle = false;/**< Whether the line is a part of a circle. */
+      , 
 
       (Vector2f)(Vector2f::Zero()) from, /**< Begin of the line. */
-      (Vector2f)(Vector2f::Zero()) to, /**< End of the line. */
-    });
+      (Vector2f)(Vector2f::Zero()) to /**< End of the line. */
+    );
 
-    STREAMABLE(Circle,
-    {,
+    STREAMABLE(Circle,,
       (Vector2f) center, /**< The center of the circle. */
       (float) radius, /**< The radius of the circle. */
-      (int) numOfSegments, /**< The number of segments used to discretize the circle. */
-    });
+      (int) numOfSegments /**< The number of segments used to discretize the circle. */
+    );
+
+    LinesTable() = default;
+    LinesTable(std::initializer_list<Line> lines) : lines(std::move(lines)){};
 
     std::vector<Line> lines;
 
@@ -153,44 +152,14 @@ struct FieldDimensions : public SimpleFieldDimensions
     float getDistance(const Pose2f& pose) const;
   };
 
-  /**
-   * The struct represents all corners of a certain type.
-   */
-  struct CornersTable : public std::vector<Vector2f>
-  {
-    /**
-     * The method returns the position of the corner closest to a point.
-     * The method is only defined if !empty().
-     * @param p The point.
-     * @return The position of the closest corner.
-     */
-    const Vector2f& getClosest(const Vector2f& p) const;
-  };
-
-  /**
-   * All different corner classes.
-   */
-  ENUM(CornerClass,
-  {,
-    xCorner,
-    tCorner0,
-    tCorner90,
-    tCorner180,
-    tCorner270,
-    lCorner0,
-    lCorner90,
-    lCorner180,
-    lCorner270,
-  });
-  enum { numOfCornerClasses = numOfCornerClasss }; // extra, because numOfCornerClasss isn't so nice
-
   Boundaryf boundary; ///< The outer boundary of the field.
   LinesTable fieldLines; ///< Table of line segments
   LinesTable goalFrameLines; ///< Table of line segments that contains the parts of the goal frame that are on the ground.
   LinesTable fieldLinesWithGoalFrame; ///< Table of line segments that contains both fieldLines and goalFrameLines
   LinesTable carpetBorder; ///< Describes a polygon around the border of the field carpet. All legal robot positions are inside this polygon.
   LinesTable fieldBorder; ///< Describes a polygon around the border of the playing field. All legal ball positions are inside this polygon.
-  CornersTable corners[numOfCornerClasses]; ///< All corners on the field.
+  bool goalAreaPresent = true;
+  unsigned int lastUpdate = 0;
 
   /**
    * Read field dimensions from configuration file.
@@ -198,45 +167,38 @@ struct FieldDimensions : public SimpleFieldDimensions
   void load();
 
   /**
+   * Read field dimensions from json file.
+   */
+  bool loadFromJsonFile(const std::string& path);
+
+  /**
    * Returns true when p is inside the carpet.
    */
-  bool isInsideCarpet(const Vector2f &p) const
-  {
-    return carpetBorder.isInside(p);
-  }
+  bool isInsideCarpet(const Vector2f& p) const { return carpetBorder.isInside(p); }
 
   /**
    * The function clips a point to the carpet.
    * @param v The point.
    * @return How far was the point moved?
    */
-  float clipToCarpet(Vector2f& v) const
-  {
-    return carpetBorder.clip(v);
-  }
+  float clipToCarpet(Vector2f& v) const { return carpetBorder.clip(v); }
 
   /**
    * Returns true when p is inside the playing field.
    */
-  bool isInsideField(const Vector2f &p) const
-  {
-    return fieldBorder.isInside(p);
-  }
+  bool isInsideField(const Vector2f& p) const { return fieldBorder.isInside(p); }
 
   /**
   * Returns true when ballPos is touching the playing fields borders.
   */
-  bool isBallInsideField(const Vector2f &ballPos) const;
+  bool isBallInsideField(const Vector2f& ballPos) const;
 
   /**
    * The function clips a point to the field.
    * @param v The point.
    * @return How far was the point moved?
    */
-  float clipToField(Vector2f& v) const
-  {
-    return fieldBorder.clip(v);
-  }
+  float clipToField(Vector2f& v) const { return fieldBorder.clip(v); }
 
   /**
    * The function returns a random pose inside the field.
@@ -267,15 +229,18 @@ struct FieldDimensions : public SimpleFieldDimensions
   void drawPolygons(int ownColor) const;
 
 private:
+  static constexpr char fieldDimensionsConfig[] = "/home/nao/logs/field_dimensions.json";
+  long long int fieldDimensionsLastModified = 0;
+
+  /**
+   * Fill LinesTables and positions.
+   */
+  void fill();
+
   virtual void serialize(In* in, Out* out);
 
   /**
    * The method draws the field lines.
    */
   void drawLines() const;
-
-  /**
-   * The method draws the field lines.
-   */
-  void drawCorners() const;
 };

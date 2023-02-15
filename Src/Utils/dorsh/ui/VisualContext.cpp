@@ -3,26 +3,21 @@
 #include <QtCore>
 #include <QTextDocument>
 #include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/ui/Console.h"
 #include "Utils/dorsh/ui/TeamSelector.h"
 #include "Utils/dorsh/ui/VisualContext.h"
+#include "Utils/dorsh/Session.h"
 
-VisualContext::VisualContext(QWidget* parent)
-  : QFrame(parent),
-    entries(),
-    widgets(),
-    formLayout(new QFormLayout()),
-    nl(true)
+VisualContext::VisualContext(QWidget* parent) : QFrame(parent), entries(), widgets(), formLayout(new QFormLayout()), nl(true)
 {
-  if(parent && parent->inherits("VisualContext"))
+  if (parent && parent->inherits("VisualContext"))
     setFrameStyle(QFrame::Box);
   formLayout->setSpacing(1);
   formLayout->setContentsMargins(1, 1, 1, 1);
   setLayout(formLayout);
   setAutoFillBackground(true);
   QPalette p = palette();
-  p.setColor(QPalette::Background, p.color(QPalette::AlternateBase));
+  p.setColor(QPalette::Window, p.color(QPalette::AlternateBase));
   setPalette(p);
   setSizePolicy(QSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum));
 }
@@ -30,7 +25,8 @@ VisualContext::VisualContext(QWidget* parent)
 VisualContext::Entry::~Entry()
 {
   // do not delete context. It takes care of itself.
-  if(text) delete text;
+  if (text)
+    delete text;
 }
 
 static inline VisualContext::Entry::Type targetToType(ConsolePrintTarget target)
@@ -40,12 +36,12 @@ static inline VisualContext::Entry::Type targetToType(ConsolePrintTarget target)
 
 void VisualContext::updateWidget(size_t index, Entry* entry)
 {
-  QWidget* widget = widgets[(int) index];
-  if(widget->inherits("QLabel"))
+  QWidget* widget = widgets[(int)index];
+  if (widget->inherits("QLabel"))
   {
     QLabel* label = dynamic_cast<QLabel*>(widget);
     QString text;
-    if(entry->type == Entry::TEXT_ERROR)
+    if (entry->type == Entry::TEXT_ERROR)
       text = "<font color='red'>" + Qt::convertFromPlainText(*entry->text) + "</font>";
     else
       text = Qt::convertFromPlainText(*entry->text);
@@ -56,7 +52,7 @@ void VisualContext::updateWidget(size_t index, Entry* entry)
 void VisualContext::addWidget(Entry* entry, const QString& commandLine)
 {
   QWidget* widget;
-  if(entry->type == Entry::CONTEXT)
+  if (entry->type == Entry::CONTEXT)
   {
     VisualContextDecoration* vd = new VisualContextDecoration(commandLine, this, entry->context);
     widget = vd;
@@ -64,7 +60,7 @@ void VisualContext::addWidget(Entry* entry, const QString& commandLine)
   else
   {
     QString text;
-    if(entry->type == Entry::TEXT_ERROR)
+    if (entry->type == Entry::TEXT_ERROR)
       text = "<font color='red'>" + Qt::convertFromPlainText(*entry->text) + "</font>";
     else
       text = Qt::convertFromPlainText(*entry->text);
@@ -84,9 +80,9 @@ void VisualContext::doPrint(ConsolePrintTarget target, const QString& msg)
 {
   Entry::Type currentType = targetToType(target);
   Entry* lastEntry = entries.empty() ? 0 : entries.last();
-  if(lastEntry && lastEntry->type == currentType)
+  if (lastEntry && lastEntry->type == currentType)
   {
-    if(nl)
+    if (nl)
       lastEntry->text->append("\n");
     lastEntry->text->append(msg);
     updateWidget(entries.size() - 1, lastEntry);
@@ -104,11 +100,8 @@ void VisualContext::commandExecuted(Context* context, const QString& cmdLine)
 {
   VisualContext* sub = new VisualContext(this);
 
-  connect(context, SIGNAL(sExecute(Context*, const QString&)),
-          sub, SLOT(commandExecuted(Context*, const QString&)),
-          Qt::BlockingQueuedConnection);
-  connect(context, SIGNAL(sPrint(ConsolePrintTarget, const QString&)),
-          sub, SLOT(doPrint(ConsolePrintTarget, const QString&)));
+  connect(context, SIGNAL(sExecute(Context*, const QString&)), sub, SLOT(commandExecuted(Context*, const QString&)), Qt::BlockingQueuedConnection);
+  connect(context, SIGNAL(sPrint(ConsolePrintTarget, const QString&)), sub, SLOT(doPrint(ConsolePrintTarget, const QString&)));
   connect(context, SIGNAL(sFinished(bool)), sub, SLOT(commandFinished(bool)));
   connect(context, SIGNAL(sCancelFinished()), sub, SLOT(commandCanceled()));
   connect(sub, SIGNAL(sCancel()), context, SLOT(cancel()), Qt::DirectConnection);
@@ -135,20 +128,17 @@ void VisualContext::cancel()
 
 void VisualContext::executeInContext(Console* console, TeamSelector* teamSelector, const QString& cmdLine)
 {
-  Context* context = new Context(teamSelector->getSelectedRobots(),
-                                 teamSelector->getSelectedTeam());
+  Context* context = new Context(teamSelector->getSelectedRobots(), teamSelector->getSelectedTeam());
 
   /* Important: Use BlockingQueuedConnection so that the newly created thread
    * cannot emits all its print signals before they can be handled. */
-  connect(context, SIGNAL(sExecute(Context*, const QString&)),
-          this, SLOT(commandExecuted(Context*, const QString&)),
-          Qt::BlockingQueuedConnection);
+  connect(context, SIGNAL(sExecute(Context*, const QString&)), this, SLOT(commandExecuted(Context*, const QString&)), Qt::BlockingQueuedConnection);
   connect(context, SIGNAL(sCancelFinished()), this, SLOT(commandCanceled()));
 
   /* Don't know if this signal is emitted a bit too often but this assures that
    * the newest output of the current command is always visible. */
   connect(this, SIGNAL(sCancel()), context, SLOT(cancel()), Qt::DirectConnection);
-  context->execute(toString(cmdLine));
+  context->execute(cmdLine.toStdString());
 
   /* Do not forget to disconnect the signal so that a new command can trigger
    * the scrolling. */
@@ -158,6 +148,42 @@ void VisualContext::executeInContext(Console* console, TeamSelector* teamSelecto
   // Since the context is a QObject it is better to let Qt do the cleanup
   context->deleteLater();
 
-  if(doQuit)
+  if (doQuit)
+    QApplication::quit();
+}
+
+void VisualContext::executeInContextReachable(Console* console, TeamSelector* teamSelector, const QString& cmdLine)
+{
+  // determine reachable robots
+  std::vector<RobotConfigDorsh*> reachableRobots;
+  const auto& robots = Session::getInstance().robotsByName;
+  for (const auto& [name, robot] : robots)
+  {
+    const ENetwork network = Session::getInstance().getBestNetwork(&*robot);
+    if (network != ENetwork::NONE)
+      reachableRobots.push_back(&*robot);
+  }
+
+  Context* context = new Context(reachableRobots, teamSelector->getSelectedTeam());
+
+  /* Important: Use BlockingQueuedConnection so that the newly created thread
+   * cannot emits all its print signals before they can be handled. */
+  connect(context, SIGNAL(sExecute(Context*, const QString&)), this, SLOT(commandExecuted(Context*, const QString&)), Qt::BlockingQueuedConnection);
+  connect(context, SIGNAL(sCancelFinished()), this, SLOT(commandCanceled()));
+
+  /* Don't know if this signal is emitted a bit too often but this assures that
+   * the newest output of the current command is always visible. */
+  connect(this, SIGNAL(sCancel()), context, SLOT(cancel()), Qt::DirectConnection);
+  context->execute(cmdLine.toStdString());
+
+  /* Do not forget to disconnect the signal so that a new command can trigger
+   * the scrolling. */
+  disconnect(context);
+
+  bool doQuit = context->isShutdown();
+  // Since the context is a QObject it is better to let Qt do the cleanup
+  context->deleteLater();
+
+  if (doQuit)
     QApplication::quit();
 }

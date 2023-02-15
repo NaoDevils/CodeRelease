@@ -4,7 +4,7 @@
  */
 
 #pragma once
- /* tells the RingBuffer to check the boundaries */
+/* tells the RingBuffer to check the boundaries */
 #define LIMIT_CHECK
 
 #include <list>
@@ -20,7 +20,6 @@
 #include "Representations/MotionControl/TargetCoM.h"
 #include "Representations/MotionControl/FLIPMObservedState.h"
 #include "Representations/Sensing/ZMPModel.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Configuration/RobotDimensions.h"
@@ -29,10 +28,8 @@
 #define COMMA ,
 
 MODULE(FLIPMObserver,
-{ ,
   REQUIRES(WalkingEngineParams),
   REQUIRES(FLIPMObservedState),
-  REQUIRES(InertialSensorData),
   REQUIRES(ZMPModel),
   REQUIRES(FootSteps),
   REQUIRES(RobotModel),
@@ -43,33 +40,25 @@ MODULE(FLIPMObserver,
   REQUIRES(FLIPMObserverParameter),
   USES(WalkingInfo),
   USES(TargetCoM),
-  PROVIDES(ObservedFLIPMError),
-});
+  PROVIDES(ObservedFLIPMError)
+);
 
 class FLIPMObserver : public FLIPMObserverBase
 {
 public:
-	FLIPMObserver() :
-		counter(0),
-		localSensorScale(0),
-		filteredAccX(0.0),
-		filteredAccY(0.0)
-	{};
+  FLIPMObserver() : counter(0), localSensorScale(0), filteredAccX(0.0), filteredAccY(0.0){};
 
-	void update(ObservedFLIPMError &observedFLIPMError);
+  void update(ObservedFLIPMError& observedFLIPMError);
 
 private:
+  RingBuffer<Vector2f, PREVIEW_LENGTH> accDelayBuffer, /**< Buffer to deal with the sensor delay. */
+      coM1DelayBuffer, /**< Buffer to deal with the sensor delay. */
+      coM2DelayBuffer, /**< Buffer to deal with the sensor delay. */
+      realCoM1DelayBuffer, realCoM2DelayBuffer;
+  int counter;
+  float localSensorScale;
+  Point lastRealZMP;
 
-	RingBuffer<Vector2f, PREVIEW_LENGTH> accDelayBuffer,	/**< Buffer to deal with the sensor delay. */
-		coM1DelayBuffer,									/**< Buffer to deal with the sensor delay. */
-		coM2DelayBuffer,									/**< Buffer to deal with the sensor delay. */
-		realCoM1DelayBuffer,
-		realCoM2DelayBuffer;
-	int counter;
-	float localSensorScale;
-	Point lastRealZMP;
-
-	float filteredAccX;
-	float filteredAccY;
+  float filteredAccX;
+  float filteredAccY;
 };
-

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <string>
+#include <filesystem>
 
 /**
 * A Class for accessing directories.
@@ -14,17 +15,6 @@
 class Directory
 {
 public:
-
-  /**
-  * Default constructor.
-  */
-  Directory();
-
-  /**
-  * Destructor.
-  */
-  ~Directory();
-
   /**
   * Opens a directory for searching files.
   * \param pattern A search pattern like "/etc/a*.ini"
@@ -41,8 +31,7 @@ public:
   bool read(std::string& name, bool& isDir);
 
 private:
-
-  void* dp; /**< Directory descriptor. */
+  std::filesystem::directory_iterator di; /**< Directory iterator. */
   std::string dirname; /**< The name of the directory. */
   std::string filepattern; /**< The pattern for file name matching (e.g. "*.dll"). */
 };

@@ -7,7 +7,7 @@
 #ifndef __PenaltyCrossPercept_h_
 #define __PenaltyCrossPercept_h_
 
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include <vector>
@@ -16,38 +16,20 @@
 * @class PenaltyCrossPercept
 * A class that represents the penalty cross in an image.
 */
-class PenaltyCrossPercept : public Streamable
-{
-private:
-  void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-    STREAM(pointInImage);
-    STREAM(pointOnField);
-    STREAM(penaltyCrossWasSeen);
-    STREAM(fromUpper);
-    STREAM_REGISTER_FINISH;
-  }
+STREAMABLE(PenaltyCrossPercept,
+  ENUM(DetectionType,
+      scanlines,
+      yolo
+    );
 
-public:
-  
-  Vector2i pointInImage;
-  Vector2i pointOnField;
-  bool penaltyCrossWasSeen;
-  bool fromUpper;
-
-  /**
-  * Default constructor.
-  */
-  PenaltyCrossPercept():penaltyCrossWasSeen(false),fromUpper(false) {}
+  DetectionType detectionType = DetectionType::scanlines;
 
   /** Reset the CenterCirclePercept */
   void reset()
   {
     penaltyCrossWasSeen = false;
+    detectionType = PenaltyCrossPercept::scanlines;
   }
-
-  
 
   /**
   * The method draws the percept.
@@ -60,18 +42,25 @@ public:
     if (penaltyCrossWasSeen)
     {
       if (fromUpper)
-        CROSS("representation:PenaltyCrossPercept:Image:Upper",
-        pointInImage.x(), pointInImage.y(), 
-        15, 3, Drawings::solidPen, ColorRGBA::blue);
+        if (detectionType == PenaltyCrossPercept::yolo)
+          CROSS("representation:PenaltyCrossPercept:Image:Upper", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::red);
+        else
+          CROSS("representation:PenaltyCrossPercept:Image:Upper", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::blue);
       else
-        CROSS("representation:PenaltyCrossPercept:Image:Lower",
-        pointInImage.x(), pointInImage.y(), 
-        15, 3, Drawings::solidPen, ColorRGBA::blue);
-
+        if (detectionType == PenaltyCrossPercept::yolo)
+          CROSS("representation:PenaltyCrossPercept:Image:Lower", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::red);
+        else
+          CROSS("representation:PenaltyCrossPercept:Image:Lower", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::blue);
+        
       CROSS("representation:PenaltyCrossPercept:Field", 
         pointOnField.x(), pointOnField.y(), 50, 10, Drawings::solidPen, ColorRGBA::blue);
     }
   }
-};
+  ,
+  (Vector2i)(Vector2i::Zero()) pointInImage,
+  (Vector2i)(Vector2i::Zero()) pointOnField,
+  (bool)(false) penaltyCrossWasSeen,
+  (bool)(false) fromUpper
+);
 
 #endif //__PenaltyCrossPercept_h_

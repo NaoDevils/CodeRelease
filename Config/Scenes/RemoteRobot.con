@@ -3,8 +3,8 @@ call Includes/connect
 
 # all views are defined in other scripts
 echo call Includes/JPEGImageViews
-echo call Includes/FieldViews1
-echo call Includes/FieldViews2
+echo call Includes/FieldViewsCreate
+echo call Includes/FieldViewsPercepts
 echo call CameraCalibrators/Automatic
 
 echo call Includes/DebugResponses

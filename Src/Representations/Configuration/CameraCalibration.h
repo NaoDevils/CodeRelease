@@ -11,11 +11,8 @@
 #include "Tools/Math/Angle.h"
 #include "Tools/Module/Next.h"
 
-STREAMABLE(CameraCalibration,
-{,
-  (Vector3a) lowerCameraRotationCorrection, //!< The correction of the lower camera rotation
-  (Vector3a) upperCameraRotationCorrection, //!< The correction of the upper camera rotation
-  (Vector2a) bodyRotationCorrection, //!< The correction of the body rotation
-});
-
-using CameraCalibrationNext = Next<CameraCalibration>;
+STREAMABLE(CameraCalibration,,
+  (Vector3a)(Vector3a::Zero()) lowerCameraRotationCorrection, //!< The correction of the lower camera rotation
+  (Vector3a)(Vector3a::Zero()) upperCameraRotationCorrection, //!< The correction of the upper camera rotation
+  (Vector2a)(Vector2a::Zero()) bodyRotationCorrection //!< The correction of the body rotation
+);

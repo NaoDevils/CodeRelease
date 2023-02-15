@@ -14,22 +14,28 @@
 #include <sys/file.h> // flock
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <array>
 #include <chrono>
 #include <mutex>
+#include <iostream>
+#include <filesystem>
+#include <atomic>
+#include <signal.h>
 
 #include "SystemCall.h"
 #include "Robot.h"
-#include "NaoBody.h"
 #include "NaoBodyV6.h"
 #include "Tools/Settings.h"
-//#include "libbhuman/bhuman.h"
-#include "ndevilsbase/ndevils.h"
+#include "naodevilsbase/naodevilsbase.h"
 
-static pid_t bhumanPid = 0;
+static pid_t pid = 0;
+static pthread_t mainTid = 0;
 static Robot* robot = nullptr;
-static bool run = true;
+static std::atomic<bool> run = true;
+
+static_assert(std::atomic<bool>::is_always_lock_free);
 
 namespace
 {
@@ -38,24 +44,6 @@ namespace
   const char* crashInfo = "/home/nao/logs/crashInfo";
   const char* extension = ".log";
   const char* execPath = nullptr;
-  const std::uint16_t crashInfoHistory = 8;
-
-  void handleFileRotation(const std::string& file, std::uint16_t max)
-  {
-    for (int i = max - 1; i >= 1; i--)
-    {
-      // Get current file name
-      std::string current = file + std::to_string(i) + extension;
-
-      // Check if file exists
-      if (SystemCall::fileExists(current))
-        // Increase number at the end
-        rename(current.c_str(), (file + std::to_string(i + 1) + extension).c_str());
-    }
-
-    if (SystemCall::fileExists(file + extension))
-      rename((file + extension).c_str(), (file + std::to_string(1) + extension).c_str());
-  }
 
   const char* signalToString(int signal)
   {
@@ -68,20 +56,20 @@ namespace
     // Get the signal
     switch (signal)
     {
-      case SIGSEGV:
-        return segv;
+    case SIGSEGV:
+      return segv;
 
-      case SIGILL:
-        return ill;
+    case SIGILL:
+      return ill;
 
-      case SIGFPE:
-        return fpe;
+    case SIGFPE:
+      return fpe;
 
-      case SIGABRT:
-        return abrt;
+    case SIGABRT:
+      return abrt;
 
-      default:
-        return unknown;
+    default:
+      return unknown;
     }
   }
 
@@ -92,17 +80,11 @@ namespace
 
     // Generate GDB command
     std::ostringstream command;
-    command << "gdb -x " << gdbHelper << ' ' << execPath << ' ' << pid;
+    command << "/usr/bin/gdb -x " << gdbHelper << ' ' << execPath << ' ' << pid;
 
     {
       // SYNC GDB
       std::lock_guard<std::mutex> guard(gdbMutex);
-
-      // Execute command and save output
-      std::string result = SystemCall::execute(command.str());
-
-      // Handle crash info rotation
-      handleFileRotation(crashInfo, crashInfoHistory);
 
       // Get current time
       auto now_c = std::chrono::system_clock::now();
@@ -111,24 +93,23 @@ namespace
 
       localtime_r(&time, &now);
 
-      // Get milliseconds for printing
-      auto ms_c = std::chrono::duration_cast<std::chrono::milliseconds>(now_c.time_since_epoch());
-      auto ms = ms_c.count() % std::chrono::milliseconds::period::den;
-
       // Format time
-      std::array<char, 100> buffer{ };
+      std::array<char, 100> filename{};
+      std::strftime(filename.data(), filename.size(), "_%F_%H-%M-%S", &now);
 
-      std::strftime(buffer.data(), buffer.size(), "%F %T", &now);
+      // use USB directory if present
+      // required to comply with GORE2021 rules for USB logging
+      if (std::filesystem::is_directory("/home/nao/usb/logs"))
+        crashInfo = "/home/nao/usb/logs/crashInfo";
 
       // Create output file
-      std::ofstream file(std::string(crashInfo) + extension);
+      std::ofstream file(std::string(crashInfo) + filename.data() + extension);
+
+      // Execute command and save output
+      std::string result = SystemCall::execute(command.str());
 
       // Fill file
-      file << "Created because of signal (" << signal << ") [" << signalToString(signal) << ']' << std::endl
-        << "It is " << buffer.data() << '.';
-
-      // Leading zeros for milliseconds
-      file << std::setfill('0') << std::setw(3) << ms << std::endl;
+      file << "Created because of signal (" << signal << ") [" << signalToString(signal) << ']' << std::endl;
 
       // Fill rest
       file << "Result of command \"" << command.str() << '"' << std::endl << std::endl << result << std::endl;
@@ -140,11 +121,11 @@ namespace
 
     std::exit(-signal);
   }
-}
+} // namespace
 
 static void bhumanStart()
 {
-  fprintf(stderr, "BHuman: Start.\n");
+  fprintf(stderr, "NaoDevils: Start.\n");
 
   robot = new Robot();
   robot->start();
@@ -152,7 +133,7 @@ static void bhumanStart()
 
 static void bhumanStop()
 {
-  fprintf(stderr, "BHuman: Stop.\n");
+  fprintf(stderr, "NaoDevils: Stop.\n");
   robot->announceStop();
   robot->stop();
   delete robot;
@@ -162,16 +143,22 @@ static void bhumanStop()
 
 static void sighandlerShutdown(int sig)
 {
-  if (run)
-    printf("Caught signal %i\nShutting down...\n", sig);
-  run = false;
+  if (run.exchange(false, std::memory_order_relaxed))
+  {
+    const char str[] = "Caught signal\nShutting down...\n";
+    // ok, write is signal-safe
+    write(STDERR_FILENO, str, sizeof(str) - 1);
+  }
+
+  if (mainTid != pthread_self())
+    pthread_kill(mainTid, sig);
 }
 
 static void sighandlerRedirect(int sig)
 {
-  //if(bhumanPid != 0)
-  //kill(bhumanPid, sig);
-  run = false;
+  if (pid != 0)
+    kill(pid, sig);
+  run.store(false, std::memory_order_relaxed);
 }
 
 int main(int argc, char* argv[])
@@ -192,10 +179,12 @@ int main(int argc, char* argv[])
         bhDir = argv[++i];
       else
       {
-        fprintf(stderr, "Usage: %s [-b] [-c <dir>] [-w]\n\
+        fprintf(stderr,
+            "Usage: %s [-b] [-c <dir>] [-w]\n\
     -b            run in background (as daemon)\n\
     -c <dir>      used gt directory (default is /home/nao)\n\
-    -w            use a watchdog for crash recovery and creating trace dumps\n", argv[0]);
+    -w            use a watchdog for crash recovery and creating trace dumps\n",
+            argv[0]);
         exit(EXIT_FAILURE);
       }
 
@@ -237,19 +226,19 @@ int main(int argc, char* argv[])
 
         if (pipe(stdoutPipe) == -1 || pipe(stderrPipe) == -1)
         {
-          fprintf(stderr, "B-Human: Error while creating pipes for logging. All logs will be printed on console only! \n");
+          fprintf(stderr, "NaoDevils: Error while creating pipes for logging. All logs will be printed on console only! \n");
           pipeReady = false;
         }
 
-        bhumanPid = fork();
-        if (bhumanPid == -1)
+        pid = fork();
+        if (pid == -1)
           exit(EXIT_FAILURE);
-        if (bhumanPid != 0)
+        if (pid != 0)
         {
           int status;
           signal(SIGTERM, sighandlerRedirect);
           signal(SIGINT, sighandlerRedirect);
-          if (waitpid(bhumanPid, &status, 0) != bhumanPid)
+          if (waitpid(pid, &status, 0) != pid)
           {
             exit(EXIT_FAILURE);
           }
@@ -267,7 +256,7 @@ int main(int argc, char* argv[])
           }
 
           // detect requested or normal exit
-          bool normalExit = !run || (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS);
+          bool normalExit = !run.load(std::memory_order_relaxed) || (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS);
 
           NaoBodyV6 naoBody;
           if (normalExit)
@@ -275,7 +264,7 @@ int main(int argc, char* argv[])
             if (naoBody.init())
             {
               // normal shutdown
-              naoBody.setCrashed(NDState::sigTERMState);
+              naoBody.setCrashed(NDData::State::sigTERMState);
               naoBody.cleanup();
             }
           }
@@ -284,7 +273,7 @@ int main(int argc, char* argv[])
             // dump trace and assert trace
             if (naoBody.init())
             {
-              naoBody.setCrashed(WIFSIGNALED(status) ? int(WTERMSIG(status)) : int(abnormalTerminationState));
+              naoBody.setCrashed(WIFSIGNALED(status) ? int(WTERMSIG(status)) : int(NDData::State::abnormalTerminationState));
               naoBody.cleanup();
             }
             Assert::logDump(true, WIFSIGNALED(status) ? int(WTERMSIG(status)) : 0);
@@ -299,15 +288,15 @@ int main(int argc, char* argv[])
           if (WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL)
             exit(EXIT_FAILURE);
 
-          // restart in release mode only
+            // restart in release mode only
 #ifndef NDEBUG
           exit(EXIT_FAILURE);
-#endif
-
+#else
           // deactivate the pre-initial state
           recover = true;
 
           usleep(2000 * 1000);
+#endif
         }
         else
         {
@@ -324,6 +313,12 @@ int main(int argc, char* argv[])
         }
       }
     }
+
+    // lock memory and avoid page faults
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0)
+      perror("mlockall() failed");
+
+    mainTid = pthread_self();
 
     std::cout << "Loading settings" << std::endl;
     // load first settings instance
@@ -351,7 +346,7 @@ int main(int argc, char* argv[])
     bhumanStart();
   }
 
-  while (run)
+  while (run.load(std::memory_order_relaxed))
     pause();
 
   bhumanStop();

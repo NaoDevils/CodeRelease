@@ -18,34 +18,29 @@ using namespace Type;
  * and the native QVariant::int or QVariant::double for other types.
  */
 
-template <>
-int TypeDescriptor::getTypeId<int>()
+template <> int TypeDescriptor::getTypeId<int>()
 {
-  return QVariant::Int;
+  return QMetaType::Int;
 }
 
-template <>
-int TypeDescriptor::getTypeId<double>()
+template <> int TypeDescriptor::getTypeId<double>()
 {
-  return QVariant::Double;
+  return QMetaType::Double;
 }
 
-template <>
-int TypeDescriptor::getTypeId<char>()
+template <> int TypeDescriptor::getTypeId<char>()
 {
-  return QVariant::Char;
+  return QMetaType::Char;
 }
 
-template <>
-int TypeDescriptor::getTypeId<bool>()
+template <> int TypeDescriptor::getTypeId<bool>()
 {
-  return QVariant::Bool;
+  return QMetaType::Bool;
 }
 
-template <>
-int TypeDescriptor::getTypeId<std::string>()
+template <> int TypeDescriptor::getTypeId<std::string>()
 {
-  return QVariant::String;
+  return QMetaType::QString;
 }
 
 /*

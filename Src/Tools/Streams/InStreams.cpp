@@ -38,32 +38,32 @@ void InText::readString(std::string& value, PhysicalInStream& stream)
   value = "";
   skipWhitespace(stream);
   bool containsSpaces = theChar == '"';
-  if(containsSpaces && !isEof(stream))
+  if (containsSpaces && !isEof(stream))
     nextChar(stream);
-  while(!isEof(stream) && (containsSpaces || !isWhitespace()) && (!containsSpaces || theChar != '"'))
+  while (!isEof(stream) && (containsSpaces || !isWhitespace()) && (!containsSpaces || theChar != '"'))
   {
-    if(theChar == '\\')
+    if (theChar == '\\')
     {
       nextChar(stream);
-      if(theChar == 'n')
+      if (theChar == 'n')
         theChar = '\n';
-      else if(theChar == 'r')
+      else if (theChar == 'r')
         theChar = '\r';
-      else if(theChar == 't')
+      else if (theChar == 't')
         theChar = '\t';
     }
     value += theChar;
-    if(!isEof(stream))
+    if (!isEof(stream))
       nextChar(stream);
   }
-  if(containsSpaces && !isEof(stream))
+  if (containsSpaces && !isEof(stream))
     nextChar(stream);
   skipWhitespace(stream);
 }
 
 void InText::readData(void* p, size_t size, PhysicalInStream& stream)
 {
-  for(size_t i = 0; i < size; ++i)
+  for (size_t i = 0; i < size; ++i)
     readChar(*((char*&)p)++, stream);
 }
 
@@ -74,16 +74,16 @@ bool InText::isWhitespace()
 
 void InText::skipWhitespace(PhysicalInStream& stream)
 {
-  while(!isEof(stream) && isWhitespace())
+  while (!isEof(stream) && isWhitespace())
     nextChar(stream);
 }
 
 void InText::readBool(bool& value, PhysicalInStream& stream)
 {
   skipWhitespace(stream);
-  if(!isEof(stream))
+  if (!isEof(stream))
   {
-    if(theChar == '0' || theChar == '1')
+    if (theChar == '0' || theChar == '1')
     {
       value = theChar != '0';
       nextChar(stream);
@@ -94,7 +94,7 @@ void InText::readBool(bool& value, PhysicalInStream& stream)
       static const char* falseString = "false";
       static const char* trueString = "true";
       const char* p = value ? trueString : falseString;
-      while(!isEof(stream) && *p && theChar == *p)
+      while (!isEof(stream) && *p && theChar == *p)
       {
         ++p;
         nextChar(stream);
@@ -142,12 +142,12 @@ void InText::readInt(int& d, PhysicalInStream& stream)
 {
   skipWhitespace(stream);
   int sign = 1;
-  if(!isEof(stream) && theChar == '-')
+  if (!isEof(stream) && theChar == '-')
   {
     sign = -1;
     nextChar(stream);
   }
-  else if(!isEof(stream) && theChar == '+')
+  else if (!isEof(stream) && theChar == '+')
     nextChar(stream);
   unsigned u;
   readUInt(u, stream);
@@ -158,12 +158,25 @@ void InText::readUInt(unsigned int& d, PhysicalInStream& stream)
 {
   buf = "";
   skipWhitespace(stream);
-  while(!isEof(stream) && isdigit(theChar))
+  while (!isEof(stream) && isdigit(theChar))
   {
     buf += theChar;
     nextChar(stream);
   }
   d = static_cast<unsigned>(strtoul(buf.c_str(), nullptr, 0));
+  skipWhitespace(stream);
+}
+
+void InText::readInt64(int64_t& d, PhysicalInStream& stream)
+{
+  buf = "";
+  skipWhitespace(stream);
+  while (!isEof(stream) && isdigit(theChar))
+  {
+    buf += theChar;
+    nextChar(stream);
+  }
+  d = static_cast<int64_t>(strtoul(buf.c_str(), nullptr, 0));
   skipWhitespace(stream);
 }
 
@@ -191,12 +204,12 @@ void InText::readDouble(double& d, PhysicalInStream& stream)
 {
   buf = "";
   skipWhitespace(stream);
-  if(!isEof(stream) && (theChar == '-' || theChar == '+'))
+  if (!isEof(stream) && (theChar == '-' || theChar == '+'))
   {
     buf += theChar;
     nextChar(stream);
   }
-  if(!isEof(stream) && theChar == 'i')
+  if (!isEof(stream) && theChar == 'i')
   {
     nextChar(stream);
     if (!isEof(stream) && theChar == 'n')
@@ -257,13 +270,13 @@ void InText::readAngle(Angle& d, PhysicalInStream& stream)
 
   bool isDeg = false;
   bool isPiRad = false;
-  if(!isEof(stream))
+  if (!isEof(stream))
   {
-    if(theChar == 'd')
+    if (theChar == 'd')
       isDeg = expectString(degString, stream);
-    else if(theChar == 'p')
+    else if (theChar == 'p')
       isPiRad = expectString(piRadString, stream);
-    else if(theChar == 'r')
+    else if (theChar == 'r')
       expectString(radString, stream);
   }
   d = isDeg ? Angle::fromDegrees(value) : isPiRad ? Angle(value * pi) : Angle(value);
@@ -272,11 +285,11 @@ void InText::readAngle(Angle& d, PhysicalInStream& stream)
 bool InText::expectString(const std::string& str, PhysicalInStream& stream)
 {
   const char* p = str.c_str();
-  if(str.length())
+  if (str.length())
   {
-    while(*p)
+    while (*p)
     {
-      if(isEof(stream) || theChar != *p)
+      if (isEof(stream) || theChar != *p)
         return false;
       ++p;
       nextChar(stream);
@@ -287,18 +300,18 @@ bool InText::expectString(const std::string& str, PhysicalInStream& stream)
 
 void InConfig::create(const std::string& sectionName, PhysicalInStream& stream)
 {
-  if(stream.exists() && sectionName != "")
+  if (stream.exists() && sectionName != "")
   {
     std::string fileEntry;
     std::string section = std::string("[") + sectionName + "]";
 
-    while(!isEof(stream))
+    while (!isEof(stream))
     {
       readString(fileEntry, stream);
-      if(fileEntry == section)
+      if (fileEntry == section)
       {
-        if(theChar == '[') // handle empty section
-          while(!isEof(stream))
+        if (theChar == '[') // handle empty section
+          while (!isEof(stream))
             InText::nextChar(stream);
         break;
       }
@@ -309,23 +322,22 @@ void InConfig::create(const std::string& sectionName, PhysicalInStream& stream)
 
 bool InConfig::isWhitespace()
 {
-  return (theChar == '/' && (theNextChar == '*' || theNextChar == '/')) ||
-         theChar == '#' || InText::isWhitespace();
+  return (theChar == '/' && (theNextChar == '*' || theNextChar == '/')) || theChar == '#' || InText::isWhitespace();
 }
 
 void InConfig::skipWhitespace(PhysicalInStream& stream)
 {
-  while(!isEof(stream) && isWhitespace())
+  while (!isEof(stream) && isWhitespace())
   {
-    while(!isEof(stream) && InText::isWhitespace())
+    while (!isEof(stream) && InText::isWhitespace())
       nextChar(stream);
-    if(!isEof(stream))
+    if (!isEof(stream))
     {
-      if(theChar == '/' && theNextChar == '/')
+      if (theChar == '/' && theNextChar == '/')
         skipLine(stream);
-      else if(theChar == '/' && theNextChar == '*')
+      else if (theChar == '/' && theNextChar == '*')
         skipComment(stream);
-      else if(theChar == '#')
+      else if (theChar == '#')
         skipLine(stream);
     }
   }
@@ -334,16 +346,16 @@ void InConfig::skipWhitespace(PhysicalInStream& stream)
 void InConfig::nextChar(PhysicalInStream& stream)
 {
   InText::nextChar(stream);
-  if(readSection && theChar == '[')
-    while(!isEof(stream))
+  if (readSection && theChar == '[')
+    while (!isEof(stream))
       InText::nextChar(stream);
 }
 
 void InConfig::skipLine(PhysicalInStream& stream)
 {
-  while(!isEof(stream) && theChar != '\n')
+  while (!isEof(stream) && theChar != '\n')
     nextChar(stream);
-  if(!isEof(stream))
+  if (!isEof(stream))
     nextChar(stream);
 }
 
@@ -352,13 +364,13 @@ void InConfig::skipComment(PhysicalInStream& stream)
   // skip /*
   nextChar(stream);
   nextChar(stream);
-  while(!isEof(stream) && (theChar != '*' || theNextChar != '/'))
+  while (!isEof(stream) && (theChar != '*' || theNextChar != '/'))
     nextChar(stream);
 
   // skip */
-  if(!isEof(stream))
+  if (!isEof(stream))
     nextChar(stream);
-  if(!isEof(stream))
+  if (!isEof(stream))
     nextChar(stream);
 }
 
@@ -369,7 +381,7 @@ void InBinary::readAngle(Angle& d, PhysicalInStream& stream)
 
 InFile::~InFile()
 {
-  if(stream != nullptr) 
+  if (stream != nullptr)
     delete stream;
 }
 
@@ -385,14 +397,19 @@ bool InFile::getEof() const
 
 void InFile::open(const std::string& name)
 {
-  if(stream == nullptr) 
+  if (stream == nullptr)
     stream = new File(name, "rb");
 }
 
 void InFile::readFromStream(void* p, size_t size)
 {
-  if(stream != nullptr) 
+  if (stream != nullptr)
     stream->read(p, size);
+}
+
+size_t InFile::getPosition() const
+{
+  return stream->getPosition();
 }
 
 std::string InFile::getFullName() const
@@ -403,7 +420,7 @@ std::string InFile::getFullName() const
 
 void InMemory::readFromStream(void* p, size_t size)
 {
-  if(memory != 0)
+  if (memory != 0)
   {
     memcpy(p, memory, size);
     memory += size;
@@ -412,21 +429,28 @@ void InMemory::readFromStream(void* p, size_t size)
 
 void InMap::parse(In& stream, const std::string& name)
 {
-  map = new SimpleMap(stream, name);
-  this->name = name;
+  if (map == nullptr)
+    map = std::make_shared<SimpleMap>(stream, name);
+  else
+    map->parse(stream, name);
+
+  if (this->name.size() == 0)
+    this->name = name;
+  else
+    this->name += " + " + name;
   stack.reserve(20);
 }
 
 void InMap::printError(const std::string& msg)
 {
-  if(showErrors)
+  if (showErrors)
   {
     std::string path = "";
-    for(std::vector<Entry>::const_iterator i = stack.begin(); i != stack.end(); ++i)
+    for (std::vector<Entry>::const_iterator i = stack.begin(); i != stack.end(); ++i)
     {
-      if(i->key)
+      if (i->key)
       {
-        if(path != "")
+        if (path != "")
           path += '.';
         path += i->key;
       }
@@ -437,24 +461,23 @@ void InMap::printError(const std::string& msg)
         path += buf;
       }
     }
-    OUTPUT_ERROR(name << (name == "" || path == "" ? "" : ", ") <<
-                 path << (name == "" && path == "" ? "" : ": ") << msg);
+    OUTPUT_ERROR(name << (name == "" || path == "" ? "" : ", ") << path << (name == "" && path == "" ? "" : ": ") << msg);
   }
 }
 
 void InMap::inChar(char& value)
 {
   Entry& e = stack.back();
-  if(e.value)
+  if (e.value)
   {
     const SimpleMap::Literal* literal = dynamic_cast<const SimpleMap::Literal*>(e.value);
-    if(literal)
+    if (literal)
     {
       In& stream = *literal;
       int i;
       stream >> i;
       value = static_cast<char>(i);
-      if(!stream.eof())
+      if (!stream.eof())
         printError("wrong format");
     }
     else
@@ -465,16 +488,16 @@ void InMap::inChar(char& value)
 void InMap::inSChar(signed char& value)
 {
   Entry& e = stack.back();
-  if(e.value)
+  if (e.value)
   {
     const SimpleMap::Literal* literal = dynamic_cast<const SimpleMap::Literal*>(e.value);
-    if(literal)
+    if (literal)
     {
       In& stream = *literal;
       int i;
       stream >> i;
       value = static_cast<signed char>(i);
-      if(!stream.eof())
+      if (!stream.eof())
         printError("wrong format");
     }
     else
@@ -485,24 +508,24 @@ void InMap::inSChar(signed char& value)
 void InMap::inUChar(unsigned char& value)
 {
   Entry& e = stack.back();
-  if(e.value)
+  if (e.value)
   {
     const SimpleMap::Literal* literal = dynamic_cast<const SimpleMap::Literal*>(e.value);
-    if(literal)
+    if (literal)
     {
       In& stream = *literal;
-      if(e.enumToString)
+      if (e.enumToString)
       {
         std::string s;
         stream >> s;
-        for(int i = 0; e.enumToString(i); ++i)
-          if(s == e.enumToString(i))
+        for (int i = 0; e.enumToString(i); ++i)
+          if (s == e.enumToString(i))
           {
             value = static_cast<unsigned char>(i);
             return;
           }
         std::string t;
-        for(int i = 0; e.enumToString(i); ++i)
+        for (int i = 0; e.enumToString(i); ++i)
           t += std::string("'") + e.enumToString(i) + "', ";
         printError("expected one of " + t + "found '" + s + "'");
         return;
@@ -512,7 +535,7 @@ void InMap::inUChar(unsigned char& value)
         unsigned i;
         stream >> i;
         value = static_cast<unsigned char>(i);
-        if(!stream.eof())
+        if (!stream.eof())
           printError("wrong format");
       }
     }
@@ -524,14 +547,14 @@ void InMap::inUChar(unsigned char& value)
 void InMap::inInt(int& value)
 {
   Entry& e = stack.back();
-  if(e.value)
+  if (e.value)
   {
     const SimpleMap::Literal* literal = dynamic_cast<const SimpleMap::Literal*>(e.value);
-    if(literal)
+    if (literal)
     {
       In& stream = *literal;
       stream >> value;
-      if(!stream.eof())
+      if (!stream.eof())
         printError("wrong format");
     }
     else
@@ -542,12 +565,12 @@ void InMap::inInt(int& value)
 void InMap::inUInt(unsigned int& value)
 {
   Entry& e = stack.back();
-  if(e.type == -1)
+  if (e.type == -1)
   {
-    if(e.value)
+    if (e.value)
     {
       const SimpleMap::Array* array = dynamic_cast<const SimpleMap::Array*>(e.value);
-      if(array)
+      if (array)
         value = static_cast<unsigned>(array->size());
       else
         printError("array expected");
@@ -555,14 +578,14 @@ void InMap::inUInt(unsigned int& value)
     else
       value = 0;
   }
-  else if(e.value)
+  else if (e.value)
   {
     const SimpleMap::Literal* literal = dynamic_cast<const SimpleMap::Literal*>(e.value);
-    if(literal)
+    if (literal)
     {
       In& stream = *literal;
       stream >> value;
-      if(!stream.eof())
+      if (!stream.eof())
         printError("wrong format");
     }
     else
@@ -586,15 +609,15 @@ void InMap::select(const char* name, int type, const char* (*enumToString)(int))
   ASSERT(name || type >= 0);
 
   Streaming::trimName(name);
-  const SimpleMap::Value* value = stack.empty() ? (const SimpleMap::Value*) *map : stack.back().value;
-  if(!value) // invalid
+  const SimpleMap::Value* value = stack.empty() ? (const SimpleMap::Value*)*map : stack.back().value;
+  if (!value) // invalid
     stack.push_back(Entry(name, 0, type, enumToString)); // add more invalid
-  else if(type >= 0) // array element
+  else if (type >= 0) // array element
   {
     const SimpleMap::Array* array = dynamic_cast<const SimpleMap::Array*>(value);
-    if(array)
+    if (array)
     {
-      if(type < static_cast<int>(array->size()))
+      if (type < static_cast<int>(array->size()))
         stack.push_back(Entry(name, (*array)[type], type, enumToString));
       else
       {
@@ -611,10 +634,10 @@ void InMap::select(const char* name, int type, const char* (*enumToString)(int))
   else // record element
   {
     const SimpleMap::Record* record = dynamic_cast<const SimpleMap::Record*>(value);
-    if(record)
+    if (record)
     {
       SimpleMap::Record::const_iterator i = record->find(name);
-      if(i != record->end())
+      if (i != record->end())
         stack.push_back(Entry(name, i->second, type, enumToString));
       else
       {
@@ -635,17 +658,45 @@ void InMap::deselect()
   stack.pop_back();
 }
 
-InMapFile::InMapFile(const std::string& name, bool showErrors) :
-  InMap(showErrors),
-  stream(name)
+
+InMapFile::InMapFile(const std::string& name, bool showErrors, bool disableHierarchy) : InMap(showErrors)
 {
-  if(stream.exists())
-    parse(stream, stream.getFullName());
+  std::list<std::string> names;
+  if (disableHierarchy)
+    names.push_back(name);
+  else
+    names = File::getFullNamesHierarchy(name);
+
+  open(names);
 }
 
-InMapMemory::InMapMemory(const void* memory, size_t size, bool showErrors) :
-  InMap(showErrors),
-  stream(memory, size)
+InMapFile::InMapFile(const std::list<std::string>& names, bool showErrors) : InMap(showErrors)
+{
+  open(names);
+}
+
+void InMapFile::open(const std::list<std::string>& names)
+{
+  for (const std::string& name : names)
+    streams.emplace_back(name);
+
+  for (auto it = streams.begin(); it != streams.end();)
+  {
+    InBinaryFile& stream = *it;
+
+    if (stream.exists())
+    {
+      parse(stream, stream.getFullName());
+      ++it;
+    }
+    else
+    {
+      it = streams.erase(it);
+    }
+  }
+}
+
+InMapMemory::InMapMemory(const void* memory, size_t size, bool showErrors) : InMap(showErrors), stream(memory, size)
 {
   parse(stream);
 }

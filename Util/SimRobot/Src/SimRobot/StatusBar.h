@@ -31,8 +31,7 @@ private:
     const SimRobot::Module* module;
     SimRobot::StatusLabel* label;
 
-    RegisteredLabel(const SimRobot::Module* module, SimRobot::StatusLabel* label) :
-      module(module), label(label) {}
+    RegisteredLabel(const SimRobot::Module* module, SimRobot::StatusLabel* label) : module(module), label(label) {}
   };
 
   QAction* toggleViewAct;

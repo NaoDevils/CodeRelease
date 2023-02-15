@@ -5,15 +5,10 @@
 
 #include "Utils/dorsh/models/Power.h"
 #include "Utils/dorsh/Session.h"
+#include <nlohmann/json.hpp>
 
-#include <stdio.h>  /* defines FILENAME_MAX */
-#ifdef WINDOWS
-#include <direct.h>
-#define GetCurrentDir _getcwd
-#else
-#include <unistd.h>
-#define GetCurrentDir getcwd
-#endif
+#include <QFloat16> // see https://github.com/nlohmann/json/issues/2650
+#include <QTimer>
 
 struct RobotConfigDorsh;
 class TeamSelector;
@@ -38,39 +33,44 @@ class RobotView : public QGroupBox
   QLabel* pingBarLAN;
   QLabel* currentBar;
   QProgressBar* powerBar;
-  bool wifiOverMap;
-  bool wifiOverTeamPack;
-  std::map<std::string, std::string> sensorMap;
+  QProgressBar* tempBar;
+  QPoint dragStartPosition;
+  nlohmann::json sensorMap;
+  static constexpr unsigned dataTimeout = 10000;
+  QTimer dataTimer;
   void init();
+  static unsigned lastDataUpdate(const nlohmann::json&);
+  static unsigned lastUpdate(const nlohmann::json&);
+
 public:
   void update();
-  RobotView(TeamSelector* teamSelector,
-            RobotConfigDorsh* robot,
-            unsigned short playerNumber,
-            unsigned short position);
-  RobotView(TeamSelector* teamSelector,
-            RobotConfigDorsh* robot);
+  RobotView(TeamSelector* teamSelector, RobotConfigDorsh* robot, unsigned short playerNumber, unsigned short position);
+  RobotView(TeamSelector* teamSelector, RobotConfigDorsh* robot);
   void setRobot(RobotConfigDorsh* robot);
   unsigned short getPlayerNumber() const { return playerNumber; }
   QString getRobotName() const;
   bool isSelected() const;
+  void swap(RobotView& other);
+
 protected:
   void mouseMoveEvent(QMouseEvent* me);
   void dragEnterEvent(QDragEnterEvent* e);
   void dropEvent(QDropEvent* e);
+  void mousePressEvent(QMouseEvent* e);
+  void mouseReleaseEvent(QMouseEvent* e);
 public slots:
   void setSelected(bool selected);
-  void ShowContextMenu(const QPoint & pos);
+  void ShowContextMenu(const QPoint& pos);
   void openTerm(bool wlan);
   void showSensorReader();
 private slots:
-  void setPings(std::map<std::string, std::string> map);
-  void setPower(std::map<std::string, std::string> map);
-  void setMap(std::map<std::string, std::string> map);
-  void changeData(std::map<std::string, std::string> map) { setPower(map); setMap(map); setPings(map); };
-  void changeWifi(std::string robotName, bool connected);
+  void setPings(const nlohmann::json& json);
+  void setPower(const nlohmann::json& json);
+  void setTemp(const nlohmann::json& json);
+  void setMap(const nlohmann::json& json);
+  void changeData(const nlohmann::json& json);
   void Cable() { openTerm(false); }
-  void WIFI() { openTerm(true);  }
+  void WIFI() { openTerm(true); }
   void sSR() { showSensorReader(); }
 signals:
   void robotChanged();

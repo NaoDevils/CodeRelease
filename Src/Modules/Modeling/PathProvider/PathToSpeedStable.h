@@ -15,14 +15,13 @@
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/Path.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/MotionState.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/FallDownAngleReduction.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Tools/Module/Module.h"
 #include "SimplePathProvider.h" // for parameters
 
 MODULE(PathToSpeedStable,
-{,
   REQUIRES(BallSymbols),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
@@ -31,6 +30,7 @@ MODULE(PathToSpeedStable,
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(MotionRequest),
+  REQUIRES(MotionState),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(RoleSymbols),
@@ -41,11 +41,10 @@ MODULE(PathToSpeedStable,
   REQUIRES(WalkingEngineParams),
   REQUIRES(BehaviorConfiguration),
   REQUIRES(GameSymbols),
-  REQUIRES(FallDownAngleReduction),
   REQUIRES(TeammateData),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float)(0.75f) speedPercentageWhenNotChasingBall, /** fixed percentage of speed for all robots who are not going to the ball except goalie */
+    (float)(0.5f) speedPercentageCameraCalibration, /** fixed percentage of speed for camera calibration goto */
     (bool)(false) useDistanceBasedSpeedPercentageInReady, /** dynamic speed percentage, depending on distance to walk in ready state; TODO: any timed state? */
     (float)(0.6f) minSpeedPercentageInReady,
     (float) targetStateSwitchDistance,
@@ -56,33 +55,34 @@ MODULE(PathToSpeedStable,
     (float) walkBackWardsDistance,
     (float) walkBackWardsRotation,
     (bool) keeperInGoalAreaOmniOnly,
-    (float)(0.5f) walkAroundBallTranslationRotationFactor,
+    (float)(200.f) walkAroundBallMinDistance,
+    (float)(300.f) walkAroundBallMaxDistance,
     (float)(300.f) influenceRadiusOfObstacleOnTranslation,
     (float)(0.5f) influenceOfObstacleOnTranslation, // [this..0]*<above radius>
     (float)(0.8f) influenceOfObstacleOnTranslationTeammate,
+    (float)(0.8f) influenceOfObstacleOnTranslationBallchaser,
     (float)(0.7f) influenceOfObstacleOnTranslationCenterCircle,
     (float)(0.7f) influenceOfObstacleOnTranslationSetPlay,
-    (float)(2.0f) emergencyStopFallDownReductionFactorThreshold,
-  }),
-});
+    (float)(2.0f) emergencyStopFallDownReductionFactorThreshold
+  )
+);
 
 class PathToSpeedStable : public PathToSpeedStableBase
 {
 public:
   ENUM(PathFollowState,
-  { ,
     omni, // near obstacles, omnidirectional avoidance
     target, // near target: keep in sight, turn to target rotation
-    far,
-  }); // default: high speed
+    far
+  ); // default: high speed
 
   PathToSpeedStable();
 
 private:
-
   PathFollowState state = far;
   bool inDribbling = false;
   bool atBall = false;
+  bool rotateAroundBall = false;
   SimplePathProviderBase::Params pathParameters;
 
   void update(SpeedRequest& speedRequest);

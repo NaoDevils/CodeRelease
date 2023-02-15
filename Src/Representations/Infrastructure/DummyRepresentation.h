@@ -9,7 +9,6 @@
 
 #include "Tools/Streams/AutoStreamable.h"
 
-STREAMABLE(DummyRepresentation,
-{,
-  (int)(0) dummy, /**< Yeah! */
-});
+STREAMABLE(DummyRepresentation,,
+  (int)(0) dummy /**< Yeah! */
+);

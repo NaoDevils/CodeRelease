@@ -24,9 +24,7 @@ public:
    * @param globalBestPositionFactor A factor that controls the influence of the best particle on the velocity of a particle
    * @param randomPositionFactor A factor that controls the influence of a random position on the velocity of a particle
    */
-  ParticleSwarm(unsigned int particleCount = 8,
-                float velocityFactor = 0.6f, float bestPositionFactor = 0.8f,
-                float globalBestPositionFactor = 1.f, float randomPositionFactor = 0.02f);
+  ParticleSwarm(unsigned int particleCount = 8, float velocityFactor = 0.6f, float bestPositionFactor = 0.8f, float globalBestPositionFactor = 1.f, float randomPositionFactor = 0.02f);
 
   /**
    * Adds a parameter to the optimizer
@@ -87,12 +85,10 @@ private:
     float max;
     float minDelta;
 
-    Dimension(float* variable, float min, float max, float minDelta) :
-      variable(variable), min(min), max(max), minDelta(minDelta)
-    {}
+    Dimension(float* variable, float min, float max, float minDelta) : variable(variable), min(min), max(max), minDelta(minDelta) {}
 
-    bool isInside(float t) const {return min <= max ? t >= min && t <= max : t >= min || t <= max;}
-    float limit(float t) const {return t < min ? min : t > max ? max : t;}
+    bool isInside(float t) const { return min <= max ? t >= min && t <= max : t >= min || t <= max; }
+    float limit(float t) const { return t < min ? min : t > max ? max : t; }
   };
 
   unsigned int particleCount;

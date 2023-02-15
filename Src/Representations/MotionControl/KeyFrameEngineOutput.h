@@ -13,7 +13,7 @@
  * A struct that represents the output of the stand engine module.
  */
 STREAMABLE_WITH_BASE(KeyFrameEngineOutput, JointRequest,
-{ ,
+ ,
   (float)(0.f) stiffnessTransition,
-  (bool)(true) isLeavingPossible, /**< Is leaving the motion module possible now? */
-});
+  (bool)(true) isLeavingPossible /**< Is leaving the motion module possible now? */
+);

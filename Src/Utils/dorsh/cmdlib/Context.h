@@ -26,18 +26,15 @@ class Task
 
   /** The context which should be used to interact with the environment. */
   Context* mContext;
-public:
 
+public:
   Context& context() { return *mContext; }
   virtual void setContext(Context* context) { mContext = context; }
 
   /** Constructs a Task.
    * @see autoDelete
    */
-  explicit Task(Context& context, bool autoDelete = true)
-    : autoDelete(autoDelete),
-      mContext(&context)
-  {}
+  explicit Task(Context& context, bool autoDelete = true) : autoDelete(autoDelete), mContext(&context) {}
 
   /** Implement your Code here.
    * @return Should return false in case of an error, true otherwise.
@@ -115,14 +112,13 @@ class Context : public AbstractConsole
   Context(Context* parent, const std::string& cmdLine, bool detach);
 
   bool run();
+
 protected:
   volatile bool status;
   volatile bool requestApplicationShutdown;
 
 public:
-
-  Context(const std::vector<RobotConfigDorsh*>& selectedRobots,
-          Team* selectedTeam);
+  Context(const std::vector<RobotConfigDorsh*>& selectedRobots, Team* selectedTeam);
   ~Context();
   bool execute(const std::string& cmdLine);
   Context* executeDetached(const std::string& cmdLine);

@@ -15,7 +15,6 @@
 #include "Tools/Debugging/DebugImages.h"
 
 MODULE(CoordinateSystemProvider,
-{,
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
@@ -26,12 +25,11 @@ MODULE(CoordinateSystemProvider,
   REQUIRES(JointSensorData), // for timeStamp only
   PROVIDES(ImageCoordinateSystem),
   PROVIDES(ImageCoordinateSystemUpper),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float) imageRecordingTime, /**< Time the camera requires to take an image (in s, for motion compensation, may depend on exposure). */
-    (float) imageRecordingDelay, /**< Delay after the camera took an image (in s, for motion compensation). */
-  }),
-});
+    (float) imageRecordingDelay /**< Delay after the camera took an image (in s for motion compensation). */
+  )
+);
 
 class CoordinateSystemProvider : public CoordinateSystemProviderBase
 {

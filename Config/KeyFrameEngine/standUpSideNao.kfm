@@ -1,86 +1,58 @@
 keyFrameID = standUpSideNao;
-stabilizationP = 0;
-stabilizationI = 0;
-stabilizationD = 0;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
 keyFrames = [
- 
-     {
-
+  {// move legs diagonal to fall to front or back
     headAngles = [20000,20000];
-
     armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
-
     legsAngles = [0deg,0deg,10deg,50deg,-60deg,44deg,0deg,0deg,-30deg,20deg,30deg,0deg];
-
-    stiffnesses = [0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 100,100,100,100,100,100, 100,100,100,100,100,100];
-
+    stiffnesses = [0,0, 0,0,0,90,0,0, 0,0,0,90,0,0, 100,100,100,100,100,100, 100,100,100,100,100,100];
     duration = 300;
-
     intType = linear;
-
     angleAtKeyFrameTarget = 0;
-
     useAngleAtKeyFrameTarget = false;
-
     stabilize = false;
-
+    hipYawErrorCompensation = 0;
     waitForStable = false;
-
+    waitForTorsoTime = 0;
     leavingPossible = true;
-
   },
-    {
-
+  {
     headAngles = [20000,20000];
-
     armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
-
     legsAngles = [0deg,27deg,10deg,50deg,-60deg,44deg,0deg,0deg,-30deg,20deg,30deg,0deg];
-
-    stiffnesses = [0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 100,100,100,100,100,100, 100,100,100,100,100,100];
-
+    stiffnesses = [0,0, 0,0,0,90,0,0, 0,0,0,90,0,0, 100,100,100,100,100,100, 100,100,100,100,100,100];
     duration = 400;
-
     intType = sine;
-
     angleAtKeyFrameTarget = 0;
-
     useAngleAtKeyFrameTarget = false;
-
     stabilize = false;
-
+    hipYawErrorCompensation = 0;
     waitForStable = false;
-
+    waitForTorsoTime = 0;
     leavingPossible = true;
-
   },
-    {
-
+  {
     headAngles = [20000,20000];
-
     armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
-
     legsAngles = [0deg,27deg,-50deg,20deg,0deg,44deg,0deg,0deg,0deg,0deg,0deg,0deg];
-
-    stiffnesses = [0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 100,100,100,100,100,100, 100,100,100,100,100,100];
-
+    stiffnesses = [0,0, 60,0,0,90,0,0, 60,0,0,90,0,0, 100,100,100,100,100,100, 100,100,100,100,100,100];
     duration = 400;
-
     intType = sine;
-
     angleAtKeyFrameTarget = 0;
-
     useAngleAtKeyFrameTarget = false;
-
     stabilize = false;
-
+    hipYawErrorCompensation = 0;
     waitForStable = false;
-
+    waitForTorsoTime = 0;
     leavingPossible = false;
-
   },
-
-    { // similar to stand up - 
+  { 
+    // similar to stand up - 
     headAngles = [0,20deg];
     armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
     legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
@@ -90,7 +62,9 @@ keyFrames = [
     angleAtKeyFrameTarget = 0;
     useAngleAtKeyFrameTarget = false;
     stabilize = false;
+    hipYawErrorCompensation = 0;
     waitForStable = false;
+    waitForTorsoTime = 0;
     leavingPossible = true;
   }
 ];

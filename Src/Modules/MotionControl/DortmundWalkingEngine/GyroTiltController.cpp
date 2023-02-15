@@ -9,14 +9,11 @@
 
 GyroTiltController::GyroTiltController()
 {
-	
   initialized = false;
 }
 
 
-GyroTiltController::~GyroTiltController(void)
-{
-}
+GyroTiltController::~GyroTiltController(void) {}
 
 void GyroTiltController::init()
 {
@@ -27,7 +24,7 @@ void GyroTiltController::init()
 }
 
 
-void GyroTiltController::update(BodyTilt &bodyTilt)
+void GyroTiltController::update(BodyTilt& bodyTilt)
 {
   if (!initialized || !theWalkingInfo.isRunning)
     init();
@@ -35,14 +32,14 @@ void GyroTiltController::update(BodyTilt &bodyTilt)
   if (theWalkingInfo.isRunning)
   {
     filterGyroValues();
-    sign = theFootpositions.speed.x < 0.0 ? -1.0f : 1.0f;
-    bodyTilt.x = theWalkingEngineParams.sensorControl.rollControllerParams[2] * -gyroX;  // Assuming the desired angle speed is 0
-    bodyTilt.x += theWalkingEngineParams.sensorControl.rollControllerParams[0] * (theWalkingInfo.desiredBodyRot.x() - oriX);
-    bodyTilt.x += (IX += -theInertialSensorData.angle.x(), theWalkingEngineParams.sensorControl.rollControllerParams[1] * IX);
+    sign = theFootpositions.speed.translation.x() < 0.f ? -1.0f : 1.0f;
+    bodyTilt.x = rollControllerParams[2] * -gyroX; // Assuming the desired angle speed is 0
+    bodyTilt.x += rollControllerParams[0] * (theWalkingInfo.desiredBodyRot.x() - oriX);
+    bodyTilt.x += (IX += -(theJoinedIMUData.imuData[anglesource].angle.x()), rollControllerParams[1] * IX);
 
-    bodyTilt.y = sign * theWalkingEngineParams.sensorControl.tiltControllerParams[2] * -gyroY;
-    bodyTilt.y += sign * theWalkingEngineParams.sensorControl.tiltControllerParams[0] * (theWalkingInfo.desiredBodyRot.y() - oriY);
-    bodyTilt.y += (IY += theWalkingInfo.desiredBodyRot.y() - theInertialSensorData.angle.y(), sign * theWalkingEngineParams.sensorControl.tiltControllerParams[1] * IY);
+    bodyTilt.y = sign * tiltControllerParams[2] * -gyroY;
+    bodyTilt.y += sign * tiltControllerParams[0] * (theWalkingInfo.desiredBodyRot.y() - oriY);
+    bodyTilt.y += (IY += theWalkingInfo.desiredBodyRot.y() - (theJoinedIMUData.imuData[anglesource].angle.y()), sign * tiltControllerParams[1] * IY);
   }
   PLOT("module:GyroTiltController:sign", sign);
   PLOT("module:GyroTiltController:gyroX", gyroX);
@@ -52,21 +49,19 @@ void GyroTiltController::update(BodyTilt &bodyTilt)
   PLOT("module:GyroTiltController:oriX", oriX);
   PLOT("module:GyroTiltController:oriY", oriY);
   PLOT("module:GyroTiltController:desiredBodyRot.y()", theWalkingInfo.desiredBodyRot.y());
-  PLOT("module:GyroTiltController:theInertialSensorData.angle.y()", theInertialSensorData.angle.y());
-
 }
 
 
 void GyroTiltController::filterGyroValues()
 {
   const float alpha = gyroDriftCompensationFilterReactivity;
-  gyroOffsetX = (1.0f - alpha) * gyroOffsetX + alpha * theInertialSensorData.gyro.x() * 0.0075f;
-  gyroOffsetY = (1.0f - alpha) * gyroOffsetY + alpha * theInertialSensorData.gyro.y() * 0.0075f;
+  gyroOffsetX = (1.0f - alpha) * gyroOffsetX + alpha * (theJoinedIMUData.imuData[anglesource].gyro.x()) * 0.0075f;
+  gyroOffsetY = (1.0f - alpha) * gyroOffsetY + alpha * (theJoinedIMUData.imuData[anglesource].gyro.y()) * 0.0075f;
   PLOT("modules:GyroTiltController:gyroOffsetY", gyroOffsetY);
-  gyroX = (1.0f - gyroFilterReactivity)*gyroX + gyroFilterReactivity* (theInertialSensorData.gyro.x() * 0.0075f - gyroOffsetX);
-  gyroY = (1.0f - gyroFilterReactivity)*gyroY + gyroFilterReactivity* (theInertialSensorData.gyro.y() * 0.0075f - gyroOffsetY);
-  oriX = (1.0f - orientationFilterReactivity) * oriX + orientationFilterReactivity * theInertialSensorData.angle.x();
-  oriY = (1.0f - orientationFilterReactivity) * oriY + orientationFilterReactivity * theInertialSensorData.angle.y();
+  gyroX = (1.0f - gyroFilterReactivity) * gyroX + gyroFilterReactivity * ((theJoinedIMUData.imuData[anglesource].gyro.x()) * 0.0075f - gyroOffsetX);
+  gyroY = (1.0f - gyroFilterReactivity) * gyroY + gyroFilterReactivity * ((theJoinedIMUData.imuData[anglesource].gyro.y()) * 0.0075f - gyroOffsetY);
+  oriX = (1.0f - orientationFilterReactivity) * oriX + orientationFilterReactivity * (theJoinedIMUData.imuData[anglesource].angle.x());
+  oriY = (1.0f - orientationFilterReactivity) * oriY + orientationFilterReactivity * (theJoinedIMUData.imuData[anglesource].angle.y());
 }
 
 

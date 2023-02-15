@@ -3,8 +3,8 @@ st on
 
 # all views are defined in another script
 call Includes/ImageViews
-call Includes/FieldViews1
-call Includes/FieldViews2
+call Includes/FieldViewsCreate
+call Includes/FieldViewsPercepts
 
 vfd worldState representation:GameInfo
 vfd worldState representation:SideConfidence
@@ -22,7 +22,6 @@ jc press 22 log forward image # Shift+Crtl+V
 jc press 2 log fast_rewind # Shift+Ctrl+B
 jc press 14 log fast_forward # Shift+Ctrl+N
 
-set representation:GroundContactState contact = true; leftFootHasGroundContact = false; rightFootHasGroundContact = false; stepFrequencyLeft = 0; stepFrequencyRight = 0;
 ac both
 
 # deactivate game info provided in Motion
@@ -30,8 +29,9 @@ mr RobotInfo default
 mr OwnTeamInfo default
 mr OpponentTeamInfo default
 mr GameInfo default
-mr BallPercept default
-mr MultipleBallPercept CLIPBallPerceptor
+
+mr JPEGImage default
+mr JPEGImageUpper default
 
 log mr
 log pause

@@ -28,7 +28,7 @@ public:
   /** Copy constructor
   * @param other The other distribution that is copied to this one
   */
-  GaussianDistribution2D(const GaussianDistribution2D& other) {*this = other;}
+  GaussianDistribution2D(const GaussianDistribution2D& other) { *this = other; }
 
   /** Computes the Mahalanobis distance to another distribution.
   *   This function is used to compare two different distributions for checking, if
@@ -47,8 +47,7 @@ public:
   /** Computes the probability density at the center of the distribution
   * @return The probability
   */
-  double probabilityAtMean() const
-    { return probabilityAt(mean);}
+  double probabilityAtMean() const { return probabilityAt(mean); }
 
   /** Computes mean and covariance matrix of the distribution
   * @param x A list of measurements of a variable
@@ -95,8 +94,7 @@ public:
   * @param eValue1 Returns the first eigenvalue
   * @param eValue2 Returns the second eigenvalue
   */
-  void getEigenVectorsAndEigenValues(Vector2d& eVec1, Vector2d& eVec2,
-    double& eValue1, double& eValue2) const;
+  void getEigenVectorsAndEigenValues(Vector2d& eVec1, Vector2d& eVec2, double& eValue1, double& eValue2) const;
 
 private:
   /** Computes a cholesky decomposition 'A=LLt' for a symmetric positive semidefinite A.

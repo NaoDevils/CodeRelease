@@ -1,0 +1,25 @@
+vp HeadState 200 -0.1 1.1
+vpd HeadState representation:KeyStates:headFront red
+vpd HeadState representation:KeyStates:headMiddle green
+vpd HeadState representation:KeyStates:headRear blue
+
+vp LeftHandState 200 -0.1 1.1
+vpd LeftHandState representation:KeyStates:lHandBack red
+vpd LeftHandState representation:KeyStates:lHandLeft green
+vpd LeftHandState representation:KeyStates:lHandRight blue
+
+vp RightHandState 200 -0.1 1.1
+vpd RightHandState representation:KeyStates:rHandBack red
+vpd RightHandState representation:KeyStates:rHandLeft green
+vpd RightHandState representation:KeyStates:rHandRight blue
+
+vp LeftFootState 200 -0.1 1.1
+vpd LeftFootState representation:KeyStates:leftFootLeft red 
+vpd LeftFootState representation:KeyStates:leftFootRight green
+
+vp RightFootState 200 -0.1 1.1
+vpd RightFootState representation:KeyStates:rightFootLeft red
+vpd RightFootState representation:KeyStates:rightFootRight green
+
+vp ChestButton 200 -0.1 1.1
+vpd ChestButton representation:KeyStates:chest red

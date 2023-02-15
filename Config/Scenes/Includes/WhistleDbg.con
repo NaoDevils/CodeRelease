@@ -1,5 +1,4 @@
-echo DEPRECATED
-vp whistle 1000 -1 1
-vpd whistle representation:Whistle:detected blue
-set representation:RawGameInfo competitionPhase = 0; competitionType = 0; state = 2; firstHalf = 0; kickingTeam = 0; gamePhase = 0; setPlay = 0; dropInTeam = 0; dropInTime = 0; secsRemaining = 0; timeLastPackageReceived = 0; whistleCausedPlay = false;
+vp whistle 1000 0 1
+vpd whistle representation:Whistle:confidence blue
+vpd whistle representation:Whistle:detected red
 vi FFT

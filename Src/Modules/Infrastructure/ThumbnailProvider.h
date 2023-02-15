@@ -8,17 +8,15 @@
 #include "Representations/Infrastructure/Thumbnail.h"
 
 MODULE(ThumbnailProvider,
-{,
   REQUIRES(Image),
   REQUIRES(ImageUpper),
-  PROVIDES_WITHOUT_MODIFY(Thumbnail),
-  PROVIDES_WITHOUT_MODIFY(ThumbnailUpper),
-  LOADS_PARAMETERS(
-  {,
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(Thumbnail),
+  PROVIDES_CONCURRENT_WITHOUT_MODIFY(ThumbnailUpper),
+  LOADS_PARAMETERS(,
     (unsigned) downScales,
-    (bool) grayscale,
-  }),
-});
+    (bool) grayscale
+  )
+);
 
 class ThumbnailProvider : public ThumbnailProviderBase
 {

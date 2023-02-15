@@ -14,14 +14,12 @@
  * A struct that represents a spot that might be an indication of a ball.
  */
 STREAMABLE(BallSpot,
-{
   BallSpot() = default;
   BallSpot(Vector2i pos) : position(pos) {};
   BallSpot(int x, int y) : position(x, y) {};
 
   bool operator<(const BallSpot& second) const
-  {
-    return (position.y() > second.position.y());
+  { return (position.y() > second.position.y());
   },
 
   (Vector2i) position,
@@ -31,5 +29,5 @@ STREAMABLE(BallSpot,
   (int)(0) cb,
   (int)(0) cr,
   (float) radiusInImage,
-  (float)(0.f) validity,
-});
+  (float)(0.f) validity
+);

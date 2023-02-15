@@ -16,7 +16,6 @@
 #include "Representations/Modeling/WhistleDortmund.h"
 
 MODULE(WhistleHandlerDortmund,
-{,
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(OwnTeamInfo),
@@ -27,27 +26,30 @@ MODULE(WhistleHandlerDortmund,
   USES(RobotPose),
   REQUIRES(WhistleDortmund),
   PROVIDES(GameInfo),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (int) (1000) timeWindow,
-    (int) (49) percentOfTeamAgrees,
     (bool) (true) useBallPosition,
+    (bool) (true) useBallForPlayingReadyTransition,
     (float) (600.f) maxBallToMiddleDistance,
-  }),
-});
+    (int) (20000) playToReadyTimeout, // after this time, local decision will be reverted
+    (int) (20000) setToPlayTimeout, // after this time, local decision will be reverted
+    (int) (3000) maxTimediffWhistleToGoal
+  )
+);
 
 class WhistleHandlerDortmund : public WhistleHandlerDortmundBase
 {
 private:
   std::vector<unsigned> penaltyTimes;
-  unsigned whistleTimestamps[MAX_NUM_PLAYERS+1];
+  unsigned whistleTimestamps[MAX_NUM_PLAYERS + 1];
 
   unsigned timeOfLastSetState = 0;
   unsigned lastGameState = STATE_INITIAL;
-  bool overrideGameState = false;
+  unsigned timeStampPlayToReady = 0;
+  unsigned timeStampSetToPlay = 0;
 
   void update(GameInfo& gameInfo);
-  bool checkWhistles();
-  bool checkBall();
+  bool checkBall(); // returns true if the ball moved from the center location
+  bool checkForGoal(); // returns true if the ball was detected near one of the goal lines
   bool checkForIllegalMotionPenalty();
 };

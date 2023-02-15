@@ -26,11 +26,26 @@ inline void _plot(const char* id, unsigned time)
  * @param eventID The id of the stop watch.
  */
 #define STOPWATCH(eventID) \
-  for(bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID) : (void) Global::getTimingManager().stopTiming(eventID)), _start; _start ^= true)
+  for (bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID) : (void)Global::getTimingManager().stopTiming(eventID)), _start; _start ^= true)
+
+/**
+  * Allows the measurement of the elapsed monotonic time of the following block.
+  * @param eventID The id of the stop watch.
+  */
+#define STOPWATCH_MONOTONIC(eventID) \
+  for (bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID, false) : (void)Global::getTimingManager().stopTiming(eventID, false)), _start; _start ^= true)
 
 /**
  * Allows the measurement the execution time of the following block and plot the measurements.
  * @param eventID The id of the stop watch.
  */
 #define STOPWATCH_WITH_PLOT(eventID) \
-  for(bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID) : _plot("plot:stopwatch:" eventID, Global::getTimingManager().stopTiming(eventID))), _start; _start ^= true)
+  for (bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID) : _plot("plot:stopwatch:" eventID, Global::getTimingManager().stopTiming(eventID))), _start; _start ^= true)
+
+/**
+  * Allows the measurement of the elapsed monotonic time of the following block and plot the measurements.
+  * @param eventID The id of the stop watch.
+  */
+#define STOPWATCH_MONOTONIC_WITH_PLOT(eventID)                                                                                                                                                  \
+  for (bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID, false) : _plot("plot:stopwatch:" eventID, Global::getTimingManager().stopTiming(eventID, false))), _start; \
+       _start ^= true)

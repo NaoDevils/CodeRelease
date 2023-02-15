@@ -13,9 +13,7 @@
  * The struct represents the states of the keys.
  */
 STREAMABLE(KeyStates,
-{
   ENUM(Key,
-  {,
     // touch sensors:
     headFront,
     headMiddle,
@@ -32,15 +30,11 @@ STREAMABLE(KeyStates,
     leftFootRight,
     rightFootLeft,
     rightFootRight,
-    chest,
-  })
+    chest
+  )
 
   KeyStates();
+  void draw() const;
   ,
-  (std::array<bool, numOfKeys>) pressed,
-});
-
-inline KeyStates::KeyStates()
-{
-  pressed.fill(false);
-}
+  (std::array<bool, numOfKeys>) pressed
+);

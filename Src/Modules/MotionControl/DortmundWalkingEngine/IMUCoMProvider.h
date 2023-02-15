@@ -7,8 +7,8 @@
 #include <list>
 #include "Representations/MotionControl/ActualCoM.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Sensing/RobotModel.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "StepData.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/MotionControl/ActualCoM.h"
@@ -23,24 +23,25 @@
 */
 
 MODULE(IMUCoMProvider,
-{ ,
   REQUIRES(FootSteps),
-  REQUIRES(InertialSensorData),
+  REQUIRES(JoinedIMUData),
   REQUIRES(WalkingEngineParams),
   USES(WalkingInfo),
   USES(TargetCoM),
   PROVIDES(ActualCoM),
-});
+
+  LOADS_PARAMETERS(,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+  )
+);
 
 class IMUCoMProvider : public IMUCoMProviderBase
 {
 public:
-  IMUCoMProvider() {};
+  IMUCoMProvider(){};
 
   /** Destructor */
-  ~IMUCoMProvider(void) {};
+  ~IMUCoMProvider(void){};
 
-  void update(ActualCoM &theActualCoM);
-
+  void update(ActualCoM& theActualCoM);
 };
-

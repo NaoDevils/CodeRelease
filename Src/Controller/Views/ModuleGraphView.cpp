@@ -11,8 +11,10 @@
 #include <sstream>
 #include <algorithm>
 
-ModuleGraphViewObject::ModuleGraphViewObject(const QString& fullName, RobotConsole& console, char processIdentifier, ModuleBase::Category category) :
-  DotViewObject(fullName), console(console), processIdentifier(processIdentifier), category(category), lastModulInfoTimeStamp(0) {}
+ModuleGraphViewObject::ModuleGraphViewObject(const QString& fullName, RobotConsole& console, char processIdentifier, ModuleBase::Category category)
+    : DotViewObject(fullName), console(console), processIdentifier(processIdentifier), category(category), lastModulInfoTimeStamp(0)
+{
+}
 
 bool ModuleGraphViewObject::hasChanged()
 {
@@ -30,57 +32,58 @@ QString ModuleGraphViewObject::generateDotFileContent()
   std::stringstream stream;
   stream << "digraph G {" << std::endl;
   stream << "node [style=filled,fillcolor=lightyellow,fontname=Arial"
-#ifdef OSX
+#ifdef MACOS
             "MT"
 #endif
-            ",fontsize=9,height=0.2];" << std::endl;
+            ",fontsize=9,height=0.2];"
+         << std::endl;
   stream << "concentrate = true;" << std::endl;
 
-  for(const auto& i : m.modules)
-    if(i.processIdentifier == processIdentifier && (category == ModuleBase::numOfCategories || i.category == category))
+  for (const auto& i : m.modules)
+    if (i.processIdentifier == processIdentifier && (category == ModuleBase::numOfCategories || i.category == category))
     {
       bool used = false;
-      for(const auto& j : i.representations)
+      for (const auto& j : i.representations)
       {
-        for(const auto& k : m.config.representationProviders)
-          if(k.representation == j && k.provider == i.name)
+        for (const auto& k : m.config.representationProviders)
+          if (k.representation == j && k.provider == i.name)
           {
             used = true;
             stream << j << " [style=filled,fillcolor=\"lightblue\"];" << std::endl;
             stream << i.name << "->" << j.c_str() << " [len=2];" << std::endl;
           }
       }
-      if(used)
+      if (used)
       {
-        for(const auto& j : i.requirements)
+        for (const auto& j : i.requirements)
         {
           bool found = false;
           bool foundInSameProcess = false;
           bool foundDefault = false;
 
-          for(const auto& k : m.config.representationProviders)
-            if(k.representation == j)
+          for (const auto& k : m.config.representationProviders)
+            if (k.representation == j)
             {
-              if(k.provider == "default")
+              if (k.provider == "default")
                 foundDefault = true;
               else
               {
-                for(const auto& l : m.modules)
+                for (const auto& l : m.modules)
                 {
                   found |= l == k.provider;
                   foundInSameProcess |= l == k.provider && l.processIdentifier == i.processIdentifier;
-                  if(foundInSameProcess)
+                  if (foundInSameProcess)
                     goto exitTwoLoops;
                 }
               }
             }
         exitTwoLoops:
 
-          if(!foundInSameProcess)
+          if (!foundInSameProcess)
           {
-            if(foundDefault)
+            if (foundDefault)
             {
-              if(!defaultCreated)
+              if (!defaultCreated)
               {
                 stream << "default[shape=box,fontcolor=red];" << std::endl;
                 defaultCreated = true;
@@ -88,7 +91,7 @@ QString ModuleGraphViewObject::generateDotFileContent()
               stream << j << " [style=filled,fillcolor=\"lightblue\"];" << std::endl;
               stream << "default->" << j << " [len=2];" << std::endl;
             }
-            else if(!found)
+            else if (!found)
               stream << j << " [style=\"filled,dashed\",color=red,fontcolor=red];" << std::endl;
             else
               stream << j << " [style=\"filled,dashed\",fillcolor=\"#ffdec4\"];" << std::endl;
@@ -107,10 +110,10 @@ QString ModuleGraphViewObject::generateDotFileContent()
 std::string ModuleGraphViewObject::compress(const std::string& s) const
 {
   std::string s2(s);
-  if(!isalpha(s2[0]))
+  if (!isalpha(s2[0]))
     s2[0] = '_';
-  for(unsigned i = 1; i < s2.size(); ++i)
-    if(!isalpha(s2[i]) && !isdigit(s2[i]))
+  for (unsigned i = 1; i < s2.size(); ++i)
+    if (!isalpha(s2[i]) && !isdigit(s2[i]))
       s2[i] = '_';
   return s2;
 }

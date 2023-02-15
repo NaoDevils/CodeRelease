@@ -45,8 +45,8 @@ private:
   */
   virtual SimRobot::Widget* createWidget();
 
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 
   friend class FieldWidget;
 };

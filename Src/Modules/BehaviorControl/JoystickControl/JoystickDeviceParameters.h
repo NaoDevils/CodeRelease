@@ -8,120 +8,56 @@
  */
 #pragma once
 
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Streams/InStreams.h"
 #include "Representations/MotionControl/SpecialActionRequest.h"
 #include "Representations/MotionControl/WalkRequest.h"
 
+
 // TODO: put implementation in cpp file?!
 // TODO: special file for SpecialActionButtonPair, os is okay to have the class here?
 
-class JoystickDeviceParameters : public Streamable
-{
-public:
-
+STREAMABLE(JoystickDeviceParameters,
   /**
-   * \class SpecialActionButtonPair
-   * 
-   * This class is a pair of a special action and a button id. This class is 
-   * used to define special actions which are triggered by joystick button events.
-   */
-  class SpecialActionButtonPair : public Streamable
-  {
-  public:
-    /** Default constructor. */
-    SpecialActionButtonPair() :
-      specialAction(SpecialActionRequest()),
-      button(0),
-      duration(0) {}
-
-    //TODO: don't pass by value ?!
-    /** Constructor sets member variables to given values. */
-    SpecialActionButtonPair(SpecialActionRequest specialAction_, int button_, unsigned duration_) :
-      specialAction(specialAction_),
-      button(button_),
-      duration(duration_) {}
-
-    /** Destructor. */
-    ~SpecialActionButtonPair() {}
+    * \class SpecialActionButtonPair
+    *
+    * This class is a pair of a special action and a button id. This class is
+    * used to define special actions which are triggered by joystick button events.
+    */
+  STREAMABLE(SpecialActionButtonPair,,
 
     /// Define a special actions which is triggered by the given \c button id.
-    SpecialActionRequest specialAction;
+    (SpecialActionRequest) specialAction,
 
     /// Define a button id which triggers the special actions.
-    int button;
+    (int)(0) button,
 
     /// Define minimum duration of the special action.
-    unsigned duration;
-
-    virtual void serialize(In* in, Out* out)
-    {
-      STREAM_REGISTER_BEGIN;
-
-      STREAM(specialAction);
-      STREAM(button);
-      STREAM(duration);
-
-      STREAM_REGISTER_FINISH;
-    }
-  };
+    (unsigned)(0) duration
+  );
 
   /**
-   * \class StepRequestButtonPair
-   *
-   * Class for storing information about the CustomStep execution via the left control keys
-   */
-  class StepRequestButtonPair : public Streamable
-  {
-  public:
-    /** Default constructor. */
-    StepRequestButtonPair() :
-      stepRequest(WalkRequest::StepRequest::none),
-      stateValueX(0),
-      stateValueY(0),
-      duration(0),
-      mirror(false){}
-
-    //TODO: don't pass by value ?!
-    /** Constructor sets member variables to given values. */
-    StepRequestButtonPair(WalkRequest::StepRequest stepRequest_, int stateValueX_, int stateValueY_, unsigned duration_, bool mirror_) :
-      stepRequest(stepRequest_),
-      stateValueX(stateValueX_),
-      stateValueY(stateValueY_),
-      duration(duration_),
-      mirror(mirror_) {}
-
-    /** Destructor. */
-    ~StepRequestButtonPair() {}
+    * \class StepRequestButtonPair
+    *
+    * Class for storing information about the CustomStep execution via the left control keys
+    */
+  STREAMABLE(StepRequestButtonPair,,
 
     /// Define a CustomStep
-    WalkRequest::StepRequest stepRequest;
+    ((WalkRequest) StepRequest)(none) stepRequest,
 
     /// TODO
-    int stateValueX;
+    (int)(0) stateValueX,
 
     /// TODO
-    int stateValueY;
+    (int)(0) stateValueY,
 
     /// TODO
-    unsigned duration;
+    (unsigned)(0) duration,
 
     /// TODO
-    bool mirror;
-
-    virtual void serialize(In* in, Out* out)
-    {
-      STREAM_REGISTER_BEGIN;
-
-      STREAM(stepRequest, WalkRequest);
-      STREAM(stateValueX);
-      STREAM(stateValueY);
-      STREAM(duration);
-      STREAM(mirror);
-
-      STREAM_REGISTER_FINISH;
-    }
-  };
+    (bool)(false) mirror
+  );
 
   void loadConfigFile(const std::string& fileName)
   {
@@ -143,101 +79,67 @@ public:
     return walkRotLeftAxis >= 0 && (unsigned int)walkRotLeftAxis <= axesCount &&
            walkRotRightAxis >= 0 && (unsigned int)walkRotRightAxis <= axesCount;
   }
+  ,
 
   /// Absolute axis values below this threshold does not cause a motion.
-  float minAxisValue;
+  (float)(0.f) minAxisValue,
 
   /// The number of avaiable buttons on the joystick.
-  unsigned int buttonsCount;
+  (unsigned int)(0) buttonsCount,
   /// The number of avaiable axes on the joystick.
-  unsigned int axesCount;
+  (unsigned int)(0) axesCount,
 
   /// Define axis which controls the walking speed in x-direction.
   /// Negative values deactivate x-direction walking control.
-  int walkXAxis;
+  (int)(0) walkXAxis,
 
   /// Define a second axis which controls the walking speed in x-direction.
   /// The values of \c walkXAxis and \c additionalWalkXAxis are added, 
   /// but cut off at max speed.
-  int additionalWalkXAxis;
+  (int)(0) additionalWalkXAxis,
 
   /// Define axis which controls the walking speed in y-direction.
   /// Negative values deactivate y-direction walking control.
-  int walkYAxis;
+  (int)(0) walkYAxis,
 
   /// Define axis which controls the rotational walking speed.
   /// Negative values deactivate rotational walking control.
-  int walkRotAxis;
+  (int)(0) walkRotAxis,
 
   /// Define two axes which controls together the rotational walking speed.
   /// If walkRotAxis is valid, this axis is ignored.
-  int walkRotLeftAxis;
+  (int)(0) walkRotLeftAxis,
 
   /// Define two axes which controls together the rotational walking speed.
   /// If walkRotAxis is valid, this axis is ignored.
-  int walkRotRightAxis;
+  (int)(0) walkRotRightAxis,
 
   /// Define axis which controls the head pan.
   /// Negative values deactivate head pan control.
-  int headPanAxis;
+  (int)(0) headPanAxis,
   /// Define axis which controls the head tilt.
   /// Negative values deactivate head tilt control.
-  int headTiltAxis;
+  (int)(0) headTiltAxis,
 
   /// Define button which triggers the robot to stand up (same as chest button).
-  int startButton;
+  (int)(0) startButton,
 
   /// Define button which triggers the robot to stand up (same as chest button).
-  int backButton;
+  (int)(0) backButton,
 
   /// Define button which triggers a kick with the left foot.
-  int leftKickButton;
+  (int)(0) leftKickButton,
   /// Define button which triggers a kick with the right foot.
-  int rightKickButton;
+  (int)(0) rightKickButton,
 
   /// Define a list of special actions and button ids. The button in each of the 
   /// \c SpecialActionButtonPair elements triggers the related special action.
-  std::vector<SpecialActionButtonPair> specialActions;
+  (std::vector<SpecialActionButtonPair>) specialActions,
 
   /// Define the axis which controls the execution of CustomSteps
-  int customStepXAxis;
+  (int)(0) customStepXAxis,
 
-  int customStepYAxis;
+  (int)(0) customStepYAxis,
 
-  std::vector<StepRequestButtonPair> activeKicks;
-
-  virtual void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-
-    STREAM(minAxisValue);
-
-    STREAM(buttonsCount);
-    STREAM(axesCount);
-
-    STREAM(walkXAxis);
-    STREAM(additionalWalkXAxis);
-    STREAM(walkYAxis);
-    STREAM(walkRotAxis);
-    STREAM(walkRotLeftAxis);
-    STREAM(walkRotRightAxis);
-
-    STREAM(headPanAxis);
-    STREAM(headTiltAxis);
-
-    STREAM(startButton);
-    STREAM(backButton);
-
-    STREAM(leftKickButton);
-    STREAM(rightKickButton);
-
-    STREAM(specialActions);
-
-    STREAM(customStepXAxis);
-    STREAM(customStepYAxis);
-
-    STREAM(activeKicks);
-
-    STREAM_REGISTER_FINISH;
-  }
-};
+  (std::vector<StepRequestButtonPair>) activeKicks
+);

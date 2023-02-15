@@ -17,21 +17,19 @@ static const size_t QLINEEDIT_MAX_LENGTH = 32767;
 static size_t countWords(const std::string& str)
 {
   size_t c = split(str).size();
-  if(!str.empty() && *(--str.end()) == ' ')
+  if (!str.empty() && *(--str.end()) == ' ')
     ++c;
   return c;
 }
 
-TabFilter::TabFilter(QObject *parent)
-  : QObject(parent)
-{}
+TabFilter::TabFilter(QObject* parent) : QObject(parent) {}
 
-bool TabFilter::eventFilter(QObject *o, QEvent *e)
+bool TabFilter::eventFilter(QObject* o, QEvent* e)
 {
-  if(e->type() == QEvent::KeyPress || e->type() == QEvent::KeyRelease)
+  if (e->type() == QEvent::KeyPress || e->type() == QEvent::KeyRelease)
   {
-    QKeyEvent *keyEvent = static_cast<QKeyEvent *>(e);
-    if(keyEvent->key() == Qt::Key_Tab && e->type() == QEvent::KeyPress)
+    QKeyEvent* keyEvent = static_cast<QKeyEvent*>(e);
+    if (keyEvent->key() == Qt::Key_Tab && e->type() == QEvent::KeyPress)
     {
       return false;
     }
@@ -39,24 +37,21 @@ bool TabFilter::eventFilter(QObject *o, QEvent *e)
   return QObject::eventFilter(o, e);
 }
 
-CommandLineCompleter::CommandLineCompleter(QObject *parent)
-  : QCompleter(parent),
-    wordCount(QLINEEDIT_MAX_LENGTH),
-    model(new QStringListModel(this))
+CommandLineCompleter::CommandLineCompleter(QObject* parent) : QCompleter(parent), wordCount(QLINEEDIT_MAX_LENGTH), model(new QStringListModel(this))
 {
   popup()->installEventFilter(new TabFilter(this));
   setModel(model);
 }
 
-void CommandLineCompleter::setCompletionPrefix(const QString &text)
+void CommandLineCompleter::setCompletionPrefix(const QString& text)
 {
-  size_t wc = countWords(toString(text));
-  if(wc != wordCount)
+  size_t wc = countWords(text.toStdString());
+  if (wc != wordCount)
   {
     QStringList strings;
-    foreach (std::string s, Commands::getInstance().complete(toString(text)))
+    for (const std::string& s : Commands::getInstance().complete(text.toStdString()))
     {
-      strings << fromString(s);
+      strings << QString::fromStdString(s);
     }
 
     model->setStringList(strings);

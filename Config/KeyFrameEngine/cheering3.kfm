@@ -1,0 +1,777 @@
+//copy from stand
+keyFrameID = cheering3;YstabilizationP = 0; //0.1
+YstabilizationI = 0.0; //0
+YstabilizationD = 0; //-0.02
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [0deg,0deg];
+    armsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
+    legsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
+    stiffnesses = [40,40,  100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 300;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { //frame 0 : initializing the hands  
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        45deg,  11deg,   0deg,  90deg, -90deg,  0deg, // left arm
+        45deg, -11deg,   0deg, -90deg,  90deg,  0deg, // right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 300;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 1 : reaching the left initial pose (left-down)
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -50deg, 0deg,  0deg, // left arm //-88.5 WristYaw
+        60deg,  10deg,   0deg,  20deg, 0deg,  0deg, // right arm  //88.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 300;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 2 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -85deg, 0deg,  0deg, // left arm //-50.5
+        60deg,  10deg,   0deg,  45deg,  0deg,  0deg, // right arm  //50.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // left leg
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 3 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -60deg, 0deg,  0deg, // left arm //-50.5
+        60deg,  10deg,   0deg,  20deg,  0deg,  0deg, // right arm  //50
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 4 : shaking the hands in the current position //same as frame 2
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -85deg, 0deg,  0deg, // left arm 
+        60deg,  10deg,   0deg,  45deg,  0deg,  0deg, // right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // left leg
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },{ //frame 5 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -60deg, 0deg,  0deg, // left arm
+        60deg,  10deg,   0deg,  20deg,  0deg,  0deg, // right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+
+
+   { //frame 1 : reaching the right initial pose (right-down)
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  -10deg,   0deg,  -30deg, 0deg,  0deg, // left arm //-88.5
+        60deg,  -30deg,   0deg,  70deg,  0deg,  0deg,// right arm //88.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 300;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 2 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  -10deg,   0deg,  -45deg, 0deg,  0deg, // left arm //-50.5
+        60deg,  -30deg,   0deg,  85deg,  0deg,  0deg,// right arm  //50.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // left leg
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 3 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  -10deg,   0deg,  -20deg, 0deg,  0deg, // left arm //-50.5
+        60deg,  -30deg,   0deg,  60deg,  0deg,  0deg,// right arm   //50.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 4 : shaking the hands in the current position //same as frame 2
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  -10deg,   0deg,  -45deg, 0deg,  0deg, // left arm
+        60deg,  -30deg,   0deg,  85deg,  0deg,  0deg,// right arm
+
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // left leg
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 5 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  -10deg,   0deg,  -20deg, 0deg,  0deg, // left arm
+        60deg,  -30deg,   0deg,  60deg, 0deg,  0deg,// right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  //round 2
+
+   { //frame 1 : reaching the left initial pose (left-down)
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -70deg, 0deg,  0deg, // left arm //-88.5
+        60deg,  10deg,   0deg,  30deg, 0deg,  0deg, // right arm  //88.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 300;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 2 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -85deg, 0deg,  0deg, // left arm //-50.5
+        60deg,  10deg,   0deg,  45deg,  0deg,  0deg, // right arm  //50.5
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // left leg
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 3 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -60deg, 0deg,  0deg, // left arm //-50.5
+        60deg,  10deg,   0deg,  20deg,  0deg,  0deg, // right arm  //50
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 4 : shaking the hands in the current position //same as frame 2
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -85deg, 0deg,  0deg, // left arm 
+        60deg,  10deg,   0deg,  45deg,  0deg,  0deg, // right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // left leg
+         0deg,   0deg, -30.5deg,  61deg, -30.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = true;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  { //frame 5 : shaking the hands in the current position 
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        60deg,  30deg,   0deg,  -60deg, 0deg,  0deg, // left arm
+        60deg,  10deg,   0deg,  20deg,  0deg,  0deg, // right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 200;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = false;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = true;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = true;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  },
+  // the last key frame starts standing
+  {
+    // HeadYaw, HeadPitch
+    headAngles = [0deg,0deg]; // 20000 = unchanged, we do not change the head angles
+    
+    // ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [
+        90deg,  11deg,   10deg,  90deg, -90deg,  0deg, // left arm
+        90deg, -11deg,   -10deg, -90deg,  90deg,  0deg, // right arm
+    ];
+        
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
+         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+    ];
+    
+    // Amount of force / torque (%) for each joint
+    stiffnesses = [
+        40,40,                   // head
+        100,100,100,100,100,100, // left arm
+        100,100,100,100,100,100, // right arm
+        100,100,100,100,100,100, // left leg
+        100,100,100,100,100,100, // right leg
+    ];
+    
+    // key frame duration in milliseconds
+    duration = 1000;
+    
+    // interpolation type between key frames: sine or linear
+    intType = linear;
+    
+    // enable PID sensor control during this frame (see stablization parameters above)
+    stabilize = false;
+    
+    // if the key frame motion can be interrupted at this point (set this to true for the last frame)
+    leavingPossible = false;
+    
+    // advanced parameters
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    waitForStable = false;
+    hipYawErrorCompensation = 0;
+    waitForTorsoTime = 0;
+  }
+];

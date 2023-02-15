@@ -1,0 +1,7 @@
+mr RawGameInfo RawGameInfoProvider
+mr OwnTeamInfo RawGameInfoProvider
+mr OpponentTeamInfo RawGameInfoProvider
+mr RobotInfo RawGameInfoProvider
+set module:RawGameInfoProvider:enable true
+echo dr module:WhistleDetector:detectWhistle 
+echo dr module:WhistleDetector:detectWhistle off

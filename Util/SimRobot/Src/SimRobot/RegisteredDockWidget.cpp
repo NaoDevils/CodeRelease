@@ -9,8 +9,8 @@
 #include "RegisteredDockWidget.h"
 #include "MainWindow.h"
 
-RegisteredDockWidget::RegisteredDockWidget(const QString& fullName, QWidget* parent) :
-  QDockWidget(parent), fullName(fullName), module(0), object(0), widget(0), flags(0), reallyVisible(false)
+RegisteredDockWidget::RegisteredDockWidget(const QString& fullName, QWidget* parent)
+    : QDockWidget(parent), fullName(fullName), module(0), object(0), widget(0), flags(0), reallyVisible(false)
 {
   setObjectName(fullName);
   setAllowedAreas(Qt::TopDockWidgetArea);
@@ -20,27 +20,24 @@ RegisteredDockWidget::RegisteredDockWidget(const QString& fullName, QWidget* par
 
 void RegisteredDockWidget::setWidget(SimRobot::Widget* widget, const SimRobot::Module* module, SimRobot::Object* object, int flags)
 {
-  if(widget)
+  if (widget)
   {
-#ifdef FIX_MACOSX_UNDOCKED_WIDGETS_DISAPPEAR_WHEN_DOCKED_BUG
-    if(isFloating() && widget->getWidget()->inherits("QGLWidget"))
-    {
-      setFloating(false);
-      QDockWidget::setWidget(widget->getWidget());
-      setFloating(true);
-    }
-    else
-#endif
-      QDockWidget::setWidget(widget->getWidget());
+    QDockWidget::setWidget(widget->getWidget());
   }
   else
     QDockWidget::setWidget(0);
-  if(this->widget)
+  if (this->widget)
     delete this->widget;
   this->module = module;
   this->object = object;
   this->widget = widget;
   this->flags = flags;
+}
+
+void RegisteredDockWidget::saveLayout()
+{
+  if (this->widget)
+    this->widget->saveLayout();
 }
 
 bool RegisteredDockWidget::canClose()
@@ -55,18 +52,18 @@ QMenu* RegisteredDockWidget::createFileMenu() const
 
 QMenu* RegisteredDockWidget::createEditMenu()
 {
-  if(!widget)
+  if (!widget)
     return 0;
 
   QMenu* menu = widget->createEditMenu();
 
-  if(!menu)
+  if (!menu)
   {
     menu = new QMenu(tr("&Edit"));
     flags |= SimRobot::Flag::copy;
   }
 
-  if(flags & SimRobot::Flag::copy)
+  if (flags & SimRobot::Flag::copy)
   {
     QAction* copyAction = menu->addAction(QIcon(":/Icons/page_copy.png"), tr("&Copy"));
     copyAction->setShortcut(QKeySequence(QKeySequence::Copy));
@@ -79,15 +76,15 @@ QMenu* RegisteredDockWidget::createEditMenu()
 
 QMenu* RegisteredDockWidget::createUserMenu() const
 {
-  if(!widget)
+  if (!widget)
     return 0;
 
   QMenu* menu = widget->createUserMenu();
 
-  if(!menu && (flags & SimRobot::Flag::exportAsImage))
+  if (!menu && (flags & SimRobot::Flag::exportAsImage))
     menu = new QMenu(tr("&Object"));
 
-  if(flags & SimRobot::Flag::exportAsImage)
+  if (flags & SimRobot::Flag::exportAsImage)
   {
     QMenu* exportImgMenu = menu->addMenu(tr("&Export Image"));
     QAction* svgAction = exportImgMenu->addAction(tr("Export Image as &SVG"));
@@ -101,17 +98,17 @@ QMenu* RegisteredDockWidget::createUserMenu() const
 
 void RegisteredDockWidget::update()
 {
-  if(widget && reallyVisible)
+  if (widget && reallyVisible)
     widget->update();
 }
 
 QAction* RegisteredDockWidget::toggleViewAction() const
 {
   QAction* action = QDockWidget::toggleViewAction();
-  if(object)
+  if (object)
   {
     const QIcon* icon = object->getIcon();
-    if(icon)
+    if (icon)
       action->setIcon(*icon);
   }
   return action;
@@ -119,7 +116,7 @@ QAction* RegisteredDockWidget::toggleViewAction() const
 
 void RegisteredDockWidget::closeEvent(QCloseEvent* event)
 {
-  if(!canClose())
+  if (!canClose())
   {
     event->ignore();
     return;
@@ -132,14 +129,14 @@ void RegisteredDockWidget::closeEvent(QCloseEvent* event)
 
 void RegisteredDockWidget::contextMenuEvent(QContextMenuEvent* event)
 {
-  if(!widget)
+  if (!widget)
   {
     QDockWidget::contextMenuEvent(event);
     return;
   }
 
   QRect content(QDockWidget::widget()->geometry());
-  if(!content.contains(event->x(), event->y()))
+  if (!content.contains(event->x(), event->y()))
   { // click on window frame
     QDockWidget::contextMenuEvent(event);
     return;
@@ -149,12 +146,12 @@ void RegisteredDockWidget::contextMenuEvent(QContextMenuEvent* event)
   QMenu menu;
   QMenu* editMenu = createEditMenu();
   QMenu* userMenu = createUserMenu();
-  QMenu* simMenu = ((MainWindow*) MainWindow::application)->createSimMenu();
-  if(editMenu)
+  QMenu* simMenu = ((MainWindow*)MainWindow::application)->createSimMenu();
+  if (editMenu)
   {
     QMetaObject::invokeMethod(editMenu, "aboutToShow", Qt::DirectConnection);
     const QList<QAction*> actions = editMenu->actions();
-    foreach(QAction* action, actions)
+    foreach (QAction* action, actions)
     {
       editMenu->removeAction(action);
       menu.addAction(action);
@@ -162,12 +159,12 @@ void RegisteredDockWidget::contextMenuEvent(QContextMenuEvent* event)
     menu.addSeparator();
   }
   menu.addAction(simMenu->menuAction());
-  if(userMenu)
+  if (userMenu)
   {
     QMetaObject::invokeMethod(userMenu, "aboutToShow", Qt::DirectConnection);
     menu.addSeparator();
-    const QList<QAction*> actions  = userMenu->actions();
-    foreach(QAction* action, actions)
+    const QList<QAction*> actions = userMenu->actions();
+    foreach (QAction* action, actions)
     {
       userMenu->removeAction(action);
       menu.addAction(action);
@@ -176,12 +173,12 @@ void RegisteredDockWidget::contextMenuEvent(QContextMenuEvent* event)
   event->accept();
   QAction* action = menu.exec(mapToGlobal(QPoint(event->x(), event->y())));
   delete simMenu;
-  if(editMenu)
+  if (editMenu)
     delete editMenu;
-  if(userMenu)
+  if (userMenu)
     delete userMenu;
 
-  if(action)
+  if (action)
     emit closedContextMenu();
 }
 
@@ -193,18 +190,17 @@ void RegisteredDockWidget::visibilityChanged(bool visible)
 void RegisteredDockWidget::copy()
 {
   QApplication::clipboard()->clear();
-  QApplication::clipboard()->setPixmap(QPixmap::grabWidget(QDockWidget::widget()));
+  QApplication::clipboard()->setPixmap(QDockWidget::widget()->grab());
 }
 
 void RegisteredDockWidget::exportAsSvg()
 {
-  if(!widget)
+  if (!widget)
     return;
 
   QSettings& settings = MainWindow::application->getSettings();
-  QString fileName = QFileDialog::getSaveFileName(this,
-    tr("Export as SVG"), settings.value("ExportDirectory", "").toString(), tr("Scalable Vector Graphics (*.svg)"));
-  if(fileName.isEmpty())
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Export as SVG"), settings.value("ExportDirectory", "").toString(), tr("Scalable Vector Graphics (*.svg)"));
+  if (fileName.isEmpty())
     return;
   settings.setValue("ExportDirectory", QFileInfo(fileName).dir().path());
 
@@ -224,13 +220,12 @@ void RegisteredDockWidget::exportAsSvg()
 
 void RegisteredDockWidget::exportAsPng()
 {
-  if(!widget)
+  if (!widget)
     return;
 
   QSettings& settings = MainWindow::application->getSettings();
-  QString fileName = QFileDialog::getSaveFileName(this,
-    tr("Export as PNG"), settings.value("ExportDirectory", "").toString(), tr("(*.png)"));
-  if(fileName.isEmpty())
+  QString fileName = QFileDialog::getSaveFileName(this, tr("Export as PNG"), settings.value("ExportDirectory", "").toString(), tr("(*.png)"));
+  if (fileName.isEmpty())
     return;
   settings.setValue("ExportDirectory", QFileInfo(fileName).dir().path());
 
@@ -241,11 +236,11 @@ void RegisteredDockWidget::exportAsPng()
 
 void RegisteredDockWidget::keyPressEvent(QKeyEvent* event)
 {
-  if(isFloating() && (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
+  if (isFloating() && (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
   {
     ((RegisteredDockWidget*)qobject_cast<QWidget*>(parent()))->keyPressEvent(event);
     // note: the dirty cast is for accessing keyPressEvent
-    if(event->isAccepted())
+    if (event->isAccepted())
       return;
   }
 
@@ -254,11 +249,11 @@ void RegisteredDockWidget::keyPressEvent(QKeyEvent* event)
 
 void RegisteredDockWidget::keyReleaseEvent(QKeyEvent* event)
 {
-  if(isFloating() && (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
+  if (isFloating() && (event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
   {
     ((RegisteredDockWidget*)qobject_cast<QWidget*>(parent()))->keyReleaseEvent(event);
     // note: the dirty cast is for accessing keyReleaseEvent
-    if(event->isAccepted())
+    if (event->isAccepted())
       return;
   }
 

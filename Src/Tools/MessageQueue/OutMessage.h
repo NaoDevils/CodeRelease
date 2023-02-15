@@ -62,7 +62,7 @@ public:
    * The function returns whether this is a binary stream.
    * @return Does it output data in binary format?
    */
-  virtual bool isBinary() const {return true;}
+  virtual bool isBinary() const { return true; }
 };
 
 /**

@@ -21,8 +21,7 @@
 class CABSLBehaviorWidget : public QWidget
 {
 public:
-  CABSLBehaviorWidget(CABSLBehaviorView& cabslBehaviorView, QWidget* parent) : QWidget(parent),
-    cabslBehaviorView(cabslBehaviorView), noPen(Qt::NoPen)
+  CABSLBehaviorWidget(CABSLBehaviorView& cabslBehaviorView, QWidget* parent) : QWidget(parent), cabslBehaviorView(cabslBehaviorView), noPen(Qt::NoPen)
   {
     setFocusPolicy(Qt::StrongFocus);
     setBackgroundRole(QPalette::Base);
@@ -43,17 +42,14 @@ public:
   {
     {
       SYNC_WITH(cabslBehaviorView.console);
-      if(cabslBehaviorView.timeStamp == lastCABSLBehaviorDebugInfoTimeStamp)
+      if (cabslBehaviorView.timeStamp == lastCABSLBehaviorDebugInfoTimeStamp)
         return;
       lastCABSLBehaviorDebugInfoTimeStamp = cabslBehaviorView.timeStamp;
     }
     QWidget::update();
   }
 
-  int getFontPointSize()
-  {
-    return font.pointSize();
-  }
+  int getFontPointSize() { return font.pointSize(); }
 
   void setFontPointSize(int size)
   {
@@ -64,7 +60,7 @@ public:
     textOffset = me.descent() + 1;
   }
 
-  void paintEvent(QPaintEvent *event)
+  void paintEvent(QPaintEvent* event)
   {
     painter.begin(this);
     painter.setFont(font);
@@ -81,7 +77,7 @@ public:
       SYNC_WITH(cabslBehaviorView.console);
       const ActivationGraph& info(cabslBehaviorView.activationGraph);
 
-      for(std::vector<ActivationGraph::Node>::const_iterator i = info.graph.begin(), end = info.graph.end(); i != end; ++i)
+      for (std::vector<ActivationGraph::Node>::const_iterator i = info.graph.begin(), end = info.graph.end(); i != end; ++i)
       {
         const ActivationGraph::Node& activeOption = *i;
         paintRectField0.setLeft(defaultLeft + 10 * activeOption.depth);
@@ -89,10 +85,10 @@ public:
         sprintf(formattedTime, "%.02f", float(activeOption.optionTime) / 1000.f);
         print(activeOption.option.c_str(), formattedTime, true, true);
 
-        if(!i->parameters.empty())
+        if (!i->parameters.empty())
         {
           paintRectField0.setLeft(defaultLeft + 10 * activeOption.depth + 5);
-          for(const std::string& parameter : i->parameters)
+          for (const std::string& parameter : i->parameters)
             print(parameter.c_str(), "", false, false);
         }
 
@@ -104,7 +100,7 @@ public:
     }
     painter.end();
     int minHeight = paintRectField0.top();
-    if(minHeight > 0)
+    if (minHeight > 0)
       setMinimumHeight(minHeight);
   }
 
@@ -127,29 +123,26 @@ private:
 
   void print(const char* name, const char* value, bool bold = false, bool rightAlign = false)
   {
-    if(fillBackground)
+    if (fillBackground)
     {
       painter.setPen(noPen);
       painter.drawRect(paintRect.left(), paintRectField0.top(), paintRect.width(), paintRectField0.height());
       painter.setPen(fontPen);
     }
-    if(name)
+    if (name)
     {
-      if(bold)
+      if (bold)
         painter.setFont(boldFont);
       painter.drawText(paintRectField0, (!value ? Qt::TextDontClip : 0) | Qt::TextSingleLine | Qt::AlignVCenter, tr(name));
-      if(bold)
+      if (bold)
         painter.setFont(font);
     }
-    if(value)
+    if (value)
       painter.drawText(paintRectField0, (rightAlign ? Qt::AlignRight : Qt::AlignLeft) | Qt::TextSingleLine | Qt::AlignVCenter, tr(value));
     paintRectField0.moveTop(paintRectField0.top() + lineSpacing);
   }
 
-  void newBlock()
-  {
-    fillBackground = fillBackground ? false : true;
-  }
+  void newBlock() { fillBackground = fillBackground ? false : true; }
 
   void newSection()
   {
@@ -160,29 +153,29 @@ private:
 
   void keyPressEvent(QKeyEvent* event)
   {
-    switch(event->key())
+    switch (event->key())
     {
-      case Qt::Key_PageUp:
-      case Qt::Key_Plus:
-        event->accept();
-        if(getFontPointSize() < 48)
-          setFontPointSize(getFontPointSize() + 1);
-        QWidget::update();
-        break;
-      case Qt::Key_PageDown:
-      case Qt::Key_Minus:
-        event->accept();
-        if(getFontPointSize() > 3)
-          setFontPointSize(getFontPointSize() - 1);
-        QWidget::update();
-        break;
-      default:
-        QWidget::keyPressEvent(event);
-        break;
+    case Qt::Key_PageUp:
+    case Qt::Key_Plus:
+      event->accept();
+      if (getFontPointSize() < 48)
+        setFontPointSize(getFontPointSize() + 1);
+      QWidget::update();
+      break;
+    case Qt::Key_PageDown:
+    case Qt::Key_Minus:
+      event->accept();
+      if (getFontPointSize() > 3)
+        setFontPointSize(getFontPointSize() - 1);
+      QWidget::update();
+      break;
+    default:
+      QWidget::keyPressEvent(event);
+      break;
     }
   }
 
-  QSize sizeHint () const { return QSize(200, 500); }
+  QSize sizeHint() const { return QSize(200, 500); }
 };
 
 class CABSLBehaviorScrollingWidget : public QScrollArea, public SimRobot::Widget
@@ -200,12 +193,14 @@ public:
 
 private:
   CABSLBehaviorWidget* cabslBehaviorWidget;
-  virtual QWidget* getWidget() {return this;}
-  virtual void update() {cabslBehaviorWidget->update();}
+  virtual QWidget* getWidget() { return this; }
+  virtual void update() { cabslBehaviorWidget->update(); }
 };
 
-CABSLBehaviorView::CABSLBehaviorView(const QString& fullName, RobotConsole& console, const ActivationGraph& activationGraph, const unsigned& timeStamp) :
-  fullName(fullName), icon(":/Icons/tag_green.png"), console(console), activationGraph(activationGraph), timeStamp(timeStamp) {}
+CABSLBehaviorView::CABSLBehaviorView(const QString& fullName, RobotConsole& console, const ActivationGraph& activationGraph, const unsigned& timeStamp)
+    : fullName(fullName), icon(":/Icons/tag_green.png"), console(console), activationGraph(activationGraph), timeStamp(timeStamp)
+{
+}
 
 SimRobot::Widget* CABSLBehaviorView::createWidget()
 {

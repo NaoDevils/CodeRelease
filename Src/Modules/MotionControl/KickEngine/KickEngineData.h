@@ -19,8 +19,7 @@
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
-#include "Representations/Sensing/InertialData.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Tools/RingBufferWithSum.h"
 
 #include <vector>
@@ -55,8 +54,7 @@ private:
   Vector2f gyroErrorRight = Vector2f::Zero();
   Vector2f lastBody = Vector2f::Zero();
   Vector2f bodyError = Vector2f::Zero();
-  bool lElbowFront = false,
-       rElbowFront = false;
+  bool lElbowFront = false, rElbowFront = false;
 
   //Parameter for P, I and D for gyro PID Contol
   bool angleCOMActive = false;
@@ -110,7 +108,7 @@ public:
   void getCOMReference(const Vector3f& lFootPos, const Vector3f& rFootPos, Vector3f& comRef, Vector2f& origin);
   void setStaticReference();
   void mirrorIfNecessary(JointRequest& joints);
-  void addGyroBalance(JointRequest& jointRequest, const JointCalibration& jc, const InertialData& id, const float& ratio);
+  void addGyroBalance(JointRequest& jointRequest, const JointCalibration& jc, const InertialSensorData& id, const float& ratio);
   void addDynPoint(const DynPoint& dynPoint, const TorsoMatrix& torsoMatrix);
   void ModifyData(const KickRequest& br, JointRequest& kickEngineOutput, std::vector<KickEngineParameters>& params);
   void setCycleTime(float time);
@@ -123,7 +121,7 @@ public:
   void initData(const FrameInfo& frame, const MotionRequest& mr, std::vector<KickEngineParameters>& params, const JointAngles& ja, const TorsoMatrix& torsoMatrix);
   void setEngineActivation(const float& ratio);
   bool activateNewMotion(const KickRequest& br, const bool& isLeavingPossible);
-  bool sitOutTransitionDisturbance(bool& compensate, bool& compensated, const InertialData& id, KickEngineOutput& kickEngineOutput, const JointAngles& ja, const FrameInfo& frame);
+  bool sitOutTransitionDisturbance(bool& compensate, bool& compensated, const InertialSensorData& id, KickEngineOutput& kickEngineOutput, const JointAngles& ja, const FrameInfo& frame);
 
   Vector3f rotateVectorOverLine(Vector3f vec, Vector3f sv, Vector3f rv, float angle);
   //Pose3f calcDesBodyAngle(JointRequest& jointRequest, const RobotDimensions& robotDimensions, Joints::Joint joint);
@@ -132,7 +130,7 @@ public:
 
   KickEngineData() : standLegPos(Vector2i::Zero())
   {
-    for(int i = 0; i < Phase::numOfLimbs; i++)
+    for (int i = 0; i < Phase::numOfLimbs; i++)
       limbOff[i] = false;
   }
 };

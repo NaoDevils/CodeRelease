@@ -1,4 +1,5 @@
 # field views
 #vfd worldState origin:Reset
 vfd worldState representation:RobotPoseHypotheses
+vfd worldState representation:RobotPose
 vfd worldState module:SelfLocator2017:LocalizationState

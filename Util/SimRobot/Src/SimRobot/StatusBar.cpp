@@ -18,7 +18,7 @@ void StatusBar::addLabel(const SimRobot::Module* module, SimRobot::StatusLabel* 
 
 void StatusBar::removeAllLabels()
 {
-  for(QList<RegisteredLabel>::iterator it = registeredLables.begin(), end = registeredLables.end(); it != end; ++it)
+  for (QList<RegisteredLabel>::iterator it = registeredLables.begin(), end = registeredLables.end(); it != end; ++it)
   {
     removeWidget(it->label->getWidget());
     delete it->label;
@@ -28,8 +28,8 @@ void StatusBar::removeAllLabels()
 
 void StatusBar::removeLabelsFromModule(const SimRobot::Module* module)
 {
-  for(QList<RegisteredLabel>::iterator it = registeredLables.begin(); it != registeredLables.end();)
-    if(it->module == module)
+  for (QList<RegisteredLabel>::iterator it = registeredLables.begin(); it != registeredLables.end();)
+    if (it->module == module)
     {
       removeWidget(it->label->getWidget());
       delete it->label;
@@ -46,21 +46,21 @@ void StatusBar::setUserMessage(const QString& userMessage)
 
 void StatusBar::update()
 {
-  for(QList<RegisteredLabel>::iterator it = registeredLables.begin(), end = registeredLables.end(); it != end; ++it)
+  for (QList<RegisteredLabel>::iterator it = registeredLables.begin(), end = registeredLables.end(); it != end; ++it)
     it->label->update();
 
   QString currentMessage = this->currentMessage();
-  if(currentMessage.isEmpty() || currentMessage == userMessage)
+  if (currentMessage.isEmpty() || currentMessage == userMessage)
   {
     userMessage = latestMessage;
-    if(!currentMessage.isEmpty() || !userMessage.isEmpty())
+    if (!currentMessage.isEmpty() || !userMessage.isEmpty())
       showMessage(userMessage);
   }
 }
 
 QAction* StatusBar::toggleViewAction()
 {
-  if(toggleViewAct)
+  if (toggleViewAct)
     return toggleViewAct;
   toggleViewAct = new QAction(tr("&Status Bar"), this);
   toggleViewAct->setCheckable(true);
@@ -73,7 +73,7 @@ void StatusBar::hideEvent(QHideEvent* event)
 {
   QStatusBar::hideEvent(event);
 
-  if(toggleViewAct)
+  if (toggleViewAct)
     toggleViewAct->setChecked(false);
 }
 
@@ -81,13 +81,13 @@ void StatusBar::showEvent(QShowEvent* event)
 {
   QStatusBar::showEvent(event);
 
-  if(toggleViewAct)
+  if (toggleViewAct)
     toggleViewAct->setChecked(true);
 }
 
 void StatusBar::messageChanged(const QString& message)
 {
-  if(message.isEmpty() && (!userMessage.isEmpty() || latestMessage != userMessage))
+  if (message.isEmpty() && (!userMessage.isEmpty() || latestMessage != userMessage))
   {
     userMessage = latestMessage;
     showMessage(userMessage);

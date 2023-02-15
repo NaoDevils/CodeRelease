@@ -39,6 +39,20 @@ public:
   static std::list<std::string> getFullNames(const std::string& name);
 
   /**
+   * The method returns a list of exiting full file names that can be read in
+   * the returned order
+   * @param name The name of the file to search for.
+   * @return The list of exiting config files in hierarchical order.
+   */
+  static std::list<std::string> getFullNamesHierarchy(const std::string& name);
+
+  /**
+   * The method returns a list of directories that may contain config files.
+   * @return The list of config directories.
+   */
+  static std::list<std::string> getConfigDirectories();
+
+  /**
    * The function read a number of bytes from the file to a certain
    * memory location.
    * @param p The start of the memory space the data is written to.
@@ -76,7 +90,7 @@ public:
    * object of this class actually exists.
    * @return The existence of the file.
    */
-  bool exists() const {return stream != 0;}
+  bool exists() const { return stream != 0; }
 
   /**
    * The function returns whether the end of the file represented
@@ -95,17 +109,38 @@ public:
    * The function returns the full path of the file.
    * @return The full path name actually used or the file searched for
    *         if it was not found. If the file was opened, the path can
-   *         still be relative to the current directory if the B-Human
+   *         still be relative to the current directory if the Framework
    *         directory was specified this way.
    */
-  std::string getFullName() const {return fullName;}
+  std::string getFullName() const { return fullName; }
 
   /**
-  * The function returns the current BH directory,
-  * e.g. /home/nao or <..>/B-Human
+   * Maps the file in memory.
+   * @return Pointer to first byte.
+   */
+  char* getMemoryMappedFile();
+
+  /**
+   * Returns the current byte position of the file.
+   * @return Byte position.
+   */
+  size_t getPosition();
+
+  /**
+  * The function returns the current Framework directory,
+  * e.g. /home/nao or <..>/NDevils
   * @return The current BHDir
   */
   static const char* getBHDir();
+
+#ifndef TARGET_TOOL
+  /**
+  * The function returns the persistent config directory,
+  * e.g. /home/nao/Persistent/<robotname>
+  * @return The persistent config directory
+  */
+  static std::string getPersistentDir();
+#endif
 
   /**
    * Checks if the delivered path is an absolute path.
@@ -118,4 +153,13 @@ public:
 private:
   void* stream; /**< File handle. */
   std::string fullName; /**< The full path name actually used or the file searched for if it was not found. */
+
+  char* map = nullptr; /**< Pointer to memory-mapped file. */
+#ifdef WINDOWS
+  // void* types because we don't want to include Windows.h here
+  void* hFile = nullptr;
+  void* hFileMapping = nullptr;
+#else
+  long size = 0;
+#endif
 };

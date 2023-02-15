@@ -5,87 +5,48 @@
 
 #define PREVIEW_LENGTH 100 /**< Length of the preview phase */
 
-//STREAMABLE(FLIPMValues,
-//{ ,
-//  (float) m,
-//  (float) M,
-//  (float) g,
-//  (float) z_h,
-//  (float) dt,
-//  (float) D,
-//  (float) E,
-//  (float) Qe,
-//  (float) Qx,
-//  (float) R,
-//  (Matrix6d) Ql,
-//  (Matrix3d) RO,
-//});
+STREAMABLE(FLIPMValues,,
+  (float)(0.f) m,
+  (float)(0.f) M,
+  (float)(0.f) g,
+  (float)(0.f) z_h,
+  (float)(0.f) dt,
+  (float)(0.f) D,
+  (float)(0.f) E,
+  (float)(0.f) Qe,
+  (float)(0.f) Qx,
+  (float)(0.f) R,
+  (Matrix6f) Ql,
+  (Matrix3f) RO
+);
 
-struct FLIPMValues : public Streamable
-{
-  float m;
-  float M;
-  float g;
-  float z_h;
-  float dt;
-  float D;
-  float E;
-  float Qe;
-  float Qx;
-  float R;
-  Matrix6f Ql;
-  Matrix3f RO;
-  void serialize(In* in, Out* out)
-  {
-    STREAM_REGISTER_BEGIN;
-      STREAM(m)
-      STREAM(M)
-      STREAM(g)
-      STREAM(z_h)
-      STREAM(dt)
-      STREAM(D)
-      STREAM(E)
-      STREAM(Qe)
-      STREAM(Qx)
-      STREAM(R)
-      STREAM(Ql)
-      STREAM(RO)
-    STREAM_REGISTER_FINISH;
-  };
-};
-
-STREAMABLE(FLIPMControllerValues,
-{ ,
+STREAMABLE(FLIPMControllerValues,,
   (Matrix6d) A,
   (Vector6d) b,
   (Matrix1x6d) c,
   (double) Gi,
   (Matrix1x6d) Gx,
-  (Eigen::Matrix<double, PREVIEW_LENGTH, 1>) Gd,
-});
+  (Eigen::Matrix<double, PREVIEW_LENGTH, 1>) Gd
+);
 
-STREAMABLE(FLIPMObserverValues,
-{ ,
-  (Matrix6x3d) L,
-});
+STREAMABLE(FLIPMObserverValues,,
+  (Matrix6x3d) L
+);
 
-STREAMABLE(FLIPMParameter,
-{ ,
+STREAMABLE(FLIPMParameter,,
   (FLIPMValues) paramsX,
-  (FLIPMValues) paramsY,
-});
+  (FLIPMValues) paramsY
+);
 
-STREAMABLE(FLIPMControllerParameter,
-{ ,
+STREAMABLE(FLIPMControllerParameter,,
   (bool)(false) useRCS,
   (bool)(false) useRefZMPInterpolation, // for reset of preview, bc refZMP can jump
+  (int)(15) framesToInterpolate,
   (FLIPMControllerValues) controllerParamsX,
-  (FLIPMControllerValues) controllerParamsY,
-});
+  (FLIPMControllerValues) controllerParamsY
+);
 
-STREAMABLE(FLIPMObserverParameter,
-{ ,
-  (bool)(false) useIMUModel,
+STREAMABLE(FLIPMObserverParameter,,
   (FLIPMObserverValues) observerParamsX,
-  (FLIPMObserverValues) observerParamsY,
-});
+  (FLIPMObserverValues) observerParamsY
+);

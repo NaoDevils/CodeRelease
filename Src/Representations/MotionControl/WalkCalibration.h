@@ -5,30 +5,19 @@
 #pragma once
 
 #include "Modules/MotionControl/DortmundWalkingEngine/Point.h"
-
+#include "Representations/Sensing/JoinedIMUData.h"
+#include "Tools/Streams/AutoStreamable.h"
 
 /**
 * @class WalkCalibration 
 * 
 */
-struct WalkCalibration : public Streamable
-{
-  StreamPoint fixedOffset;
-  bool calibrationDone;
-
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-    STREAM(fixedOffset)
-    STREAM(calibrationDone)
-		STREAM_REGISTER_FINISH;
-	};
-
-	/** Constructor */
-  WalkCalibration()
-	{
-	};
-
-	/** Desctructor */
-	~WalkCalibration(){};
-};
+STREAMABLE(WalkCalibration,,
+  (Angle[12]) legJointCalibration,
+  (Vector3f)(Vector3f::Zero()) comOffset,
+  (std::array<Vector2a, JoinedIMUData::numOfInertialDataSources>) imuAngleOffsets,
+  (float)(9.81f) gravity,
+  (bool)(false) deactivateSensorControl,
+  (bool)(false) bodyAngleCalibrated,
+  (bool)(false) walkCalibrated
+);

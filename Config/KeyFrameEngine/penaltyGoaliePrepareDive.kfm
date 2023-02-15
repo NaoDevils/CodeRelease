@@ -1,0 +1,42 @@
+keyFrameID = penaltyGoaliePrepareDive;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [20000,20000];
+    //ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand 
+    armsAngles = [50.0deg,45.0deg,0.0deg,-20.0deg,0.0deg,0.0deg,50.0deg,-45.0deg,0.0deg,20.0deg,0.0deg,0.0deg];
+    //HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg,0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg];
+    stiffnesses = [50,50,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100];
+    duration = 1000;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  //duration of next line affects reaction time
+  {
+    headAngles = [20000,20000];
+    armsAngles = [50.0deg,45.0deg,0.0deg,-20.0deg,0.0deg,0.0deg,50.0deg,-45.0deg,0.0deg,20.0deg,0.0deg,0.0deg];
+    legsAngles = [0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg,0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg];
+    stiffnesses = [50,50,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100];
+    duration = 30;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = false;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  }
+];

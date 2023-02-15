@@ -29,7 +29,11 @@ public:
   * Destructor.
   * Delete buffered package if needed.
   */
-  ~DebugHandler() {if(sendData) delete [] sendData;}
+  ~DebugHandler()
+  {
+    if (sendData)
+      delete[] sendData;
+  }
 
   /**
   * The method performs the communication.
@@ -39,8 +43,8 @@ public:
   void communicate(bool send);
 
 private:
-  MessageQueue& in, /**< Incoming debug data is stored here. */
-              & out; /**< Outgoing debug data is stored here. */
+  MessageQueue &in, /**< Incoming debug data is stored here. */
+      &out; /**< Outgoing debug data is stored here. */
 
   unsigned char* sendData; /**< The data to send next. */
   int sendSize; /**< The size of the data to send next. */

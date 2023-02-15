@@ -29,7 +29,7 @@ public:
   /** Copy constructor
   * @param other The other distribution that is copied to this one
   */
-  GaussianDistribution(const GaussianDistribution& other) {*this = other;}
+  GaussianDistribution(const GaussianDistribution& other) { *this = other; }
 
   /** Computes the Mahalanobis distance to another distribution.
   *   This function is used to compare two different distributions for checking, if
@@ -48,8 +48,7 @@ public:
   /** Computes the probability density at the center of the distribution
   * @return The probability
   */
-  float probabilityAtMean() const
-    { return probabilityAt(mean);}
+  float probabilityAtMean() const { return probabilityAt(mean); }
 
   /** Computes mean and variance of the distribution
   * @param x A list of measurements of a variable

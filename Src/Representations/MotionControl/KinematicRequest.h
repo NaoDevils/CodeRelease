@@ -17,21 +17,7 @@
 * @class KinematicRequest
 * A class that represents a kinematic request.
 */
-struct KinematicRequest : public Streamable, public Watch
-{
-private:
-  virtual void serialize( In* in, Out* out)
-  { 
-    STREAM_REGISTER_BEGIN;
-    STREAM(kinematicType);
-    STREAM(offsets);
-    STREAM(leftFoot);
-    STREAM(rightFoot);
-    STREAM_REGISTER_FINISH;
-  }
-
-public:
-
+STREAMABLE(KinematicRequest,
 	void watch()
 	{
 		WATCH_ARRAY(leftFoot);
@@ -40,27 +26,11 @@ public:
 	}
 
   ENUM(KinematicType,
-  {,
     feet,              // Position of the feet relative to the body.
     bodyAndLeftFoot,    // Position of the body and left foot relative to the right foot.
-    bodyAndRightFoot,
-  }// Position of the body and right foot relative to the left foot.
+    bodyAndRightFoot   // Position of the body and right foot relative to the left foot.
   );
   
-
-
-  enum armEnum{
-	  left0,
-	  left1,
-	  left2,
-	  left3,
-	  right0,
-	  right1,
-	  right2,
-	  right3,
-	  numOfArmAngles
-  };
-	  
   KinematicRequest(){  
     int i;
     for(i = 0; i < Joints::numOfJoints; ++i) offsets.angles[i] = 0;
@@ -69,15 +39,14 @@ public:
       rightFoot[i] = 0;
     }
   }
-
+  ,
   /** kinematic type */
-  KinematicType kinematicType;
+  (KinematicType) kinematicType,
+
+  (JointAngles) offsets,
 
   /** There are the desired foot/body positions x,y,z, rot-x, rot-y, rot-z. */
-  float leftFoot[6];
+  (float[6]) leftFoot,
   /** There are the desired foot/body positions x,y,z, rot-x, rot-y, rot-z. */
-  float rightFoot[6];
-
-  JointAngles offsets;
-};
-
+  (float[6]) rightFoot
+);

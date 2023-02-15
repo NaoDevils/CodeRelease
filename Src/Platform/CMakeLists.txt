@@ -1,0 +1,84 @@
+target_sources(${PROJECT_NAME}
+    PRIVATE
+        BHAssert.h
+        CameraV6.h
+        DebugHandler.h
+        File.h
+        Semaphore.h
+        SystemCall.h
+        Thread.h
+        Common/File.cpp
+        Common/File.h
+        Common/Text2Speech.h
+        Common/Text2Speech.cpp
+)
+
+if(BUILD_ROBOT)
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            Linux/Main.cpp
+            Linux/NaoBodyV6.cpp
+            Linux/NaoBodyV6.h
+            Linux/NaoCameraV6.cpp
+            Linux/NaoCameraV6.h
+            Linux/Robot.cpp
+            Linux/Robot.h
+            Linux/SystemCall.cpp
+            Linux/SystemCall.h
+    )
+else()
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            SimRobotQt/Robot.cpp
+            SimRobotQt/Robot.h
+            SimRobotQt/SystemCall.cpp
+            SimRobotQt/SystemCall.h
+    )
+endif()
+
+if(WIN32)
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            Windows/BHAssert.cpp
+            Windows/BHAssert.h
+            Windows/Semaphore.cpp
+            Windows/Semaphore.h
+            Windows/SoundPlayer.cpp
+            Windows/SoundPlayer.h
+            Windows/Thread.h
+    )
+elseif(APPLE)
+    target_sources(${PROJECT_NAME}
+    PRIVATE
+        Linux/BHAssert.cpp
+        Linux/BHAssert.h
+        Linux/DebugHandler.cpp
+        Linux/DebugHandler.h
+        macOS/Semaphore.cpp
+        macOS/Semaphore.h
+        macOS/SharedMemory.cpp
+        macOS/SharedMemory.h
+        macOS/SoundPlayer.mm
+        macOS/SoundPlayer.h
+        Linux/SoundPlayerSimultaneous.cpp
+        Linux/SoundPlayerSimultaneous.h
+        Linux/Thread.h
+)
+else()
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            Linux/BHAssert.cpp
+            Linux/BHAssert.h
+            Linux/DebugHandler.cpp
+            Linux/DebugHandler.h
+            Linux/Semaphore.cpp
+            Linux/Semaphore.h
+            Linux/SharedMemory.cpp
+            Linux/SharedMemory.h
+            Linux/SoundPlayer.cpp
+            Linux/SoundPlayer.h
+            Linux/SoundPlayerSimultaneous.cpp
+            Linux/SoundPlayerSimultaneous.h
+            Linux/Thread.h
+    )
+endif()

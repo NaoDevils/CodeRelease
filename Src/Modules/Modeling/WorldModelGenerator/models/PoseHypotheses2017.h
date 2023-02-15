@@ -31,10 +31,7 @@ private:
   std::vector<element_type> hypotheses;
 
 public:
-  ~PoseHypotheses2017()
-  {
-    clear();
-  }
+  ~PoseHypotheses2017() { clear(); }
 
   iterator begin() { return hypotheses.begin(); }
   const_iterator begin() const { return hypotheses.begin(); }
@@ -58,20 +55,17 @@ public:
     }
   }
 
-  iterator erase(const iterator &it)
+  iterator erase(const iterator& it)
   {
     delete *it;
     return hypotheses.erase(it);
   }
 
-  void push_back(const Pose2f &newPose, float positionConfidence, float symmetryConfidence, const unsigned &timestamp, const SelfLocator2017Parameters &parameters)
+  void push_back(const Pose2f& newPose, float positionConfidence, float symmetryConfidence, const unsigned& timestamp, const SelfLocator2017Parameters& parameters)
   {
     hypotheses.push_back(new PoseHypothesis2017(newPose, positionConfidence, symmetryConfidence, timestamp, parameters));
   }
-  void push_back(const PoseHypothesis2017 &hypothesis, const unsigned &timeStamp)
-  {
-    hypotheses.push_back(new PoseHypothesis2017(hypothesis, timeStamp));
-  }
+  void push_back(const PoseHypothesis2017& hypothesis, const unsigned& timeStamp) { hypotheses.push_back(new PoseHypothesis2017(hypothesis, timeStamp)); }
   void pop_back()
   {
     delete hypotheses[hypotheses.size() - 1];

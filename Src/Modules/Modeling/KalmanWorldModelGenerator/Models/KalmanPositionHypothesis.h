@@ -17,7 +17,7 @@
 
 #include <map>
 
- /**
+/**
   * \class KalmanPositionHypothesis
   *
   * This class represents the position state of an object (e.g. ball, obstacle)
@@ -30,12 +30,7 @@ class KalmanPositionHypothesis : public virtual Streamable
 {
 public:
   KalmanPositionHypothesis()
-    : lastPerception(Vector2f::Zero())
-    , validity(0.f)
-    , timeWhenLastSeen(0)
-    , m_lastMotionUpdateTimeStamp(0)
-    , m_numberOfSensorUpdates(0)
-    , m_perceptsPerSecond(1000)
+      : lastPerception(Vector2f::Zero()), validity(0.f), timeWhenLastSeen(0), mergeFactor(1.f), m_lastMotionUpdateTimeStamp(0), m_numberOfSensorUpdates(0), m_perceptsPerSecond(1000)
   {
     Vector2f zeroVector = Vector2f::Zero();
     initialize(zeroVector, zeroVector);
@@ -56,18 +51,14 @@ public:
    *                      or (0, 0) if velocity is unknown (default).
    */
   KalmanPositionHypothesis(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-    float initialValidity,
-    unsigned timestamp,
-    float perceptValidity,
-    const Vector2f& position,
-    unsigned perceptDuration,
-    const Vector2f& velocity = Vector2f::Zero())
-    : lastPerception(position)
-    , validity(initialValidity)
-    , timeWhenLastSeen(timestamp)
-    , m_lastMotionUpdateTimeStamp(timestamp)
-    , m_numberOfSensorUpdates(1)
-    , m_perceptsPerSecond(perceptDuration)
+      float initialValidity,
+      unsigned timestamp,
+      float perceptValidity,
+      const Vector2f& position,
+      unsigned perceptDuration,
+      const Vector2f& velocity = Vector2f::Zero())
+      : lastPerception(position), validity(initialValidity), timeWhenLastSeen(timestamp), mergeFactor(1.f), m_lastMotionUpdateTimeStamp(timestamp), m_numberOfSensorUpdates(1),
+        m_perceptsPerSecond(perceptDuration)
   {
     initialize(kalmanNoiseMatrices, position, velocity);
 
@@ -78,7 +69,7 @@ public:
   /**
    * Destructor.
    */
-  virtual ~KalmanPositionHypothesis() {};
+  virtual ~KalmanPositionHypothesis(){};
 
 
   //MARK: Kalman filter related methods
@@ -104,8 +95,7 @@ public:
    * \param [in] velocity Optional: The initial velocity (in mm/s)
    *                      or (0, 0) if velocity is unknown.
    */
-  void initialize(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-    const Vector2f& position, const Vector2f& velocity = Vector2f::Zero());
+  void initialize(const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices, const Vector2f& position, const Vector2f& velocity = Vector2f::Zero());
 
 
   /**
@@ -144,9 +134,7 @@ public:
    * \param [in] measurementNoiseFactor Scale measurement noise by
    *                                    multiplication with this factor (> 0).
    */
-  void sensorUpdate(const Vector2f& position,
-    unsigned timestamp, float perceptValidity,
-    float measurementNoiseFactor = 1.f);
+  void sensorUpdate(const Vector2f& position, unsigned timestamp, float perceptValidity, float measurementNoiseFactor = 1.f);
 
 
   /**
@@ -163,9 +151,7 @@ public:
    * \param [in] measurementNoiseFactor Scale measurement noise by
    *                                    multiplication with this factor (> 0).
    */
-  void sensorUpdate(const Vector2f& position, const Vector2f& velocity,
-    unsigned timestamp, float perceptValidity,
-    float measurementNoiseFactor = 1.f);
+  void sensorUpdate(const Vector2f& position, const Vector2f& velocity, unsigned timestamp, float perceptValidity, float measurementNoiseFactor = 1.f);
 
 
   //MARK: Validity related methods
@@ -208,6 +194,12 @@ public:
    *                                      the new validity is set to 1.0.
    */
   void updateValidity(float maxPerceptsPerSecond, float weightOfPreviousValidity);
+
+  /**
+   * Update the maxMeasurementNoise
+   * \param [in] maxMeasurementNoise Maximum measurement noise
+   */
+  void updateMaxMeasurementNoise(double maxMeasurementNoise);
 
   /**
    * Scale the Kalman filter covariance matrix by the given factor.
@@ -270,11 +262,14 @@ public:
   /// The timestamp (in ms), when the ball was seen for the last time.
   unsigned timeWhenLastSeen;
 
+  /// Factor to multiply the merge criteria with (make it less sensitive).
+  float mergeFactor;
+
 private:
   /// The timestamp (in ms) of the last motion update.
   unsigned m_lastMotionUpdateTimeStamp;
 
-  /// Stores the number of sensor updates done on this hypothesis. This corresponds 
+  /// Stores the number of sensor updates done on this hypothesis. This corresponds
   /// to the number of matched ball percepts.
   unsigned int m_numberOfSensorUpdates;
 

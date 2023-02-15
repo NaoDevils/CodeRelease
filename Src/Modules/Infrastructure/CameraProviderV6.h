@@ -14,13 +14,11 @@
 #include "Representations/Infrastructure/CameraIntrinsics.h"
 #include "Representations/Infrastructure/CameraResolution.h"
 #include "Tools/Module/Module.h"
+#include "Tools/ProcessFramework/CycleLocal.h"
 
 class NaoCameraV6;
 
 MODULE(CameraProviderV6,
-{,
-  USES(CameraIntrinsicsNext),
-  USES(CameraResolutionRequest),
   REQUIRES(Image),
   PROVIDES_WITHOUT_MODIFY(Image),
   PROVIDES_WITHOUT_MODIFY(ImageUpper),
@@ -30,13 +28,13 @@ MODULE(CameraProviderV6,
   PROVIDES_WITHOUT_MODIFY(CameraSettingsV6),
   PROVIDES_WITHOUT_MODIFY(CameraSettingsUpperV6),
   PROVIDES(CameraIntrinsics),
-  PROVIDES(CameraResolution),
-});
+  PROVIDES(CameraResolution)
+);
 
 class CameraProviderV6 : public CameraProviderV6Base
 {
 private:
-  static PROCESS_LOCAL CameraProviderV6* theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
+  static CycleLocal<CameraProviderV6*> theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
 
   NaoCameraV6* upperCamera = nullptr;
   NaoCameraV6* lowerCamera = nullptr;
@@ -48,14 +46,16 @@ private:
   CameraResolution cameraResolution;
   float cycleTime;
 #ifdef CAMERA_INCLUDED
+  unsigned int now;
   unsigned int imageTimeStamp;
   unsigned int imageTimeStampUpper;
   unsigned int lastImageTimeStamp;
   unsigned int lastImageUpperTimeStamp;
   unsigned long long lastImageTimeStampLL;
   unsigned long long lastImageTimeStampLLUpper;
-#endif
   unsigned resetCounter = 0;
+  unsigned long long firstCameraTimestamp = 0;
+#endif
 
 public:
   /**
@@ -80,8 +80,6 @@ public:
   static void waitForFrameData();
   void waitForFrameData2();
 
-  void setUpCameras();
-
 private:
   void update(Image& image);
   void update(ImageUpper& imageUpper);
@@ -96,8 +94,6 @@ private:
   bool readCameraSettings();
   bool readCameraIntrinsics();
   bool readCameraResolution();
-
-  bool processResolutionRequest();
 
   void setupCameras();
 };

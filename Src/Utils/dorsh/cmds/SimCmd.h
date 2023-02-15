@@ -8,7 +8,8 @@ class SimCmd : public CommandAdapter
   virtual std::string getName() const;
   virtual std::string getDescription() const;
   virtual bool execute(Context& context, const std::vector<std::string>& params);
-  std::string getSimulatorExecutable(const std::string& buildConfig);
+  std::string getSimulatorExecutable(std::string buildConfig);
+
 public:
   static SimCmd theSimCmd;
 };

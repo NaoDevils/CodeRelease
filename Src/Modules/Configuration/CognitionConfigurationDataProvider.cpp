@@ -6,10 +6,17 @@
 
 #include <cstdio>
 
+#ifdef TARGET_ROBOT
+#include <fstream>
+#include <stdexcept>
+#include <nlohmann/json.hpp>
+#include "Platform/Linux/NaoBodyV6.h"
+#endif
+
 #include "CognitionConfigurationDataProvider.h"
 #include "Platform/File.h"
 
-PROCESS_LOCAL CognitionConfigurationDataProvider* CognitionConfigurationDataProvider::theInstance = 0;
+CycleLocal<CognitionConfigurationDataProvider*> CognitionConfigurationDataProvider::theInstance(nullptr);
 
 CognitionConfigurationDataProvider::CognitionConfigurationDataProvider()
 {
@@ -17,7 +24,6 @@ CognitionConfigurationDataProvider::CognitionConfigurationDataProvider()
 
   readFieldDimensions();
   readCameraCalibration();
-  readColorCalibration();
   readRobotDimensions();
   readHeadLimits();
   readOdometryCorrectionTables();
@@ -25,81 +31,115 @@ CognitionConfigurationDataProvider::CognitionConfigurationDataProvider()
 
 CognitionConfigurationDataProvider::~CognitionConfigurationDataProvider()
 {
-  if(theFieldDimensions)
-    delete theFieldDimensions;
-  if(theCameraCalibration)
-    delete theCameraCalibration;
-  if(theColorCalibration)
-    delete theColorCalibration;
-  if(theRobotDimensions)
-    delete theRobotDimensions;
-  if(theHeadLimits)
-    delete theHeadLimits;
-  if(theOdometryCorrectionTables)
-    delete theOdometryCorrectionTables;
-  theInstance = 0;
+  theInstance.reset();
+}
+
+void CognitionConfigurationDataProvider::update(USBSettings& usbSettings)
+{
+#ifdef TARGET_ROBOT
+  if ((theUSBStatus.status == USBStatus::MountStatus::readOnly || theUSBStatus.status == USBStatus::MountStatus::readWrite) && theUSBStatus.mountTimestamp != usbSettings.updateTimestamp)
+  {
+    usbSettings.updateTimestamp = theUSBStatus.mountTimestamp;
+
+    try
+    {
+      using namespace nlohmann;
+
+      const std::string filename(theUSBStatus.path + "/settings.json");
+      std::ifstream ifs(filename);
+      if (ifs.fail())
+        return;
+
+      const json j = json::parse(ifs);
+
+      if (j.contains("wifi"))
+      {
+        const json& wifi = j["wifi"];
+        if (wifi.contains("ssid") && wifi.contains("password"))
+        {
+          usbSettings.wifiSSID = wifi["ssid"].get<std::string>();
+          usbSettings.wifiPassword = wifi["password"].get<std::string>();
+        }
+      }
+
+      if (j.contains("team"))
+      {
+        const json& team = j["team"];
+        usbSettings.teamNumber = team.value("number", 0);
+        usbSettings.teamPort = team.value("port", 0);
+      }
+
+      const std::string headName = Global::getSettings().robotName;
+      const std::string headId = NaoBodyV6().getHeadId();
+      const std::string bodyId = NaoBodyV6().getBodyId();
+
+      const json& robots = j.at("robots");
+      const json& robot = [&]
+      {
+        if (robots.contains(headName))
+          return robots[headName];
+        else if (robots.contains(headId))
+          return robots[headId];
+        else if (robots.contains(bodyId))
+          return robots[bodyId];
+        else if (robots.contains("Nao"))
+          return robots["Nao"];
+        else
+          throw std::invalid_argument("Robot not found");
+      }();
+
+      usbSettings.ip = robot.value("ip", "");
+      usbSettings.robotNumber = robot.value("number", 0);
+    }
+    catch (const std::exception& e)
+    {
+      OUTPUT_WARNING("CognitionConfigurationDataProvider: Malformed settings.json: " << e.what());
+    }
+  }
+#endif
 }
 
 void CognitionConfigurationDataProvider::update(FieldDimensions& fieldDimensions)
 {
-  if(theFieldDimensions)
+  if (theFieldDimensions)
   {
     fieldDimensions = *theFieldDimensions;
-    delete theFieldDimensions;
-    theFieldDimensions = 0;
+    theFieldDimensions.reset();
   }
+
+  if ((theUSBStatus.status == USBStatus::MountStatus::readOnly || theUSBStatus.status == USBStatus::MountStatus::readWrite) && lastMountTimestamp != theUSBStatus.mountTimestamp)
+  {
+    lastMountTimestamp = theUSBStatus.mountTimestamp;
+    fieldDimensions.loadFromJsonFile(theUSBStatus.path + "/field_dimensions.json");
+  }
+
   fieldDimensions.drawPolygons(theOwnTeamInfo.teamColour);
 }
 
 void CognitionConfigurationDataProvider::update(CameraCalibration& cameraCalibration)
 {
-  if(theCameraCalibration)
+  if (theCameraCalibration)
   {
     cameraCalibration = *theCameraCalibration;
-    delete theCameraCalibration;
-    theCameraCalibration = 0;
-  }
-  else
-  {
-    if(theCameraCalibrationNext.hasNext())
-    {
-      cameraCalibration = const_cast<CameraCalibrationNext&>(theCameraCalibrationNext).getNext();
-    }
-  }
-}
-
-void CognitionConfigurationDataProvider::update(ColorTable& colorTable)
-{
-  if(theColorCalibration)
-  {
-    colorTable.fromColorCalibration(*theColorCalibration, colorCalibration);
-    delete theColorCalibration;
-    theColorCalibration = 0;
-  }
-
-  DEBUG_RESPONSE_ONCE("representation:ColorCalibration:once")
-  {
-    OUTPUT(idColorCalibration, bin, colorCalibration);
+    theCameraCalibration.reset();
   }
 }
 
 void CognitionConfigurationDataProvider::update(RobotDimensions& robotDimensions)
 {
-  if(theRobotDimensions)
+  if (theRobotDimensions)
   {
     robotDimensions = *theRobotDimensions;
-    delete theRobotDimensions;
-    theRobotDimensions = 0;
+    theRobotDimensions.reset();
   }
 }
 
 void CognitionConfigurationDataProvider::update(HeadLimits& headLimits)
 {
-  if(theHeadLimits)
+  if (theHeadLimits)
   {
     headLimits = *theHeadLimits;
-    delete theHeadLimits;
-    theHeadLimits = 0;
+    theHeadLimits.reset();
   }
 }
 
@@ -108,8 +148,7 @@ void CognitionConfigurationDataProvider::update(OdometryCorrectionTables& odomet
   if (theOdometryCorrectionTables)
   {
     odometryCorrectionTables = *theOdometryCorrectionTables;
-    delete theOdometryCorrectionTables;
-    theOdometryCorrectionTables = 0;
+    theOdometryCorrectionTables.reset();
   }
 }
 
@@ -117,8 +156,11 @@ void CognitionConfigurationDataProvider::readFieldDimensions()
 {
   ASSERT(!theFieldDimensions);
 
-  theFieldDimensions = new FieldDimensions;
-  theFieldDimensions->load();
+  theFieldDimensions = std::make_unique<FieldDimensions>();
+
+  // try .json first, fallback to .cfg
+  if (!theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/field_dimensions.json"))
+    theFieldDimensions->load();
 }
 
 void CognitionConfigurationDataProvider::readCameraCalibration()
@@ -126,22 +168,10 @@ void CognitionConfigurationDataProvider::readCameraCalibration()
   ASSERT(!theCameraCalibration);
 
   InMapFile stream("cameraCalibration.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theCameraCalibration = new CameraCalibration;
+    theCameraCalibration = std::make_unique<CameraCalibration>();
     stream >> *theCameraCalibration;
-  }
-}
-
-void CognitionConfigurationDataProvider::readColorCalibration()
-{
-  ASSERT(!theColorCalibration);
-
-  InMapFile stream("colorCalibration.cfg");
-  if(stream.exists())
-  {
-    theColorCalibration = new ColorCalibration;
-    stream >> *theColorCalibration;
   }
 }
 
@@ -150,9 +180,9 @@ void CognitionConfigurationDataProvider::readRobotDimensions()
   ASSERT(!theRobotDimensions);
 
   InMapFile stream("robotDimensions.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theRobotDimensions = new RobotDimensions;
+    theRobotDimensions = std::make_unique<RobotDimensions>();
     stream >> *theRobotDimensions;
   }
 }
@@ -162,9 +192,9 @@ void CognitionConfigurationDataProvider::readHeadLimits()
   ASSERT(!theHeadLimits);
 
   InMapFile stream("headLimits.cfg");
-  if(stream.exists())
+  if (stream.exists())
   {
-    theHeadLimits = new HeadLimits;
+    theHeadLimits = std::make_unique<HeadLimits>();
     stream >> *theHeadLimits;
   }
 }
@@ -176,22 +206,14 @@ void CognitionConfigurationDataProvider::readOdometryCorrectionTables()
   InMapFile stream("odometryCorrectionTables.cfg");
   if (stream.exists())
   {
-    theOdometryCorrectionTables = new OdometryCorrectionTables;
+    theOdometryCorrectionTables = std::make_unique<OdometryCorrectionTables>();
     stream >> *theOdometryCorrectionTables;
   }
 }
 
 bool CognitionConfigurationDataProvider::handleMessage(InMessage& message)
 {
-  if(theInstance && message.getMessageID() == idColorCalibration)
-  {
-    if(!theInstance->theColorCalibration)
-      theInstance->theColorCalibration = new ColorCalibration;
-    message.bin >> *theInstance->theColorCalibration;
-    return true;
-  }
-  else
-    return false;
+  return false;
 }
 
 MAKE_MODULE(CognitionConfigurationDataProvider, cognitionInfrastructure)

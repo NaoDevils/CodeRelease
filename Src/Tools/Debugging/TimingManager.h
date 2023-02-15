@@ -23,15 +23,18 @@ private:
   Pimpl* prvt;
 
   friend class Process;
-  TimingManager(); // private so only Process can access it.
+  friend class SubThread;
+  TimingManager(TimingManager* superTimingManager = nullptr); // private so only Process can access it.
   ~TimingManager();
 
 public:
   /** Start the stopwatch for the specified identifier. */
-  void startTiming(const char* identifier);
+  void startTiming(const char* identifier, bool threadTime = true);
 
   /** Stops the stopwatch for the specified identifier and returns the time in us. */
-  unsigned stopTiming(const char* identifier);
+  unsigned stopTiming(const char* identifier, bool threadTime = true);
+
+  void setThreadTime(bool threadTime);
 
   /**
    * The TimingManager has a special stopwatch that is used to keep track
@@ -53,4 +56,6 @@ public:
 private:
   /** Prepares timing data for streaming. */
   void prepareData();
+
+  void moveDataTo(TimingManager& timingManager);
 };

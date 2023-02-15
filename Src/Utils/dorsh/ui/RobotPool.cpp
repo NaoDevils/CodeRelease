@@ -4,7 +4,6 @@
 #include "Utils/dorsh/models/Robot.h"
 #include "Utils/dorsh/models/Team.h"
 #include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/tools/StringTools.h"
 
 #include <QGridLayout>
 #include <QDrag>
@@ -15,20 +14,13 @@
 #include <map>
 #include <vector>
 
-RobotPoolDelegate::RobotPoolDelegate(RobotPool* pool)
-  : robotPool(pool)
-{}
+RobotPoolDelegate::RobotPoolDelegate(RobotPool* pool) : QStyledItemDelegate(pool), robotPool(pool) {}
 
-void RobotPoolDelegate::paint(QPainter* painter,
-                              const QStyleOptionViewItem& option,
-                              const QModelIndex& index) const
+void RobotPoolDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
-  painter->save();
   RobotView* robotView = robotPool->robotViews[index.data().toString()];
   robotView->show();
   robotView->setGeometry(option.rect);
-  robotView->render(painter, option.rect.topLeft(), option.rect);
-  painter->restore();
 }
 
 QSize RobotPoolDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -37,14 +29,10 @@ QSize RobotPoolDelegate::sizeHint(const QStyleOptionViewItem& option, const QMod
   return robotView->sizeHint();
 }
 
-RobotPool::RobotPool(TeamSelector* teamSelector)
-  : QListWidget(),
-    teamSelector(teamSelector),
-    robotViews(),
-    toBeDeletedLater(0)
+RobotPool::RobotPool(TeamSelector* teamSelector) : QListWidget(), teamSelector(teamSelector), robotViews(), toBeDeletedLater(0)
 {
   QPalette palette = teamSelector->palette();
-  palette.setColor(QPalette::Base, palette.color(QPalette::Background));
+  palette.setColor(QPalette::Base, palette.color(QPalette::Window));
   setPalette(palette);
   setItemDelegate(new RobotPoolDelegate(this));
   setDefaultDropAction(Qt::MoveAction);
@@ -55,7 +43,7 @@ RobotPool::RobotPool(TeamSelector* teamSelector)
 void RobotPool::update()
 {
   // delete the old sender widget
-  if(toBeDeletedLater)
+  if (toBeDeletedLater)
   {
     toBeDeletedLater->deleteLater();
     toBeDeletedLater = 0;
@@ -66,86 +54,134 @@ void RobotPool::update()
    * addresses of the views.
    */
   QString senderName = "";
-  if(sender() && sender()->inherits("RobotView"))
+  if (sender() && sender()->inherits("RobotView"))
   {
     RobotView* source = dynamic_cast<RobotView*>(sender());
     senderName = source->getRobotName();
   }
-  clear();
-  foreach(RobotView * view, robotViews)
+
+  // update robotViews according to changed name
   {
-    disconnect(view, 0, 0, 0);
-    /* Set parent to parentWidget since qt seems to have problems to get the
-     * assigned thread if the qobject has no parent.
-     */
-    view->setParent(parentWidget());
-    // do not delete the sender which is needed by postEvent
-    if(senderName != view->getRobotName())
-      view->deleteLater();
-    else
-      toBeDeletedLater = view;
+    QStringList keys = robotViews.keys();
+    for (const QString& name : keys)
+    {
+      const auto robotView = robotViews[name];
+
+      const QString robotName = robotView->getRobotName();
+      if (!robotName.isEmpty() && name != robotName)
+      {
+        robotViews.remove(name);
+        robotViews[robotView->getRobotName()] = robotView;
+
+        const auto items = findItems(name, Qt::MatchExactly);
+        foreach (QListWidgetItem* item, items)
+          item->setText(robotView->getRobotName());
+      }
+    }
   }
-  robotViews.clear();
-  std::map<std::string, RobotConfigDorsh*> robots = Session::getInstance().robotsByName;
+
+  std::vector<RobotConfigDorsh*> robotsInTeam;
   Team* team = teamSelector->getSelectedTeam();
-  if(team)
+  if (team)
+    robotsInTeam = team->getPlayers();
+
+  const auto nameEqualTo = [](const std::string& name)
   {
-    std::vector<RobotConfigDorsh*> robotsInTeam = team->getPlayers();
-    for(size_t i = 0; i < robotsInTeam.size(); ++i)
-      if(robotsInTeam[i])
-        robots.erase(robotsInTeam[i]->name);
-  }
-  for(std::map<std::string, RobotConfigDorsh*>::const_iterator i = robots.begin();
-      i != robots.end();
-      ++i)
+    return [=](const RobotConfigDorsh* config)
+    {
+      return config && config->name == name;
+    };
+  };
+
+  // remove robots that were moved to the team
+  for (auto it = robotViews.begin(); it != robotViews.end();)
   {
-    addItem(fromString(i->first));
-    RobotView* view = new RobotView(teamSelector, i->second);
-    view->setParent(viewport());
-    view->hide();
-    connect(view, SIGNAL(robotChanged()), this, SLOT(update()), Qt::DirectConnection);
-    robotViews[fromString(i->first)] = view;
+    const auto& view = it.value();
+    const QString robotName = view->getRobotName();
+    if (!robotName.isEmpty() && !std::any_of(robotsInTeam.begin(), robotsInTeam.end(), nameEqualTo(robotName.toStdString())))
+    {
+      ++it;
+    }
+    else
+    {
+      disconnect(view, 0, 0, 0);
+
+      view->setParent(parentWidget());
+      view->deleteLater();
+
+      // is there a better way to delete an item by name?
+      const auto items = findItems(it.key(), Qt::MatchExactly);
+      foreach (QListWidgetItem* item, items)
+        delete takeItem(row(item));
+
+      it = robotViews.erase(it);
+    }
   }
+
+  // add robots that were moved to the pool
+  for (const auto& [key, val] : Session::getInstance().robotsByName)
+  {
+    if (std::any_of(robotsInTeam.begin(), robotsInTeam.end(), nameEqualTo(key)))
+      continue;
+
+    if (!robotViews.contains(QString::fromStdString(key)))
+    {
+      addItem(QString::fromStdString(key));
+      RobotView* view = new RobotView(teamSelector, val.get());
+      view->setParent(viewport());
+      view->hide();
+      connect(view, SIGNAL(robotChanged()), this, SLOT(update()), Qt::DirectConnection);
+      robotViews[QString::fromStdString(key)] = view;
+    }
+  }
+
+  sortItems();
+
+  // This fixes a UI bug.
+  // Hides all robots after sorting and only visible widgets
+  // are shown in RobotPoolDelegate::paint() again.
+  for (const auto robotView : robotViews)
+    robotView->hide();
 }
 
-void RobotPool::mouseMoveEvent(QMouseEvent* me)
-{
-  if(selectedItems().empty())
-    return;
-  QDrag* d = new QDrag(this);
-  d->setHotSpot(me->pos());
-  QMimeData* data = new QMimeData();
-  data->setText(currentItem()->text());
-  d->setMimeData(data);
-  d->exec(Qt::MoveAction);
-  me->accept();
-}
 
 void RobotPool::dragEnterEvent(QDragEnterEvent* e)
 {
-  if(e->source() && (e->source()->inherits("RobotView") || e->source()->inherits("RobotPool")))
-    e->acceptProposedAction();
+  if (e->source() && e->source() != this && e->source()->inherits("RobotView"))
+  {
+    const RobotView* source = dynamic_cast<RobotView*>(e->source());
+    if (source->getPlayerNumber())
+      e->acceptProposedAction();
+  }
 }
 
 void RobotPool::dragMoveEvent(QDragMoveEvent* e)
 {
-  if(e->source() && (e->source()->inherits("RobotView") || e->source()->inherits("RobotPool")))
-    e->acceptProposedAction();
+  if (e->source() && e->source() != this && e->source()->inherits("RobotView"))
+  {
+    const RobotView* source = dynamic_cast<RobotView*>(e->source());
+    if (source->getPlayerNumber())
+      e->acceptProposedAction();
+  }
 }
 
 void RobotPool::dropEvent(QDropEvent* e)
 {
-  e->accept();
-  if(e->source()->inherits("RobotView"))
+  if (e->source()->inherits("RobotView"))
   {
-    //TODO: this is a very simple implementation which drops the order of the list
     RobotView* source = dynamic_cast<RobotView*>(e->source());
-    if(!source->getPlayerNumber())
+    if (!source->getPlayerNumber())
       return;
-    source->setRobot(0);
-    source->update();
-    update();
+    e->accept();
+
+    QString robotName = source->getRobotName();
+    addItem(robotName);
+    RobotView* view = new RobotView(teamSelector, nullptr);
+    view->setParent(viewport());
+    view->hide();
+    connect(view, SIGNAL(robotChanged()), this, SLOT(update()), Qt::DirectConnection);
+    robotViews[robotName] = view;
+
+    view->swap(*source);
   }
-  else // enable move inside the list
-    QListWidget::dropEvent(e);
 }

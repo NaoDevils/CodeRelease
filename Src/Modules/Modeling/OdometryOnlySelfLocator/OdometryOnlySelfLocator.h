@@ -11,13 +11,14 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/MotionControl/OdometryData.h"
+#include "Representations/BehaviorControl/KeySymbols.h"
 #include "Representations/Modeling/RobotPose.h"
 
 MODULE(OdometryOnlySelfLocator,
-{,
   REQUIRES(OdometryData),
-  PROVIDES(RobotPose),
-});
+  REQUIRES(KeySymbols),
+  PROVIDES(RobotPose)
+);
 
 /**
 * @class OdometryOnlySelfLocator
@@ -29,7 +30,10 @@ class OdometryOnlySelfLocator : public OdometryOnlySelfLocatorBase
 private:
   Pose2f base;
   Pose2f referenceOdometry;
-
+  Pose2f lastOdometryData;
+  float distance = 0.f;
+  float rotation = 0.f;
+  bool lastPressedAndRelease = false;
   /**
   * The method provides the robot pose
   *

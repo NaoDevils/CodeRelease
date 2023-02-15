@@ -19,9 +19,7 @@ PointListener::~PointListener()
 
 void ImageViewAdapter::fireClick(const string view, const Vector2i& point, bool upper, bool deletionRequired)
 {
-  for(multimap<const string, PointListener*>::iterator iter = listeners.find(view);
-      iter != listeners.end();
-      ++iter)
+  for (multimap<const string, PointListener*>::iterator iter = listeners.find(view); iter != listeners.end(); ++iter)
   {
     iter->second->deliverPoint(point, upper, deletionRequired);
   }
@@ -30,11 +28,9 @@ void ImageViewAdapter::fireClick(const string view, const Vector2i& point, bool 
 bool ImageViewAdapter::addListener(PointListener* listener, const string view)
 {
   // TODO: Check if there is a view named view and return false if not.
-  for(multimap<const string, PointListener*>::iterator iter = listeners.find(view);
-      iter != listeners.end();
-      ++iter)
+  for (multimap<const string, PointListener*>::iterator iter = listeners.find(view); iter != listeners.end(); ++iter)
   {
-    if(iter->second == listener)
+    if (iter->second == listener)
       return false;
   }
   listeners.insert(pair<string, PointListener*>(view, listener));
@@ -43,11 +39,9 @@ bool ImageViewAdapter::addListener(PointListener* listener, const string view)
 
 void ImageViewAdapter::removeListener(PointListener* listener, const string view)
 {
-  for(multimap<const string, PointListener*>::iterator iter = listeners.find(view);
-      iter != listeners.end();
-      ++iter)
+  for (multimap<const string, PointListener*>::iterator iter = listeners.find(view); iter != listeners.end(); ++iter)
   {
-    if(iter->second == listener)
+    if (iter->second == listener)
     {
       listeners.erase(iter);
       return;
@@ -57,10 +51,9 @@ void ImageViewAdapter::removeListener(PointListener* listener, const string view
 
 void ImageViewAdapter::removeListener(PointListener* listener)
 {
-  for(multimap<const string, PointListener*>::iterator iter = listeners.begin();
-      iter != listeners.end(); )
+  for (multimap<const string, PointListener*>::iterator iter = listeners.begin(); iter != listeners.end();)
   {
-    if(iter->second == listener)
+    if (iter->second == listener)
     {
       multimap<const string, PointListener*>::iterator temp = iter;
       ++iter;

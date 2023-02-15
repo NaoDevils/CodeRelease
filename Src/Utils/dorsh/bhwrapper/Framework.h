@@ -5,7 +5,7 @@
 #include <map>
 
 /**
- * A wrapper for the B-Human framework. Create one instance and you do not have
+ * A wrapper for the Framework. Create one instance and you do not have
  * to worry about any initializations. This is implemented as a singleton.
  */
 class Framework

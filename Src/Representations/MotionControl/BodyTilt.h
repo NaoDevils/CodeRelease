@@ -4,7 +4,7 @@
 */
 #pragma once
 #ifndef WALKING_SIMULATOR
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Debugging/Watch.h"
 #else
 #include "bhumanstub.h"
@@ -13,41 +13,26 @@
 #include "Modules/MotionControl/DortmundWalkingEngine/Point.h"
 
 
-class BodyTilt : public Streamable
-{
-public :
+STREAMABLE(BodyTilt,
+  void watch()
+  {
+    WATCH(x);
+    WATCH(y);
+  }
 
-	// angle around x and y
-	float x, y;
-
-	void watch()
-	{
-		WATCH(x);
-		WATCH(y);
-	}
-
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-		STREAM(x)
-		STREAM(y)
-		STREAM_REGISTER_FINISH;
-	};
-	BodyTilt()
-	{
-		x = y = 0;
-	};
-
-	~BodyTilt(){};
-
-	void operator =(Point &p)
-	{
-		this->x=(float)p.x;
-		this->y=(float)p.y;
-	}
-  void operator =(BodyTilt &b)
+  BodyTilt& operator=(const Point &p)
+  {
+    this->x=(float)p.x;
+    this->y=(float)p.y;
+    return *this;
+  }
+  BodyTilt& operator=(const BodyTilt &b)
   {
     this->x=(float)b.x;
     this->y=(float)b.y;
+		return *this;
   }
-};
+	,
+	(float)(0.f) x,
+	(float)(0.f) y
+);

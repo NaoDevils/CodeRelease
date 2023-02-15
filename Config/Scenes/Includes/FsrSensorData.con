@@ -1,0 +1,16 @@
+vp FsrSensorDataLeft 200 -0.1 6.0
+vpd FsrSensorDataLeft representation:FsrSensorData:leftTotal black
+vpd FsrSensorDataLeft representation:FsrSensorData:left:fl red
+vpd FsrSensorDataLeft representation:FsrSensorData:left:fr blue
+vpd FsrSensorDataLeft representation:FsrSensorData:left:bl green
+vpd FsrSensorDataLeft representation:FsrSensorData:left:br magenta
+
+vp FsrSensorDataRight 200 -0.1 6.0
+vpd FsrSensorDataRight representation:FsrSensorData:rightTotal black
+vpd FsrSensorDataRight representation:FsrSensorData:right:fl red
+vpd FsrSensorDataRight representation:FsrSensorData:right:fr blue
+vpd FsrSensorDataRight representation:FsrSensorData:right:bl green
+vpd FsrSensorDataRight representation:FsrSensorData:right:br magenta
+
+vp SupportFoot 200 -1.0 1.0
+vpd SupportFoot representation:FsrSensorData:supportFoot red

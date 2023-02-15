@@ -9,17 +9,14 @@
 #include "Representations/Infrastructure/LEDRequest.h"
 
 STREAMABLE(BehaviorLEDRequest,
-{
   ENUM(BehaviorLED,
-  {,
     leftEye,
     rightEye,
     leftEar,
-    rightEar,
-  });
+    rightEar
+  );
 
   ENUM(EyeColor,
-  {,
     defaultColor,
     red,
     green,
@@ -28,7 +25,8 @@ STREAMABLE(BehaviorLEDRequest,
     magenta,
     yellow,
     cyan,
-  });
+    orange
+  );
 
   BehaviorLEDRequest()
   {
@@ -51,5 +49,5 @@ STREAMABLE(BehaviorLEDRequest,
 
   ((LEDRequest) LEDState[numOfBehaviorLEDs]) modifiers,
   (EyeColor)(defaultColor) leftEyeColor,
-  (EyeColor)(defaultColor) rightEyeColor,
-});
+  (EyeColor)(defaultColor) rightEyeColor
+);

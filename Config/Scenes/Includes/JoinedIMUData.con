@@ -1,0 +1,77 @@
+vp Gyro:X 249 -10.0 10.0
+#vpd Gyro:X module:JoinedIMUDataProvider:gyro:x:InertialData green
+vpd Gyro:X module:JoinedIMUDataProvider:gyro:x:IMUModel blue
+vpd Gyro:X module:JoinedIMUDataProvider:gyro:x:InertialSensorData red
+
+vp Gyro:Y 249 -10.0 10.0
+#vpd Gyro:Y module:JoinedIMUDataProvider:gyro:y:InertialData green
+vpd Gyro:Y module:JoinedIMUDataProvider:gyro:y:IMUModel blue
+vpd Gyro:Y module:JoinedIMUDataProvider:gyro:y:InertialSensorData red
+
+vp Gyro:Z 249 -10.0 10.0
+#vpd Gyro:Z module:JoinedIMUDataProvider:gyro:z:InertialData green
+vpd Gyro:Z module:JoinedIMUDataProvider:gyro:z:IMUModel blue
+vpd Gyro:Z module:JoinedIMUDataProvider:gyro:z:InertialSensorData red
+
+vp GyroDiffIMUModel 249 -5.0 5.0
+vpd GyroDiffIMUModel module:JoinedIMUDataProvider:gyroDiffIMUModel:x red
+vpd GyroDiffIMUModel module:JoinedIMUDataProvider:gyroDiffIMUModel:y green
+vpd GyroDiffIMUModel module:JoinedIMUDataProvider:gyroDiffIMUModel:z blue
+
+vp GyroDiffInertialData 249 -5.0 5.0
+vpd GyroDiffInertialData module:JoinedIMUDataProvider:gyroDiffInertialData:x red
+vpd GyroDiffInertialData module:JoinedIMUDataProvider:gyroDiffInertialData:y green
+vpd GyroDiffInertialData module:JoinedIMUDataProvider:gyroDiffInertialData:z blue
+
+
+
+vp Acc:X 249 -2.0 2.0
+#vpd Acc:X module:JoinedIMUDataProvider:acc:x:InertialData green
+vpd Acc:X module:JoinedIMUDataProvider:acc:x:IMUModel blue
+vpd Acc:X module:JoinedIMUDataProvider:acc:x:InertialSensorData red
+
+vp Acc:Y 249 -2.0 2.0
+#vpd Acc:Y module:JoinedIMUDataProvider:acc:y:InertialData green
+vpd Acc:Y module:JoinedIMUDataProvider:acc:y:IMUModel blue
+vpd Acc:Y module:JoinedIMUDataProvider:acc:y:InertialSensorData red
+
+vp Acc:Z 249 -2.0 2.0
+#vpd Acc:Z module:JoinedIMUDataProvider:acc:z:InertialData green
+vpd Acc:Z module:JoinedIMUDataProvider:acc:z:IMUModel blue
+vpd Acc:Z module:JoinedIMUDataProvider:acc:z:InertialSensorData red
+
+vp AccDiffIMUModel 249 -1.0 1.0
+vpd AccDiffIMUModel module:JoinedIMUDataProvider:accDiffIMUModel:x red
+vpd AccDiffIMUModel module:JoinedIMUDataProvider:accDiffIMUModel:y green
+vpd AccDiffIMUModel module:JoinedIMUDataProvider:accDiffIMUModel:z blue
+
+vp AccDiffInertialData 249 -1.0 1.0
+vpd AccDiffInertialData module:JoinedIMUDataProvider:accDiffInertialData:x red
+vpd AccDiffInertialData module:JoinedIMUDataProvider:accDiffInertialData:y green
+vpd AccDiffInertialData module:JoinedIMUDataProvider:accDiffInertialData:z blue
+
+
+
+vp Angle:X 249 -5.0 7.0
+#vpd Angle:X module:JoinedIMUDataProvider:angle:x:InertialData red
+vpd Angle:X module:JoinedIMUDataProvider:angle:x:IMUModel orange
+vpd Angle:X module:JoinedIMUDataProvider:angle:x:IMUModelDelayed black
+vpd Angle:X module:JoinedIMUDataProvider:angle:x:InertialSensorData green
+
+vp Angle:Y 249 -5.0 7.0
+#vpd Angle:Y module:JoinedIMUDataProvider:angle:y:InertialData green
+vpd Angle:Y module:JoinedIMUDataProvider:angle:y:IMUModel orange
+vpd Angle:Y module:JoinedIMUDataProvider:angle:y:IMUModelDelayed black
+vpd Angle:Y module:JoinedIMUDataProvider:angle:y:InertialSensorData red
+
+vp AngleDiffIMUModel 249 -2.5 2.5
+vpd AngleDiffIMUModel module:JoinedIMUDataProvider:angleDiffIMUModel:x green
+vpd AngleDiffIMUModel module:JoinedIMUDataProvider:angleDiffIMUModel:y red
+
+vp AngleDiffIMUModelDelayed 249 -2.5 2.5
+vpd AngleDiffIMUModelDelayed module:JoinedIMUDataProvider:angleDiffIMUModelDelayed:x green
+vpd AngleDiffIMUModelDelayed module:JoinedIMUDataProvider:angleDiffIMUModelDelayed:y red
+
+vp AngleDiffInertialData 249 -2.5 2.5
+vpd AngleDiffInertialData module:JoinedIMUDataProvider:angleDiffInertialData:x green
+vpd AngleDiffInertialData module:JoinedIMUDataProvider:angleDiffInertialData:y red

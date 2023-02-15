@@ -24,6 +24,7 @@ mr FrameInfo MotionLogDataProvider
 mr GroundTruthWorldState CognitionLogDataProvider
 mr GroundTruthRobotPose OracledWorldModelProvider
 mr GroundTruthBallModel OracledWorldModelProvider
+mr GroundTruthMultipleBallModel OracledWorldModelProvider
 mr Thumbnail default
 mr ThumbnailUpper default
 mr LowFrameRateImage default

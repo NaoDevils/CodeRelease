@@ -13,9 +13,7 @@
 #include "Utils/dorsh/cmdlib/Context.h"
 #include "Utils/dorsh/cmdlib/Commands.h"
 #include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/Session.h"
 #include "Utils/dorsh/models/Team.h"
 #include "Utils/dorsh/models/Robot.h"
@@ -37,9 +35,9 @@ std::string DownloadLogsCmd::getDescription() const
   return "Downloads all *.log files from the robot. Afterwards the logs are deleted from the robot.";
 }
 
-bool DownloadLogsCmd::preExecution(Context & context, const std::vector<std::string> & params)
+bool DownloadLogsCmd::preExecution(Context& context, const std::vector<std::string>& params)
 {
-  if(params.size() > 0)
+  if (params.size() > 0)
   {
     context.printLine("This command does not have any parameters!");
     return false;
@@ -47,12 +45,12 @@ bool DownloadLogsCmd::preExecution(Context & context, const std::vector<std::str
   return true;
 }
 
-Task *DownloadLogsCmd::perRobotExecution(Context & context, RobotConfigDorsh & robot)
+Task* DownloadLogsCmd::perRobotExecution(Context& context, RobotConfigDorsh& robot)
 {
   return new DownloadLogsCmd::DownloadLogsTask(context, &robot);
 }
 
-bool DownloadLogsCmd::postExecution(Context & context, const std::vector<std::string> & params)
+bool DownloadLogsCmd::postExecution(Context& context, const std::vector<std::string>& params)
 {
   return true;
 }
@@ -63,13 +61,13 @@ bool DownloadLogsCmd::DownloadLogsTask::execute()
   QStringList args = QStringList();
   args.push_back("-d"); //delete files after download.
 
-  args.push_back(fromString(robot->name));
-  args.push_back(fromString(robot->getBestIP(context())));
+  args.push_back(QString::fromStdString(robot->name));
+  args.push_back(QString::fromStdString(robot->getBestIP(context())));
 
   ProcessRunner r(context(), command, args);
   r.run();
 
-  if(r.error())
+  if (r.error())
   {
     context().errorLine("Download failed!");
   }
@@ -81,16 +79,13 @@ bool DownloadLogsCmd::DownloadLogsTask::execute()
   return true;
 }
 
-DownloadLogsCmd::DownloadLogsTask::DownloadLogsTask(Context &context,
-    RobotConfigDorsh *robot)
-: RobotTask(context, robot)
-{}
+DownloadLogsCmd::DownloadLogsTask::DownloadLogsTask(Context& context, RobotConfigDorsh* robot) : RobotTask(context, robot) {}
 
 QString DownloadLogsCmd::DownloadLogsTask::getCommand()
 {
 #ifdef WINDOWS
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/downloadLogs.cmd");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/downloadLogs.cmd");
 #else
-  return fromString(std::string(File::getBHDir()) + "/Make/" + makeDirectory() + "/downloadLogs");
+  return QString::fromStdString(std::string(File::getBHDir()) + "/Make/" + platformDirectory() + "/downloadLogs");
 #endif
 }

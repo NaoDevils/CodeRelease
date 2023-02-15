@@ -5,32 +5,23 @@
 
 #pragma once
 
-#include "Tools/ProcessFramework/TeamHandler.h" // include this first to prevent winsock2.h/windows.h conflicts
-#include "Tools/ProcessFramework/MocapHandler.h"
-
+#include "Tools/ProcessFramework/SubThread.h"
 #include "Tools/ProcessFramework/Process.h"
-#include "Tools/Module/Logger.h"
 #include "Tools/Module/ModulePackage.h"
-#include "Tools/Network/NTP.h"
+#include "Tools/Module/Logger.h"
 
 /**
  * @class Cognition
  * A class that represents a process that receives data from the robot at about 30 Hz.
  */
-class Cognition : public Process
+class Cognition : public SuperThread
 {
 private:
   DEBUGGING;
   RECEIVER(MotionToCognition);
   SENDER(CognitionToMotion);
-  TEAM_COMM;
-  NTP theNTP;
-#ifdef USE_MOCAP
-  MOCAP_COMM;
-#endif //USE_MOCAP  
   int numberOfMessages;
   ModuleManager moduleManager; /**< The solution manager handles the execution of modules. */
-  Logger logger; /**< The logger logs representations in the background. */
 
 public:
   Cognition();

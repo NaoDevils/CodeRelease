@@ -1,0 +1,42 @@
+ballOffset = {
+	x = 0.18;
+	y = 0.055;
+};
+kickAngle = 0;
+kickDistance = [0, 1.5];
+translationThresholdXFront = 0.02;
+translationThresholdXBack = 0.04;
+translationThresholdY = 0.025;
+rotationThreshold = 10deg;
+
+timeUntilKickHackHip = 0;
+kickHackDurationHip = 0;
+kickHackHipAngle = 0deg;
+
+timeUntilKickHackKnee = 0;
+kickHackDurationKnee = 0;
+kickHackKneeAngle = 0deg;
+
+steps = [
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0.08; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = 0; y = 0;};
+      }
+    ];
+    duration = 230;
+    onFloor = [false, true];
+    kick = true;
+    swingFootTraj = [
+      {x = 0; y = 0; z = 0;},
+      {x = 0.018; y = 0.00; z = 0.01;},
+      {x = 0.035; y = 0.00; z = 0.02;},
+      {x = 0; y = 0; z = 0;}
+    ];
+  }
+];

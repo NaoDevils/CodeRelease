@@ -77,7 +77,7 @@ private:
   * @param geom1 The first geometry object for collision testing
   * @param geom2 The second geometry object for collision testing
   */
-  static void staticCollisionCallback(Simulation *simulation, dGeomID geom1, dGeomID geom2);
+  static void staticCollisionCallback(Simulation* simulation, dGeomID geom1, dGeomID geom2);
 
   /**
   * Static callback method for handling the collision of a static geometry with a movable space
@@ -85,7 +85,7 @@ private:
   * @param geom1 The first geometry object for collision testing
   * @param geom2 The second geometry object for collision testing
   */
-  static void staticCollisionWithSpaceCallback(Simulation *simulation, dGeomID geom1, dGeomID geom2);
+  static void staticCollisionWithSpaceCallback(Simulation* simulation, dGeomID geom1, dGeomID geom2);
 
   /**
   * Static callback method for handling the collision of two movable spaces
@@ -93,5 +93,5 @@ private:
   * @param geom1 The first geometry object for collision testing
   * @param geom2 The second geometry object for collision testing
   */
-  static void staticCollisionSpaceWithSpaceCallback(Simulation *simulation, dGeomID geom1, dGeomID geom2);
+  static void staticCollisionSpaceWithSpaceCallback(Simulation* simulation, dGeomID geom1, dGeomID geom2);
 };

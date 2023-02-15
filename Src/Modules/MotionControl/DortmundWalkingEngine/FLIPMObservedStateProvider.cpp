@@ -3,7 +3,7 @@
 #include "Tools/Debugging/DebugDrawings.h"
 
 
-void FLIPMObservedStateProvider::update(FLIPMObservedState &theFLIPMObservedState)
+void FLIPMObservedStateProvider::update(FLIPMObservedState& theFLIPMObservedState)
 {
   DECLARE_PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.x");
   DECLARE_PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.y");
@@ -19,21 +19,21 @@ void FLIPMObservedStateProvider::update(FLIPMObservedState &theFLIPMObservedStat
 
   Point actualCoMRCS(theRobotModel.centerOfMass.x() / 1000, theRobotModel.centerOfMass.y() / 1000, (theRobotModel.centerOfMass.z()) / 1000, 0);
 
-  (Point &)theFLIPMObservedState.actualCoM_MRE = theWalkingInfo.toWorldCoords(actualCoMRCS);
+  (Point&)theFLIPMObservedState.actualCoM_MRE = theWalkingInfo.toWorldCoords(actualCoMRCS);
 
-  actualCoMRCS.rotateAroundX(theIMUModel.orientation.x());
-  actualCoMRCS.rotateAroundY(theIMUModel.orientation.y());
+  actualCoMRCS.rotateAroundX(theJoinedIMUData.imuData[anglesource].angle.x());
+  actualCoMRCS.rotateAroundY(theJoinedIMUData.imuData[anglesource].angle.y());
 
-  (Point &)theFLIPMObservedState.actualCoM_IMU = theWalkingInfo.toWorldCoords(actualCoMRCS);
+  (Point&)theFLIPMObservedState.actualCoM_IMU = theWalkingInfo.toWorldCoords(actualCoMRCS);
 
-  theFLIPMObservedState.actualAcc.x() = theIMUModel.acceleration.x();
-  theFLIPMObservedState.actualAcc.y() = theIMUModel.acceleration.y();
-  theFLIPMObservedState.actualAcc.z() = theIMUModel.acceleration.z();
+  theFLIPMObservedState.actualAcc.x() = theJoinedIMUData.imuData[anglesource].acc.x();
+  theFLIPMObservedState.actualAcc.y() = theJoinedIMUData.imuData[anglesource].acc.y();
+  theFLIPMObservedState.actualAcc.z() = theJoinedIMUData.imuData[anglesource].acc.z();
 
   PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.x", theFLIPMObservedState.actualCoM_IMU.x);
   PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.y", theFLIPMObservedState.actualCoM_IMU.y);
   PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.z", theFLIPMObservedState.actualCoM_IMU.z);
-                                                                                                      
+
   PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.x", theFLIPMObservedState.actualCoM_MRE.x);
   PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.y", theFLIPMObservedState.actualCoM_MRE.y);
   PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.z", theFLIPMObservedState.actualCoM_MRE.z);
@@ -42,4 +42,5 @@ void FLIPMObservedStateProvider::update(FLIPMObservedState &theFLIPMObservedStat
   PLOT("module:FLIPMObservedStateProvider:ActualAcc.y", theFLIPMObservedState.actualAcc.y());
   PLOT("module:FLIPMObservedStateProvider:ActualAcc.z", theFLIPMObservedState.actualAcc.z());
 }
+
 MAKE_MODULE(FLIPMObservedStateProvider, dortmundWalkingEngine)

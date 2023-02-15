@@ -12,22 +12,27 @@
 #include "Tools/Math/Eigen.h"
 #include "Tools/Math/BHMath.h"
 #include "Tools/Math/Pose2f.h"
+#include "Tools/Math/Pose3f.h"
 #include "Tools/Streams/AutoStreamable.h"
 #else
 #include "math/Vector3.h"
 #endif
 
-enum Dimension {X, Y, Z, RX, RY, RZ};
+enum Dimension
+{
+  X,
+  Y,
+  Z,
+  RX,
+  RY,
+  RZ
+};
 
 /**
 * @class Point
 * Class representing a 3D Point.
 */
-class Point
-{
-public:
-
-
+STREAMABLE(Point,
   /**
   * Constructor. Creates a point at coordinates (x, y, 0).
   * @param x x coordinate.
@@ -40,8 +45,6 @@ public:
     r=z=0;
     rx=ry=0;
   }
-  
-#ifndef WALKING_SIMULATOR
 
   /**
   * Constructor. Creates a point at coordinates (v[0], v[1], v[3]).
@@ -70,13 +73,20 @@ public:
     z = rx = ry = 0;
     r = other.rotation;
   }
-  
-  operator Pose2f()
+
+  explicit operator Pose2f() const
   {
-    return Pose2f(r, x, y);
+    return Pose2f(r, x * 1000.f, y * 1000.f);
   }
-  
-#endif
+
+  explicit operator Pose3f() const
+  {
+    Pose3f ret(x * 1000.f, y * 1000.f, z * 1000.f);
+    ret.rotateX(rx);
+    ret.rotateY(ry);
+    ret.rotateZ(r);
+    return ret;
+  }
 
 
   /**
@@ -153,22 +163,6 @@ public:
   void newValue(Point v, float alpha)
   {
     *this = *this * (1.f - alpha) + v * alpha;
-  }
-
-  /**
-  * Copy data from another point.
-  * @param p The source point
-  * @return Copy of the instance
-  */
-  Point& operator = (const Point &p)
-  {
-    x=p.x;
-    y=p.y;
-    z=p.z;
-    r=p.r;
-    rx=p.rx;
-    ry=p.ry;
-    return *this;
   }
 
   /**
@@ -274,19 +268,34 @@ public:
   * Sets every component to the scalar.
   * @param p The scaler.
   */
-  void operator = (float p)
+  Point& operator=(float p)
   {
     r=rx=ry=x=y=z=p;
+    return *this;
   }
 
   /**
   * To set data from a bhuman Vector2<>.
   * @param v The vector.
   */
-  void operator = (const Vector2f &v)
+  Point& operator=(const Vector2f &v)
   {
     x = v.x();
     y = v.y();
+    return *this;
+  }
+
+  /**
+  * To set data from a bhuman Pose2f.
+  * @param p The pose.
+  */
+  Point& operator=(const Pose2f &p)
+  {
+    x = p.translation.x();
+    y = p.translation.y();
+    r = p.rotation;
+    z = rx = ry = 0.f;
+    return *this;
   }
 
   /**
@@ -374,7 +383,8 @@ public:
   */
   Point rotate2D(float r)
   {
-    float x, y;
+    float x;
+    float y;
 
     x=std::cos(r)*this->x-std::sin(r)*this->y;
     y=std::sin(r)*this->x+std::cos(r)*this->y;
@@ -390,7 +400,8 @@ public:
   */
   void rotateAroundX(float r)
   {
-    float y, z;
+    float y;
+    float z;
     y=std::cos(r)*this->y-std::sin(r)*this->z;
     z=std::sin(r)*this->y+std::cos(r)*this->z;
 
@@ -404,7 +415,8 @@ public:
   */
   void rotateAroundY(float r)
   {
-    float x, z;
+    float x;
+    float z;
 
     x=std::cos(r)*this->x+std::sin(r)*this->z;
     z=-std::sin(r)*this->x+std::cos(r)*this->z;
@@ -499,49 +511,25 @@ public:
   {
     return std::sqrt(x*x+y*y+z*z);
   }
+  ,
+  (float) x,
+  (float) y,
+  (float) z,
+  (float) rx,
+  (float) ry,
+  (float) r
+);
 
-  union {
-    struct {
-      float 
-        x, /**< x coordinate */
-        y, /**< y coordinate */
-        z, /**< z coordinate */
-        rx,/**< Rotation around x. */
-        ry,/**< Rotation around y. */
-        r; /**< Rotation around z. */
-    };
-    float v[6];
-  };
-
-};
-
-
-#ifndef WALKING_SIMULATOR
-
-
-struct StreamPoint : public Point, public Streamable
+struct TranslationPoint : public Point
 {
-	void serialize(In* in,Out* out)
-	{
-		STREAM_REGISTER_BEGIN;
-		STREAM(x)
+  void serialize(In* in, Out* out)
+  {
+    STREAM_REGISTER_BEGIN;
+    STREAM(x)
     STREAM(y)
     STREAM(z)
-    STREAM(rx)
-    STREAM(ry)
-    STREAM(r)
-		STREAM_REGISTER_FINISH;
-	};
-
-public:
-  StreamPoint() : Point(), Streamable() { }
-/*
-  operator Point()
-  {
-    return Point(x,y,z,r,rx,ry);
+    STREAM_REGISTER_FINISH;
   }
-*/
-  StreamPoint(const Point &p) : Point(p) { }
-
 };
-#endif
+
+using StreamPoint = Point;

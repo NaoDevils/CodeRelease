@@ -26,7 +26,10 @@ public:
   * @param console The robot console
   * @param loadAndSaveOutput Whether the view stores and restores its output
   */
-  ConsoleView(const QString& fullName, ConsoleRoboCupCtrl& console, bool loadAndSaveOutput = false) : fullName(fullName), icon(":/Icons/textfield.png"), console(console), consoleWidget(0), loadAndSaveOutput(loadAndSaveOutput) {}
+  ConsoleView(const QString& fullName, ConsoleRoboCupCtrl& console, bool loadAndSaveOutput = false)
+      : fullName(fullName), icon(":/Icons/textfield.png"), console(console), consoleWidget(0), loadAndSaveOutput(loadAndSaveOutput)
+  {
+  }
 
   void clear();
   void printLn(const QString& text);
@@ -47,8 +50,8 @@ private:
   */
   virtual SimRobot::Widget* createWidget();
 
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 
   friend class ConsoleWidget;
 };
@@ -66,6 +69,7 @@ public:
   ~ConsoleWidget();
 
   void print(const QString& text);
+  virtual void saveLayout();
 
 private:
   ConsoleView& consoleView;
@@ -79,12 +83,12 @@ private:
   bool canUndo;
   bool canRedo;
 
-  virtual QSize sizeHint() const {return QSize(640, 240);}
+  virtual QSize sizeHint() const { return QSize(640, 240); }
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
   virtual void keyPressEvent(QKeyEvent* event);
   virtual void contextMenuEvent(QContextMenuEvent* event);
-  virtual void focusInEvent(QFocusEvent * event);
+  virtual void focusInEvent(QFocusEvent* event);
 
   virtual QMenu* createEditMenu() const;
 

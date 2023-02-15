@@ -20,7 +20,7 @@ SimRobot::Widget* Sensor::Port::createWidget()
 
 SimRobotCore2::SensorPort::Data Sensor::Port::getValue()
 {
-  if(lastSimulationStep != Simulation::simulation->simulationStep)
+  if (lastSimulationStep != Simulation::simulation->simulationStep)
   {
     updateValue();
     lastSimulationStep = Simulation::simulation->simulationStep;

@@ -12,7 +12,6 @@
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/Image.h"
-#include "Representations/Infrastructure/IntegralImage.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Perception/CameraMatrix.h"
@@ -28,7 +27,6 @@
 #include <algorithm>
 
 MODULE(CLIPPreprocessor,
-{ ,
   REQUIRES(FallDownState),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
@@ -43,8 +41,7 @@ MODULE(CLIPPreprocessor,
   PROVIDES(CLIPPointsPercept),
   PROVIDES(BallSpots),
   PROVIDES(ObstacleBasePoints),
-  LOADS_PARAMETERS(
-  { ,
+  LOADS_PARAMETERS(,
     // TODO: initialized has to be changed when changing parameters!!
     (int) hScanLineDistanceLower, // distance of horizontal scan lines in lower image (320 image, will be scaled)
     (int) vScanLineDistanceLower, // distance of vertical scan lines in lower image (320 image, will be scaled)
@@ -61,9 +58,9 @@ MODULE(CLIPPreprocessor,
     (int) ballBaseCrValue, // min value of cr channel to be expecting ball (to do, only used in old approach (processScanLine(..))
     (bool) useAreaBasedFieldColor, // use are based field color?
     (bool) useObstacleBasePoints,
-    (bool) sortBallSpots,
-  }),
-});
+    (bool) sortBallSpots
+  )
+);
 
 class CLIPPreprocessor : public CLIPPreprocessorBase
 {
@@ -75,7 +72,7 @@ public:
 
   DECLARE_DEBUG_IMAGE(SIPField);
   DECLARE_DEBUG_IMAGE(SIPFieldUpper);
-  
+
   /** Destructor */
   ~CLIPPreprocessor();
 
@@ -98,8 +95,7 @@ public:
   class ScanLineSegment
   {
   public:
-    ScanLineSegment(const float &x, const float &y, const int &fieldCount,
-      bool hasColorChangeAtStart, ScanLineSegmentType type)
+    ScanLineSegment(const float& x, const float& y, const int& fieldCount, bool hasColorChangeAtStart, ScanLineSegmentType type)
     {
       startPointInImage.x() = x;
       startPointInImage.y() = y;
@@ -113,7 +109,7 @@ public:
       avgY = 0;
     }
 
-    ScanLineSegment(const float &x, const float &y, const float &maxLength, ScanLineSegmentType type)
+    ScanLineSegment(const float& x, const float& y, const float& maxLength, ScanLineSegmentType type)
     {
       startPointInImage.x() = x;
       startPointInImage.y() = y;
@@ -131,7 +127,7 @@ public:
     Vector2f startPointInImage; // starting point
     Vector2f endPointInImage; // ending point
     bool gradientColorStart,
-      gradientColorEnd; // did segment start/end with possible color change?
+        gradientColorEnd; // did segment start/end with possible color change?
     int fieldColorCount;
     int avgCr;
     int avgCb;
@@ -149,7 +145,7 @@ public:
       fullScanLine = false;
       scanLineSegments.reserve(100);
     }
-    ScanLine(const Vector2i &_from, const Vector2i &_to, int _stepSize, bool _fullScanLine)
+    ScanLine(const Vector2i& _from, const Vector2i& _to, int _stepSize, bool _fullScanLine)
     {
       from = _from;
       to = _to;
@@ -157,45 +153,38 @@ public:
       fullScanLine = _fullScanLine;
       scanLineSegments.reserve(50);
     }
-    ~ScanLine()
-    {
-      clear();
-    }
+    ~ScanLine() { clear(); }
     std::vector<ScanLineSegment> scanLineSegments;
     Vector2i from;
     Vector2i to;
     int stepSize;
     bool fullScanLine;
 
-    void clear()
-    {
-      scanLineSegments.clear();
-    };
+    void clear() { scanLineSegments.clear(); };
   };
 
 private:
-
   void update(CLIPPointsPercept& theCLIPPointsPercept);
   void update(BallSpots& ballSpots);
   void update(ObstacleBasePoints& obstacleBasePoints);
-  
+
   /*
   * Reset all local percepts, only to be called once a frame!
   */
   void reset();
-  void execute(const bool &upper); // if new image is available, executes scanning process (once per frame and image)
+  void execute(const bool& upper); // if new image is available, executes scanning process (once per frame and image)
   void createScanLines();
-  void scanField(const bool &upper); // create scan lines
-  void createObstacleBasePoints(const bool &upper); // add possible obstacles from obstacle points
-  void postProcessScanLine(const ScanLine &scanLine, const bool &upper); // get additional info from finished ScanLine
-  void classifyScanLineSegments(ScanLine &scanLine, const bool &upper); // run after processScanLine - classifies segments
+  void scanField(const bool& upper); // create scan lines
+  void createObstacleBasePoints(const bool& upper); // add possible obstacles from obstacle points
+  void postProcessScanLine(const ScanLine& scanLine, const bool& upper); // get additional info from finished ScanLine
+  void classifyScanLineSegments(ScanLine& scanLine, const bool& upper); // run after processScanLine - classifies segments
 
-                                                                        /*
+  /*
                                                                         * Run one scanLine over field, generates unclassified scan line segments, no percepts generated here yet.
                                                                         * @param scanLine The Scan Line in question.
                                                                         * @param upper True if upper image will be scanned.
                                                                         */
-  void processScanLine(ScanLine &scanLine, const bool &upper);
+  void processScanLine(ScanLine& scanLine, const bool& upper);
 
   /*
   * Adds a ball spot.
@@ -205,10 +194,7 @@ private:
   * @param cr The average cr-value on the ball segment.
   * @param upper True if from upper image.
   */
-  void addBallSpot(
-    const Vector2f &point,
-    const int &y, const int &cb, const int &cr,
-    const bool &upper);
+  void addBallSpot(const Vector2f& point, const int& y, const int& cb, const int& cr, const bool& upper);
 
   /*
   * Adds a ball spot.
@@ -217,7 +203,7 @@ private:
   * @param isVertical True if line segment was on vertical scan line.
   * @param upper True if from upper image.
   */
-  void addLinePoint(const Vector2f &linePoint, const float &lineSize, bool isVertical, const bool &upper);
+  void addLinePoint(const Vector2f& linePoint, const float& lineSize, bool isVertical, const bool& upper);
 
   /*
   * Finds field border(s).
@@ -229,12 +215,7 @@ private:
   * but faster since some values are precomputed,
   * TODO : work around this
   */
-  inline bool isPixelBallColor(const int &y, const int &cb, const int &cr)
-  {
-    return cr > minBallCr &&
-      cb > minBallCb &&
-      cb < maxBallCb;
-  }
+  inline bool isPixelBallColor(const int& y, const int& cb, const int& cr) { return cr > minBallCr && cb > minBallCb && cb < maxBallCb; }
 
   /** return sum of cb and cr channel differences, used to detect changes in color on scan lines */
   inline int lastColorDiff()
@@ -267,7 +248,7 @@ private:
 
   // for field end detection
   std::vector<FieldEndPoint> fieldEndPoints;
-  std::vector< Vector2f > fieldHull;
+  std::vector<Vector2f> fieldHull;
   Geometry::Line fieldBorderFront, fieldBorderLeft, fieldBorderRight;
 
   // scan line stuff
@@ -285,10 +266,10 @@ private:
   int minBallCr;
 
   // for obstacle detection
-  std::vector< Vector2i > obstaclePointsLow;
-  std::vector< Vector2i > obstaclePointsHigh;
-  std::vector< Vector2i > obstaclePointsLeft;
-  std::vector< Vector2i > obstaclePointsRight;
+  std::vector<Vector2i> obstaclePointsLow;
+  std::vector<Vector2i> obstaclePointsHigh;
+  std::vector<Vector2i> obstaclePointsLeft;
+  std::vector<Vector2i> obstaclePointsRight;
 
   // local percepts
   CLIPPointsPercept localCLIPPointsPercept;
@@ -299,8 +280,7 @@ private:
 
   void drawFieldLower();
   void drawFieldUpper();
-  void drawFieldHull(const bool &upper);
-  void drawScanLineSegments(const bool &upper);
-  void drawSegment(std::vector<ScanLineSegment>::const_iterator seg, const bool &upper);
-
+  void drawFieldHull(const bool& upper);
+  void drawScanLineSegments(const bool& upper);
+  void drawSegment(std::vector<ScanLineSegment>::const_iterator seg, const bool& upper);
 };

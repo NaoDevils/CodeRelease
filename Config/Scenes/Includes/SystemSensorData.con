@@ -1,0 +1,7 @@
+vp CPU 200 25.0 90.0
+vpd CPU representation:SystemSensorData:cpuTemperature red
+
+vp Battery 200 -3.0 3.0
+vpd Battery representation:SystemSensorData:batteryCurrent red
+vpd Battery representation:SystemSensorData:batteryLevel green
+vpd Battery representation:SystemSensorData:batteryTemperature blue

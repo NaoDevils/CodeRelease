@@ -13,62 +13,74 @@ void MotionRequest::printOut(char* destination) const
 {
   strcpy(destination, getName(motion));
   destination += strlen(destination);
-  switch(motion)
+  switch (motion)
   {
-    case walk:
-      if(walkRequest.requestType == WalkRequest::destination)
-        sprintf(destination, ": %.0lfmm %.0lfmm %.0lf°",
-                walkRequest.request.translation.x(), walkRequest.request.translation.y(),
-                walkRequest.request.rotation.toDegrees());
-      else
-        sprintf(destination, ": %.0lfmm/s %.0lfmm/s %.0lf°/s",
-                walkRequest.request.translation.x(), walkRequest.request.translation.y(),
-                walkRequest.request.rotation.toDegrees());
-      break;
-    case specialAction:
-      sprintf(destination, ": %s", SpecialActionRequest::getName(specialActionRequest.specialAction));
-      break;
-    case kick:
-      sprintf(destination, ": %s", KickRequest::getName(kickRequest.kickMotionType));
-      break;
+  case walk:
+    if (walkRequest.requestType == WalkRequest::destination)
+      sprintf(destination, ": %.0lfmm %.0lfmm %.0lf°", walkRequest.request.translation.x(), walkRequest.request.translation.y(), walkRequest.request.rotation.toDegrees());
+    else
+      sprintf(destination, ": %.0lfmm/s %.0lfmm/s %.0lf°/s", walkRequest.request.translation.x(), walkRequest.request.translation.y(), walkRequest.request.rotation.toDegrees());
+    break;
+  case specialAction:
+    sprintf(destination, ": %s", SpecialActionRequest::getName(specialActionRequest.specialAction));
+    break;
+  case kick:
+    sprintf(destination, ": %s", KickRequest::getName(kickRequest.kickMotionType));
+    break;
   }
 }
 
 void MotionRequest::draw() const
 {
   DECLARE_DEBUG_DRAWING("representation:MotionRequest", "drawingOnField"); // drawing of a request walk vector
-  if(motion == walk)
+  if (motion == walk)
   {
-    switch(walkRequest.requestType)
+    switch (walkRequest.requestType)
     {
-      case WalkRequest::destination:
+    case WalkRequest::destination:
+    {
+      LINE("representation:MotionRequest", 0, 0, walkRequest.request.translation.x(), walkRequest.request.translation.y(), 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0));
+      CROSS("representation:MotionRequest", walkRequest.request.translation.x(), walkRequest.request.translation.y(), 50, 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0));
+      Vector2f rotation(500.f, 0.f);
+      rotation.rotate(walkRequest.request.rotation);
+      ARROW("representation:MotionRequest",
+          walkRequest.request.translation.x(),
+          walkRequest.request.translation.y(),
+          walkRequest.request.translation.x() + rotation.x(),
+          walkRequest.request.translation.y() + rotation.y(),
+          0,
+          Drawings::solidPen,
+          ColorRGBA(0xcd, 0, 0, 127));
+      break;
+    }
+    case WalkRequest::speed:
+    {
+      Vector2f translation = walkRequest.request.translation * 10.f; // TODO -> check
+      ARROW("representation:MotionRequest", 0, 0, translation.x(), translation.y(), 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0));
+      if (walkRequest.request.rotation != 0.0f)
       {
-        LINE("representation:MotionRequest", 0, 0, walkRequest.request.translation.x(), walkRequest.request.translation.y(), 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0));
-        CROSS("representation:MotionRequest", walkRequest.request.translation.x(), walkRequest.request.translation.y(), 50, 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0));
-        Vector2f rotation(500.f, 0.f);
-        rotation.rotate(walkRequest.request.rotation);
-        ARROW("representation:MotionRequest", walkRequest.request.translation.x(), walkRequest.request.translation.y(), 
-          walkRequest.request.translation.x() + rotation.x(), walkRequest.request.translation.y() + rotation.y(), 
-          0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0, 127));
-        break;
+        translation.x() = translation.norm();
+        translation.y() = 0;
+        translation.rotate(walkRequest.request.rotation);
+        ARROW("representation:MotionRequest", 0, 0, translation.x(), translation.y(), 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0, 127));
       }
-      case WalkRequest::speed:
-      {
-        Vector2f translation = walkRequest.request.translation * 10.f; // TODO -> check
-        ARROW("representation:MotionRequest", 0, 0, translation.x(), translation.y(), 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0));
-        if(walkRequest.request.rotation != 0.0f)
-        {
-          translation.x() = translation.norm();
-          translation.y() = 0;
-          translation.rotate(walkRequest.request.rotation);
-          ARROW("representation:MotionRequest", 0, 0, translation.x(), translation.y(), 0, Drawings::solidPen, ColorRGBA(0xcd, 0, 0, 127));
-        }
-        break;
-      }
+      break;
+    }
     }
   }
 }
 
+bool MotionRequest::inStandUpMotion() const
+{
+  return motion == MotionRequest::specialAction && specialActionRequest.specialAction >= SpecialActionRequest::firstStandUpMotion
+      && specialActionRequest.specialAction <= SpecialActionRequest::lastStandUpMotion;
+}
+
+bool MotionRequest::inBlockMotion() const
+{
+  return motion == MotionRequest::specialAction && specialActionRequest.specialAction >= SpecialActionRequest::firstBlockMotion
+      && specialActionRequest.specialAction <= SpecialActionRequest::lastBlockMotion;
+}
 
 void SpeedRequest::draw() const
 {

@@ -50,6 +50,8 @@ else
     ip=$2
 fi
 
+ssh $sshoptions nao@$ip "mount $logpath > /dev/null 2>&1"
+
 if $download
 then
   localLogpath="${basePath}/../../Config/Logs/$name/"
@@ -65,6 +67,7 @@ then
   if [ "$logPathExists" -ne 0 ]
   then
       echo "Logfile directory does not exist on robot."
+      ssh $sshoptions nao@$ip "umount $logpath > /dev/null 2>&1"
       exit 1
   fi
 
@@ -72,29 +75,24 @@ then
   LOGS=`ssh $sshoptions nao@$ip "ls $logpath | grep .log"`
   if [ -z "$LOGS" ]; then
       echo "No log files on robot."
+      ssh $sshoptions nao@$ip "umount $logpath > /dev/null 2>&1"
       exit 1
   fi
 fi
 
-# detect nao version
-ssh $sshoptions nao@$ip "command -v systemctl >/dev/null 2>&1"
-NAOV6=$?
-
-PROCESSES=`ssh $sshoptions nao@$ip "pgrep bhuman"`
+PROCESSES=`ssh $sshoptions nao@$ip "pgrep naodevils"`
 if [ ! -z "$PROCESSES" ]; then
   RESTART=1
-  echo "stopping bhuman"
-  if [ "$NAOV6" == 0 ]; then
-    ssh $sshoptions nao@$ip "systemctl --user stop bhumand > /dev/null"
-  else
-    ssh $sshoptions nao@$ip "bhumand stop > /dev/null"
-  fi
+  echo "stopping naodevils"
+  ssh $sshoptions nao@$ip "systemctl --user stop naodevils > /dev/null"
 fi
+
 
 if $download
 then
   #download all log files
   echo "Downloading log files..."
+
   #-p = preserve original date and time
   scp $sshoptions -p nao@$ip:$logpath*.log "$localLogpath"
   scpResult=$?
@@ -103,35 +101,19 @@ then
      echo "scp failed!"
      exit 1
   fi
-  
-  
-  # V6 doesn't write stdout to a logfile
-  # framework should write crash dumps to log folder itself
-  if [ "$NAOV6" == 1 ]; then
-      echo "Downloading bhumand.log"
-      scp $sshoptions -p nao@$ip:/tmp/bhumand.log "$localLogpath"
-      scpResult=$?
-      if [ $scpResult -ne 0 ]
-      then
-         echo "scp failed!"
-         exit 1
-      fi
-  fi
 fi
 
 if $delete
 then
     #remove log files from robot
     echo "Deleting log files from robot"
-    ssh $sshoptions nao@$ip "rm -f $logpath*"
+    ssh $sshoptions nao@$ip "rm -f $logpath*.log"
 fi
 
+ssh $sshoptions nao@$ip "umount $logpath > /dev/null 2>&1"
+
 if [ ! -z $RESTART ]; then
-  echo "starting bhuman"
+  echo "starting naodevils"
   
-  if [ "$NAOV6" == 0 ]; then
-    ssh $sshoptions nao@$ip "systemctl --user start bhumand > /dev/null"
-  else
-    ssh $sshoptions nao@$ip "bhumand start > /dev/null"
-  fi
+  ssh $sshoptions nao@$ip "systemctl --user start naodevils > /dev/null"
 fi

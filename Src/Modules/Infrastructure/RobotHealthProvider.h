@@ -16,12 +16,12 @@
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/Perception/CLIPGoalPercept.h"
 #ifdef TARGET_ROBOT
-#include "Platform/Linux/NaoBody.h"
+#include "Platform/Linux/NaoBodyV6.h"
 #endif
 
 MODULE(RobotHealthProvider,
-{,
   REQUIRES(BallPercept),
+  REQUIRES(MultipleBallPercept),
   REQUIRES(FrameInfo),
   REQUIRES(CLIPGoalPercept),
   REQUIRES(JointSensorData),
@@ -29,16 +29,15 @@ MODULE(RobotHealthProvider,
   REQUIRES(MotionRobotHealth),
   REQUIRES(SystemSensorData),
   PROVIDES(RobotHealth),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (char) batteryLow,                    /**< The voltage below which the robot gives low battery warnings. */
     (int) temperatureHeat,                /**< The temperature that makes the robot complaining about the temperature. */
     (int) temperatureFire,                /**< The temperature that makes the robot complaining stronger about the temperature. */
     (int) temperatureFireExclamationMark, /**< The temperature ... */
     (int) cpuHeat,
-    (bool) enableName,                    /**< The robots mentions its name when complaining, if true */
-  }),
-});
+    (bool) enableName                    /**< The robots mentions its name when complaining if true */
+  )
+);
 
 /**
 * @class RobotHealthProvider
@@ -51,12 +50,11 @@ public:
   RobotHealthProvider();
 
 private:
-  STREAMABLE(BuildInfo,
-  {,
+  STREAMABLE(BuildInfo,,
     ((RobotHealth) Configuration)(Develop) configuration, /**< The configuration that was deployed. */
     (std::string)("unknown") hash, /**< The first 5 digits of the hash of the git HEAD that was deployed. */
-    (bool)(false) clean, /**< Was the working copy clean when it was deployed? */
-  });
+    (bool)(false) clean /**< Was the working copy clean when it was deployed? */
+  );
 
   RingBufferWithSum<unsigned, 30> timeBuffer; /**< Buffered timestamps of previous executions */
   unsigned lastExecutionTime;
@@ -67,7 +65,6 @@ private:
   unsigned highTemperatureSince;
   unsigned highCPUTemperatureSince = 0;
 #ifdef TARGET_ROBOT
-  NaoBody naoBody;
   unsigned int lastWlanCheckedTime;
 #endif
 

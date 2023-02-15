@@ -1,0 +1,26 @@
+name: Formatting
+
+on:
+  pull_request:
+
+jobs:
+  clang_format:
+    name: ClangFormat
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: '0'
+    - name: Check C++ formatting
+      run: bash -l -c ".github/workflows/clang-format.sh $Env:GITHUB_BASE_REF"
+  line_endings:
+    name: Line endings
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: '0'
+    - name: Check line endings
+      run: bash -l -c ".github/workflows/line-endings.sh $Env:GITHUB_BASE_REF"

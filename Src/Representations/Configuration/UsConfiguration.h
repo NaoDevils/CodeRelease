@@ -8,16 +8,15 @@
  * i.e. its 2f pose in the robot's torso and its opening angle.
  */
 STREAMABLE_WITH_BASE(UsSensorInfo, Pose2f,
-{,
-  (Angle) openingAngle,
-});
+,
+  (Angle) openingAngle
+);
 
-STREAMABLE(UsConfiguration,
-{,
+STREAMABLE(UsConfiguration,,
   (float) min,
   (float) max,
   (UsSensorInfo) leftToLeft,
   (UsSensorInfo) rightToRight,
   (UsSensorInfo) leftToRight,
-  (UsSensorInfo) rightToLeft,
-});
+  (UsSensorInfo) rightToLeft
+);

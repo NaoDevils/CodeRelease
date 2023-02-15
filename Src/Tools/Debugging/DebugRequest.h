@@ -9,8 +9,10 @@
 
 #include "Tools/Streams/InOut.h"
 #include <unordered_map>
+#include <unordered_set>
 
 class Framework;
+class ModuleManager;
 
 struct DebugRequest
 {
@@ -48,12 +50,17 @@ class RobotConsole;
 class DebugRequestTable
 {
 private:
-  enum { maxNumberOfDebugRequests = 1000 };
+  enum
+  {
+    maxNumberOfDebugRequests = 3000
+  };
 
 public:
   /** The Debug Key Table */
   DebugRequest debugRequests[maxNumberOfDebugRequests];
   int currentNumberOfDebugRequests = 0;
+
+  std::unordered_set<const char*> disabledDebugRequests;
 
   bool poll = false;
   int pollCounter = 0;
@@ -69,7 +76,9 @@ public:
 
 private:
   friend class Process;
+  friend class SubThread;
   friend class RobotConsole;
+  friend class ModuleManager;
 
   /**
    * Default constructor.
@@ -89,6 +98,8 @@ public:
   static void print(const char* message);
   void addRequest(const DebugRequest& debugRequest, bool force = false);
   void removeRequest(const char* description);
+  void propagateDisabledRequests(DebugRequestTable& drt);
+  void clearDisabledRequests();
   bool isActive(const char* name) const;
   void disable(const char* name);
   bool notYetPolled(const char* name);
@@ -97,21 +108,21 @@ public:
 
 inline bool DebugRequestTable::isActive(const char* name) const
 {
-  if(name == lastName)
+  if (name == lastName)
     return lastIndex < currentNumberOfDebugRequests && debugRequests[lastIndex].enable;
-  else if(currentNumberOfDebugRequests == 0)
+  else if (currentNumberOfDebugRequests == 0)
     return false;
   else
   {
     lastName = name;
     std::unordered_map<const char*, int>::const_iterator iter = nameToIndex.find(name);
-    if(iter != nameToIndex.end())
+    if (iter != nameToIndex.end())
     {
       lastIndex = iter->second;
       return lastIndex < currentNumberOfDebugRequests && debugRequests[lastIndex].enable;
     }
-    for(lastIndex = 0; lastIndex < currentNumberOfDebugRequests; ++lastIndex)
-      if(debugRequests[lastIndex].description == name)
+    for (lastIndex = 0; lastIndex < currentNumberOfDebugRequests; ++lastIndex)
+      if (debugRequests[lastIndex].description == name)
       {
         nameToIndex[name] = lastIndex;
         return debugRequests[lastIndex].enable;

@@ -18,7 +18,6 @@
  * Information about the camera which provides the images for the robot
  */
 STREAMABLE(CameraInfo,
-{
   /** 
    * Intrinsic camera parameters: axis skew is modelled as 0 (90° perfectly orthogonal XY)
    * and the same has been modeled for focal axis aspect ratio; distortion is considering
@@ -38,10 +37,7 @@ STREAMABLE(CameraInfo,
   (int) height,
   (Angle) openingAngleWidth,
   (Angle) openingAngleHeight,
-  (Vector2f) opticalCenter,
-});
+  (Vector2f) opticalCenter
+);
 
-STREAMABLE_WITH_BASE(CameraInfoUpper, CameraInfo,
-{,
-
-});
+STREAMABLE_WITH_BASE(CameraInfoUpper, CameraInfo, );

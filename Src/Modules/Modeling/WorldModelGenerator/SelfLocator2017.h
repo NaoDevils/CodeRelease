@@ -18,7 +18,6 @@
 // ------------- NAO-Framework includes --------------
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Tools/Module/Module.h"
-#include "Tools/ColorClasses.h"
 #include "Tools/RingBuffer.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPoseHypotheses.h"
@@ -41,7 +40,7 @@
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/Sensing/InertialData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 
 #include "Tools/Math/Probabilistics.h"
@@ -54,13 +53,13 @@
 #include "SelfLocator2017Parameters.h"
 
 MODULE(SelfLocator2017,
-{ ,
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
   REQUIRES(FrameInfo),
   REQUIRES(TeammateData),
   REQUIRES(OwnTeamInfo),
   REQUIRES(FieldDimensions),
+  REQUIRES(JoinedIMUData),
   REQUIRES(RobotInfo),
   REQUIRES(GameInfo),
   REQUIRES(OdometryData),
@@ -70,10 +69,9 @@ MODULE(SelfLocator2017,
   REQUIRES(PenaltyCrossPercept),
   REQUIRES(BallModel),
   REQUIRES(FallDownState),
-  REQUIRES(InertialData),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(JointSensorData),
-  USES(RemoteBallModel),
+  REQUIRES(RemoteBallModel),
   USES(LocalRobotMap),
   USES(RemoteRobotMap),
   USES(BehaviorData), // For manual positions, role is required (right now only goalie vs field player)
@@ -82,48 +80,45 @@ MODULE(SelfLocator2017,
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypothesesCompressed), //all compressed (for logging)
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypothesis), //the best
   PROVIDES(SideConfidence),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
+    ((JoinedIMUData)InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
     (PositionsByRules) positionsByRules,
-    (SelfLocator2017Parameters) parameters,
-  }),
-});
+    (SelfLocator2017Parameters) parameters
+  )
+);
 
 
 class SelfLocator2017 : public SelfLocator2017Base
 {
-  using PoseHypotheses = std::vector< std::unique_ptr<PoseHypothesis2017> >;
+  using PoseHypotheses = std::vector<std::unique_ptr<PoseHypothesis2017>>;
 
   struct HypothesisBase
   {
     Pose2f pose;
     float positionConfidence;
-    float symmetryConfidence;
+    SideConfidence::ConfidenceState confidenceState;
 
-    HypothesisBase(const Pose2f &_pose, float _positionConfidence, float _symmetryConfidence)
-      : pose(_pose), positionConfidence(_positionConfidence), symmetryConfidence(_symmetryConfidence) { }
+    HypothesisBase(const Pose2f& _pose, float _positionConfidence, SideConfidence::ConfidenceState _confidenceState)
+        : pose(_pose), positionConfidence(_positionConfidence), confidenceState(_confidenceState)
+    {
+    }
   };
 
   ENUM(LocalizationState,
-  { ,
-    positionTracking,
-    fallenDown,
-    positionLost,
-    penalized,
-  })
+
+      positionTracking,
+      fallenDown,
+      positionLost,
+      penalized)
 
 public:
-
   /*------------------------------ public methods -----------------------------------*/
 
   /** 
   * Constructor.
   */
-  SelfLocator2017(); 
+  SelfLocator2017();
 
-  /** 
-  * Destructor.
-  */
   ~SelfLocator2017();
 
   /**
@@ -134,37 +129,35 @@ public:
   void update(RobotPoseHypotheses& robotPoseHypotheses);
   void update(RobotPoseHypothesesCompressed& robotPoseHypotheses);
   void update(SideConfidence& sideConfidence);
+
 private:
   /* ----------------------------------- private variables here ----------------------------------*/
 
   bool initialized;
   unsigned lastExecuteTimeStamp;
-  
+  Vector2f lastFieldSize = Vector2f::Zero();
+
   PoseHypotheses poseHypotheses;
 
-  Pose2f                    lastOdometryData;
-  bool                      foundGoodPosition;
-  unsigned                  timeStampLastGoodPosition;
-  Pose2f                    lastGoodPosition;
-  Pose2f                    distanceTraveledFromLastGoodPosition;
-  LocalizationState         localizationState;
-  LocalizationState         localizationStateAfterGettingUp;
-  unsigned                  penalizedTimeStamp;
-  unsigned                  unpenalizedTimeStamp;
-  unsigned                  lastPenalty;
+  Pose2f lastOdometryData;
+  bool foundGoodPosition;
+  unsigned timeStampLastGoodPosition;
+  Pose2f lastGoodPosition;
+  Pose2f distanceTraveledFromLastGoodPosition;
+  LocalizationState localizationState;
+  LocalizationState localizationStateAfterGettingUp;
+  unsigned penalizedTimeStamp;
+  unsigned unpenalizedTimeStamp;
+  unsigned lastPenalty;
 
-  unsigned                  lastNonPlayingTimeStamp; // needed to prevent too early "positionLost"
-  unsigned                  lastPositionLostTimeStamp; // needed to prevent too early spawning of symmetric positions
-  unsigned                  timeStampFirstReadyState; // needed for preventing spawning on opponent half in first ready state
-  float                     distanceTraveledFromLastFallDown; // needed for preventing spawning when fallen down within a certain range
+  unsigned lastNonPlayingTimeStamp; // needed to prevent too early "positionLost"
+  unsigned lastPositionLostTimeStamp; // needed to prevent too early spawning of symmetric positions
+  unsigned timeStampFirstReadyState; // needed for preventing spawning on opponent half in first ready state
+  float distanceTraveledFromLastFallDown; // needed for preventing spawning when fallen down within a certain range
 
-  std::uint8_t              symmetryPosUpdate, symmertryNegUpdate;
-  const std::uint8_t        symmetryUpdatesBeforeAdjustingState = 5;
-  float                     lastBestSymmetryConfidence;
-
-  unsigned                  lastNonSetTimestamp;
-  RingBuffer<Vector3f, 30>  accDataBuffer;
-  bool                      gotPickedUp;
+  unsigned lastNonSetTimestamp;
+  RingBuffer<Vector3f, 30> accDataBuffer;
+  bool gotPickedUp;
 
 
   /* ----------------------------------- private local storage ------------------------------------*/
@@ -177,6 +170,7 @@ private:
 
   void executeCommonCode();
 
+  void adjustHypothesesToFieldDimensions();
   void checkBeingPickedUp();
 
   void handleFallDown();
@@ -196,7 +190,7 @@ private:
   void updateHypothesesPositionConfidence();
   void updateHypothesesState();
   void updateHypothesesSymmetryConfidence();
-  
+
   bool addNewHypotheses();
 
   bool addNewHypothesesFromLineMatches();
@@ -205,30 +199,27 @@ private:
   bool addNewHypothesesFromCenterCirleAndLine();
   bool addNewHypothesesFromGoal();
 
-  bool addNewHypothesesIfSymmetryLost();
-  
   void addHypothesesOnManualPositioningPositions();
   void addHypothesesOnInitialKickoffPositions();
   void addPenaltyStrikerStartingHypothesis();
+  void addHypothesesOnInitialPositions(float newPositionConfidence);
   void addHypothesesOnPenaltyPositions(float newPositionConfidence);
 
   void evaluateLocalizationState();
 
-  bool hasPositionTrackingFailed(); //this is only for the best 
+  bool hasPositionTrackingFailed(); //this is only for the best
   bool hasPositionBeenFoundAfterLoss();
 
   bool hasSymmetryBeenLost(const PoseHypothesis2017& hypotheses);
   bool hasSymmetryBeenFoundAgainAfterLoss(const PoseHypothesis2017& hypotheses);
 
   uint64_t lastBestHypothesisUniqueId;
-  
-  const PoseHypothesis2017 *getBestHypothesis();
 
-  float getRobotPoseValidity(const PoseHypothesis2017 & poseHypothesis);
+  const PoseHypothesis2017* getBestHypothesis();
 
-  void addPoseToHypothesisVector(const Pose2f &pose, std::vector<HypothesisBase> &additionalHypotheses,
-    const float &poseConfidence);
+  float getRobotPoseValidity(const PoseHypothesis2017& poseHypothesis);
 
+  void addPoseToHypothesisVector(const Pose2f& pose, std::vector<HypothesisBase>& additionalHypotheses, const float& poseConfidence);
 
 
   /**

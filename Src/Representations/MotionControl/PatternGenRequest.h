@@ -12,47 +12,30 @@
 #include "bhumanstub.h"
 #endif
 
+#include "Tools/Streams/AutoStreamable.h"
+
 /**
  * @class PatternGenRequest
  * Contains the request for the pattern genertor, e.g. the desired speed and the next walk state.
  */
-class PatternGenRequest : public Streamable{
-public:
-	/** Constructor */
-	PatternGenRequest()
-	{
-		newState=NA;
-		speed.translation.x()=0;
-		speed.translation.y()=0;
-		speed.rotation=0;
-    pitch = 0;
-	};
-
+STREAMABLE(PatternGenRequest,
 	/** Desired pitch */
-	float pitch;
-
-	/** Desired speed */
-	Pose2f speed;
+	float pitch = 0.f;
 
 	/** Desired walking state*/
   ENUM(State,
-  { ,
     standby,		/**< Walking engine (ZMP/IP-Controller) not active. Hard coded foot positions used.*/
     ready,			/**< Set the desired height of center of mass, run ZMP/IP-Controller, but stand still. */
     walking,		/**< Walk by using the ZMP/IP-Controller */
     NA,				/**< Unknown request */
     emergencyStop,	/**< Stop NOW, e.g. in case of falling */
     standLeft,
-    standRight,
-  });
+    standRight
+  );
 
-	/** The requested new state */
-	State newState;
+  bool deceleratedMax = false; /** Maximum speed exceeded. */
+  bool deceleratedStability = false; /** Decelerated due to unstability. */
 
-  bool deceleratedMax; /** Maximum speed exceeded. */
-  bool deceleratedStability; /** Decelerated due to unstability. */
-
-#ifndef WALKING_SIMULATOR
   
   /**
   * The method draws the path.
@@ -61,7 +44,8 @@ public:
   {
     DECLARE_DEBUG_DRAWING("representation:PatternGenRequest", "drawingOnField");
     // draw next path points (relative to RobotPoseAfterPreview!)
-    Pose2f last,next;
+    Pose2f last;
+    Pose2f next;
     Pose2f speed_(speed);
     float factor = 1000; // speed is in m/s, but drawing in mm
     speed_.translation *= factor;
@@ -91,16 +75,10 @@ public:
       }
     }
   }
-#endif
+  ,
+  /** Desired speed */
+  (Pose2f) speed,
 
-protected:
-	virtual void serialize(In* in, Out* out)
-	{  
-		STREAM_REGISTER_BEGIN;
-		STREAM(speed)
-		STREAM(newState);
-		STREAM_REGISTER_FINISH;
-	}
-
-};
-
+  /** The requested new state */
+  (State)(NA) newState
+);

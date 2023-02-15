@@ -11,235 +11,168 @@
 void LEDHandler::update(LEDRequest& ledRequest)
 {
   //reset
-  for(int i = 0; i < ledRequest.numOfLEDs; ++i)
+  for (int i = 0; i < ledRequest.numOfLEDs; ++i)
     ledRequest.ledStates[i] = LEDRequest::off;
 
   //update
-  setRightEar(ledRequest);
-  setLeftEar(ledRequest);
-  setRightEye(ledRequest);
-  setLeftEye(ledRequest);
-  setChestButton(ledRequest);
-  setHead(ledRequest);
-  setFeet(ledRequest);
-}
-
-void LEDHandler::setRightEar(LEDRequest& ledRequest)
-{
-  //right ear -> battery
-  LEDRequest::LEDState state = theBehaviorLEDRequest.modifiers[BehaviorLEDRequest::rightEar];
-
-  int onLEDs = std::min(static_cast<int>(theSystemSensorData.batteryLevel / 0.1f), 9);
-
-  for(int i = 0; i <= onLEDs; i++)
-    ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
-}
-
-void LEDHandler::setLeftEar(LEDRequest& ledRequest)
-{
-  //left ear -> connected players
-  //          + GameController connection lost -> freaky blinking
-  if(theFrameInfo.getTimeSince(theGameInfo.timeLastPackageReceived) > 2000)
-  {
-    ledRequest.ledStates[LEDRequest::earsLeft324Deg] = LEDRequest::blinking;
-    ledRequest.ledStates[LEDRequest::earsLeft144Deg] = LEDRequest::blinking;
-  }
-
-  int numberOfConnectedTeammates = static_cast<int>(theTeammateData.teammates.size());
-  if(numberOfConnectedTeammates > 0)
-  {
-    ledRequest.ledStates[LEDRequest::earsLeft0Deg] = LEDRequest::on;
-    ledRequest.ledStates[LEDRequest::earsLeft36Deg] = LEDRequest::on;
-  }
-  if(numberOfConnectedTeammates > 1)
-  {
-    ledRequest.ledStates[LEDRequest::earsLeft72Deg] = LEDRequest::on;
-    ledRequest.ledStates[LEDRequest::earsLeft108Deg] = LEDRequest::on;
-  }
-  if(numberOfConnectedTeammates > 2)
-  {
-    ledRequest.ledStates[LEDRequest::earsLeft180Deg] = LEDRequest::on;
-    ledRequest.ledStates[LEDRequest::earsLeft216Deg] = LEDRequest::on;
-  }
-  if(numberOfConnectedTeammates > 3)
-  {
-    ledRequest.ledStates[LEDRequest::earsLeft252Deg] = LEDRequest::on;
-    ledRequest.ledStates[LEDRequest::earsLeft288Deg] = LEDRequest::on;
-  }
-
-  // in set override ears for battery with ears for whistle detection
-  LEDRequest::LEDState state;
-  if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
-  {
-    if (theWhistleDortmund.detectionState == WhistleDortmund::DetectionState::isDetected)
-      state = LEDRequest::LEDState::on;
-    else
-      state = LEDRequest::LEDState::off;
-    for (int i = 0; i <= 9; i++)
-      ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = state;
-  }
-}
-
-void LEDHandler::setEyeColor(LEDRequest& ledRequest,
-                             bool left,
-                             BehaviorLEDRequest::EyeColor col,
-                             LEDRequest::LEDState s,
-                             bool onlyLeft,
-                             bool onlyRight)
-{
-  LEDRequest::LED first = left ? LEDRequest::faceLeftRed0Deg : LEDRequest::faceRightRed0Deg;
-
-  static const int redOffset = 0,
-    greenOffset = LEDRequest::faceLeftGreen0Deg - LEDRequest::faceLeftRed0Deg,
-    blueOffset = LEDRequest::faceLeftBlue0Deg - LEDRequest::faceLeftRed0Deg;
-
-  static const int numOfLEDsPerColor = LEDRequest::faceLeftRed315Deg - LEDRequest::faceLeftRed0Deg + 1;
-  std::vector<bool> useLED = { 1,1,1,1,1,1,1,1 };
-  if (onlyLeft) useLED = { 1,1,1,1,1,0,0,0 };
-  if (onlyRight) useLED = { 1,0,0,0,1,1,1,1 };
-
-  LEDRequest::LEDState halfState = s == LEDRequest::off ? LEDRequest::off : LEDRequest::half;
-
-  switch(col)
-  {
-    case BehaviorLEDRequest::defaultColor:
-      ASSERT(false);
-      break;
-    case BehaviorLEDRequest::red:
-      for(int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      break;
-    case BehaviorLEDRequest::green:
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      break;
-    case BehaviorLEDRequest::blue:
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      break;
-    case BehaviorLEDRequest::white:
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      break;
-    case BehaviorLEDRequest::magenta:
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      break;
-    case BehaviorLEDRequest::yellow:
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + redOffset + i] = useLED[i] ? halfState : LEDRequest::blinking;
-      break;
-    case BehaviorLEDRequest::cyan:
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? halfState : LEDRequest::blinking;
-      for (int i = 0; i < numOfLEDsPerColor; i++)
-        ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
-      break;
-    default:
-      ASSERT(false);
-      break;
-  }
-}
-
-void LEDHandler::setLeftEye(LEDRequest& ledRequest)
-{
-  //left eye -> groundContact ? ballSeen and GoalSeen : blue
-  LEDRequest::LEDState state = theBehaviorLEDRequest.modifiers[BehaviorLEDRequest::leftEye];
-
-  //no groundContact
-  if(!theGroundContactState.contact/* && (theFrameInfo.time & 512)*/)
-    setEyeColor(ledRequest, true, BehaviorLEDRequest::blue, state);
-  //overwrite
-  else if(theBehaviorLEDRequest.leftEyeColor != BehaviorLEDRequest::defaultColor)
-    //blue
-    setEyeColor(ledRequest, true, theBehaviorLEDRequest.leftEyeColor, state);
-  //default
+  if (theBehaviorData.behaviorState == BehaviorData::BehaviorState::frameworkInactive)
+    setFrameworkInactiveLEDs(ledRequest);
+  else if (theBehaviorData.behaviorState >= BehaviorData::BehaviorState::firstCalibrationState)
+    setCalibrationLEDs(ledRequest);
   else
   {
-    bool ballSeen = theFrameInfo.getTimeSince(theBallModel.timeWhenLastSeen) < 250;
-    bool goalSeen = theFrameInfo.getTimeSince(theCLIPGoalPercept.timeWhenLastSeen) < 250;
-
-    if(ballSeen && goalSeen)
-      //red
-      setEyeColor(ledRequest, true, BehaviorLEDRequest::red, state);
-    else if(ballSeen)
-      //white
-      setEyeColor(ledRequest, true, BehaviorLEDRequest::green, state);
-    else if(goalSeen)
-      //green
-      setEyeColor(ledRequest, true, BehaviorLEDRequest::blue, state);
+    setGameLEDs(ledRequest);
   }
+  // whistle detection always overrides stuff
+  setWhistleDetectionLEDs(ledRequest);
 }
 
-void LEDHandler::setRightEye(LEDRequest& ledRequest)
-{
-  //right eye -> groundContact ? role : role -> blinking
-  //           + penalty shootout: native_{striker,keeper} ? {striker,keeper} : off
-  LEDRequest::LEDState state = theBehaviorLEDRequest.modifiers[BehaviorLEDRequest::rightEye];
+void LEDHandler::setFrameworkInactiveLEDs(LEDRequest& ledRequest) {}
 
-  //no groundContact
-  if(!theGroundContactState.contact/* && (theFrameInfo.time & 512)*/)
-    setEyeColor(ledRequest, false, BehaviorLEDRequest::blue, state);
-  //overwrite
-  else if(theBehaviorLEDRequest.rightEyeColor != BehaviorLEDRequest::defaultColor)
-    setEyeColor(ledRequest, false, theBehaviorLEDRequest.rightEyeColor, state);
-  else
+void LEDHandler::setCalibrationLEDs(LEDRequest& ledRequest)
+{
+  // set chest to purple as per GORE 2021 rules
+  ledRequest.ledStates[LEDRequest::chestBlue] = LEDRequest::on;
+  ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::on;
+
+  // use some of the default LEDs
+  setDetectionInfo(ledRequest);
+  setBatteryInfo(ledRequest);
+  setLocaInfo(ledRequest);
+  // left ear only displays (gc) connection info, not teammate info
+  LEDRequest::LEDState gcState = (theFrameInfo.getTimeSince(theGameInfo.timeLastPackageReceived) > 2000) ? LEDRequest::blinking : LEDRequest::on;
+  for (int i = 0; i < 5; i++)
   {
-    switch(theRoleSymbols.role)
+    ledRequest.ledStates[LEDRequest::earsLeft0Deg + 2 * i] = gcState;
+    ledRequest.ledStates[LEDRequest::earsLeft36Deg + 2 * i + 1] = LEDRequest::on;
+  }
+
+  if (theBehaviorData.behaviorState == BehaviorData::BehaviorState::calibrateCameraMatrix)
+  {
+    if (theCMCorrectorStatus.state == CMCorrectorStatus::CalibrationState::captureUpper || theCMCorrectorStatus.state == CMCorrectorStatus::CalibrationState::captureLower)
     {
-      case BehaviorData::keeper:
-        setEyeColor(ledRequest, false, BehaviorLEDRequest::blue, state);
-        break;
-      case BehaviorData::undefined:
-        //off
-        break;
-      default:
-        ASSERT(false);
+      const float progress = theCMCorrectorStatus.progress;
+
+      for (int i = 0; i < 12; ++i)
+      {
+        const float threshold = i / 12.f;
+        ledRequest.ledStates[LEDRequest::LED::headLedRearLeft0 + i] = progress > threshold ? LEDRequest::LEDState::on : LEDRequest::LEDState::off;
+      }
+    }
+    else
+    {
+      for (int i = 0; i < 12; ++i)
+        ledRequest.ledStates[LEDRequest::LED::headLedRearLeft0 + i] = LEDRequest::LEDState::blinking;
     }
   }
 }
 
-void LEDHandler::setHead(LEDRequest& ledRequest)
+void LEDHandler::setWhistleDetectionLEDs(LEDRequest& ledRequest)
 {
-  LEDRequest::LEDState ledState = (theBehaviorData.soccerState == BehaviorData::controlBall) ? LEDRequest::blinking : LEDRequest::on;
-  if (theRobotPose.translation.x() > 0)
+  if (theWhistleDortmund.detectionState == WhistleDortmund::DetectionState::isDetected)
   {
+    for (int i = 0; i < 10; i++)
+    {
+      ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = LEDRequest::fastBlinking;
+      ledRequest.ledStates[LEDRequest::earsLeft0Deg + i] = LEDRequest::fastBlinking;
+    }
     for (unsigned i = LEDRequest::headLedRearLeft0; i <= LEDRequest::headLedMiddleLeft0; i++)
-      ledRequest.ledStates[i] = ledState;
-  }
-  else
-  {
-    for (unsigned i = LEDRequest::headLedRearLeft0; i < LEDRequest::headLedMiddleRight0; i++)
-      ledRequest.ledStates[i] = ledState;
-    for (unsigned i = LEDRequest::headLedMiddleRight0; i <= LEDRequest::headLedMiddleLeft0; i++)
-      ledRequest.ledStates[i] = LEDRequest::off;
-  }
-
-  // in set override ears for battery with ears for whistle detection
-  if (theGameInfo.state == STATE_SET || theGameSymbols.timeSincePlayingState < 10000)
-  {
-    LEDRequest::LEDState state;
-    if (theWhistleDortmund.detectionState == WhistleDortmund::DetectionState::isDetected)
-      state = LEDRequest::LEDState::on;
-    else
-      state = LEDRequest::LEDState::off;
-
-    for (unsigned i = LEDRequest::headLedRearLeft0; i <= LEDRequest::headLedMiddleLeft0; i++)
-      ledRequest.ledStates[i] = state;
+      ledRequest.ledStates[i] = LEDRequest::fastBlinking;
   }
 }
 
-void LEDHandler::setChestButton(LEDRequest& ledRequest)
+void LEDHandler::setGameLEDs(LEDRequest& ledRequest)
 {
-  for (int i = 0; i < 3; i++) ledRequest.ledStates[LEDRequest::chestRed + i] = LEDRequest::off;
+  setBatteryInfo(ledRequest);
+  setConnectionInfo(ledRequest);
+  setDetectionInfo(ledRequest);
+  setRoleInfo(ledRequest);
+  setGameStateInfo(ledRequest);
+  setLocaInfo(ledRequest);
+  setMotionInfo(ledRequest);
+}
+
+/** Battery info to right ear. */
+void LEDHandler::setBatteryInfo(LEDRequest& ledRequest)
+{
+  int onLEDs = std::min(static_cast<int>(theSystemSensorData.batteryLevel / 0.1f), 10);
+  for (int i = 0; i < onLEDs; i++)
+    ledRequest.ledStates[LEDRequest::earsRight0Deg + i] = LEDRequest::on;
+}
+
+/** Connection info to left ear. */
+void LEDHandler::setConnectionInfo(LEDRequest& ledRequest)
+{
+  LEDRequest::LEDState gcState = (theFrameInfo.getTimeSince(theGameInfo.timeLastPackageReceived) > 2000) ? LEDRequest::blinking : LEDRequest::on;
+
+  int numberOfConnectedTeammates = std::min(static_cast<int>(theTeammateData.teammates.size()), 4);
+  for (int i = 0; i < numberOfConnectedTeammates + 1; i++)
+  {
+    ledRequest.ledStates[LEDRequest::earsLeft0Deg + 2 * i] = gcState;
+    ledRequest.ledStates[LEDRequest::earsLeft36Deg + 2 * i + 1] = LEDRequest::on;
+  }
+}
+
+/** Set perception info to left eye. */
+void LEDHandler::setDetectionInfo(LEDRequest& ledRequest)
+{
+  if (theBallSymbols.ballWasSeen && theBallSymbols.timeSinceLastSeenByTeamMates < 3000)
+    setEyeColor(ledRequest, true, BehaviorLEDRequest::white, LEDRequest::on);
+  else if (theBallSymbols.ballWasSeen)
+    setEyeColor(ledRequest, true, BehaviorLEDRequest::green, LEDRequest::on);
+  else if (theBallSymbols.timeSinceLastSeenByTeamMates < 3000)
+    setEyeColor(ledRequest, true, BehaviorLEDRequest::red, LEDRequest::on);
+  else
+  {
+    if (theBallModel.timeWhenLastSeen == theFrameInfo.time)
+      setEyeColor(ledRequest, true, BehaviorLEDRequest::magenta, LEDRequest::on);
+  }
+}
+
+/** Set role info to right eye. */
+void LEDHandler::setRoleInfo(LEDRequest& ledRequest)
+{
+  switch (theRoleSymbols.role)
+  {
+  case BehaviorData::keeper:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::blue, LEDRequest::on);
+    break;
+  case BehaviorData::defenderLeft:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::green, LEDRequest::on, true);
+    break;
+  case BehaviorData::defenderRight:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::green, LEDRequest::on, false, true);
+    break;
+  case BehaviorData::ballchaserKeeper:
+  case BehaviorData::ballchaser:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::red, LEDRequest::on);
+    break;
+  case BehaviorData::backupBallchaser:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::magenta, LEDRequest::on);
+    break;
+  case BehaviorData::defenderSingle:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::yellow, LEDRequest::on);
+    break;
+  case BehaviorData::center:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::white, LEDRequest::on);
+    break;
+  case BehaviorData::replacementKeeper:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::cyan, LEDRequest::on);
+    break;
+  case BehaviorData::receiver:
+    setEyeColor(ledRequest, false, BehaviorLEDRequest::magenta, LEDRequest::blinking);
+    break;
+  case BehaviorData::noRole:
+    //off
+    break;
+  default:
+    ASSERT(false);
+  }
+}
+
+/** Set game state info to chest button. */
+void LEDHandler::setGameStateInfo(LEDRequest& ledRequest)
+{
   if (theRobotInfo.penalty != PENALTY_NONE)
   {
     ledRequest.ledStates[LEDRequest::chestRed] = LEDRequest::on;
@@ -251,6 +184,7 @@ void LEDHandler::setChestButton(LEDRequest& ledRequest)
   case STATE_INITIAL:
   case STATE_FINISHED:
   {
+    // leave off
     break;
   }
   case STATE_READY:
@@ -274,7 +208,98 @@ void LEDHandler::setChestButton(LEDRequest& ledRequest)
   }
 }
 
-void LEDHandler::setFeet(LEDRequest& ledRequest)
+/** Set loca info on head. */
+void LEDHandler::setLocaInfo(LEDRequest& ledRequest)
+{
+  LEDRequest::LEDState ledState = (theBehaviorData.soccerState == BehaviorData::controlBall) ? LEDRequest::blinking : LEDRequest::on;
+  if (theRobotPose.translation.x() > 0)
+  {
+    for (unsigned i = LEDRequest::headLedRearLeft0; i <= LEDRequest::headLedMiddleLeft0; i++)
+      ledRequest.ledStates[i] = ledState;
+  }
+  else
+  {
+    for (unsigned i = LEDRequest::headLedRearLeft0; i < LEDRequest::headLedMiddleRight0; i++)
+      ledRequest.ledStates[i] = ledState;
+    for (unsigned i = LEDRequest::headLedMiddleRight0; i <= LEDRequest::headLedMiddleLeft0; i++)
+      ledRequest.ledStates[i] = LEDRequest::off;
+  }
+}
+
+/** Set obstacle info to feet. */
+void LEDHandler::setObstacleInfo(LEDRequest& ledRequest) {}
+
+void LEDHandler::setEyeColor(LEDRequest& ledRequest, bool left, BehaviorLEDRequest::EyeColor col, LEDRequest::LEDState s, bool onlyLeft, bool onlyRight)
+{
+  LEDRequest::LED first = left ? LEDRequest::faceLeftRed0Deg : LEDRequest::faceRightRed0Deg;
+
+  static const int redOffset = 0, greenOffset = LEDRequest::faceLeftGreen0Deg - LEDRequest::faceLeftRed0Deg, blueOffset = LEDRequest::faceLeftBlue0Deg - LEDRequest::faceLeftRed0Deg;
+
+  static const int numOfLEDsPerColor = LEDRequest::faceLeftRed315Deg - LEDRequest::faceLeftRed0Deg + 1;
+  std::vector<bool> useLED = {1, 1, 1, 1, 1, 1, 1, 1};
+  if (onlyLeft)
+    useLED = {1, 1, 1, 1, 1, 0, 0, 0};
+  if (onlyRight)
+    useLED = {1, 0, 0, 0, 1, 1, 1, 1};
+
+  LEDRequest::LEDState halfState = s == LEDRequest::off ? LEDRequest::off : LEDRequest::half;
+
+  switch (col)
+  {
+  case BehaviorLEDRequest::defaultColor:
+    ASSERT(false);
+    break;
+  case BehaviorLEDRequest::red:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::green:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::blue:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::white:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::magenta:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::yellow:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + redOffset + i] = useLED[i] ? halfState : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::cyan:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? halfState : LEDRequest::blinking;
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + blueOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  case BehaviorLEDRequest::orange:
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + redOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    for (int i = 0; i < numOfLEDsPerColor; i++)
+      ledRequest.ledStates[first + greenOffset + i] = useLED[i] ? s : LEDRequest::blinking;
+    break;
+  default:
+    ASSERT(false);
+    break;
+  }
+}
+
+void LEDHandler::setMotionInfo(LEDRequest& ledRequest)
 {
   if (theStandEngineOutput.stiffnessTransition > 0.f && theStandEngineOutput.stiffnessTransition < 1.f)
   {
@@ -285,6 +310,62 @@ void LEDHandler::setFeet(LEDRequest& ledRequest)
   {
     for (int i = LEDRequest::footLeftRed; i <= LEDRequest::footRightBlue; i++)
       ledRequest.ledStates[i] = LEDRequest::on;
+  }
+
+  if (theSpeedInfo.lastCustomStepTimestamp > 0 && theFrameInfo.time < (theSpeedInfo.lastCustomStepTimestamp + 500))
+  {
+    int r, g, b;
+    if (!theSpeedInfo.lastCustomStepMirrored)
+    {
+      r = LEDRequest::footLeftRed;
+      g = LEDRequest::footLeftGreen;
+      b = LEDRequest::footLeftBlue;
+    }
+    else
+    {
+      r = LEDRequest::footRightRed;
+      g = LEDRequest::footRightGreen;
+      b = LEDRequest::footRightBlue;
+    }
+
+    switch (theSpeedInfo.lastCustomStep)
+    {
+    case WalkRequest::StepRequest::kickHack: // YELLOW
+      ledRequest.ledStates[r] = LEDRequest::on;
+      ledRequest.ledStates[g] = LEDRequest::on;
+      ledRequest.ledStates[b] = LEDRequest::off;
+      break;
+    case WalkRequest::StepRequest::kickHackLong: // RED
+      ledRequest.ledStates[r] = LEDRequest::on;
+      ledRequest.ledStates[g] = LEDRequest::off;
+      ledRequest.ledStates[b] = LEDRequest::off;
+      break;
+    case WalkRequest::StepRequest::kickHackVeryLong: // GREEN
+      ledRequest.ledStates[r] = LEDRequest::off;
+      ledRequest.ledStates[g] = LEDRequest::on;
+      ledRequest.ledStates[b] = LEDRequest::off;
+      break;
+    case WalkRequest::StepRequest::rotateKick45: // GREEN
+      ledRequest.ledStates[r] = LEDRequest::off;
+      ledRequest.ledStates[g] = LEDRequest::on;
+      ledRequest.ledStates[b] = LEDRequest::off;
+      break;
+    case WalkRequest::StepRequest::sideKickOuter45: // BLUE
+      ledRequest.ledStates[r] = LEDRequest::off;
+      ledRequest.ledStates[g] = LEDRequest::off;
+      ledRequest.ledStates[b] = LEDRequest::on;
+      break;
+    case WalkRequest::StepRequest::sideKickOuterFoot: // PURPLE
+      ledRequest.ledStates[r] = LEDRequest::on;
+      ledRequest.ledStates[g] = LEDRequest::off;
+      ledRequest.ledStates[b] = LEDRequest::on;
+      break;
+    case WalkRequest::StepRequest::sideKickOuterFront: // WHITE
+      ledRequest.ledStates[r] = LEDRequest::on;
+      ledRequest.ledStates[g] = LEDRequest::on;
+      ledRequest.ledStates[b] = LEDRequest::on;
+      break;
+    }
   }
 }
 

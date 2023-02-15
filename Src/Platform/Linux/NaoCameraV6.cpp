@@ -26,17 +26,15 @@
 #include "linux/uvcvideo.h"
 #include "linux/usb/video.h"
 
-NaoCameraV6::NaoCameraV6(const char* device, bool upper, int width, int height, bool flip) :
-  upper(upper),
-  WIDTH(width * 2),
-  HEIGHT(height * 2)
+NaoCameraV6::NaoCameraV6(const char* device, bool upper, int width, int height, bool flip)
+    : upper(upper), WIDTH(width * 2), HEIGHT(height * 2)
 #ifndef NDEBUG
-  ,
-  SIZE(WIDTH * HEIGHT * 2)
+      ,
+      SIZE(WIDTH * HEIGHT * 2)
 #endif
 {
   errno = 0;
-  settings = (CameraSettingsV6) (upper ? CameraSettingsUpperV6() : CameraSettingsV6());
+  settings = (CameraSettingsV6)(upper ? CameraSettingsUpperV6() : CameraSettingsV6());
   appliedSettings = settings;
   initOpenVideoDevice(device);
 
@@ -70,17 +68,16 @@ NaoCameraV6::~NaoCameraV6()
 
 bool NaoCameraV6::captureNew(NaoCameraV6& cam1, NaoCameraV6& cam2, int timeout, bool& errorCam1, bool& errorCam2)
 {
-  NaoCameraV6* cams[2] = { &cam1, &cam2 };
+  NaoCameraV6* cams[2] = {&cam1, &cam2};
 
   ASSERT(cam1.currentBuf == nullptr);
   ASSERT(cam2.currentBuf == nullptr);
 
   errorCam1 = errorCam2 = false;
 
-  struct pollfd pollfds[2] =
-  {
-    {cams[0]->fd, POLLIN | POLLPRI, 0},
-    {cams[1]->fd, POLLIN | POLLPRI, 0},
+  struct pollfd pollfds[2] = {
+      {cams[0]->fd, POLLIN | POLLPRI, 0},
+      {cams[1]->fd, POLLIN | POLLPRI, 0},
   };
   int polled = poll(pollfds, 2, timeout);
   if (polled < 0)
@@ -145,7 +142,7 @@ bool NaoCameraV6::captureNew(int timeout)
   BH_TRACE;
 
   const unsigned startPollingTimestamp = SystemCall::getCurrentSystemTime();
-  struct pollfd pollfd = { fd, POLLIN | POLLPRI, 0 };
+  struct pollfd pollfd = {fd, POLLIN | POLLPRI, 0};
   int polled = poll(&pollfd, 1, timeout); // Fail after timeout
   if (polled < 0)
   {
@@ -276,7 +273,7 @@ bool NaoCameraV6::writeCameraSettings()
     --frameCounter;
     return false;
   }
-  
+
   for (int i = 0; i < CameraSettingsV6::numOfCameraSettings; ++i)
   {
     CameraSettingsV6::V4L2Setting& currentSetting = settings.settings[i];
@@ -331,9 +328,7 @@ bool NaoCameraV6::writeCameraSettings()
     }
   }
 
-  if (appliedSettings.windowPosition != settings.windowPosition
-    || appliedSettings.windowSize != settings.windowSize
-    || appliedSettings.windowWeights != settings.windowWeights)
+  if (appliedSettings.windowPosition != settings.windowPosition || appliedSettings.windowSize != settings.windowSize || appliedSettings.windowWeights != settings.windowWeights)
   {
     writeAecWindow();
     appliedSettings.windowPosition = settings.windowPosition;
@@ -356,7 +351,7 @@ bool NaoCameraV6::writeCameraSettings()
     frameCounter = 5; // wait at least 100ms between registers
     return false;
   }
-  
+
   return true;
 }
 
@@ -403,7 +398,7 @@ bool NaoCameraV6::writeCameraRegisters()
   uint16_t value = static_cast<uint16_t>((reg.value >> (8 * (reg.getSize() - updateRegisterIndexByte - 1))) & 0xff);
   writeRegister(static_cast<uint16_t>(reg.getAddress() + updateRegisterIndexByte), value);
   updateRegisterIndexByte++;
-  
+
   return false;
 }
 
@@ -498,7 +493,7 @@ void NaoCameraV6::writeAecWindow()
   xu.selector = 9;
   xu.query = UVC_SET_CUR;
 
-  std::array<uint8_t,17> data;
+  std::array<uint8_t, 17> data;
 
   data[0] = 0x10; // enable
   data[1] = settings.windowPosition.x() >> 8; // MSB
@@ -511,7 +506,7 @@ void NaoCameraV6::writeAecWindow()
   data[8] = settings.windowSize.y() & 0xff; // LSB
   for (int i = 0; i < 8; i++)
   {
-    data[i + 9] = static_cast<uint8_t>((settings.windowWeights[i*2] & 0xf) | ((settings.windowWeights[i*2+1] & 0xf) << 4));
+    data[i + 9] = static_cast<uint8_t>((settings.windowWeights[i * 2] & 0xf) | ((settings.windowWeights[i * 2 + 1] & 0xf) << 4));
   }
 
   xu.size = data.size();
@@ -565,7 +560,7 @@ uint16_t NaoCameraV6::readRegister(uint16_t addr)
     OUTPUT_ERROR("UVC_GET_CUR fails: " << std::strerror(errno));
   }
 
-  return static_cast<uint16_t>( (uint16_t(data[3]) << 8) | uint16_t(data[4]) );
+  return static_cast<uint16_t>((uint16_t(data[3]) << 8) | uint16_t(data[4]));
 }
 
 void NaoCameraV6::writeRegister(uint16_t addr, uint16_t value)
@@ -606,8 +601,10 @@ bool NaoCameraV6::assertCameraSetting(CameraSettingsV6::CameraSetting setting)
   // check if setting can be ignored
   for (int i = 0; i < CameraSettingsV6::numOfCameraSettings; ++i)
   {
-    for (int influence : settings.settings[i].influencingSettings) {
-      if (influence == setting) return true;
+    for (int influence : settings.settings[i].influencingSettings)
+    {
+      if (influence == setting)
+        return true;
     }
   }
 
@@ -616,7 +613,8 @@ bool NaoCameraV6::assertCameraSetting(CameraSettingsV6::CameraSetting setting)
     return true;
   else
   {
-    OUTPUT_ERROR("Value for command " << settings.settings[setting].command << " (" << CameraSettingsV6::getName(setting) << ") is " << value << " but should be " << settings.settings[setting].value << ".");
+    OUTPUT_ERROR("Value for command "
+        << settings.settings[setting].command << " (" << CameraSettingsV6::getName(setting) << ") is " << value << " but should be " << settings.settings[setting].value << ".");
     appliedSettings.settings[setting].value = value;
     return false;
   }

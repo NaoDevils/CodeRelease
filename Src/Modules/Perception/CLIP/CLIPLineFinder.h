@@ -18,6 +18,7 @@
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/Perception/PenaltyCrossPercept.h"
 #include "Representations/Perception/FieldColor.h"
+#include "Representations/Perception/PenaltyCrossHypotheses.h"
 #include "Tools/Math/Geometry.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Streams/Streamable.h"
@@ -27,7 +28,6 @@
 
 
 MODULE(CLIPLineFinder,
-{,
   REQUIRES(FieldDimensions),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
@@ -39,14 +39,16 @@ MODULE(CLIPLineFinder,
   REQUIRES(FrameInfo),
   REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
+  REQUIRES(PenaltyCrossHypothesesYolo),
   PROVIDES(CLIPFieldLinesPercept),
   PROVIDES(CLIPCenterCirclePercept),
   PROVIDES(PenaltyCrossPercept),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (float) maxDistPointsImage, /**< max distance for connection of two points */
     (short) maxNoDistLinesImage, /**< max # of scan line number distance for connection of points (contain line number) */
     (float) maxDistSumPointsToLineImage, /**< max summed distance of points to line segment at creation */
+    (float) pixelErrorSumToImageWidthFactor, /**< factor of max summed distance of points to line segment compared to image width */
+    (float) minStraightLineLengthInImageFactor, /**< image width divided by this factor for a segment to be considered part of straight line */
     (float) maxAngleSumLineImage, /**< max summed angle between point connections to be considered a line in image (for connections) */
     (float) maxAngleSumLineField, /**< max summed angle between point connections to be considered a line in field (for cc creation) */
     (float) minAngleSumCircleImage, /**< min summed angle in image on line segment to be considered part of circle */
@@ -69,9 +71,9 @@ MODULE(CLIPLineFinder,
     (float) maxTotalCircleErrorImage, /**< max biggest error of linear regression through points to be part of a circle */
     (float) maxSegmentAngleImage, /**< max angle between point connections to be on the same segment (radian)*/
     (float) maxSegmentAngleDiffImage, /** max angle difference between two segments to connect (radian)*/
-    (float) maxValidityDenominator, /**< denominator of image diagonal length for full validity */
-  }),
-});
+    (float) maxValidityDenominator /**< denominator of image diagonal length for full validity */
+  )
+);
 
 class CLIPLineFinder : public CLIPLineFinderBase
 {
@@ -80,17 +82,17 @@ public:
 
   struct LinePoint
   {
-    const CLIPPointsPercept::Point *point;
-    LinePoint *predecessor;
-    LinePoint *successor;
-    bool onLine;
+    const CLIPPointsPercept::Point* point; //pointer to the specific point percept
+    int predecessor = -1; //no in the LinePoint vector
+    int successor = -1; //no in the LinePoint vector
+    bool onLine = false; //set to true if it is part of a line segment
   };
 
   // representing center circle (in field coordinates!)
   struct CenterCircle
   {
     Geometry::Circle circle;
-    std::vector< Vector2f > pointsOnCircle; // points are in field coordinates
+    std::vector<Vector2f> pointsOnCircle; // points are in field coordinates
     bool upper;
   };
 
@@ -98,8 +100,8 @@ public:
   struct LineSegment
   {
   public:
-    LinePoint *startPoint;
-    LinePoint *endPoint;
+    int startPoint;
+    int endPoint;
     float avgError;
     float maxError;
     int pointNo;
@@ -110,11 +112,11 @@ public:
 
   void reset();
 
-  void execute(const bool &upper);
+  void execute(const bool& upper);
 
-  void update(CLIPFieldLinesPercept &theCLIPFieldLinesPercept);
-  void update(CLIPCenterCirclePercept &theCenterCirclePercept);
-  void update(PenaltyCrossPercept &thePenaltyCrossPercept);
+  void update(CLIPFieldLinesPercept& theCLIPFieldLinesPercept);
+  void update(CLIPCenterCirclePercept& theCenterCirclePercept);
+  void update(PenaltyCrossPercept& thePenaltyCrossPercept);
 
   std::vector<CLIPFieldLinesPercept::FieldLine> foundLines;
   std::vector<CLIPFieldLinesPercept::FieldLine> foundLinesUpper;
@@ -137,44 +139,48 @@ private:
   // for debugging
   bool drawUpper;
 
+  void checkYoloPenaltyCross(bool upper);
+
   // connect points that are close enough
   void connectPoints();
   // split connected points to fitting line segments
-  void createSegments(const bool &upper);
+  void createSegments(const bool& upper);
   // connect small segments and/or create center circle/field lines
-  void connectSegments(const bool &upper);
+  void connectSegments(const bool& upper);
   // remove lines that are on or near and tangent to center circle
-  void removeCenterCircleTangents(const bool &upper);
+  void removeCenterCircleTangents(const bool& upper);
   // try to maximize lines
-  void enhanceFieldLines(const bool &upper);
+  void enhanceFieldLines(const bool& upper);
   // try to correct center circle percept with the middle line
   void correctCenterCircle();
 
-  bool addSegmentPointsToCircle(LineSegment &seg, CenterCircle &circle, const bool &upper);
+  bool addSegmentPointsToCircle(LineSegment& seg, CenterCircle& circle, const bool& upper);
 
-  void removeSegmentPointsFromCircle(LineSegment &seg, CenterCircle &circle);
+  void removeSegmentPointsFromCircle(LineSegment& seg, CenterCircle& circle);
+
+  // finish line segment data if line segment is plausible
+  bool finishLineSegment(LineSegment& seg, int endPoint, std::vector<Vector2f>& testPoints, const bool& upper);
+
+  // verify that all points belong to this segment
+  bool verifyLineSegment(LineSegment& seg);
 
   /**
   * Verifies circle by checking sum of distances to center
   **/
-  bool verifyCircle(const CenterCircle &circle, const bool checkSeenAngle);
+  bool verifyCircle(const CenterCircle& circle, const bool checkSeenAngle);
 
   /**
   * Verifies final center circle with checks for field green
   * TODO: Currently unused
   **/
-  bool verifyCenterCircle(const CenterCircle &circle, const bool &upper);
+  bool verifyCenterCircle(const CenterCircle& circle, const bool& upper);
 
   /**
   * TODO : Merge similar lines!
   * expects first point of vector to be start point, last to be end point
   * return True if points build a straight line, line is not on circle and is not matching another existing line
   */
-  bool createFieldLine(
-    const std::vector< Vector2f > &pointsOnLine,
-    const float &lineWidthStart,
-    const float &lineWidthEnd,
-    const bool &upper);
+  bool createFieldLine(const std::vector<Vector2f>& pointsOnLine, const float& lineWidthStart, const float& lineWidthEnd, const bool& upper);
 
   /**
   * Verifies field line with check for white between start and end.
@@ -183,19 +189,11 @@ private:
   * @param line The line in question.
   * return True if white was found.
   */
-  bool verifyLine(const CLIPFieldLinesPercept::FieldLine &line, const bool &upper);
+  bool verifyLine(const CLIPFieldLinesPercept::FieldLine& line, const bool& upper);
 
-  bool checkForLineBetween(
-    const Vector2f &imgStart,
-    const Vector2f &imgEnd,
-    const float &lineSizeInImage,
-    const bool &upper);
+  bool checkForLineBetween(const Vector2f& imgStart, const Vector2f& imgEnd, const float& lineSizeInImage, const bool& upper);
 
-  bool getLineCenterAndWidth(
-    const Vector2f scanPoint,
-    const Vector2f scanDir,
-    float &width, Vector2f &center,
-    const bool &upper);
+  bool getLineCenterAndWidth(const Vector2f scanPoint, const Vector2f scanDir, float& width, Vector2f& center, const bool& upper);
 
   /**
   * connect two line segments, if they are close enough and the angle is similar
@@ -203,17 +201,13 @@ private:
   * @param segB The second segment.
   * return True if connection was successful
   */
-  bool connect2Segments(LineSegment &segA, LineSegment &segB, const bool &upper);
-  bool createLineFromSingleSegment(const LineSegment &seg, const bool &upper);
-  bool createPenaltyCross(const LineSegment &seg, const bool &upper);
-  bool connectSegmentToFieldLine(
-    const Vector2f &imgStart,
-    const Vector2f &imgEnd,
-    CLIPFieldLinesPercept::FieldLine &line,
-    const bool &upper);
+  bool connect2Segments(LineSegment& segA, LineSegment& segB, const bool& upper);
+  bool createLineFromSingleSegment(const LineSegment& seg, const bool& upper);
+  bool createPenaltyCross(const LineSegment& seg, const bool& upper);
+  bool connectSegmentToFieldLine(const Vector2f& imgStart, const Vector2f& imgEnd, CLIPFieldLinesPercept::FieldLine& line, const bool& upper);
 
-  bool checkForGreenBetween(const Vector2f &startInImage, const Vector2f &endInImage, const bool &upper);
-  bool checkForWhiteBetween(const Vector2f &startInImage, const Vector2f &endInImage, const float &lineSize, const bool &upper);
+  bool checkForGreenBetween(const Vector2f& startInImage, const Vector2f& endInImage, const bool& upper);
+  bool checkForWhiteBetween(const Vector2f& startInImage, const Vector2f& endInImage, const float& lineSize, const bool& upper);
 
 
   // helper functions
@@ -257,16 +251,16 @@ private:
     }
   }
 
-  inline float getPoint2LineDistance(const Vector2i &lineStart, const Vector2i &lineEnd, const Vector2f &point)
+  inline float getPoint2LineDistance(const Vector2i& lineStart, const Vector2i& lineEnd, const Vector2f& point)
   {
-    Vector2f normal((lineEnd-lineStart).cast<float>());
+    Vector2f normal((lineEnd - lineStart).cast<float>());
     normal.rotateRight();
     normal.normalize();
     float distance = (point - Vector2f(lineStart.cast<float>())).dot(normal);
     return std::abs(distance);
   }
 
-  inline float getPoint2LineDistance(const Vector2f &lineStart, const Vector2f &lineEnd, const Vector2f &point)
+  inline float getPoint2LineDistance(const Vector2f& lineStart, const Vector2f& lineEnd, const Vector2f& point)
   {
     Vector2f normal(lineEnd.x() - lineStart.x(), lineEnd.y() - lineStart.y());
     normal.rotateRight();
@@ -275,27 +269,17 @@ private:
     return std::abs(distance);
   }
 
-  float projectLineSize(const Vector2f &direction, const float &lineSize, const bool &vertical)
+  float projectLineSize(const Vector2f& direction, const float& lineSize, const bool& vertical)
   {
     Vector2f dirNormal = direction;
     dirNormal.rotateLeft();
     float alpha = vertical ? dirNormal.angle() : direction.angle();
-    return std::abs(lineSize*std::sin(alpha));
+    return std::abs(lineSize * std::sin(alpha));
   }
 
-  inline int clipToImageHeight(const int &toClip)
-  {
-    return std::min(imageHeight - 1, std::max(toClip, 0));
-  }
+  inline int clipToImageHeight(const int& toClip) { return std::min(imageHeight - 1, std::max(toClip, 0)); }
 
-  inline int clipToImageWidth(const int &toClip)
-  {
-    return std::min(imageWidth - 1, std::max(toClip, 0));
-  }
+  inline int clipToImageWidth(const int& toClip) { return std::min(imageWidth - 1, std::max(toClip, 0)); }
 
-  inline float getDistancePointToCircle(const Vector2f &point, const Geometry::Circle &circle)
-  {
-    return std::abs(circle.radius - (circle.center - point).norm());
-  }
-
+  inline float getDistancePointToCircle(const Vector2f& point, const Geometry::Circle& circle) { return std::abs(circle.radius - (circle.center - point).norm()); }
 };

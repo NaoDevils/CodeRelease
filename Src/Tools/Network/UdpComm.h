@@ -11,7 +11,6 @@ struct sockaddr_in;
 
 #ifdef WINDOWS
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
-#define NOMINMAX
 #include <WinSock2.h>
 #endif
 #include <string>
@@ -28,13 +27,18 @@ struct sockaddr_in;
 class UdpComm
 {
 private:
-  sockaddr* target;
-  socket_t sock;
+  sockaddr* target = nullptr;
+  socket_t sock = -1;
 
 public:
   UdpComm();
 
   ~UdpComm();
+
+  UdpComm(UdpComm&) = delete;
+  UdpComm& operator=(const UdpComm&) = delete;
+  UdpComm(UdpComm&&) noexcept;
+  UdpComm& operator=(UdpComm&&) noexcept;
 
   /**
    * Set default target address.
@@ -110,4 +114,5 @@ public:
 
 private:
   bool resolve(const char*, int, struct sockaddr_in*);
+  void close();
 };

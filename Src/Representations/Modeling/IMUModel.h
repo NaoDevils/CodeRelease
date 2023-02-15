@@ -13,8 +13,7 @@
 #include "Tools/Math/Eigen.h"
 #include "Tools/Streams/AutoStreamable.h"
 
-STREAMABLE(IMUModel,
-{,
+STREAMABLE(IMUModel,,
   (Vector3f)(Vector3f::Zero()) location,             // simply integrated velocity
   (Vector3f)(Vector3f::Zero()) velocity,             // simply integrated acceleration
   (Vector3f)(Vector3f::Zero()) acceleration,         // gravity adjusted, UKF-filtered acceleration of body frame in "global" inertial frame
@@ -32,6 +31,6 @@ STREAMABLE(IMUModel,
 
   // NOTE: this it the good stuff!!!
   // wie 'rotation' aber ohne den z-Anteil
-  (Vector3f)(Vector3f::Zero()) orientation_rotvec,  // rotation vector representation (angle * unit_length_axis_vector) of rotation considering only rotation around x and y axis,
+  (Vector3f)(Vector3f::Zero()) orientation_rotvec   // rotation vector representation (angle * unit_length_axis_vector) of rotation considering only rotation around x and y axis,
                                                     // it rotates body coordinates into the "global" inertial frame neglecting any rotation around the global z axis
-});
+);

@@ -25,45 +25,44 @@
 class CoMProvider
 {
 public:
-	/** Constructor with all needed source data structures.
+  /** Constructor with all needed source data structures.
 	 * @param theSensorData Measured data.
 	 * @param theWalkingEngineParams Walking Engine Parameters.
 	 */
-	CoMProvider(
-		//const JointAngles				&theJointAngles,
-		//const WalkingEngineParams	&theWalkingEngineParams,
-		//const JointRequest			&theJointRequest,
-    const WalkingInfo       &theWalkingInfo,
-		//const FootSteps				&theFootSteps,
-    //const RobotModel &theRobotModel,
-		const ActualCoMRCS			&theActualCoMProvider);
+  CoMProvider(
+      //const JointAngles				&theJointAngles,
+      //const WalkingEngineParams	&theWalkingEngineParams,
+      //const JointRequest			&theJointRequest,
+      const WalkingInfo& theWalkingInfo,
+      //const FootSteps				&theFootSteps,
+      //const RobotModel &theRobotModel,
+      const ActualCoMRCS& theActualCoMProvider);
 
-	/** Destructor */
-	~CoMProvider(void);
+  /** Destructor */
+  ~CoMProvider(void);
 
-	/** 
+  /** 
 	 * Calculates the next target orientation.
 	 * @param bodyTilt Target data structure.
 	 */
-	void updateActualCoM(ActualCoM &theActualCoM);
+  void updateActualCoM(ActualCoM& theActualCoM);
 
 private:
-    //const JointAngles				&theJointAngles; unused
-    //const WalkingEngineParams	&theWalkingEngineParams;
-    //const JointRequest			&theJointRequest;			/**< Set by constructor. */ unused
-    const WalkingInfo     &theWalkingInfo;
-		//const FootSteps				&theFootSteps;
+  //const JointAngles				&theJointAngles; unused
+  //const WalkingEngineParams	&theWalkingEngineParams;
+  //const JointRequest			&theJointRequest;			/**< Set by constructor. */ unused
+  const WalkingInfo& theWalkingInfo;
+  //const FootSteps				&theFootSteps;
 
-    //Rensen: Removed due to unused warning
-    //const RobotModel &theRobotModel;
+  //Rensen: Removed due to unused warning
+  //const RobotModel &theRobotModel;
 
-		const ActualCoMRCS			&theActualCoMRCS;
+  const ActualCoMRCS& theActualCoMRCS;
 
-		typedef std::list<Footposition> FootList;
+  typedef std::list<Footposition> FootList;
 
-		/** List of target foot positions in world coordinate system filled with the
+  /** List of target foot positions in world coordinate system filled with the
 			foot positions found in theFootpositions. No more needed positions
-			are deleted in every step cycle. */	
-		FootList footPositions;
+			are deleted in every step cycle. */
+  FootList footPositions;
 };
-

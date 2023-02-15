@@ -37,13 +37,13 @@ void LowFrameRateImageProvider::update(LowFrameRateImageUpper& lowFrameRateImage
 
 void LowFrameRateImageProvider::logCurrentImage(LowFrameRateImage& lowFrameRateImage)
 {
-  if(theFrameInfo.getTimeSince(lastUpdateTime) >= 1000 / frameRate)
+  if (theFrameInfo.getTimeSince(lastUpdateTime) >= 1000 / frameRate)
   { // Generate new image
     lastUpdateTime = theFrameInfo.time;
     updateImage(lowFrameRateImage, false);
     storeNextImage = true; // Store next image as well to make sure to get both upper and lower cam images
   }
-  else if(storeNextImage)
+  else if (storeNextImage)
   {
     updateImage(lowFrameRateImage, true);
     lastUpdateTimeUpper = theFrameInfo.time;

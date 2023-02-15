@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../SimRobot/SimRobot.h"
+#include <SimRobot.h>
 
-template <typename T> class QList;
-class QStringList;
+#include <qcontainerfwd.h>
+
 
 namespace SimRobotCore2
 {
@@ -96,14 +96,14 @@ namespace SimRobotCore2
     /** Flags enable or disable some render features */
     enum RenderFlags
     {
-      enableLights           = (1 << 0),
-      enableTextures         = (1 << 2),
-      enableMultisample      = (1 << 3),
-      showPhysics            = (1 << 4),
-      showCoordinateSystem   = (1 << 5),
-      showSensors            = (1 << 6),
+      enableLights = (1 << 0),
+      enableTextures = (1 << 2),
+      enableMultisample = (1 << 3),
+      showPhysics = (1 << 4),
+      showCoordinateSystem = (1 << 5),
+      showSensors = (1 << 6),
       showControllerDrawings = (1 << 7),
-      showAsGlobalView       = (1 << 8),
+      showAsGlobalView = (1 << 8),
       enableDrawingsTransparentOcclusion = (1 << 9),
       enableDrawingsOcclusion = (1 << 10),
     };
@@ -128,7 +128,7 @@ namespace SimRobotCore2
     /**
     * Accesses the size of the OpenGL rendering device that has been set using \c resize before
     * @param width The width of the rendering device
-    * @param height The height of the rendering device
+    * @param width The height of the rendering device
     */
     virtual void getSize(unsigned int& width, unsigned int& height) const = 0;
 
@@ -146,7 +146,7 @@ namespace SimRobotCore2
 
     /**
     * Sets the ShadeMode that is used to render physical primitives
-    * @param shadeMode The ShadeMode used to render physics
+    * @return The ShadeMode used to render physics
     */
     virtual void setPhysicsShadeMode(ShadeMode shadeMode) = 0;
 
@@ -158,7 +158,7 @@ namespace SimRobotCore2
 
     /**
     * Sets the ShadeMode that is used to render controller 3d drawings
-    * @param shadeMode The ShadeMode used to render physics
+    * @return The ShadeMode used to render physics
     */
     virtual void setDrawingsShadeMode(ShadeMode shadeMode) = 0;
 
@@ -170,7 +170,7 @@ namespace SimRobotCore2
 
     /**
     * Sets the render flags to enable or disable some render features
-    * @param renderFlags The new render flags
+    * @param The new render flags
     */
     virtual void setRenderFlags(unsigned int renderFlags) = 0;
 
@@ -180,7 +180,7 @@ namespace SimRobotCore2
     */
     virtual unsigned int getRenderFlags() const = 0;
 
-    virtual void zoom(float change) = 0;
+    virtual void zoom(float change, float x, float y) = 0;
 
     virtual void setCameraMode(CameraMode mode) = 0;
     virtual CameraMode getCameraMode() const = 0;
@@ -203,7 +203,7 @@ namespace SimRobotCore2
     */
     virtual Object* getDragSelection() = 0;
 
-    virtual bool moveDrag(int x, int y) = 0;
+    virtual bool moveDrag(int x, int y, DragType type) = 0;
     virtual bool releaseDrag(int x, int y) = 0;
 
     /** Sets the camera moving state (useful for camera navigation with WASD keys)
@@ -284,7 +284,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return body;}
+    int getKind() const override { return body; }
 
     /**
     * Returns the position of the object
@@ -302,12 +302,14 @@ namespace SimRobotCore2
 
     /**
     * Moves the  object to target position.
+    * @param object The object to move.
     * @param position The target position.
     */
     virtual void move(const float* position) = 0;
 
     /**
     * Moves the object to target position and rotation specified as 3x3 rotation matrix.
+    * @param object The object to move.
     * @param position The target position.
     * @param rotation The target rotation.
     */
@@ -341,7 +343,19 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return appearance;}
+    int getKind() const override { return appearance; }
+
+    /**
+     * Registers controller drawings at an object in the simulation scene
+     * @param drawing The drawing
+     */
+    virtual bool registerDrawing(Controller3DDrawing& drawing) = 0;
+
+    /**
+     * Unregisters controller drawings at an object in the simulation scene
+     * @param drawing The drawing
+     */
+    virtual bool unregisterDrawing(Controller3DDrawing& drawing) = 0;
   };
 
   /*
@@ -369,7 +383,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return geometry;}
+    int getKind() const override { return geometry; }
 
     /**
     * Registers a collision callback function that will be called whenever the geometry
@@ -397,7 +411,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return actuator;}
+    int getKind() const override { return actuator; }
   };
 
   /**
@@ -410,7 +424,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return mass;}
+    int getKind() const override { return mass; }
   };
 
   /**
@@ -423,7 +437,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return sensor;}
+    int getKind() const override { return sensor; }
   };
 
   /**
@@ -436,7 +450,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return compound;}
+    int getKind() const override { return compound; }
   };
 
   /**
@@ -449,7 +463,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return scene;}
+    int getKind() const override { return scene; }
 
     /** Returns the length of one simulation step
     * @return The time which is simulated by one step (in s)
@@ -499,7 +513,7 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return sensorPort;}
+    int getKind() const override { return sensorPort; }
 
     virtual SensorType getSensorType() const = 0;
     virtual Data getValue() = 0;
@@ -531,9 +545,10 @@ namespace SimRobotCore2
     * Returns an object type identifier
     * @return The identifier
     */
-    virtual int getKind() const {return actuatorPort;}
+    int getKind() const override { return actuatorPort; }
 
     virtual void setValue(float value) = 0;
+    virtual void setStiffness(int value) = 0;
     virtual bool getMinAndMax(float& min, float& max) const = 0;
 
     /**
@@ -542,4 +557,4 @@ namespace SimRobotCore2
     */
     virtual const QString& getUnit() const = 0;
   };
-}
+} // namespace SimRobotCore2

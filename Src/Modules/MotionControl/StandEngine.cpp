@@ -7,15 +7,29 @@
 #include "StandEngine.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Settings.h"
+#include "Tools/Build.h"
+#include "Platform/File.h"
 
 MAKE_MODULE(StandEngine, motionControl)
 
 StandEngine::StandEngine()
 {
-#ifdef TARGET_ROBOT
-  InTextFile standEngineOffsetFile("/home/nao/standEngineOffsets/" + Global::getSettings().bodyName + ".value");
-  if(standEngineOffsetFile.exists()) standEngineOffsetFile >> targetAngleOffset;
-#endif
+  if constexpr (Build::targetRobot())
+  {
+    InTextFile standEngineOffsetFile(File::getPersistentDir() + "standEngine.value");
+    if (standEngineOffsetFile.exists())
+      standEngineOffsetFile >> targetAngleOffset;
+  }
+}
+
+StandEngine::~StandEngine()
+{
+  if constexpr (Build::targetRobot())
+  {
+    OutTextFile standEngineOffsetFile(File::getPersistentDir() + "standEngine.value");
+    if (standEngineOffsetFile.exists())
+      standEngineOffsetFile << targetAngleOffset;
+  }
 }
 
 void StandEngine::update(StandEngineOutput& jointRequest)
@@ -28,8 +42,10 @@ void StandEngine::update(StandEngineOutput& jointRequest)
   MODIFY("module:StandEngine:targetAngleOffset", targetAngleOffset);
 
   float fsrSum = theFsrSensorData.leftTotal + theFsrSensorData.rightTotal;
-  if (fsrMin > fsrSum) fsrMin = fsrSum;
-  if (fsrMax < fsrSum) fsrMax = fsrSum;
+  if (fsrMin > fsrSum)
+    fsrMin = fsrSum;
+  if (fsrMax < fsrSum)
+    fsrMax = fsrSum;
 
   jointRequest.stiffnessTransition = 0.f;
 
@@ -50,14 +66,15 @@ void StandEngine::update(StandEngineOutput& jointRequest)
     pitchOffset = 0_deg;
   }
 
-  if (theRobotInfo.transitionToBhuman < 1.f)
+  if (theRobotInfo.transitionToFramework < 1.f)
   {
     angleSum = 0_deg;
     angleOldError = 0_deg;
+    jointRequest.isLeavingPossible = true;
     return;
   }
 
-  Angle angleError = (targetAngle + targetAngleOffset) - theInertialSensorData.angle.y();
+  Angle angleError = (targetAngle + targetAngleOffset) - (theJoinedIMUData.imuData[anglesource].angle.y());
 
   // sum error as long as robot has stiffness
   if (stablePositionTimestamp == 0 || theFrameInfo.getTimeSince(stablePositionTimestamp) <= transitionStart + transitionTime)
@@ -73,16 +90,14 @@ void StandEngine::update(StandEngineOutput& jointRequest)
   }
 
   // calc pid
-  Angle angleCorrection =
-    angleYpid[0] * angleError +
-    angleYpid[1] * angleSum +
-    angleYpid[2] * (angleError - angleOldError);
+  Angle angleCorrection = angleYpid[0] * angleError + angleYpid[1] * angleSum + angleYpid[2] * (angleError - angleOldError);
 
 
   bool positionOkay = theMotionRequest.motion == MotionRequest::Motion::stand;
 
   // apply sensor control if stiffness is on and module is active
-  if (positionOkay && theMotionSelection.ratios[MotionRequest::Motion::stand] == 1.f && (stablePositionTimestamp == 0 || theFrameInfo.getTimeSince(stablePositionTimestamp) <= transitionStart + transitionTime))
+  if (positionOkay && theMotionSelection.ratios[MotionRequest::Motion::stand] == 1.f
+      && (stablePositionTimestamp == 0 || theFrameInfo.getTimeSince(stablePositionTimestamp) <= transitionStart + transitionTime))
   {
     angleOldError = angleError;
 
@@ -102,8 +117,10 @@ void StandEngine::update(StandEngineOutput& jointRequest)
     {
       angleSum = 0_deg;
       angleOldError = 0_deg;
-      if (pitchOffset > 0.1_deg) pitchOffset -= 0.04_deg;
-      else if (pitchOffset < -0.1_deg) pitchOffset += 0.04_deg;
+      if (pitchOffset > 0.1_deg)
+        pitchOffset -= 0.04_deg;
+      else if (pitchOffset < -0.1_deg)
+        pitchOffset += 0.04_deg;
       positionOkay = false;
     }
   }
@@ -118,15 +135,14 @@ void StandEngine::update(StandEngineOutput& jointRequest)
   jointRequest.angles[Joints::rHipPitch] += pitchOffset / 2.f;
   jointRequest.angles[Joints::lHipPitch] += pitchOffset / 2.f;
 
-
-
   // enable stiffness if body angle is out of limits
   if (std::abs(angleError) > targetAngleDeviationNoStiffness)
   {
     positionOkay = false;
 
     // increase / decrease targetAngleOffset if robots starts to fall immediately after turning off stiffness
-    if (theFrameInfo.getTimeSince(stablePositionTimestamp) > (transitionStart + transitionTime - 1000) && theFrameInfo.getTimeSince(stablePositionTimestamp) < (transitionStart + transitionTime + 1500))
+    if (theFrameInfo.getTimeSince(stablePositionTimestamp) > (transitionStart + transitionTime - 1000)
+        && theFrameInfo.getTimeSince(stablePositionTimestamp) < (transitionStart + transitionTime + 1500))
     {
       if (angleError > targetAngleDeviationNoStiffness)
         targetAngleOffset += targetAngleOffsetStep;
@@ -135,21 +151,10 @@ void StandEngine::update(StandEngineOutput& jointRequest)
 
 
       targetAngleOffset = std::min(targetAngleOffset, targetAngleOffsetMax);
+      targetAngleOffset = std::min(targetAngleOffset, targetAngleOffsetMax);
       targetAngleOffset = std::max(targetAngleOffset, -targetAngleOffsetMax);
 
       OUTPUT_TEXT("Using targetAngleOffset " << targetAngleOffset << " now!");
-
-#ifdef TARGET_ROBOT
-      OutTextFile standEngineOffsetFile("/home/nao/standEngineOffsets/" + Global::getSettings().bodyName + ".value");
-      if (standEngineOffsetFile.exists()) standEngineOffsetFile << targetAngleOffset;
-      else
-      {
-        std::string dir = std::string("mkdir -p /home/nao/standEngineOffsets");
-        system(dir.c_str());
-        OutTextFile standEngineOffsetFile("/home/nao/standEngineOffsets/" + Global::getSettings().bodyName + ".value");
-        if (standEngineOffsetFile.exists()) standEngineOffsetFile << targetAngleOffset;
-      }
-#endif
     }
   }
 
@@ -159,18 +164,20 @@ void StandEngine::update(StandEngineOutput& jointRequest)
     positionOkay = false;
   }
 
-  if (!positionOkay && stablePositionTimestamp > 0) stablePositionTimestamp = 0;
+  if (!positionOkay && stablePositionTimestamp > 0)
+    stablePositionTimestamp = 0;
 
   if (positionOkay)
   {
-    if (stablePositionTimestamp == 0) stablePositionTimestamp = theFrameInfo.time;
+    if (stablePositionTimestamp == 0)
+      stablePositionTimestamp = theFrameInfo.time;
 
     // wait until transitionStart
     if (theFrameInfo.getTimeSince(stablePositionTimestamp) > transitionStart)
     {
       // reduce stiffness
       jointRequest.stiffnessTransition = static_cast<float>(theFrameInfo.getTimeSince(stablePositionTimestamp) - transitionStart) / transitionTime;
-      float expTransition = 1.f - std::exp(-4.f*jointRequest.stiffnessTransition);
+      float expTransition = 1.f - std::exp(-4.f * jointRequest.stiffnessTransition);
       expTransition = std::min(expTransition, 1.f);
       expTransition = std::max(expTransition, 0.f);
       bool stiffnessOff = true;
@@ -181,7 +188,8 @@ void StandEngine::update(StandEngineOutput& jointRequest)
         stiffness += expTransition * lowStiffnesses[i];
         jointRequest.stiffnessData.stiffnesses[i] = static_cast<int>(std::round(stiffness));
 
-        if (jointRequest.stiffnessData.stiffnesses[i] > 0) stiffnessOff = false;
+        if (jointRequest.stiffnessData.stiffnesses[i] > 0)
+          stiffnessOff = false;
       }
 
       if (stiffnessOff)
@@ -195,9 +203,12 @@ void StandEngine::update(StandEngineOutput& jointRequest)
   // reduce pitchOffset back to zero and set isLeavingPossible
   if (jointRequest.stiffnessTransition == 0.f && theMotionRequest.motion != MotionRequest::Motion::stand)
   {
-      Angle step = leaveTransitionSpeed * theFrameInfo.cycleTime;
-      if (pitchOffset > step) pitchOffset -= step;
-      else if (pitchOffset < -step) pitchOffset += step;
-      else jointRequest.isLeavingPossible = true;
+    Angle step = leaveTransitionSpeed * theFrameInfo.cycleTime;
+    if (pitchOffset > step)
+      pitchOffset -= step;
+    else if (pitchOffset < -step)
+      pitchOffset += step;
+    else
+      jointRequest.isLeavingPossible = true;
   }
 }

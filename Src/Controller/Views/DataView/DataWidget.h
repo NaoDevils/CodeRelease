@@ -24,15 +24,15 @@ public:
 
   ~DataWidget();
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
 
   virtual void update();
 
-  virtual bool canClose() {return true;}
+  virtual bool canClose() { return true; }
 
-  virtual QMenu* createFileMenu() const {return 0;}
+  virtual QMenu* createFileMenu() const { return 0; }
   virtual QMenu* createUserMenu() const;
-  virtual QMenu* createEditMenu() const {return 0;}
+  virtual QMenu* createEditMenu() const { return 0; }
 
   /**
   * Sets the root property which is displayed by this widget.
@@ -43,6 +43,8 @@ public:
   void setUnchangedButtonEnabled(bool value);
 
   void setSetButtonEnabled(bool value);
+
+  virtual void saveLayout();
 
 protected:
   virtual void itemInserted(QtBrowserItem* insertedItem, QtBrowserItem* preceedingItem);

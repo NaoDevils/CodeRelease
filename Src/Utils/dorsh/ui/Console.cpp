@@ -9,12 +9,13 @@
 #include <QtCore>
 #include <QApplication>
 #include <QMessageBox>
+#include <QtConcurrent>
 #include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/tools/StringTools.h"
 #include "Utils/dorsh/ui/CommandLineEdit.h"
 #include "Utils/dorsh/ui/Console.h"
 #include "Utils/dorsh/ui/TeamSelector.h"
 #include "Utils/dorsh/ui/VisualContext.h"
+#include "Utils/dorsh/models/Robot.h"
 
 Icons Icons::theIcons;
 
@@ -27,15 +28,11 @@ void Icons::init()
 }
 
 VisualContextDecoration::VisualContextDecoration(const QString& commandLine, VisualContext* parent, VisualContext* context)
-  : QFrame(parent),
-    button(new QPushButton(Icons::getInstance().ICON_GRAY, "", this)),
-    header(new QLabel(commandLine)),
-    visualContext(context),
-    parentContext(parent)
+    : QFrame(parent), button(new QPushButton(Icons::getInstance().ICON_GRAY, "", this)), header(new QLabel(commandLine)), visualContext(context), parentContext(parent)
 {
   setAutoFillBackground(true);
   QPalette p = palette();
-  p.setColor(QPalette::Background, p.color(QPalette::AlternateBase));
+  p.setColor(QPalette::Window, p.color(QPalette::AlternateBase));
   setPalette(p);
   QFormLayout* layout = new QFormLayout();
   layout->setSpacing(3);
@@ -54,9 +51,9 @@ VisualContextDecoration::VisualContextDecoration(const QString& commandLine, Vis
 
 void VisualContextDecoration::updateStatus(bool status)
 {
-  if(button->icon().cacheKey() != Icons::getInstance().ICON_ORANGE.cacheKey())
+  if (button->icon().cacheKey() != Icons::getInstance().ICON_ORANGE.cacheKey())
   {
-    if(status)
+    if (status)
       button->setIcon(Icons::getInstance().ICON_GREEN);
     else
       button->setIcon(Icons::getInstance().ICON_RED);
@@ -68,9 +65,7 @@ void VisualContextDecoration::canceled()
   button->setIcon(Icons::getInstance().ICON_ORANGE);
 }
 
-ScrollArea::ScrollArea(QWidget* parent)
-  : QScrollArea(parent),
-    scrollEnabled(true)
+ScrollArea::ScrollArea(QWidget* parent) : QScrollArea(parent), scrollEnabled(true)
 {
   connect(verticalScrollBar(), SIGNAL(valueChanged(int)), this, SLOT(updateScrollEnabled()));
 }
@@ -78,7 +73,7 @@ ScrollArea::ScrollArea(QWidget* parent)
 bool ScrollArea::viewportEvent(QEvent* event)
 {
   bool ret = QScrollArea::viewportEvent(event);
-  if(event->type() == QEvent::LayoutRequest && widget() && scrollEnabled)
+  if (event->type() == QEvent::LayoutRequest && widget() && scrollEnabled)
     ensureVisible(0, widget()->size().height());
   return ret;
 }
@@ -88,19 +83,14 @@ void ScrollArea::updateScrollEnabled()
   scrollEnabled = verticalScrollBar()->value() == verticalScrollBar()->maximum();
 }
 
-Console::Console(TeamSelector* teamSelector)
-  : visualContext(new VisualContext(this)),
-    teamSelector(teamSelector),
-    scrollArea(new ScrollArea(this)),
-    prompt(0),
-    cmdLine(0)
+Console::Console(TeamSelector* teamSelector) : visualContext(new VisualContext(this)), teamSelector(teamSelector), scrollArea(new ScrollArea(this)), prompt(0), cmdLine(0)
 {
   cmdLine = new CommandLineEdit(this);
 
   prompt = new QLabel("dorsh>", cmdLine);
   prompt->setAutoFillBackground(true);
   QPalette p = prompt->palette();
-  p.setColor(QPalette::Background, p.color(QPalette::AlternateBase));
+  p.setColor(QPalette::Window, p.color(QPalette::AlternateBase));
   prompt->setPalette(p);
 
   QGridLayout* layout = new QGridLayout();
@@ -133,35 +123,69 @@ void Console::showEvent(QShowEvent* event)
 
 void Console::fireCommand(const QString& command)
 {
-  if(command.size() > 0)
+  if (command.size() > 0)
   {
+    if (command == "downloadLogs")
+    {
+      Context context(teamSelector->getSelectedRobots(), teamSelector->getSelectedTeam());
+      std::vector<RobotConfigDorsh*> selectedRobots = context.getSelectedRobots();
+      int robotsWithOnlyWLAN = 0;
+      for (RobotConfigDorsh* rcd : selectedRobots)
+      {
+        if (rcd->getBestIP(context) == rcd->wlan)
+        {
+          robotsWithOnlyWLAN++;
+        }
+      }
+
+      if (robotsWithOnlyWLAN > 0)
+      {
+        QMessageBox msgBox;
+        msgBox.setWindowTitle("Download logs");
+        QString text = QString("Are you sure to download the logs of %1 %2 over WLAN?").arg(robotsWithOnlyWLAN).arg(robotsWithOnlyWLAN == 1 ? "robot" : "robots");
+        msgBox.setText(text);
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
+        msgBox.setDefaultButton(QMessageBox::Cancel);
+        msgBox.setIcon(QMessageBox::Warning);
+        if (msgBox.exec() != QMessageBox::Yes)
+          return;
+      }
+    }
+
     // FixMe: This has to be done in the gui thread so it can't be inside of the DeleteLogsCmd, maybe there is another solution.
-    if(command == "deleteLogs")
+    if (command == "deleteLogs" || command == "shutdown -s" || command == "shutdown all")
     {
       QMessageBox msgBox;
-      msgBox.setWindowTitle("Delete Log Files");
-      msgBox.setText("All log files on the selected robots will be lost.\nThis action cannot be undone!\n\nAre you sure?");
+
+      if (command == "deleteLogs")
+      {
+        msgBox.setWindowTitle("Delete Log Files");
+        msgBox.setText("All log files on the selected robots will be lost.\nThis action cannot be undone!\n\nAre you sure?");
+      }
+      else if (command == "shutdown -s")
+      {
+        msgBox.setWindowTitle("Shutdown");
+        msgBox.setText("The selected robots will be shut down.\n\nAre you sure?");
+      }
+      else if (command == "shutdown all")
+      {
+        msgBox.setWindowTitle("Shutdown all");
+        msgBox.setText("ALL robots will be shut down.\n\nAre you sure?");
+      }
+
       msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
       msgBox.setDefaultButton(QMessageBox::Cancel);
       msgBox.setIcon(QMessageBox::Warning);
 
-      if(msgBox.exec() != QMessageBox::Yes)
-        return;
-    }
-    else if(command == "shutdown -s")
-    {
-      QMessageBox msgBox;
-      msgBox.setWindowTitle("Shutdown");
-      msgBox.setText("The selected robots will be shut down.\n\nAre you sure?");
-      msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
-      msgBox.setDefaultButton(QMessageBox::Cancel);
-      msgBox.setIcon(QMessageBox::Warning);
-
-      if(msgBox.exec() != QMessageBox::Yes)
+      if (msgBox.exec() != QMessageBox::Yes)
         return;
     }
 
-    QtConcurrent::run(visualContext, &VisualContext::executeInContext, this, teamSelector, command);
+    if (command == "shutdown all")
+      QFuture<void> future = QtConcurrent::run(&VisualContext::executeInContextReachable, visualContext, this, teamSelector, command);
+    else
+      QFuture<void> future = QtConcurrent::run(&VisualContext::executeInContext, visualContext, this, teamSelector, command);
+
     cmdLine->setFocus();
   }
 }

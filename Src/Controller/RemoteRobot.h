@@ -53,12 +53,16 @@ public:
   /**
    * Destructor.
    */
-  ~RemoteRobot() {Thread<RemoteRobot>::stop(); setGlobals();}
+  ~RemoteRobot()
+  {
+    Thread<RemoteRobot>::stop();
+    setGlobals();
+  }
 
   /**
   * The function starts the process.
   */
-  void start() {Thread<RemoteRobot>::start(this, &RemoteRobot::run);}
+  void start() { Thread<RemoteRobot>::start(this, &RemoteRobot::run); }
 
   /**
   * The function is called to announce the termination of the process.
@@ -75,5 +79,5 @@ public:
   * The function returns the name of the robot.
   * @return The name.
   */
-  const char* getName() const {return name;}
+  const char* getName() const { return name; }
 };

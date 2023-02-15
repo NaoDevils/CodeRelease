@@ -1,0 +1,77 @@
+ballOffset = {
+	x = 0.18;
+	y = 0.05;
+};
+kickAngle = 0;
+kickDistance = [0, 1.05];
+translationThresholdXFront = 0.02;
+translationThresholdXBack = 0.02;
+translationThresholdY = 0.015;
+rotationThreshold = 5deg;
+
+timeUntilKickHackHip = 0;
+kickHackDurationHip = 0;
+kickHackHipAngle = 0deg;
+
+timeUntilKickHackKnee = 61;
+kickHackDurationKnee = 60;
+kickHackKneeAngle = -7deg;
+
+steps = [
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0.0; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = 0.0; y = 0;};
+      }
+    ];
+    duration = 250;
+    onFloor = [true, false];
+    kick = false;
+    swingFootTraj = [
+    ];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0.0; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = 0.0; y = 0;};
+      }
+    ];
+    duration = 12;
+    onFloor = [true, true];
+    kick = false;
+    swingFootTraj = [
+    ];
+  },
+  {
+    footPos = [
+      {
+        rotation = 0;
+        translation = {x = 0.0; y = 0;};
+      },
+      {
+        rotation = 0;
+        translation = {x = 0.0; y = 0;};
+      }
+    ];
+    duration = 250;
+    onFloor = [false, true];
+    kick = true;
+    swingFootTraj = [
+      {x = 0.0; y = 0.0; z = 0.0;},
+      {x = 0.0; y = 0.0; z = 0.025;},
+      {x = 0.02; y = 0.0; z = 0.025;},
+      {x = 0.0; y = 0.0; z = 0.025;},
+      {x = 0.0; y = 0.0; z = 0.0;}
+    ];
+  }
+];

@@ -38,10 +38,10 @@ class PropertyTreeCreator : public Out
      * @param path The path to this node including its name.
      * @param name The name of this node.
      */
-    Entry(int type, const char* (*enumToString)(int), QtVariantProperty* parent, const std::string& path, const char* name) :
-      type(type), enumToString(enumToString), parent(parent), property(0)
+    Entry(int type, const char* (*enumToString)(int), QtVariantProperty* parent, const std::string& path, const char* name)
+        : type(type), enumToString(enumToString), parent(parent), property(0)
     {
-      if(type >= 0)
+      if (type >= 0)
       {
         char buf[20];
         sprintf(buf, "%d", type);
@@ -58,7 +58,7 @@ class PropertyTreeCreator : public Out
 
 protected:
   /** Helper to create a node. */
-  template<class T> void out(const T& value)
+  template <class T> void out(const T& value)
   {
     Entry& e = stack.back();
     ASSERT(!e.property);
@@ -66,18 +66,19 @@ protected:
     e.property->setValue(value);
   }
 
-  virtual void outChar(char value) {out((int) value);}
-  virtual void outSChar(signed char value) {out((int) value);}
+  virtual void outChar(char value) { out((int)value); }
+  virtual void outSChar(signed char value) { out((int)value); }
   virtual void outUChar(unsigned char value);
-  virtual void outShort(short value) {out(value);}
-  virtual void outUShort(unsigned short value) {out(value);}
-  virtual void outInt(int value) {out(value);}
+  virtual void outShort(short value) { out(value); }
+  virtual void outUShort(unsigned short value) { out(value); }
+  virtual void outInt(int value) { out(value); }
   virtual void outUInt(unsigned int value);
-  virtual void outFloat(float value) {out(value);}
-  virtual void outDouble(double value) {out(value);}
-  virtual void outUInt64(uint64_t value) { out((unsigned int) value); }
-  virtual void outBool(bool value) {out(value);}
-  virtual void outString(const char* value) {out(QString(value));}
+  virtual void outFloat(float value) { out(value); }
+  virtual void outDouble(double value) { out(value); }
+  virtual void outInt64(int64_t value) { out(static_cast<long long>(value)); }
+  virtual void outUInt64(uint64_t value) { out(static_cast<unsigned long long>(value)); }
+  virtual void outBool(bool value) { out(value); }
+  virtual void outString(const char* value) { out(QString(value)); }
   virtual void outAngle(const Angle& value);
   virtual void outEndL() {}
 
@@ -105,5 +106,5 @@ public:
   virtual void deselect();
 
   /** Writing raw data is not supported. Do not call. */
-  virtual void write(const void* p, size_t size) {ASSERT(false);}
+  virtual void write(const void* p, size_t size) { ASSERT(false); }
 };

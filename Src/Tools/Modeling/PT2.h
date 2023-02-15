@@ -14,7 +14,6 @@
  * Called "PT2" in German (see http://de.wikipedia.org/wiki/PT2-Glied)
  */
 STREAMABLE(PT2,
-{
   PT2() = default;
 
   /**
@@ -68,5 +67,5 @@ STREAMABLE(PT2,
   (float)(0.f) T,
   (float)(0.f) D,
   (float)(0.f) K,
-  (float)(0.f) V,
-});
+  (float)(0.f) V
+);

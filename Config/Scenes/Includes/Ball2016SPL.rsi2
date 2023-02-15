@@ -1,10 +1,10 @@
 <Simulation>
 
-  <Surface name="ballWhite" diffuseColor="rgb(100%, 100%, 100%)" specularColor="rgb(100%, 100%, 100%)" shininess="30" diffuseTexture="../Textures/ball2016.png"/>
+  <Surface name="ballWhite" diffuseColor="rgb(100%, 100%, 100%)" specularColor="rgb(60%, 60%, 60%)" shininess="30" diffuseTexture="../Textures/ball2016.png"/>
   
   <Material name="softFoam">
-    <Friction material="fieldCarpet" value="0.02"/>
-    <RollingFriction material="fieldCarpet" value="0.15"/>
+    <Friction material="fieldCarpet" value="0.35"/>
+    <RollingFriction material="fieldCarpet" value="0.30"/>
   </Material>
   
   <Body name="ball">
@@ -14,7 +14,7 @@
     <SphereGeometry radius="0.05">
       <Material ref="softFoam"/>
     </SphereGeometry>
-    <SphereMass value="0.01" radius="0.05"/>
+    <SphereMass value="0.045" radius="0.005"/>
   </Body>
 
 </Simulation>

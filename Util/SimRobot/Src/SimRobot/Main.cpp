@@ -5,30 +5,28 @@
 */
 
 #include <QApplication>
-#include <QTextCodec>
+#include <QSurfaceFormat>
+#include <QOpenGLWidget>
 
 #ifdef WINDOWS
-#include "qtdotnetstyle.h"
 #include <crtdbg.h>
 #endif
 #include "MainWindow.h"
 
-#ifdef OSX
+#ifdef MACOS
 #include <QFileOpenEvent>
-#include "MacFullscreen.h"
 
 MainWindow* mainWindow;
 
 class SimRobotApp : public QApplication
 {
 public:
-  SimRobotApp(int &argc, char **argv)
-  : QApplication(argc, argv) {}
+  SimRobotApp(int& argc, char** argv) : QApplication(argc, argv) {}
 
 protected:
-  bool event(QEvent *ev)
+  bool event(QEvent* ev)
   {
-    if(ev->type() == QEvent::FileOpen)
+    if (ev->type() == QEvent::FileOpen)
     {
       mainWindow->openFile(static_cast<QFileOpenEvent*>(ev)->file());
       return true;
@@ -50,30 +48,60 @@ const char* _fromQString(const QString& string)
 
 #endif
 
-int main(int argc, char *argv[])
-{
-  QTextCodec::setCodecForTr(QTextCodec::codecForName("UTF-8"));
-  QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
 #ifdef WINDOWS
-  QApplication::setStyle(new QtDotNetStyle(QtDotNetStyle::Standard));
+// prefer dedicated graphic card
+// see: https://stackoverflow.com/a/39047129
+extern "C"
+{
+  __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+  __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
+
+int main(int argc, char* argv[])
+{
+#ifdef WINDOWS
   _CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF | _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG));
   //_CrtSetBreakAlloc(91417); // Use to track down memory leaks
 #endif
+  QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+  QSurfaceFormat surfaceFormat;
+  surfaceFormat.setSwapBehavior(QSurfaceFormat::SingleBuffer);
+  surfaceFormat.setStencilBufferSize(0);
+  surfaceFormat.setSamples(8);
+
+  /* debugging:
+  surfaceFormat.setProfile(QSurfaceFormat::CoreProfile);
+  surfaceFormat.setOption(QSurfaceFormat::DebugContext);
+  */
+  QSurfaceFormat::setDefaultFormat(surfaceFormat);
+
   QApplication app(argc, argv);
+
+  {
+    // Qt6: Force linking with Qt6OpenGLWidget.
+    // Instantiate QOpenGLWidget here to force excecution of qt_registerDefaultPlatformBackingStoreOpenGLSupport().
+    // Otherwise, the MainWindow is created without OpenGL support and loading the Qt6OpenGLWidgets library
+    // afterwards when loading SimRobotCore2 does not enable OpenGL based window composition for the MainWindow,
+    // which is required if we want to attach the 3D Robocup widget to it. "no opengl support set"
+    QOpenGLWidget widget;
+  }
+
   MainWindow mainWindow(argc, argv);
-#ifdef OSX
+#ifdef WINDOWS
+  app.setStyle("fusion");
+#elif MACOS
   ::mainWindow = &mainWindow;
   app.setStyle("macintosh");
-  MacFullscreen::enable(&mainWindow);
 #endif
   app.setApplicationName("SimRobot");
 
   // open file from commandline
-  for(int i = 1; i < argc; i++)
-    if(*argv[i] != '-')
+  for (int i = 1; i < argc; i++)
+    if (*argv[i] != '-')
     {
-#ifdef OSX
-      if(strcmp(argv[i], "YES"))
+#ifdef MACOS
+      if (strcmp(argv[i], "YES"))
       {
         mainWindow.setWindowOpacity(0);
         mainWindow.show();
@@ -85,24 +113,7 @@ int main(int argc, char *argv[])
 #endif
       break;
     }
-
   mainWindow.show();
 
-  int result = 0;
-#ifdef FIX_WIN32_WINDOWS7_BLOCKING_BUG
-  if(QSysInfo::windowsVersion() <= QSysInfo::WV_WINDOWS7)
-    while(mainWindow.isVisible())
-    {
-      app.sendPostedEvents();
-      app.processEvents(mainWindow.timerId ? QEventLoop::AllEvents : QEventLoop::WaitForMoreEvents);
-      if(mainWindow.timerId)
-        mainWindow.timerEvent(0);
-    }
-  else
-#endif
-    result = app.exec();
-#ifdef LINUX
-  exit(result); // fixes a mysterious segfault
-#endif
-  return result;
+  return app.exec();
 }

@@ -13,10 +13,12 @@ robot all
 # Select modules for simulator
 mr GroundTruthWorldState CognitionLogDataProvider
 mr BallModel OracledWorldModelProvider
+mr MultipleBallModel OracledWorldModelProvider
 mr RobotPose OracledWorldModelProvider
 mr RobotMap OracledWorldModelProvider
 mr GroundTruthRobotPose OracledWorldModelProvider
 mr GroundTruthBallModel OracledWorldModelProvider
+mr GroundTruthMultipleBallModel OracledWorldModelProvider
 mr FrameInfo CognitionLogDataProvider
 mr JointSensorData MotionLogDataProvider
 mr InertialSensorData MotionLogDataProvider
@@ -45,14 +47,20 @@ mr CLIPFieldLinesPercept default
 mr PenaltyCrossPercept default
 mr SideConfidence default
 mr BallHypothesesYolo default
-mr BallHypothesesYoloUpper default
+mr PenaltyCrossHypothesesYolo default
+mr BallPercept default
+mr MultipleBallPercept default
+mr ProcessedBallPatches default
 mr BallPercept OracledPerceptsProvider
+mr MultipleBallPercept OracledPerceptsProvider
 mr CLIPPointsPercept off
 mr ObstacleBasePoints off
 mr BallSpots off
-mr ColorTable off
 mr BodyContour off
 mr BodyContourUpper off
+mr YoloInput off
+mr YoloInputUpper off
+mr PNGImageDummy default
 
 call Includes/DebugResponses
 call Includes/GameStates

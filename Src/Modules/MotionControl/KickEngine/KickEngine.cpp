@@ -9,10 +9,10 @@
 #include "Platform/File.h"
 #include "Representations/MotionControl/KickRequest.h"
 
-#include <dirent.h>
 #include <cstdio>
 #include <cstring>
 #include <cerrno>
+#include <filesystem>
 
 MAKE_MODULE(KickEngine, motionControl)
 
@@ -20,35 +20,21 @@ KickEngine::KickEngine()
 {
   params.reserve(10);
 
-  char dirname[260];
-
-  sprintf(dirname, "%s/Config/KickEngine/", File::getBHDir());
-  DIR* dir = opendir(dirname);
-  ASSERT(dir);
-  struct dirent* file = readdir(dir);
-
-  while(file != nullptr)
+  const std::string dirname = std::string(File::getBHDir()) + "/Config/KickEngine/";
+  for (const auto& file : std::filesystem::directory_iterator(dirname))
   {
-    char name[260] = "";
-    sprintf(name, "KickEngine/%s", file->d_name);
-
-    if(strstr(name, ".kmc"))
+    const std::string filename = file.path().filename().string();
+    if (file.is_regular_file() && filename.substr(filename.size() - 4) == ".kmc")
     {
-      InMapFile stream(name);
+      InMapFile stream(file.path().string());
       ASSERT(stream.exists());
 
       KickEngineParameters parameters;
       stream >> parameters;
 
-      sprintf(name, "%s", file->d_name);
-      for(int i = 0; i < 260; i++)
-      {
-        if(name[i] == '.')
-          name[i] = 0;
-      }
-      strcpy(parameters.name, name);
+      strcpy(parameters.name, filename.substr(0, filename.size() - 4).c_str());
 
-      if(KickRequest::getKickMotionFromName(parameters.name) < KickRequest::none)
+      if (KickRequest::getKickMotionFromName(parameters.name) < KickRequest::none)
         params.push_back(parameters);
       else
       {
@@ -56,25 +42,23 @@ KickEngine::KickEngine()
         fprintf(stderr, "Warning: KickRequest is missing the id for %s \n", parameters.name);
       }
     }
-    file = readdir(dir);
   }
-  closedir(dir);
 
-  for(int i = 0; i < KickRequest::numOfKickMotionIDs - 2; ++i)
+  for (int i = 0; i < KickRequest::numOfKickMotionIDs - 2; ++i)
   {
     int id = -1;
-    for(unsigned int p = 0; p < params.size(); ++p)
+    for (unsigned int p = 0; p < params.size(); ++p)
     {
-      if(KickRequest::getKickMotionFromName(&params[p].name[0]) == i)
+      if (KickRequest::getKickMotionFromName(&params[p].name[0]) == i)
       {
         id = i;
         break;
       }
     }
-    if(id == -1)
+    if (id == -1)
     {
-      OUTPUT_TEXT("Warning: The kick motion file for id " << KickRequest::getName((KickRequest::KickMotionID) i) << " is missing.");
-      fprintf(stderr, "Warning: The kick motion file for id %s is missing. \n", KickRequest::getName((KickRequest::KickMotionID) i));
+      OUTPUT_TEXT("Warning: The kick motion file for id " << KickRequest::getName((KickRequest::KickMotionID)i) << " is missing.");
+      fprintf(stderr, "Warning: The kick motion file for id %s is missing. \n", KickRequest::getName((KickRequest::KickMotionID)i));
     }
   }
 
@@ -86,22 +70,22 @@ KickEngine::KickEngine()
 
 void KickEngine::update(KickEngineOutput& kickEngineOutput)
 {
-  if(theMotionSelection.ratios[MotionRequest::kick] > 0.f)
+  if (theMotionSelection.ratios[MotionRequest::kick] > 0.f)
   {
     data.setCycleTime(theFrameInfo.cycleTime);
 
-    const JointRequest& lastMotionOutput = (theMotionSelection.ratios[MotionRequest::specialAction] > 0) ? 
-      (JointRequest&)theSpecialActionsOutput : (JointRequest&)theWalkingEngineOutput;
-    
-    if (theMotionSelection.ratios[MotionRequest::kick] < 1.f && !compensated) compensate = true;
+    const JointRequest& lastMotionOutput = (theMotionSelection.ratios[MotionRequest::specialAction] > 0) ? (JointRequest&)theSpecialActionsOutput : (JointRequest&)theWalkingEngineOutput;
+
+    if (theMotionSelection.ratios[MotionRequest::kick] < 1.f && !compensated)
+      compensate = true;
 
     data.setRobotModel(theRobotModel);
 
-    if(data.sitOutTransitionDisturbance(compensate, compensated, theInertialData, kickEngineOutput, lastMotionOutput, theFrameInfo))
+    if (data.sitOutTransitionDisturbance(compensate, compensated, theJoinedIMUData.imuData[anglesource], kickEngineOutput, lastMotionOutput, theFrameInfo))
     {
-      if(data.activateNewMotion(theMotionRequest.kickRequest, kickEngineOutput.isLeavingPossible) && theMotionRequest.motion == MotionRequest::kick)
+      if (data.activateNewMotion(theMotionRequest.kickRequest, kickEngineOutput.isLeavingPossible) && theMotionRequest.motion == MotionRequest::kick)
       {
-        data.initData(theFrameInfo, theMotionRequest, params, theJointAngles, theTorsoMatrix);
+        data.initData(theFrameInfo, theMotionRequest, params, theJointSensorData, theTorsoMatrix);
         data.setCurrentKickRequest(theMotionRequest);
         data.setExecutedKickRequest(kickEngineOutput.executedKickRequest);
 
@@ -110,13 +94,13 @@ void KickEngine::update(KickEngineOutput& kickEngineOutput)
 
         kickEngineOutput.odometryOffset = Pose2f();
 
-        for(int i = Joints::lShoulderPitch; i < Joints::numOfJoints; ++i)
+        for (int i = Joints::lShoulderPitch; i < Joints::numOfJoints; ++i)
           kickEngineOutput.stiffnessData.stiffnesses[i] = 100;
 
         kickEngineOutput.isStable = true;
-      }//this gotta go to config file and be more common
+      } //this gotta go to config file and be more common
 
-      if(data.checkPhaseTime(theFrameInfo, theJointAngles, theTorsoMatrix))
+      if (data.checkPhaseTime(theFrameInfo, theJointSensorData, theTorsoMatrix))
       {
         data.calcPhaseState();
         data.calcPositions();
@@ -132,13 +116,13 @@ void KickEngine::update(KickEngineOutput& kickEngineOutput)
       //  if(data.isMotionAlmostOver()) //last three phases are unstable
       //    kickEngineOutput.isStable = false;
 
-      if(data.calcJoints(kickEngineOutput, theRobotDimensions, theHeadJointRequest))
+      if (data.calcJoints(kickEngineOutput, theRobotDimensions, theHeadJointRequest))
       {
-        data.balanceCOM(kickEngineOutput, theRobotDimensions, theMassCalibration,theInertialSensorData);
+        data.balanceCOM(kickEngineOutput, theRobotDimensions, theMassCalibration, theJoinedIMUData.imuData[anglesource]);
         data.calcJoints(kickEngineOutput, theRobotDimensions, theHeadJointRequest);
         data.mirrorIfNecessary(kickEngineOutput);
       }
-      data.addGyroBalance(kickEngineOutput, theJointCalibration, theInertialData, theMotionSelection.ratios[MotionRequest::kick]);
+      data.addGyroBalance(kickEngineOutput, theJointCalibration, theJoinedIMUData.imuData[anglesource], theMotionSelection.ratios[MotionRequest::kick]);
     }
   }
   else

@@ -17,16 +17,16 @@ const QIcon* UserInput::InputPort::getIcon() const
 SimRobot::Widget* UserInput::InputPort::createWidget()
 {
   CoreModule::module->application->openObject(CoreModule::module->actuatorsObject);
-  if(ActuatorsWidget::actuatorsWidget)
+  if (ActuatorsWidget::actuatorsWidget)
     ActuatorsWidget::actuatorsWidget->openActuator(fullName);
-  return 0;
+  return nullptr;
 }
 
 void UserInput::InputPort::setValue(float value)
 {
-  if(value < min)
+  if (value < min)
     data.floatValue = min;
-  else if(value > max)
+  else if (value > max)
     data.floatValue = max;
   else
     data.floatValue = value;

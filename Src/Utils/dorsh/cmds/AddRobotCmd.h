@@ -14,8 +14,10 @@ class AddRobotCmd : public CommandAdapter
   virtual std::vector<std::string> complete(const std::string& cmdLine) const;
 
   static QString getCommand();
+
 public:
   static AddRobotCmd theAddRobotCmd;
+
 private:
   bool validateAddress(std::string ip);
 };

@@ -34,7 +34,8 @@ public:
 #ifdef _MSC_VER
     __debugbreak();
 #else
-    __asm {int 3};
+    __asm {int 3}
+    ;
 #endif
   };
 #endif
@@ -77,6 +78,11 @@ public:
 * @return Whether the initialization was successful
 */
 #define BH_TRACE_INIT(name) ((void)0)
+
+/**
+* Terminates log message ring buffers associated to the current thread
+*/
+#define BH_TRACE_TERM ((void)0)
 
 /**
 * Adds a message to the log message ring buffer

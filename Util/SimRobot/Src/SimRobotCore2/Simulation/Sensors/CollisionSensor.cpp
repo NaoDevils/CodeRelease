@@ -18,25 +18,25 @@ CollisionSensor::CollisionSensor() : hasGeometries(false)
 
 void CollisionSensor::createPhysics()
 {
-  OpenGLTools::convertTransformation(pose, transformation);
+  OpenGLTools::convertTransformation(rotation, translation, transformation);
 
   // add geometries
-  for(std::list< ::PhysicalObject*>::const_iterator iter = physicalDrawings.begin(), end = physicalDrawings.end(); iter != end; ++iter)
+  for (std::list<::PhysicalObject*>::const_iterator iter = physicalDrawings.begin(), end = physicalDrawings.end(); iter != end; ++iter)
   {
     Geometry* geometry = dynamic_cast<Geometry*>(*iter);
-    if(geometry)
+    if (geometry)
     {
       hasGeometries = true;
-      Pose3<> geomOffset(-parentBody->centerOfMass);
-      if(translation)
+      Pose3f geomOffset(-parentBody->centerOfMass);
+      if (translation)
         geomOffset.translate(*translation);
-      if(rotation)
+      if (rotation)
         geomOffset.rotate(*rotation);
       parentBody->addGeometry(geomOffset, *geometry);
-      for(++iter; iter != end; ++iter) // avoid constructing geomOffset again
+      for (++iter; iter != end; ++iter) // avoid constructing geomOffset again
       {
         geometry = dynamic_cast<Geometry*>(*iter);
-        if(geometry)
+        if (geometry)
           parentBody->addGeometry(geomOffset, *geometry);
       }
       break;
@@ -44,20 +44,20 @@ void CollisionSensor::createPhysics()
   }
 
   // register collision callback function
-  if(hasGeometries)
+  if (hasGeometries)
     registerCollisionCallback(physicalDrawings, true);
   else // in case the sensor has no geometries use the geometries of the body to which the sensor is attached
     registerCollisionCallback(parentBody->physicalDrawings, false);
 }
 
-void CollisionSensor::registerCollisionCallback(std::list< ::PhysicalObject*>& geometries, bool setNotCollidable)
+void CollisionSensor::registerCollisionCallback(std::list<::PhysicalObject*>& geometries, bool setNotCollidable)
 {
-  for(std::list< ::PhysicalObject*>::const_iterator i = geometries.begin(), end = geometries.end(); i != end; ++i)
+  for (std::list<::PhysicalObject*>::const_iterator i = geometries.begin(), end = geometries.end(); i != end; ++i)
   {
     Geometry* geometry = dynamic_cast<Geometry*>(*i);
-    if(geometry && !geometry->immaterial)
+    if (geometry && !geometry->immaterial)
     {
-      if(setNotCollidable)
+      if (setNotCollidable)
         geometry->immaterial = true;
       geometry->registerCollisionCallback(sensor);
       registerCollisionCallback(geometry->physicalDrawings, setNotCollidable);
@@ -85,15 +85,15 @@ void CollisionSensor::CollisionSensorPort::collided(SimRobotCore2::Geometry& geo
 
 void CollisionSensor::drawPhysics(unsigned int flags) const
 {
-  if(flags & SimRobotCore2::Renderer::showSensors && !hasGeometries)
-    for(std::list< ::PhysicalObject*>::const_iterator iter = parentBody->physicalDrawings.begin(), end = parentBody->physicalDrawings.end(); iter != end; ++iter)
+  if (flags & SimRobotCore2::Renderer::showSensors && !hasGeometries)
+    for (std::list<::PhysicalObject*>::const_iterator iter = parentBody->physicalDrawings.begin(), end = parentBody->physicalDrawings.end(); iter != end; ++iter)
       (*iter)->drawPhysics(SimRobotCore2::Renderer::showPhysics);
 
   glPushMatrix();
   glMultMatrixf(transformation);
 
-  if(flags & SimRobotCore2::Renderer::showSensors && hasGeometries)
-    for(std::list< ::PhysicalObject*>::const_iterator iter = physicalDrawings.begin(), end = physicalDrawings.end(); iter != end; ++iter)
+  if (flags & SimRobotCore2::Renderer::showSensors && hasGeometries)
+    for (std::list<::PhysicalObject*>::const_iterator iter = physicalDrawings.begin(), end = physicalDrawings.end(); iter != end; ++iter)
       (*iter)->drawPhysics(SimRobotCore2::Renderer::showPhysics);
 
   Sensor::drawPhysics(flags);

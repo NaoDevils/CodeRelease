@@ -1,0 +1,96 @@
+//copy from stand
+keyFrameID = cheering2;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  { // frame1: stand
+    headAngles = [0deg,0deg];
+    //shoulderPitch,shoulderRoll,ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    //hipYawPitch, hipRoll, hipPitch, kneePitch, anklePitch, ankleRoll
+    legsAngles = [-10deg,0, 0, 0, 0,0, -10deg,0, 0, 0,0,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 600;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = true;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { //frame2: hands to the right - right leg straight 
+    //HeandYaw, HeadPitch
+    headAngles = [-30deg,0];
+    //shoulderPitch,shoulderRoll,ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [18.8deg,-18.5deg,-13.6deg,-75.4deg,-90deg,0deg, -67.9deg,-62.7deg,-39.3deg,1.1deg,90deg,0deg];
+    //hipYawPitch, hipRoll, hipPitch, kneePitch, anklePitch, ankleRoll
+    legsAngles = [-25.4deg,16.2deg,-14.4deg,51.9deg,-28.0deg,-4.9deg, -25.4deg,5.4deg,23.9deg,-6.9deg,0.1deg,5.3deg];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 800;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = true;
+    hipYawErrorCompensation = 0;
+    waitForStable = true;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  { //frame3: wait in the position
+    //HeandYaw, HeadPitch
+    headAngles = [-30deg,0];
+    //shoulderPitch,shoulderRoll,ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [18.8deg,-18.5deg,-13.6deg,-75.4deg,-90deg,0deg, -67.9deg,-62.7deg,-39.3deg,1.1deg,90deg,0deg];
+    //hipYawPitch, hipRoll, hipPitch, kneePitch, anklePitch, ankleRoll
+    legsAngles = [-25.4deg,16.2deg,-14.4deg,51.9deg,-28.0deg,-4.9deg, -25.4deg,5.4deg,23.9deg,-6.9deg,0.1deg,5.3deg];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 1500;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = true;
+    hipYawErrorCompensation = 0;
+    waitForStable = true;
+    waitForTorsoTime = 0;
+    leavingPossible = false;
+  },
+  {//frame4
+    headAngles = [20000,20000];
+    //armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    armsAngles = [18.8deg,-18.5deg,-13.6deg,-75.4deg,-90deg,0deg, -67.9deg,-62.7deg,-39.3deg,1.1deg,90deg,0deg];
+    //legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    legsAngles = [0.0deg,0.1deg,-21.1deg,49.0deg,-27.7deg,-0.1deg, 0.0deg,-0.3deg,-21.1deg,49.0deg,-27.6deg,0.0deg];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 500;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = true;
+    waitForTorsoTime = 0;
+    leavingPossible = true;
+  },
+  {//end
+    headAngles = [20000,20000];
+    armsAngles = [90deg,11deg,0,90deg,-90deg,0, 90deg,-11deg,0,-90deg,90deg,0];
+    //legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    legsAngles = [0.0deg,0.1deg,-21.1deg,49.0deg,-27.7deg,-0.1deg, 0.0deg,-0.3deg,-21.1deg,49.0deg,-27.6deg,0.0deg];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 500;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    useAngleAtKeyFrameTarget = false;
+    stabilize = false;
+    hipYawErrorCompensation = 0;
+    waitForStable = true;
+    waitForTorsoTime = 0;
+    leavingPossible = true;
+  }
+];

@@ -19,9 +19,9 @@ extern "C" DLL_EXPORT SimRobot::Module* createModule(SimRobot::Application& simR
 SimRobot::Application* CoreModule::application;
 CoreModule* CoreModule::module;
 
-CoreModule::CoreModule(SimRobot::Application& application) :
-  sceneIcon(":/Icons/bricks.png"), objectIcon(":/Icons/brick.png"), sensorIcon(":/Icons/transmit_go.png"), actuatorIcon(":/Icons/arrow_rotate_clockwise.png"),
-  hingeIcon(":/Icons/link.png"), sliderIcon(":/Icons/slider.png"), appearanceIcon(":/Icons/note.png")
+CoreModule::CoreModule(SimRobot::Application& application)
+    : sceneIcon(":/Icons/bricks.png"), objectIcon(":/Icons/brick.png"), sensorIcon(":/Icons/transmit_go.png"), actuatorIcon(":/Icons/arrow_rotate_clockwise.png"),
+      hingeIcon(":/Icons/link.png"), sliderIcon(":/Icons/slider.png"), appearanceIcon(":/Icons/note.png")
 {
   CoreModule::application = &application;
   CoreModule::module = this;
@@ -37,12 +37,12 @@ bool CoreModule::compile()
 
   // load simulation
   std::list<std::string> errors;
-  if(!loadFile(filePath.toUtf8().constData(), errors))
+  if (!loadFile(filePath.toUtf8().constData(), errors))
   {
     QString errorMessage;
-    for(std::list<std::string>::const_iterator it = errors.begin(), end = errors.end(); it != end; ++it)
+    for (std::list<std::string>::const_iterator it = errors.begin(), end = errors.end(); it != end; ++it)
     {
-      if(!errorMessage.isEmpty())
+      if (!errorMessage.isEmpty())
         errorMessage += "\n";
       errorMessage += (*it).c_str();
     }
@@ -59,13 +59,14 @@ bool CoreModule::compile()
   {
   public:
     StepsLabel() : lastStep(-1) {}
+
   private:
     unsigned int lastStep;
-    virtual QWidget* getWidget() {return this;}
-    virtual void update()
+    QWidget* getWidget() override { return this; }
+    void update() override
     {
       unsigned int step = Simulation::simulation->simulationStep;
-      if(step != lastStep)
+      if (step != lastStep)
       {
         lastStep = step;
         char buf[33];
@@ -79,13 +80,14 @@ bool CoreModule::compile()
   {
   public:
     StepsPerSecondLabel() : lastFps(-1) {}
+
   private:
     int lastFps;
-    virtual QWidget* getWidget() {return this;}
-    virtual void update()
+    QWidget* getWidget() override { return this; }
+    void update() override
     {
       int fps = Simulation::simulation->currentFrameRate;
-      if(fps != lastFps)
+      if (fps != lastFps)
       {
         lastFps = fps;
         char buf[33];
@@ -99,13 +101,14 @@ bool CoreModule::compile()
   {
   public:
     CollisionsLabel() : lastCols(-1) {}
+
   private:
     int lastCols;
-    virtual QWidget* getWidget() {return this;}
-    virtual void update()
+    QWidget* getWidget() override { return this; }
+    void update() override
     {
       int cols = Simulation::simulation->collisions;
-      if(cols != lastCols)
+      if (cols != lastCols)
       {
         lastCols = cols;
         char buf[33];
@@ -115,45 +118,22 @@ bool CoreModule::compile()
     }
   };
 
-  class RendererLabel : public QLabel, public SimRobot::StatusLabel
-  {
-  public:
-    RendererLabel() : lastRenderingMethod(-1) {}
-  private:
-    int lastRenderingMethod;
-    virtual QWidget* getWidget() {return this;}
-    virtual void update()
-    {
-      int renderingMethod = Simulation::simulation->renderer.getRenderingMethod();
-      if(renderingMethod != lastRenderingMethod)
-      {
-        lastRenderingMethod = renderingMethod;
-        static const char* renderingMethods[] = {
-          "unkn renderer", "pbuf renderer", "fbuf renderer", "hwin renderer"
-        };
-        setText(renderingMethods[(renderingMethod < 0 || renderingMethod >= int(sizeof(renderingMethods)/sizeof(*renderingMethods))) ? 0 : renderingMethod]);
-      }
-    }
-  };
-
   application->addStatusLabel(*this, new StepsLabel());
   application->addStatusLabel(*this, new StepsPerSecondLabel());
   application->addStatusLabel(*this, new CollisionsLabel());
-  application->addStatusLabel(*this, new RendererLabel());
 
   // suggest further modules
   application->registerModule(*this, "File Editor", "SimRobotEditor", SimRobot::Flag::ignoreReset);
-  application->registerModule(*this, "Help Browser", "SimRobotHelp", SimRobot::Flag::ignoreReset);
 
   // load controller
-  if(simulation->scene->controller != "")
+  if (simulation->scene->controller != "")
     application->loadModule(simulation->scene->controller.c_str());
   return true;
 }
 
 void CoreModule::update()
 {
-  if(ActuatorsWidget::actuatorsWidget)
+  if (ActuatorsWidget::actuatorsWidget)
     ActuatorsWidget::actuatorsWidget->adoptActuators();
   doSimulationStep();
 }

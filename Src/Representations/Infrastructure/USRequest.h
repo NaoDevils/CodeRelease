@@ -14,8 +14,7 @@
  * A struct that represents a request for controlling
  * which sonar is fired next.
  */
-STREAMABLE(USRequest,
-{,
+STREAMABLE(USRequest,,
   (int)(-1) sendMode, /**< The firing mode for sending. -1 -> don't send. */
-  (int)(-1) receiveMode, /**< The firing mode assumed for received readings. -1 -> ignore. */
-});
+  (int)(-1) receiveMode /**< The firing mode assumed for received readings. -1 -> ignore. */
+);

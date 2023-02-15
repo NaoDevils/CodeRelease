@@ -11,9 +11,8 @@
 #include "Tools/Math/Pose3f.h"
 #include "Tools/Math/BHMath.h"
 
-bool KickViewMath::intersectRayAndBox(const Vector3f& rayPosition, const Vector3f& ray,
-                                      const Vector3f& boxPosition, const RotationMatrix& boxRotation,
-                                      float length, float width, float height, Vector3f& intersection)
+bool KickViewMath::intersectRayAndBox(
+    const Vector3f& rayPosition, const Vector3f& ray, const Vector3f& boxPosition, const RotationMatrix& boxRotation, float length, float width, float height, Vector3f& intersection)
 {
   // Considering an unrotated box at the origin, the ray has to be transformed:
   Vector3f rayPos, v;
@@ -25,44 +24,44 @@ bool KickViewMath::intersectRayAndBox(const Vector3f& rayPosition, const Vector3
   Vector3f intersectionPos;
   Vector3f foundPoints[3];
   int numberOfPoints(0);
-  if(rayPos.x() > 0)
+  if (rayPos.x() > 0)
   {
-    if(intersectRayWithAxisAlignedPlane(rayPos, v, l_2, 0, w_2, h_2, intersectionPos))
+    if (intersectRayWithAxisAlignedPlane(rayPos, v, l_2, 0, w_2, h_2, intersectionPos))
       foundPoints[numberOfPoints++] = intersectionPos;
   }
   else
   {
-    if(intersectRayWithAxisAlignedPlane(rayPos, v, -l_2, 0, w_2, h_2, intersectionPos))
+    if (intersectRayWithAxisAlignedPlane(rayPos, v, -l_2, 0, w_2, h_2, intersectionPos))
       foundPoints[numberOfPoints++] = intersectionPos;
   }
-  if(rayPos.y() > 0)
+  if (rayPos.y() > 0)
   {
-    if(intersectRayWithAxisAlignedPlane(rayPos, v, w_2, 1, h_2, l_2, intersectionPos))
+    if (intersectRayWithAxisAlignedPlane(rayPos, v, w_2, 1, h_2, l_2, intersectionPos))
       foundPoints[numberOfPoints++] = intersectionPos;
   }
   else
   {
-    if(intersectRayWithAxisAlignedPlane(rayPos, v, -w_2, 1, h_2, l_2, intersectionPos))
+    if (intersectRayWithAxisAlignedPlane(rayPos, v, -w_2, 1, h_2, l_2, intersectionPos))
       foundPoints[numberOfPoints++] = intersectionPos;
   }
-  if(rayPos.z() > 0)
+  if (rayPos.z() > 0)
   {
-    if(intersectRayWithAxisAlignedPlane(rayPos, v, h_2, 2, l_2, w_2, intersectionPos))
+    if (intersectRayWithAxisAlignedPlane(rayPos, v, h_2, 2, l_2, w_2, intersectionPos))
       foundPoints[numberOfPoints++] = intersectionPos;
   }
   else
   {
-    if(intersectRayWithAxisAlignedPlane(rayPos, v, -h_2, 2, l_2, w_2, intersectionPos))
+    if (intersectRayWithAxisAlignedPlane(rayPos, v, -h_2, 2, l_2, w_2, intersectionPos))
       foundPoints[numberOfPoints++] = intersectionPos;
   }
-  if(numberOfPoints)
+  if (numberOfPoints)
   {
     int nearestPoint(0);
     float shortestDist((rayPos - foundPoints[0]).squaredNorm());
-    for(int i = 1; i < numberOfPoints; i++)
+    for (int i = 1; i < numberOfPoints; i++)
     {
       float currentDist((rayPos - foundPoints[i]).squaredNorm());
-      if(currentDist < shortestDist)
+      if (currentDist < shortestDist)
       {
         shortestDist = currentDist;
         nearestPoint = i;
@@ -79,18 +78,16 @@ bool KickViewMath::intersectRayAndBox(const Vector3f& rayPosition, const Vector3
   }
 }
 
-bool KickViewMath::intersectRayAndPlane(const Vector3f& point, const Vector3f& v,
-                                        const Vector3f& plane, const Vector3f& n,
-                                        Vector3f& intersection)
+bool KickViewMath::intersectRayAndPlane(const Vector3f& point, const Vector3f& v, const Vector3f& plane, const Vector3f& n, Vector3f& intersection)
 {
   Vector3f p(plane - point);
   float denominator(n.dot(v));
-  if(denominator == 0.0)
+  if (denominator == 0.0)
   {
     return false;
   }
   float r(n.dot(p) / denominator);
-  if(r < 0.0)
+  if (r < 0.0)
   {
     return false;
   }
@@ -100,9 +97,8 @@ bool KickViewMath::intersectRayAndPlane(const Vector3f& point, const Vector3f& v
   return true;
 }
 
-void KickViewMath::transformRayToObjectAtOrigin(const Vector3f& rayPosition, const Vector3f& ray,
-    const Vector3f& objPosition, const RotationMatrix& objRotation,
-    Vector3f& transformedPosition, Vector3f& transformedRay)
+void KickViewMath::transformRayToObjectAtOrigin(
+    const Vector3f& rayPosition, const Vector3f& ray, const Vector3f& objPosition, const RotationMatrix& objRotation, Vector3f& transformedPosition, Vector3f& transformedRay)
 {
   transformedPosition = (rayPosition - objPosition);
   RotationMatrix inverseObjRotation(objRotation);
@@ -112,22 +108,19 @@ void KickViewMath::transformRayToObjectAtOrigin(const Vector3f& rayPosition, con
   transformedRay = inverseObjRotation * transformedRay;
 }
 
-bool KickViewMath::intersectRayWithAxisAlignedPlane(const Vector3f& p, const Vector3f& v,
-    float distance, int thirdAxis,
-    float maxAbsAxis1, float maxAbsAxis2,
-    Vector3f& intersectionPos)
+bool KickViewMath::intersectRayWithAxisAlignedPlane(const Vector3f& p, const Vector3f& v, float distance, int thirdAxis, float maxAbsAxis1, float maxAbsAxis2, Vector3f& intersectionPos)
 {
   const float* vv(&v.x());
   const float* pv(&p.x());
   float* intersectionPosv(&intersectionPos.x());
-  if(vv[thirdAxis] != 0.0)
+  if (vv[thirdAxis] != 0.0)
   {
     float s((distance - pv[thirdAxis]) / vv[thirdAxis]);
     int i(thirdAxis);
     intersectionPosv[i++] = distance;
     i %= 3;
     intersectionPosv[i] = s * vv[i] + pv[i];
-    if(std::abs(intersectionPosv[i]) > maxAbsAxis1)
+    if (std::abs(intersectionPosv[i]) > maxAbsAxis1)
       return false;
     i = (thirdAxis + 2) % 3;
     intersectionPosv[i] = s * vv[i] + pv[i];
@@ -145,13 +138,13 @@ Pose3f KickViewMath::calculateFootPos(const JointAngles& jointAngles, const Join
   Pose3f footPos;
   float sign = joint == Joints::lHipYawPitch ? -1.f : 1.f;
   footPos.translate(0, -sign * (robotDimensions.yHipOffset), 0)
-  .rotateX(-pi_4 * sign)
-  .rotateZ(jointAngles.angles[joint]*sign)
-  .rotateX(((jointAngles.angles[joint + 1] + pi_4)*sign))
-  .rotateY(jointAngles.angles[joint + 2])
-  .translate(0, 0, -robotDimensions.upperLegLength)
-  .rotateY(jointAngles.angles[joint + 3])
-  .translate(0, 0, -robotDimensions.lowerLegLength);
+      .rotateX(-pi_4 * sign)
+      .rotateZ(jointAngles.angles[joint] * sign)
+      .rotateX(((jointAngles.angles[joint + 1] + pi_4) * sign))
+      .rotateY(jointAngles.angles[joint + 2])
+      .translate(0, 0, -robotDimensions.upperLegLength)
+      .rotateY(jointAngles.angles[joint + 3])
+      .translate(0, 0, -robotDimensions.lowerLegLength);
 
   footPos.translation += Vector3f(0, 0, -robotDimensions.footHeight); //because inverse kinematics subtracts this
 
@@ -163,7 +156,7 @@ Pose3f KickViewMath::calculateHandPos(const JointAngles& jointAngles, const Join
   Pose3f handPos;
   float sign = joint == Joints::lShoulderPitch ? 1.f : -1.f;
 
-  handPos.translate(robotDimensions.armOffset.x(), sign *  robotDimensions.armOffset.y(), robotDimensions.armOffset.z());
+  handPos.translate(robotDimensions.armOffset.x(), sign * robotDimensions.armOffset.y(), robotDimensions.armOffset.z());
 
   handPos.rotateY(-jointAngles.angles[joint]);
   handPos.rotateZ(sign * jointAngles.angles[joint + 1]);
@@ -175,8 +168,8 @@ Pose3f KickViewMath::calculateHandPos(const JointAngles& jointAngles, const Join
   return handPos;
 }
 
-Vector3f KickViewMath::calcFootPos(const float& leg0, const float& leg1, const float& leg2, const float& leg3, const float& leg4, const float&
-                                   leg5, const Joints::Joint& joint, const RobotDimensions& robotDimensions)
+Vector3f KickViewMath::calcFootPos(
+    const float& leg0, const float& leg1, const float& leg2, const float& leg3, const float& leg4, const float& leg5, const Joints::Joint& joint, const RobotDimensions& robotDimensions)
 {
   Pose3f footPos(0, 0, 0);
   footPos.translate(0, 0, -robotDimensions.footHeight);
@@ -193,14 +186,14 @@ Vector3f KickViewMath::calcFootPos(const float& leg0, const float& leg1, const f
   return Vector3f(footPos.translation.x(), footPos.translation.y(), footPos.translation.z());
 }
 
-bool KickViewMath::calcLegJoints(const Vector3f& footPos, const Vector3f& footRotAng, const bool& left, const RobotDimensions& robotDimensions,
-                            float& leg0, float& leg1, float& leg2, float& leg3, float& leg4, float& leg5)
+bool KickViewMath::calcLegJoints(
+    const Vector3f& footPos, const Vector3f& footRotAng, const bool& left, const RobotDimensions& robotDimensions, float& leg0, float& leg1, float& leg2, float& leg3, float& leg4, float& leg5)
 {
   float sign = (left) ? 1.f : -1.f;
   bool legTooShort = false;
 
   Vector3f anklePos; //FLOAT
-  anklePos = Vector3f(footPos.x(),  footPos.y(), footPos.z() + robotDimensions.footHeight);
+  anklePos = Vector3f(footPos.x(), footPos.y(), footPos.z() + robotDimensions.footHeight);
 
   anklePos -= Vector3f(0.f, sign * (robotDimensions.yHipOffset), 0.f);
 
@@ -216,15 +209,13 @@ bool KickViewMath::calcLegJoints(const Vector3f& footPos, const Vector3f& footRo
   float diagonal = anklePos.norm();
 
   // upperLegLength, lowerLegLength, and diagonal form a triangle, use cosine theorem
-  float a1 = (robotDimensions.upperLegLength * robotDimensions.upperLegLength -
-              robotDimensions.lowerLegLength * robotDimensions.lowerLegLength + diagonal * diagonal) /
-             (2 * robotDimensions.upperLegLength * diagonal);
+  float a1 = (robotDimensions.upperLegLength * robotDimensions.upperLegLength - robotDimensions.lowerLegLength * robotDimensions.lowerLegLength + diagonal * diagonal)
+      / (2 * robotDimensions.upperLegLength * diagonal);
   a1 = std::abs(a1) > 1.f ? 0 : std::acos(a1);
 
-  float a2 = (robotDimensions.upperLegLength * robotDimensions.upperLegLength +
-              robotDimensions.lowerLegLength * robotDimensions.lowerLegLength - diagonal * diagonal) /
-             (2 * robotDimensions.upperLegLength * robotDimensions.lowerLegLength);
-  if(!Rangef::OneRange().isInside(a2))
+  float a2 = (robotDimensions.upperLegLength * robotDimensions.upperLegLength + robotDimensions.lowerLegLength * robotDimensions.lowerLegLength - diagonal * diagonal)
+      / (2 * robotDimensions.upperLegLength * robotDimensions.lowerLegLength);
+  if (!Rangef::OneRange().isInside(a2))
   {
     legTooShort = true;
   }

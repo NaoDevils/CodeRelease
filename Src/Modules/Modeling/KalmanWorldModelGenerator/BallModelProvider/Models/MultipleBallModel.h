@@ -1,6 +1,7 @@
 /**
  * \file MultipleBallModel.h
  * \author <a href="mailto:heiner.walter@tu-dortmund.de">Heiner Walter</a>
+ * \author <a href="mailto:arne.moos@tu-dortmund.de">Arne Moos</a>
  * 
  * Declaration of classes \c LocalMultipleBallModel and \c RemoteMultipleBallModel.
  * They specialize <tt>LocalMultiKalmanModel</tt> and <tt>RemoteMultiKalmanModel</tt>
@@ -10,9 +11,8 @@
 #pragma once
 
 #include "Representations/Modeling/BallModel.h"
-#include "../../Models/LocalMultiKalmanModel.h"
-#include "../../Models/RemoteMultiKalmanModel.h"
-
+#include "../../AngleModels/LocalMultiKalmanModelAngle.h"
+#include "../../AngleModels/RemoteMultiKalmanModelAngle.h"
 
 /**
  * Updates the given \c BallState from a \c KalmanPositionHypothesis. The ball
@@ -30,21 +30,20 @@ void updateEstimatedBallState(const KalmanPositionHypothesis& hypothesis, BallSt
  * 
  * Specialization of \c LocalMultiKalmanModel for local ball modeling.
  */
-class LocalMultipleBallModel : public LocalMultiKalmanModel<>
+class LocalMultipleBallModel : public LocalMultiKalmanModelAngle<KalmanPositionHypothesis, true>
 {
 public:
-
   /** 
    * Default constructor creates a new and empty \c LocalMultipleBallModel object.
    */
-  LocalMultipleBallModel() : LocalMultiKalmanModel<>() {}
+  LocalMultipleBallModel() : LocalMultiKalmanModelAngle<KalmanPositionHypothesis, true>() {}
   /**
    * Constructor setting the perceptDuration.
    * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
    *
    * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
    */
-  LocalMultipleBallModel(unsigned perceptDuration) : LocalMultiKalmanModel<>(perceptDuration) {}
+  LocalMultipleBallModel(unsigned perceptDuration) : LocalMultiKalmanModelAngle<KalmanPositionHypothesis, true>(perceptDuration) {}
   /** 
    * Destructor.
    */
@@ -62,22 +61,20 @@ public:
  *
  * Specialization of \c RemoteMultiKalmanModel for remote ball modeling.
  */
-class RemoteMultipleBallModel : public RemoteMultiKalmanModel<>
+class RemoteMultipleBallModel : public RemoteMultiKalmanModelAngle<RemoteKalmanPositionHypothesis, true>
 {
 public:
   /** 
    * Default constructor creates a new and empty \c MultipleBallModel object.
    */
-  RemoteMultipleBallModel() : RemoteMultiKalmanModel<>(), perceptDuration(4000) {}
+  RemoteMultipleBallModel() : RemoteMultiKalmanModelAngle<RemoteKalmanPositionHypothesis, true>(), perceptDuration(4000) {}
   /**
    * Constructor setting the perceptDuration.
    * Instead of calling this constructor a deriving class can also override the getPerceptDuration method.
    *
    * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
    */
-  RemoteMultipleBallModel(unsigned perceptDuration)
-    : RemoteMultiKalmanModel<>(perceptDuration)
-    , perceptDuration(perceptDuration) {}
+  RemoteMultipleBallModel(unsigned perceptDuration) : RemoteMultiKalmanModelAngle<RemoteKalmanPositionHypothesis, true>(perceptDuration), perceptDuration(perceptDuration) {}
   /** 
    * Destructor.
    */

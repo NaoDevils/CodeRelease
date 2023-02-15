@@ -21,18 +21,18 @@ void PhysicalObject::createPhysics()
 {
   // find parent body for child objects
   Body* body = dynamic_cast<Body*>(this);
-  if(!body)
+  if (!body)
     body = parentBody;
 
   // initialize and call createPhysics() for each child object
-  for(std::list<PhysicalObject*>::const_iterator iter = physicalChildren.begin(), end = physicalChildren.end(); iter != end; ++iter)
+  for (std::list<PhysicalObject*>::const_iterator iter = physicalChildren.begin(), end = physicalChildren.end(); iter != end; ++iter)
   {
     // compute pose of child object
     PhysicalObject* object = *iter;
     object->pose = pose;
-    if(object->translation)
+    if (object->translation)
       object->pose.translate(*object->translation);
-    if(object->rotation)
+    if (object->rotation)
       object->pose.rotate(*object->rotation);
 
     //
@@ -43,10 +43,10 @@ void PhysicalObject::createPhysics()
 
 void PhysicalObject::drawPhysics(unsigned int flags) const
 {
-  if(flags & SimRobotCore2::Renderer::showControllerDrawings)
-    for(std::list<SimRobotCore2::Controller3DDrawing*>::const_iterator iter = controllerDrawings.begin(), end = controllerDrawings.end(); iter != end; ++iter)
+  if (flags & SimRobotCore2::Renderer::showControllerDrawings)
+    for (std::list<SimRobotCore2::Controller3DDrawing*>::const_iterator iter = controllerDrawings.begin(), end = controllerDrawings.end(); iter != end; ++iter)
       (*iter)->draw();
-  for(std::list<PhysicalObject*>::const_iterator iter = physicalDrawings.begin(), end = physicalDrawings.end(); iter != end; ++iter)
+  for (std::list<PhysicalObject*>::const_iterator iter = physicalDrawings.begin(), end = physicalDrawings.end(); iter != end; ++iter)
     (*iter)->drawPhysics(flags);
 }
 
@@ -58,8 +58,8 @@ bool PhysicalObject::registerDrawing(SimRobotCore2::Controller3DDrawing& drawing
 
 bool PhysicalObject::unregisterDrawing(SimRobotCore2::Controller3DDrawing& drawing)
 {
-  for(std::list<SimRobotCore2::Controller3DDrawing*>::iterator iter = controllerDrawings.begin(), end = controllerDrawings.end(); iter != end; ++iter)
-    if(*iter == &drawing)
+  for (std::list<SimRobotCore2::Controller3DDrawing*>::iterator iter = controllerDrawings.begin(), end = controllerDrawings.end(); iter != end; ++iter)
+    if (*iter == &drawing)
     {
       controllerDrawings.erase(iter);
       return true;

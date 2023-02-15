@@ -28,8 +28,14 @@ public:
   /**
   * Constructor.
   */
-  KickView(const QString& fullName, RobotConsole& console, const MotionRequest& motionRequest, const JointAngles& jointAngles, 
-           const JointCalibration& jointCalibration, const RobotDimensions& robotDimensions, const std::string& mr, SimRobotCore2::Body* robot);
+  KickView(const QString& fullName,
+      RobotConsole& console,
+      const MotionRequest& motionRequest,
+      const JointAngles& jointAngles,
+      const JointCalibration& jointCalibration,
+      const RobotDimensions& robotDimensions,
+      const std::string& mr,
+      SimRobotCore2::Body* robot);
 
   QString fullName;
   QIcon icon;
@@ -43,8 +49,8 @@ public:
 
 private:
   virtual SimRobot::Widget* createWidget();
-  virtual const QString& getFullName() const {return fullName;}
-  virtual const QIcon* getIcon() const {return &icon;}
+  virtual const QString& getFullName() const { return fullName; }
+  virtual const QIcon* getIcon() const { return &icon; }
 };
 
 class KickViewHeaderedWidget : public HeaderedWidget, public SimRobot::Widget
@@ -55,7 +61,7 @@ public:
   KickViewHeaderedWidget(KickView& kickView);
   KickViewWidget* kickViewWidget;
 
-  virtual QWidget* getWidget() {return this;}
+  virtual QWidget* getWidget() { return this; }
   virtual void update();
   virtual QMenu* createFileMenu() const;
   virtual QMenu* createEditMenu() const;

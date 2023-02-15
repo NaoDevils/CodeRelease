@@ -9,7 +9,7 @@
 
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/JointAngles.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/MotionControl/HeadAngleRequest.h"
 #include "Representations/MotionControl/HeadJointRequest.h"
 #include "Representations/Sensing/GroundContactState.h"
@@ -18,21 +18,20 @@
 #include "Tools/Module/Module.h"
 
 MODULE(HeadMotionEngine,
-{,
   REQUIRES(FrameInfo),
   REQUIRES(GroundContactState),
   REQUIRES(HeadAngleRequest),
-  REQUIRES(JointAngles),
+  REQUIRES(JointSensorData),
   REQUIRES(JointCalibration),
-  PROVIDES(HeadJointRequest),
-});
+  PROVIDES(HeadJointRequest)
+);
 
 class HeadMotionEngine : public HeadMotionEngineBase
 {
 private:
-  float requestedPan;
-  float requestedTilt;
-  Vector2f lastSpeed;
+  Angle requestedPan;
+  Angle requestedTilt;
+  Vector2a lastSpeed;
   Geometry::Circle deathPoints[4];
 
   /**

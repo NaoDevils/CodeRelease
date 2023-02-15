@@ -16,10 +16,8 @@
  * The contour can be used to exclude the robot's body from image processing.
  */
 STREAMABLE(BodyContour,
-{
   /** A struct representing a line in 2-D space. */
   STREAMABLE(Line,
-  {
     /** Default constructor. */
     Line() = default;
 
@@ -67,8 +65,8 @@ STREAMABLE(BodyContour,
     },
 
     (Vector2i) p1, /**< The left point of the line. */
-    (Vector2i) p2, /**< The right point of the line. */
-  });
+    (Vector2i) p2 /**< The right point of the line. */
+  );
 
   /** Default constructor. */
   BodyContour()
@@ -131,8 +129,8 @@ STREAMABLE(BodyContour,
   void draw() const,
 
   (std::vector<Line>) lines, /**< The clipping lines. */
-  (Vector2i) cameraResolution, /**< Only for drawing. */
-});
+  (Vector2i) cameraResolution /**< Only for drawing. */
+);
 
 struct BodyContourUpper : public BodyContour
 {

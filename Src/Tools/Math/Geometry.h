@@ -27,17 +27,15 @@ class Geometry
 public:
   /** Defines a circle by its center and its radius*/
   STREAMABLE(Circle,
-  {
     Circle() = default;
     Circle(const Vector2f& c, float r),
 
     (Vector2f)(Vector2f::Zero()) center,
-    (float)(0) radius,
-  });
+    (float)(0) radius
+  );
 
   /** Defines a line by two vectors*/
   STREAMABLE(Line,
-  {
     Line() = default;
     Line(const Vector2f& base, const Vector2f& direction);
     Line(const Vector2i& base, const Vector2f& direction);
@@ -48,20 +46,14 @@ public:
     void normalizeDirection(),
 
     (Vector2f) base,
-    (Vector2f) direction,
-  });
+    (Vector2f) direction
+  );
 
   struct PixeledLine : public std::vector<Vector2i>
   {
-    PixeledLine(int x1, int y1, int x2, int y2)
-    {
-      calculatePixels(x1, y1, x2, y2);
-    }
+    PixeledLine(int x1, int y1, int x2, int y2) { calculatePixels(x1, y1, x2, y2); }
 
-    PixeledLine(const Vector2i& start, const Vector2i& end)
-    {
-      calculatePixels(start.x(), start.y(), end.x(), end.y());
-    }
+    PixeledLine(const Vector2i& start, const Vector2i& end) { calculatePixels(start.x(), start.y(), end.x(), end.y()); }
 
   private:
     void calculatePixels(int x1, int y1, int x2, int y2);
@@ -82,7 +74,7 @@ public:
    * @return the angle between direction1 and direction2.
    */
   static float angleBetween(const Vector2f& direction1, const Vector2f& direction2);
-  
+
   /**
    * Returns the circle defined by the three points.
    * @param point1 The first point.
@@ -92,6 +84,7 @@ public:
    */
   static Circle getCircle(const Vector2i& point1, const Vector2i& point2, const Vector2i& point3);
   static int getIntersectionOfCircles(const Circle& c1, const Circle& c2, Vector2f& p1, Vector2f& p2);
+  [[nodiscard]] static bool isPointInCircle(const Circle& circle, const Vector2f& point);
 
   /**
    * Computes the intersection point of a line and a circle.
@@ -103,11 +96,15 @@ public:
    */
   static int getIntersectionOfLineAndCircle(const Line& line, const Circle& circle, Vector2f& firstIntersection, Vector2f& secondIntersection);
   static bool checkIntersectionOfLines(const Vector2f& l1p1, const Vector2f& l1p2, const Vector2f& l2p1, const Vector2f& l2p2);
-  static bool getIntersectionOfLines(const Line& line1, const Line& line2, Vector2f& intersection) WARN_UNUSED_RESULT;
-  static bool getIntersectionOfRaysFactor(const Line& ray1, const Line& ray2, float& intersection) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Line& line);
+  [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Vector2f& linePoint1, const Vector2f& linePoint2);
+  [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Vector2f& linePoint1, const Vector2f& linePoint2, float hysteresis);
+  [[nodiscard]] static bool getIntersectionOfLines(const Line& line1, const Line& line2, Vector2f& intersection);
+  [[nodiscard]] static bool getIntersectionOfRaysFactor(const Line& ray1, const Line& ray2, float& intersection);
 
   static float getDistanceToLine(const Line& line, const Vector2f& point);
   static float getDistanceToEdge(const Line& line, const Vector2f& point);
+  static bool getPerpendicularFootPointToLine(const Line& line, const Vector2f& point, Vector2f& perpendicularFootPoint);
 
   static float distance(const Vector2f& point1, const Vector2f& point2);
   static float distance(const Vector2i& point1, const Vector2i& point2);
@@ -117,13 +114,13 @@ private:
 
 public:
   static void calculateAnglesForPoint(const Vector2f& point, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& angles);
-  static bool calculatePointByAngles(const Vector2f& angles, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& point) WARN_UNUSED_RESULT;
-  static bool isPointInsideRectangle(const Vector2f& bottomLeftCorner, const Vector2f& topRightCorner, const Vector2f& point) WARN_UNUSED_RESULT;
-  static bool isPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, const Vector2i& point) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool calculatePointByAngles(const Vector2f& angles, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, Vector2f& point);
+  [[nodiscard]] static bool isPointInsideRectangle(const Vector2f& bottomLeftCorner, const Vector2f& topRightCorner, const Vector2f& point);
+  [[nodiscard]] static bool isPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, const Vector2i& point);
   static bool isPointInsideRectangle2(const Vector2f& corner1, const Vector2f& corner2, const Vector2f& point);
-  static bool isPointInsideConvexPolygon(const Vector2f polygon[], const int numberOfPoints, const Vector2f& point) WARN_UNUSED_RESULT;
-  static bool clipPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, Vector2i& point) WARN_UNUSED_RESULT;
-  static bool clipPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, Vector2f& point) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool isPointInsideConvexPolygon(const Vector2f polygon[], const int numberOfPoints, const Vector2f& point);
+  [[nodiscard]] static bool clipPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, Vector2i& point);
+  [[nodiscard]] static bool clipPointInsideRectangle(const Vector2i& bottomLeftCorner, const Vector2i& topRightCorner, Vector2f& point);
 
   /**
    * Clips a line with a rectangle
@@ -134,10 +131,8 @@ public:
    * @param point2 The end point of the resulting line
    * @return states whether clipping was necessary (and done)
    */
-  static bool getIntersectionPointsOfLineAndRectangle(const Vector2i& bottomLeft, const Vector2i& topRight,
-      const Geometry::Line& line, Vector2i& point1, Vector2i& point2) WARN_UNUSED_RESULT;
-  static bool getIntersectionPointsOfLineAndRectangle(const Vector2f& bottomLeft, const Vector2f& topRight,
-      const Geometry::Line& line, Vector2f& point1, Vector2f& point2) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool getIntersectionPointsOfLineAndRectangle(const Vector2i& bottomLeft, const Vector2i& topRight, const Geometry::Line& line, Vector2i& point1, Vector2i& point2);
+  [[nodiscard]] static bool getIntersectionPointsOfLineAndRectangle(const Vector2f& bottomLeft, const Vector2f& topRight, const Geometry::Line& line, Vector2f& point1, Vector2f& point2);
 
   /**
    * Clips a line with the Cohen-Sutherland-Algorithm
@@ -148,8 +143,7 @@ public:
    * @return states whether line exists after clipping
    * @see http://de.wikipedia.org/wiki/Algorithmus_von_Cohen-Sutherland
    */
-  static bool clipLineWithRectangleCohenSutherland(const Vector2i& bottomLeft, const Vector2i& topRight,
-      Vector2i& point1, Vector2i& point2) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool clipLineWithRectangleCohenSutherland(const Vector2i& bottomLeft, const Vector2i& topRight, Vector2i& point1, Vector2i& point2);
 
   /**
    * Calculates the intersection of an arbitrary line and a horizontal or vertical line.
@@ -166,8 +160,7 @@ public:
    * @param circle The approximated shape generated by the function.
    * @return If false, only the center of the circle is valid, not the radius.
    */
-  static bool calculateBallInImage(const Vector2f& ballOffset, const CameraMatrix& cameraMatrix,
-                                   const CameraInfo& cameraInfo, float ballRadius, Circle& circle) WARN_UNUSED_RESULT;
+  [[nodiscard]] static bool calculateBallInImage(const Vector2f& ballOffset, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, float ballRadius, Circle& circle);
 
   /**
    * This functions computes a polygon (of four points) described by four points.
@@ -178,8 +171,8 @@ public:
    * @param cameraInfo The resolution and the opening angle of the robot's camera.
    * @param p The list of points
    */
-  static void computeFieldOfViewInFieldCoordinates(const RobotPose& robotPose, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo,
-      const FieldDimensions& fieldDimensions, std::vector<Vector2f>& p);
+  static void computeFieldOfViewInFieldCoordinates(
+      const RobotPose& robotPose, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, const FieldDimensions& fieldDimensions, std::vector<Vector2f>& p);
 
   /**
    * The function determines how far an object is away depending on its real size and the size in the image.
@@ -239,8 +232,7 @@ public:
    * @param px, py the point that will be tested
    * @return true if (px, py) is inside the triangle defined by (x1, y1, x2, y2, x3, y3)
    */
-  static bool isPointInsideTriangle(const float x1, const float y1, const float x2, const float y2,
-                                    const float x3, const float y3, const float px, const float py);
+  static bool isPointInsideTriangle(const float x1, const float y1, const float x2, const float y2, const float x3, const float y3, const float px, const float py);
 
   /**
    * Computes the difference between two angles (considering the interval [-pi,..,pi])
@@ -248,31 +240,16 @@ public:
    * @param y The second angle
    * @return The absolute difference
    */
-  static float absDifferenceBetweenTwoAngles(float x, float y)
-  {
-    return std::abs(std::atan2(std::sin(x - y), std::cos(x - y)));
-  }
+  static float absDifferenceBetweenTwoAngles(float x, float y) { return std::abs(std::atan2(std::sin(x - y), std::cos(x - y))); }
 
-  static int calculateLineSize
-    (const Vector2i& pointInImage,
-      const CameraMatrix& cameraMatrix,
-      const CameraInfo& cameraInfo,
-      float fieldLinesWidth);
+  static int calculateLineSize(const Vector2i& pointInImage, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, float fieldLinesWidth);
 
-  static float calculateLineSizePrecise
-    (const Vector2i& pointInImage,
-      const CameraMatrix& cameraMatrix,
-      const CameraInfo& cameraInfo,
-      float fieldLinesWidth);
+  static float calculateLineSizePrecise(const Vector2i& pointInImage, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, float fieldLinesWidth);
 
-  static bool computeCircleOnFieldLevenbergMarquardt(
-    const std::vector< Vector2f > &circlePoints, Geometry::Circle &circle);
+  static bool computeCircleOnFieldLevenbergMarquardt(const std::vector<Vector2f>& circlePoints, Geometry::Circle& circle);
 
-  static Geometry::Line calculateLineByLinearRegression(
-    const std::vector< Vector2f > &pointsForLine,
-    float &avgError,
-    float &biggestError);
-  
+  static Geometry::Line calculateLineByLinearRegression(const std::vector<Vector2f>& pointsForLine, float& avgError, float& biggestError);
+
   /**
    * Checks whether a point on the field would be visible without obstacles and 
    * within the head pan interval [-maxHeadPan, maxHeadPan] by any of the two cameras.
@@ -281,8 +258,8 @@ public:
    * @param cameraInfo The camera info
    * @return True, if point would be visible
    */
-  static bool wouldPointBeVisible(const Vector2f &relPosOnField, const Angle maxHeadPan, const CameraInfo& cameraInfo);
-  
+  static bool wouldPointBeVisible(const Vector2f& relPosOnField, const Angle maxHeadPan, const CameraInfo& cameraInfo);
+
   /**
    * Checks whether the ball should be visible with the given cameraMatrix.
    * @param relBallPositionOnField The ball estimate from the \c BallModel
@@ -291,33 +268,20 @@ public:
    * @param theCameraInfo The camera info
    * @return True, if point should be visible
    */
-  static bool ballShouldBeVisibleInImage(const Vector2f &relBallPositionOnField, float ballRadius,
-                                         const CameraMatrix& theCameraMatrix, const CameraInfo& theCameraInfo);
+  static bool ballShouldBeVisibleInImage(const Vector2f& relBallPositionOnField, float ballRadius, const CameraMatrix& theCameraMatrix, const CameraInfo& theCameraInfo);
 };
 
-inline Geometry::Circle::Circle(const Vector2f& c, float r) :
-  center(c), radius(r)
-{}
+inline Geometry::Circle::Circle(const Vector2f& c, float r) : center(c), radius(r) {}
 
-inline Geometry::Line::Line(const Vector2f& base, const Vector2f& direction) :
-  base(base), direction(direction)
-{}
+inline Geometry::Line::Line(const Vector2f& base, const Vector2f& direction) : base(base), direction(direction) {}
 
-inline Geometry::Line::Line(const Vector2i& base, const Vector2f& direction) :
-  base(static_cast<float>(base.x()), static_cast<float>(base.y())),
-  direction(direction)
-{}
+inline Geometry::Line::Line(const Vector2i& base, const Vector2f& direction) : base(static_cast<float>(base.x()), static_cast<float>(base.y())), direction(direction) {}
 
-inline Geometry::Line::Line(const Vector2i& base, const Vector2i& direction) :
-  base(static_cast<float>(base.x()), static_cast<float>(base.y())),
-  direction(static_cast<float>(direction.x()), static_cast<float>(direction.y()))
-{}
+inline Geometry::Line::Line(const Vector2i& base, const Vector2i& direction)
+    : base(static_cast<float>(base.x()), static_cast<float>(base.y())), direction(static_cast<float>(direction.x()), static_cast<float>(direction.y()))
+{
+}
 
-inline Geometry::Line::Line(const Pose2f& base, float length) :
-  base(base.translation),
-  direction(Pose2f(base.rotation) * Vector2f(length, 0))
-{}
+inline Geometry::Line::Line(const Pose2f& base, float length) : base(base.translation), direction(Pose2f(base.rotation) * Vector2f(length, 0)) {}
 
-inline Geometry::Line::Line(float baseX, float baseY, float directionX, float directionY) :
-  base(baseX, baseY), direction(directionX, directionY)
-{}
+inline Geometry::Line::Line(float baseX, float baseY, float directionX, float directionY) : base(baseX, baseY), direction(directionX, directionY) {}

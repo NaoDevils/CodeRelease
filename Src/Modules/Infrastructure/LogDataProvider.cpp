@@ -19,32 +19,32 @@ LogDataProvider::LogDataProvider()
 
 LogDataProvider::~LogDataProvider()
 {
-  if(logStreamHandler)
+  if (logStreamHandler)
     delete logStreamHandler;
-  if(currentStreamHandler)
+  if (currentStreamHandler)
     delete currentStreamHandler;
 }
 
 bool LogDataProvider::handle(InMessage& message)
 {
-  if(message.getMessageID() == idStreamSpecification)
+  if (message.getMessageID() == idStreamSpecification)
   {
-    if(!logStreamHandler)
+    if (!logStreamHandler)
       logStreamHandler = new StreamHandler;
     message.bin >> *logStreamHandler;
     return true;
   }
-  else if(Blackboard::getInstance().exists(::getName(message.getMessageID()) + 2))
+  else if (Blackboard::getInstance().exists(::getName(message.getMessageID()) + 2))
   {
-    if(logStreamHandler)
+    if (logStreamHandler)
     {
-      if(states[message.getMessageID()] == unknown)
+      if (states[message.getMessageID()] == unknown)
       {
         // Stream representation from blackboard to acquire the current specification
         OutBinarySize dummy;
         dummy << Blackboard::getInstance()[::getName(message.getMessageID()) + 2];
 
-        if(!currentStreamHandler)
+        if (!currentStreamHandler)
           currentStreamHandler = new StreamHandler;
 
         // Make a copy of current specifications through streaming.
@@ -61,11 +61,11 @@ bool LogDataProvider::handle(InMessage& message)
         // Check whether the current and the logged specifications are the same.
         const char* type = ::getName(message.getMessageID()) + 2;
         states[message.getMessageID()] = currentStreamHandler->areSpecificationsForTypesCompatible(*logStreamHandler, type, type) ? accept : convert;
-        if(states[message.getMessageID()] == convert)
+        if (states[message.getMessageID()] == convert)
           OUTPUT_WARNING(std::string(type) + " has changed and is converted. Some fields will keep their previous values.");
       }
     }
-    if(states[message.getMessageID()] != convert)
+    if (states[message.getMessageID()] != convert)
       message.bin >> Blackboard::getInstance()[::getName(message.getMessageID()) + 2];
     else
     {
@@ -92,7 +92,7 @@ bool LogDataProvider::handle(InMessage& message)
       inMap >> Blackboard::getInstance()[::getName(message.getMessageID()) + 2];
 
       // Clean up
-      delete [] mapBuffer;
+      delete[] mapBuffer;
     }
     return true;
   }

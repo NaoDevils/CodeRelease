@@ -11,7 +11,7 @@
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/CameraInfo.h"
-#include "Representations/Infrastructure/JointAngles.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/FieldColor.h"
@@ -23,7 +23,6 @@
 #include <algorithm>
 
 MODULE(CLIPGoalPerceptor2015,
-{,
   REQUIRES(CameraMatrix),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
@@ -34,11 +33,10 @@ MODULE(CLIPGoalPerceptor2015,
   REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
   REQUIRES(FieldDimensions),
-  REQUIRES(JointAngles), // for validity checks
+  REQUIRES(JointSensorData), // for validity checks
   USES(RobotPose), // for validity checks
   PROVIDES(CLIPGoalPercept),
-  LOADS_PARAMETERS(
-  {,
+  LOADS_PARAMETERS(,
     (bool) verifyWidth,/**< If true, after finding edges and connecting, additional width scans are performed. */
     (bool) useWorldModel, /**< If true, the RobotPose is used to verify the goal posts */
     (bool) useGoalColor, /**< If true, expected y,cb,cr values have to match avg color from scans. */
@@ -50,9 +48,9 @@ MODULE(CLIPGoalPerceptor2015,
     (int) maxCrDiffOnGoal, /**< Max rb-channel difference allowed while on goal post. */
     (int) gradientMinDiff, /**< Y-channel difference for scan line segmentation. */
     (float) minValidity, /**< Min validity of goal post to be accepted. */
-    (int) numberOfScanLines, /**< Number of ScanLines used for goal segment scan. */
-  }),
-});
+    (int) numberOfScanLines /**< Number of ScanLines used for goal segment scan. */
+  )
+);
 
 class CLIPGoalPerceptor2015 : public CLIPGoalPerceptor2015Base
 {
@@ -60,19 +58,20 @@ public:
   /**
   * Default constructor.
   */
-  CLIPGoalPerceptor2015() { goalPosts.reserve(15); goalSideSpots.reserve(100); colorSegments.reserve(20); }
+  CLIPGoalPerceptor2015()
+  {
+    goalPosts.reserve(15);
+    goalSideSpots.reserve(100);
+    colorSegments.reserve(20);
+  }
 
   struct GoalPost
   {
-    GoalPost() : bottomFound(false),
-      foundLineAtBottom(false),
-      avgY(0), avgCb(0), avgCr(0),
-      topWidth(-1.f), bottomWidth(-1.f),
-      validity(0.f),
-      startInImage(Vector2f::Zero()),
-      endInImage(Vector2f::Zero()),
-      direction(Vector2f::Zero()),
-      locationOnField(Vector2f::Zero()) {}
+    GoalPost()
+        : bottomFound(false), foundLineAtBottom(false), avgY(0), avgCb(0), avgCr(0), topWidth(-1.f), bottomWidth(-1.f), validity(0.f), startInImage(Vector2f::Zero()),
+          endInImage(Vector2f::Zero()), direction(Vector2f::Zero()), locationOnField(Vector2f::Zero())
+    {
+    }
     bool bottomFound;
     bool foundTop;
     bool foundLineAtBottom;
@@ -94,13 +93,13 @@ public:
     int y, cb, cr;
     int xPos, yPos;
     float angle; // using sobel (getAngle())
-    GoalSideSpot *nextSpot;
+    GoalSideSpot* nextSpot;
   };
 
   // helper struct to identify different colors on a possible goal
   struct ColorSegment
   {
-    ColorSegment() :avgCb(0), avgCr(0), avgY(0), length(0){}
+    ColorSegment() : avgCb(0), avgCr(0), avgY(0), length(0) {}
     int avgCb;
     int avgCr;
     int avgY;
@@ -120,33 +119,33 @@ public:
   RingBufferWithSum<int, 5> crBuffer;
 
 private:
-  void update(CLIPGoalPercept &theCLIPGoalPercept);
+  void update(CLIPGoalPercept& theCLIPGoalPercept);
 
   // called once, processes both images
-  void execute(const bool &upper, CLIPGoalPercept &theCLIPGoalPercept);
+  void execute(const bool& upper, CLIPGoalPercept& theCLIPGoalPercept);
 
   // run some scan lines around horizon to find y-jumps
-  void scanForGoalSegments(const bool &upper);
+  void scanForGoalSegments(const bool& upper);
 
-  void runSegmentScanLine(const int &yPos, const bool &upper);
-  void runSegmentScanLineGauss(const int &yPos, const bool &upper);
+  void runSegmentScanLine(const int& yPos, const bool& upper);
+  void runSegmentScanLineGauss(const int& yPos, const bool& upper);
 
-  void connectGoalSpots(const bool &upper);
+  void connectGoalSpots(const bool& upper);
 
-  void createLinesFromSpots(const bool &upper);
+  void createLinesFromSpots(const bool& upper);
 
-  void createGoalPostsFromLines(const bool &upper);
+  void createGoalPostsFromLines(const bool& upper);
 
   /*
   * Verify or falsify goal post candidates.
   */
-  void verifyGoalPosts(CLIPGoalPercept &theCLIPGoalPercept, const bool &upper);
+  void verifyGoalPosts(CLIPGoalPercept& theCLIPGoalPercept, const bool& upper);
 
   /*
   * Use all info from scanned posts from upper and lower image to merge info.
   * TODO: Also use lines percept for more precise goal posts.
   */
-  void mergeGoalPostInfo(CLIPGoalPercept &theCLIPGoalPercept);
+  void mergeGoalPostInfo(CLIPGoalPercept& theCLIPGoalPercept);
 
 
   /*** functions to verify possible goal posts ***/
@@ -157,66 +156,45 @@ private:
   * and verify color of gp while scanning
   * @return True, if the field was found.
   */
-  bool scanForGoalPostBottom(GoalPost &gp, const bool &upper);
+  bool scanForGoalPostBottom(GoalPost& gp, const bool& upper);
 
   // same with top
-  bool scanForGoalPostTop(GoalPost &gp, const bool &upper);
+  bool scanForGoalPostTop(GoalPost& gp, const bool& upper);
 
   // what it says, uses checkForGoalPostColor(..)
-  CLIPGoalPercept::GoalPost::GoalPostSide scanForGoalPostSide(
-    const GoalPost &gp,
-    const bool &upper);
+  CLIPGoalPercept::GoalPost::GoalPostSide scanForGoalPostSide(const GoalPost& gp, const bool& upper);
 
   /*
   * Scan on different heights to check precise width (pixels) of goal post.
   * @return True, if enough of those scans return a fitting width.
   */
-  bool scanForGoalPostWidth(GoalPost &gp,
-    const int yStep, const bool &upper);
+  bool scanForGoalPostWidth(GoalPost& gp, const int yStep, const bool& upper);
 
   // pixel precise width scan from around startpoint until expected width is reached
   // color values of gp are collected
-  float scanForGoalPostWidthAt(
-    const Vector2i &startPoint,
-    const float &expectedWidth,
-    int &realStartX,
-    int &avgCb,
-    int &avgCr,
-    int &avgY,
-    const bool &upper);
+  float scanForGoalPostWidthAt(const Vector2i& startPoint, const float& expectedWidth, int& realStartX, int& avgCb, int& avgCr, int& avgY, const bool& upper);
 
   /*
   * Check if distance by size of possible goal post is sane.
   * @param useWorldModel True, if goal post should fit into the world model
   * @return True, if the field was found.
   */
-  bool verifyBySize(GoalPost &gp, const bool useWorldModel, const bool &upper);
+  bool verifyBySize(GoalPost& gp, const bool useWorldModel, const bool& upper);
 
   /*
   * Scan until color differs too much from avgCb/avgCr
   * @return length of segment in same color
   */
-  int scanSameColor(
-    const Vector2f &startPoint,
-    const Vector2f &direction,
-    const int &stepSize,
-    int &avgCb, int &avgCr, int &avgY,
-    const bool &upper);
+  int scanSameColor(const Vector2f& startPoint, const Vector2f& direction, const int& stepSize, int& avgCb, int& avgCr, int& avgY, const bool& upper);
 
   // checks below basePoint for field color
-  bool scanForGreen(const Vector2f &basePoint, const bool &upper);
+  bool scanForGreen(const Vector2f& basePoint, const bool& upper);
 
   // counts pixels with similar values to optCb/optCr, used for side determination
-  int checkForGoalPostColor(
-    const Vector2i &startPoint,
-    const Vector2i &direction,
-    const int &width,
-    const int &optCb, const int &optCr,
-    const int &optY,
-    const bool &upper);
+  int checkForGoalPostColor(const Vector2i& startPoint, const Vector2i& direction, const int& width, const int& optCb, const int& optCr, const int& optY, const bool& upper);
 
   // sobel
-  inline float getAngle(const int xPos, const int yPos, const int length, const Image &image)
+  inline float getAngle(const int xPos, const int yPos, const int length, const Image& image)
   {
     const int length2 = length / 2;
     const int x1 = xPos - length;
@@ -247,14 +225,13 @@ private:
     sumX -= yC3;
     sumY -= yC3;
     Vector2f direction((float)sumY, (float)-sumX);
-    ARROW("module:CLIPGoalPerceptor:goalSpots", xPos - length2, yPos, xPos - length2 + direction.normalize(15).x(), yPos + direction.normalize(15).y(),
-      1, Drawings::solidPen, ColorRGBA::red);
+    ARROW("module:CLIPGoalPerceptor:goalSpots", xPos - length2, yPos, xPos - length2 + direction.normalize(15).x(), yPos + direction.normalize(15).y(), 1, Drawings::solidPen, ColorRGBA::red);
     return direction.angle();
   }
   // debugging stuff
 
   void drawGoalPostCandidates();
-  inline int getDiffSum(const RingBufferWithSum<int, 5> &buf, int sum)
+  inline int getDiffSum(const RingBufferWithSum<int, 5>& buf, int sum)
   {
     for (int i = 1; i < 5; i++)
     {
@@ -265,9 +242,5 @@ private:
     return sum;
   }
 
-  inline int getGauss(const RingBufferWithSum<int, 5> &buf)
-  {
-    return -yBuffer[0] - 2 * yBuffer[1] + 2 * yBuffer[3] + yBuffer[4];
-  }
-
+  inline int getGauss(const RingBufferWithSum<int, 5>& buf) { return -yBuffer[0] - 2 * yBuffer[1] + 2 * yBuffer[3] + yBuffer[4]; }
 };

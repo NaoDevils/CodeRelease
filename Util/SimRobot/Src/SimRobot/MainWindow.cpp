@@ -23,20 +23,13 @@
 #include <QCloseEvent>
 #include <QUrl>
 #include <QTimer>
-#ifdef FIX_WIN32_CRASH_WITHOUT_QGLWIDGET_BUG
-#include <QGLWidget>
-#endif
+#include <iostream>
 #ifdef WINDOWS
 #include <windows.h>
-#elif defined(OSX)
+#elif defined(MACOS)
 #include <mach/mach_time.h>
-#include "MacFullscreen.h"
 #else
 #include <ctime>
-#endif
-
-#ifdef FIX_WIN32_WINDOWS7_BLOCKING_BUG
-#define startTimer(ms) (QSysInfo::windowsVersion() <= QSysInfo::WV_WINDOWS7 ? 1 : startTimer(ms))
 #endif
 
 #define QDOCKWIDGET_STYLE ""
@@ -50,16 +43,11 @@ SimRobot::Application* MainWindow::application;
 #define PATH_SEPARATOR "/"
 #endif
 
-MainWindow::MainWindow(int argc, char *argv[]) :
-  timerId(0), viewUpdateRateMenu(0), appPath(getAppPath(argv[0])),
-  appString(QString("SimRobot" PATH_SEPARATOR "%1").arg(getAppLocationSum(appPath))),
-  settings("B-Human", appString),
-  layoutSettings("B-Human", appString + PATH_SEPARATOR "Layouts"),
-  recentFiles(settings.value("RecentFiles").toStringList()),
-  opened(false), compiled(false), running(false), performStep(false),
-  layoutRestored(true), guiUpdateRate(100), lastGuiUpdate(0),
-  activeDockWidget(0), dockWidgetFileMenu(0), dockWidgetEditMenu(0), dockWidgetUserMenu(0),
-  moduleUserMenu(0), sceneGraphDockWidget(0)
+MainWindow::MainWindow(int argc, char* argv[])
+    : timerId(0), viewUpdateRateMenu(0), appPath(getAppPath(argv[0])), appString(QString("SimRobot" PATH_SEPARATOR "%1").arg(getAppLocationSum(appPath))),
+      settings("NaoDevils", appString), layoutSettings("NaoDevils", appString + PATH_SEPARATOR "Layouts"), recentFiles(settings.value("RecentFiles").toStringList()), opened(false),
+      compiled(false), running(false), performStep(false), layoutRestored(true), guiUpdateRate(100), lastGuiUpdate(0), activeDockWidget(0), dockWidgetFileMenu(0),
+      dockWidgetEditMenu(0), dockWidgetUserMenu(0), moduleUserMenu(0), sceneGraphDockWidget(0)
 {
   application = this;
 
@@ -74,7 +62,7 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   //setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
   //setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
   resize(600, 400);
-  connect(qApp, SIGNAL(focusChanged(QWidget*,QWidget*)), this, SLOT(focusChanged(QWidget*,QWidget*)));
+  connect(qApp, SIGNAL(focusChanged(QWidget*, QWidget*)), this, SLOT(focusChanged(QWidget*, QWidget*)));
 
   // create actions
   fileOpenAct = new QAction(QIcon(":/Icons/folder_page.png"), tr("&Open..."), this);
@@ -87,13 +75,13 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   fileCloseAct->setEnabled(false);
   connect(fileCloseAct, SIGNAL(triggered()), this, SLOT(closeFile()));
 
-  fileExitAct = new QAction(/*QIcon(":/Icons/Exit.png"), */tr("E&xit"), this);
+  fileExitAct = new QAction(/*QIcon(":/Icons/Exit.png"), */ tr("E&xit"), this);
 #ifdef WINDOWS
-  fileExitAct->setShortcut(QKeySequence(Qt::ALT + Qt::Key_F4));
-#elif defined(OSX)
-  fileExitAct->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q));
+  fileExitAct->setShortcut(QKeySequence(Qt::ALT | Qt::Key_F4));
+#elif defined(MACOS)
+  fileExitAct->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
 #else
-  fileExitAct->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q, Qt::ALT + Qt::Key_F4));
+  fileExitAct->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q, Qt::ALT | Qt::Key_F4));
 #endif
   fileExitAct->setStatusTip(tr("Exit the application"));
   connect(fileExitAct, SIGNAL(triggered()), this, SLOT(close()));
@@ -104,7 +92,7 @@ MainWindow::MainWindow(int argc, char *argv[]) :
 
   simResetAct = new QAction(QIcon(":/Icons/control_start_blue.png"), tr("&Reset"), this);
   simResetAct->setStatusTip(tr("Reset the simulation to the beginning"));
-  simResetAct->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_F5));
+  simResetAct->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F5));
   simResetAct->setEnabled(false);
   connect(simResetAct, SIGNAL(triggered()), this, SLOT(simReset()));
 
@@ -125,7 +113,7 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   toolBar = addToolBar(tr("&Toolbar"));
   toolBar->setObjectName("Toolbar");
   toolBar->setIconSize(QSize(16, 16));
-#ifdef OSX
+#ifdef MACOS
   setUnifiedTitleAndToolBarOnMac(true);
 #endif
 
@@ -137,7 +125,7 @@ MainWindow::MainWindow(int argc, char *argv[]) :
 
   // create menus
   fileMenu = new QMenu(tr("&File"), this);
-  connect(&recentFileMapper, SIGNAL(mapped(const QString&)), this, SLOT(openFile(const QString&)));
+  connect(&recentFileMapper, SIGNAL(mappedString(const QString&)), this, SLOT(openFile(const QString&)));
   connect(fileMenu, SIGNAL(aboutToShow()), this, SLOT(updateFileMenu()));
   updateFileMenu();
 
@@ -145,22 +133,18 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   connect(recentFileMenu, SIGNAL(aboutToShow()), this, SLOT(updateRecentFileMenu()));
   toolbarOpenAct->setMenu(recentFileMenu);
 
-  connect(&viewUpdateRateMapper, SIGNAL(mapped(int)), this, SLOT(setGuiUpdateRate(int)));
+  connect(&viewUpdateRateMapper, SIGNAL(mappedInt(int)), this, SLOT(setGuiUpdateRate(int)));
   viewMenu = new QMenu(tr("&View"), this);
   connect(viewMenu, SIGNAL(aboutToShow()), this, SLOT(updateViewMenu()));
   updateViewMenu();
 
   addonMenu = new QMenu(tr("&Add-ons"), this);
-  connect(&addonMapper, SIGNAL(mapped(const QString&)), this, SLOT(loadAddon(const QString&)));
+  connect(&addonMapper, SIGNAL(mappedString(const QString&)), this, SLOT(loadAddon(const QString&)));
   connect(addonMenu, SIGNAL(aboutToShow()), this, SLOT(updateAddonMenu()));
   updateAddonMenu();
 
   helpMenu = new QMenu(tr("&Help"), this);
   QAction* action;
-  connect(action = helpMenu->addAction(tr("View &Help")), SIGNAL(triggered()), this, SLOT(help()));
-  action->setStatusTip(tr("Show the help dialog"));
-  action->setShortcut(QKeySequence( Qt::Key_F1));
-  helpMenu->addSeparator();
   connect(action = helpMenu->addAction(tr("&About...")), SIGNAL(triggered()), this, SLOT(about()));
   action->setMenuRole(QAction::AboutRole);
   action->setStatusTip(tr("Show the application's About box"));
@@ -169,6 +153,12 @@ MainWindow::MainWindow(int argc, char *argv[]) :
   action->setStatusTip(tr("Show the Qt library's About box"));
 
   updateMenuAndToolBar();
+}
+
+MainWindow::~MainWindow()
+{
+  foreach (QString library, loadedLibraries.keys())
+    unloadLibrary(library);
 }
 
 QString MainWindow::getAppPath(const char* argv0)
@@ -187,16 +177,26 @@ QString MainWindow::getAppPath(const char* argv0)
 unsigned int MainWindow::getAppLocationSum(const QString& appPath)
 {
   unsigned int sum = 0;
-#ifdef OSX
-  QString path = appPath;
-  for(int i = 0; i < 5; ++i)
-    path = QFileInfo(path).dir().path();
-#else
-  const QString& path(QFileInfo(QFileInfo(appPath).dir().path()).dir().path());
-#endif
+
+  // Look for top-level build directory
+  // Why don't we use the top-level directory directly?
+  QDir dir(QFileInfo(appPath).dir());
+  QString path = dir.path();
+  for (int i = 0; i < 5; ++i)
+  {
+    if (dir.exists(".gitignore"))
+      break;
+
+    path = dir.path();
+    if (!dir.cdUp())
+    {
+      dir = QFileInfo(appPath).dir();
+      break;
+    }
+  }
   const QChar* data = path.data();
   const QChar* dataEnd = data + path.count();
-  for(; data < dataEnd; ++data)
+  for (; data < dataEnd; ++data)
   {
     sum ^= sum >> 16;
     sum <<= 1;
@@ -209,40 +209,40 @@ unsigned int MainWindow::getSystemTime()
 {
 #ifdef WINDOWS
   return GetTickCount();
-#elif defined(OSX)
+#elif defined(MACOS)
   static mach_timebase_info_data_t info = {0, 0};
-  if(info.denom == 0)
+  if (info.denom == 0)
     mach_timebase_info(&info);
   return unsigned(mach_absolute_time() * (info.numer / info.denom) / 1000000);
 #else
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (unsigned int) (ts.tv_sec * 1000 + ts.tv_nsec / 1000000l);
+  return (unsigned int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000l);
 #endif
 }
 
 bool MainWindow::registerObject(const SimRobot::Module& module, SimRobot::Object& object, const SimRobot::Object* parent, int flags)
 {
-  if(sceneGraphDockWidget)
+  if (sceneGraphDockWidget)
     sceneGraphDockWidget->registerObject(&module, &object, parent, flags);
 
   RegisteredDockWidget* dockWidget = openedObjectsByName.value(object.getFullName());
-  if(dockWidget && !dockWidget->hasWidget())
+  if (dockWidget && !dockWidget->hasWidget())
   {
     SimRobot::Widget* widget = object.createWidget();
-    if(widget)
+    if (widget)
     {
-      if(flags & SimRobot::Flag::verticalTitleBar)
+      if (flags & SimRobot::Flag::verticalTitleBar)
         dockWidget->setFeatures(dockWidget->features() | QDockWidget::DockWidgetVerticalTitleBar);
       dockWidget->setStyleSheet(dockWidget == activeDockWidget ? QDOCKWIDGET_STYLE_FOCUS : QDOCKWIDGET_STYLE);
       dockWidget->setWidget(widget, &module, &object, flags);
       QWidget* qwidget = widget->getWidget();
       Q_ASSERT(qwidget->parent() == dockWidget);
       dockWidget->setFocusProxy(qwidget);
-      if(sceneGraphDockWidget)
+      if (sceneGraphDockWidget)
         sceneGraphDockWidget->setOpened(&object, true);
 
-      if(dockWidget == activeDockWidget)
+      if (dockWidget == activeDockWidget)
         updateMenuAndToolBar();
     }
   }
@@ -277,7 +277,7 @@ SimRobot::Object* MainWindow::getObjectChild(const SimRobot::Object& object, int
 
 bool MainWindow::addStatusLabel(const SimRobot::Module& module, SimRobot::StatusLabel* statusLabel)
 {
-  if(!statusLabel)
+  if (!statusLabel)
     return false;
   statusBar->addLabel(&module, statusLabel);
   return true;
@@ -287,7 +287,7 @@ bool MainWindow::registerModule(const SimRobot::Module& module, const QString& d
 {
   registeredModules.insert(name, RegisteredModule(name, displayName, flags));
   LoadedModule* loadedModule = loadedModulesByName.value(name);
-  if(loadedModule)
+  if (loadedModule)
     loadedModule->flags = flags;
   return true;
 }
@@ -305,7 +305,7 @@ bool MainWindow::openObject(const SimRobot::Object& object)
 bool MainWindow::closeObject(const SimRobot::Object& object)
 {
   QMap<QString, RegisteredDockWidget*>::iterator it = openedObjectsByName.find(object.getFullName());
-  if(it == openedObjectsByName.end())
+  if (it == openedObjectsByName.end())
     return false;
   it.value()->close();
   return true;
@@ -313,7 +313,7 @@ bool MainWindow::closeObject(const SimRobot::Object& object)
 
 bool MainWindow::selectObject(const SimRobot::Object& object)
 {
-  foreach(LoadedModule* module, loadedModules)
+  foreach (LoadedModule* module, loadedModules)
     module->module->selectedObject(object);
   return true;
 }
@@ -330,7 +330,7 @@ void MainWindow::setStatusMessage(const QString& message)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-  if(!closeFile())
+  if (!closeFile())
   {
     event->ignore();
     return;
@@ -343,46 +343,41 @@ void MainWindow::timerEvent(QTimerEvent* event)
 {
   performStep = false;
 
-  foreach(LoadedModule* loadedModule, loadedModules)
+  foreach (LoadedModule* loadedModule, loadedModules)
     loadedModule->module->update();
 
   // update gui
   unsigned int now = getSystemTime();
-  if(!running || now - lastGuiUpdate > (unsigned int)guiUpdateRate)
+  if (!running || now - lastGuiUpdate > (unsigned int)guiUpdateRate)
   {
     lastGuiUpdate = now;
-    foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
-      if(dockWidget->isReallyVisible())
+    foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
+      if (dockWidget->isReallyVisible())
         dockWidget->update();
-    if(statusBar->isVisible())
+    if (statusBar->isVisible())
       statusBar->update();
   }
-  if(!running)
+  if (!running)
   {
-#ifdef FIX_WIN32_WINDOWS7_BLOCKING_BUG
-    if(event)
-#endif
-    {
-      Q_ASSERT(event->timerId() == timerId);
-      killTimer(timerId);
-    }
+    Q_ASSERT(event->timerId() == timerId);
+    killTimer(timerId);
     timerId = 0;
   }
 }
 
-void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+void MainWindow::dragEnterEvent(QDragEnterEvent* event)
 {
-  if(event->mimeData()->hasUrls())
+  if (event->mimeData()->hasUrls())
     event->acceptProposedAction();
 }
 
-void MainWindow::dropEvent(QDropEvent *event)
+void MainWindow::dropEvent(QDropEvent* event)
 {
   QList<QUrl> urls = event->mimeData()->urls();
-  foreach(QUrl url, urls)
+  foreach (QUrl url, urls)
   {
     QString file(url.toLocalFile());
-    if(!file.isEmpty())
+    if (!file.isEmpty())
     {
       openFile(file);
       break;
@@ -393,21 +388,21 @@ void MainWindow::dropEvent(QDropEvent *event)
 
 void MainWindow::keyPressEvent(QKeyEvent* event)
 {
-  if((event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
+  if ((event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
   {
     int key = event->key();
-    if((key >= Qt::Key_0 && key <= Qt::Key_9) || (key >= Qt::Key_A && key <= Qt::Key_Z))
+    if ((key >= Qt::Key_0 && key <= Qt::Key_9) || (key >= Qt::Key_A && key <= Qt::Key_Z))
     {
       key -= (key >= Qt::Key_0 && key <= Qt::Key_9) ? Qt::Key_0 : (Qt::Key_A - 11);
       event->accept();
-      foreach(LoadedModule* module, loadedModules)
+      foreach (LoadedModule* module, loadedModules)
         module->module->pressedKey(key, true);
       return;
     }
   }
-  else if(event->key() == Qt::Key_F11)
+  else if (event->key() == Qt::Key_F11)
   {
-    if(isFullScreen())
+    if (isFullScreen())
       showNormal();
     else
       showFullScreen();
@@ -423,14 +418,14 @@ void MainWindow::keyPressEvent(QKeyEvent* event)
 
 void MainWindow::keyReleaseEvent(QKeyEvent* event)
 {
-  if((event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
+  if ((event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)) == (Qt::ControlModifier | Qt::ShiftModifier))
   {
     int key = event->key();
-    if((key >= Qt::Key_0 && key <= Qt::Key_9) || (key >= Qt::Key_A && key <= Qt::Key_Z))
+    if ((key >= Qt::Key_0 && key <= Qt::Key_9) || (key >= Qt::Key_A && key <= Qt::Key_Z))
     {
       key -= (key >= Qt::Key_0 && key <= Qt::Key_9) ? Qt::Key_0 : (Qt::Key_A - 11);
       event->accept();
-      foreach(LoadedModule* module, loadedModules)
+      foreach (LoadedModule* module, loadedModules)
         module->module->pressedKey(key, false);
       return;
     }
@@ -446,47 +441,68 @@ QMenu* MainWindow::createPopupMenu()
   return menu;
 }
 
+MainWindow::LoadedModule* MainWindow::loadLibrary(const QString& name, int flags)
+{
+  // Avoid unloading libraries. Otherwise, QMetaType may fail for
+  // QtProperty* required by qtpropertybrowser. See:
+  // https://stackoverflow.com/q/19234703
+  // https://stackoverflow.com/q/27527041
+  // https://lists.qt-project.org/pipermail/qt-interest-old/2010-May/023305.html
+
+  if (!loadedLibraries.contains(name))
+    loadedLibraries[name] = new LoadedModule(name, flags);
+
+  return loadedLibraries[name];
+}
+
+void MainWindow::unloadLibrary(const QString& name)
+{
+  loadedLibraries[name]->unload();
+  delete loadedLibraries[name];
+  loadedLibraries.remove(name);
+}
+
 bool MainWindow::loadModule(const QString& name, bool manually)
 {
-  if(loadedModulesByName.contains(name))
+  if (loadedModulesByName.contains(name))
     return true; // already loaded
 
   // look for module flags
   int flags = 0;
   {
     QMap<QString, RegisteredModule>::const_iterator i = registeredModules.find(name);
-    if(i != registeredModules.end())
+    if (i != registeredModules.end())
       flags = i->flags;
   }
 
 #ifdef WINDOWS
   const QString& moduleName = name;
-#elif defined(OSX)
-  QString moduleName = QFileInfo(application->getAppPath()).dir().path() + "/../Resources/" + name;
+#elif defined(MACOS)
+  QString moduleName = QFileInfo(application->getAppPath()).dir().path() + "/../Resources/" + name + ".so";
 #else
   QString moduleName = QFileInfo(appPath).path() + "/lib" + name + ".so";
 #endif
-  LoadedModule* loadedModule = new LoadedModule(moduleName, flags);
+  LoadedModule* loadedModule = loadLibrary(moduleName, flags);
   loadedModule->createModule = (LoadedModule::CreateModuleProc)loadedModule->resolve("createModule");
-  if(!loadedModule->createModule)
+  if (!loadedModule->createModule)
   {
     QMessageBox::warning(this, tr("SimRobot"), loadedModule->errorString());
-    loadedModule->unload();
-    delete loadedModule;
     return false;
   }
   loadedModule->module = loadedModule->createModule(*this);
   Q_ASSERT(loadedModule->module);
   QHash<QString, LoadedModule*>::iterator it = loadedModulesByName.insert(name, loadedModule);
-  if(manually)
+  if (manually)
   {
     loadedModule->compiled = loadedModule->module->compile(); // compile it right now
-    if(!loadedModule->compiled)
+    if (!loadedModule->compiled)
     {
       loadedModulesByName.erase(it);
       delete loadedModule->module;
-      loadedModule->unload();
-      delete loadedModule;
+      loadedModule->module = nullptr;
+      loadedModule->compiled = false;
+      std::cerr << "SimRobot: " << loadedModule->errorString().toStdString() << std::endl;
+      QMessageBox::warning(this, tr("SimRobot"), loadedModule->errorString());
       return false;
     }
     manuallyLoadedModules.append(name);
@@ -494,9 +510,9 @@ bool MainWindow::loadModule(const QString& name, bool manually)
   loadedModules.append(loadedModule);
 
   // relink modules
-  if(manually)
+  if (manually)
   {
-    foreach(LoadedModule* loadedModule, loadedModules)
+    foreach (LoadedModule* loadedModule, loadedModules)
       loadedModule->module->link();
   }
 
@@ -512,16 +528,16 @@ void MainWindow::unloadModule(const QString& name)
 
   // widget "can close" check
   QList<RegisteredDockWidget*> objectsToClose;
-  foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
-    if(dockWidget->getModule() == module)
+  foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
+    if (dockWidget->getModule() == module)
     {
-      if(!dockWidget->canClose())
+      if (!dockWidget->canClose())
         return;
       objectsToClose.append(dockWidget);
     }
 
   // closed opened widgets (from the module)
-  foreach(RegisteredDockWidget* objectToClose, objectsToClose)
+  foreach (RegisteredDockWidget* objectToClose, objectsToClose)
   {
     objectToClose->setAttribute(Qt::WA_DeleteOnClose, false);
     objectToClose->close();
@@ -529,46 +545,46 @@ void MainWindow::unloadModule(const QString& name)
   }
 
   // remove registered stuff
-  if(sceneGraphDockWidget)
+  if (sceneGraphDockWidget)
     sceneGraphDockWidget->unregisterObjectsFromModule(module);
   statusBar->removeLabelsFromModule(module);
 
   // unload the module
   delete loadedModule->module;
-  loadedModule->unload();
-  delete loadedModule;
+  loadedModule->module = nullptr;
+  loadedModule->compiled = false;
   loadedModules.removeOne(loadedModule);
   loadedModulesByName.remove(name);
   manuallyLoadedModules.removeOne(name);
 
   // relink modules
-  foreach(LoadedModule* loadedModule, loadedModules)
+  foreach (LoadedModule* loadedModule, loadedModules)
     loadedModule->module->link();
 }
 
 bool MainWindow::compileModules()
 {
-  if(compiled)
+  if (compiled)
     return true;
 
   bool sucess = true;
-  for(int i = 0; i < loadedModules.count(); ++i) // note: list of modules may grow while compiling modules
+  for (int i = 0; i < loadedModules.count(); ++i) // note: list of modules may grow while compiling modules
   {
     LoadedModule* loadedModule = loadedModules[i];
-    if(!loadedModule->compiled)
+    if (!loadedModule->compiled)
     {
       loadedModule->compiled = loadedModule->module->compile();
-      if(!loadedModule->compiled)
+      if (!loadedModule->compiled)
         sucess = false;
     }
   }
-  if(!sucess)
+  if (!sucess)
     return false;
 
   compiled = true;
 
   // link modules
-  foreach(LoadedModule* loadedModule, loadedModules)
+  foreach (LoadedModule* loadedModule, loadedModules)
     loadedModule->module->link();
   return true;
 }
@@ -577,7 +593,7 @@ void MainWindow::updateViewMenu(QMenu* menu)
 {
   menu->clear();
 
-  if(viewUpdateRateMenu)
+  if (viewUpdateRateMenu)
   {
     delete viewUpdateRateMenu;
     delete viewUpdateRateActionGroup;
@@ -627,12 +643,12 @@ void MainWindow::updateViewMenu(QMenu* menu)
   //menu->addAction(menuBar->toggleViewAction());
   menu->addAction(toolBar->toggleViewAction());
   menu->addAction(statusBar->toggleViewAction());
-  if((opened && sceneGraphDockWidget) || openedObjectsByName.count() > 0)
+  if ((opened && sceneGraphDockWidget) || openedObjectsByName.count() > 0)
   {
     menu->addSeparator();
-    if(opened && sceneGraphDockWidget)
+    if (opened && sceneGraphDockWidget)
       menu->addAction(sceneGraphDockWidget->toggleViewAction());
-    foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
+    foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
       menu->addAction(dockWidget->toggleViewAction());
   }
 }
@@ -642,22 +658,22 @@ void MainWindow::updateMenuAndToolBar()
   menuBar->clear();
   toolBar->clear();
 
-  if(dockWidgetFileMenu)
+  if (dockWidgetFileMenu)
   {
     delete dockWidgetFileMenu;
     dockWidgetFileMenu = 0;
   }
-  if(dockWidgetEditMenu)
+  if (dockWidgetEditMenu)
   {
     delete dockWidgetEditMenu;
     dockWidgetEditMenu = 0;
   }
-  if(moduleUserMenu)
+  if (moduleUserMenu)
   {
     delete moduleUserMenu;
     moduleUserMenu = 0;
   }
-  if(dockWidgetUserMenu)
+  if (dockWidgetUserMenu)
   {
     delete dockWidgetUserMenu;
     dockWidgetUserMenu = 0;
@@ -665,39 +681,39 @@ void MainWindow::updateMenuAndToolBar()
 
   RegisteredDockWidget* registeredDockWidget = opened && activeDockWidget ? qobject_cast<RegisteredDockWidget*>(activeDockWidget) : 0;
 
-  if(registeredDockWidget)
+  if (registeredDockWidget)
   {
     dockWidgetFileMenu = registeredDockWidget->createFileMenu();
     dockWidgetEditMenu = registeredDockWidget->createEditMenu();
     dockWidgetUserMenu = registeredDockWidget->createUserMenu();
 
     // Default is the menu of the module belonging to the current view
-    if(registeredDockWidget->getModule())
+    if (registeredDockWidget->getModule())
       moduleUserMenu = registeredDockWidget->getModule()->createUserMenu();
 
     // Otherwise use the first menu of a module found
-    foreach(LoadedModule* loadedModule, loadedModules)
-      if(!moduleUserMenu)
+    foreach (LoadedModule* loadedModule, loadedModules)
+      if (!moduleUserMenu)
         moduleUserMenu = loadedModule->module->createUserMenu();
   }
 
   menuBar->addMenu(fileMenu);
 
   toolBar->addAction(toolbarOpenAct);
-  if(dockWidgetFileMenu)
+  if (dockWidgetFileMenu)
     addToolBarButtonsFromMenu(dockWidgetFileMenu, toolBar, false);
 
   toolBar->addSeparator();
   toolBar->addAction(simStartAct);
   toolBar->addAction(simResetAct);
   toolBar->addAction(simStepAct);
-  if(opened && sceneGraphDockWidget)
+  if (opened && sceneGraphDockWidget)
   {
     toolBar->addSeparator();
     toolBar->addAction(sceneGraphDockWidget->toggleViewAction());
   }
 
-  if(dockWidgetEditMenu)
+  if (dockWidgetEditMenu)
   {
     menuBar->addMenu(dockWidgetEditMenu);
     addToolBarButtonsFromMenu(dockWidgetEditMenu, toolBar, true);
@@ -705,19 +721,19 @@ void MainWindow::updateMenuAndToolBar()
   menuBar->addMenu(viewMenu);
   menuBar->addMenu(createSimMenu());
 
-  if(moduleUserMenu)
+  if (moduleUserMenu)
   {
     menuBar->addMenu(moduleUserMenu);
     addToolBarButtonsFromMenu(moduleUserMenu, toolBar, true);
   }
 
-  if(dockWidgetUserMenu)
+  if (dockWidgetUserMenu)
   {
     menuBar->addMenu(dockWidgetUserMenu);
     addToolBarButtonsFromMenu(dockWidgetUserMenu, toolBar, true);
   }
 
-  if(opened)
+  if (opened)
     menuBar->addMenu(addonMenu);
 
   menuBar->addMenu(helpMenu);
@@ -739,14 +755,14 @@ QMenu* MainWindow::createSimMenu()
 void MainWindow::addToolBarButtonsFromMenu(QMenu* menu, QToolBar* toolBar, bool addSeparator)
 {
   const QList<QAction*>& actions(menu->actions());
-  foreach(QAction* action, actions)
+  foreach (QAction* action, actions)
   {
-    if(!action->icon().isNull())
+    if (!action->icon().isNull())
     {
-      if(addSeparator)
+      if (addSeparator)
         toolBar->addSeparator();
       toolBar->addAction(action);
-      if(action->menu())
+      if (action->menu())
         qobject_cast<QToolButton*>(toolBar->widgetForAction(action))->setPopupMode(QToolButton::InstantPopup);
     }
     addSeparator = action->isSeparator();
@@ -758,19 +774,19 @@ void MainWindow::updateFileMenu()
   fileMenu->clear();
   fileMenu->addAction(fileOpenAct);
   fileMenu->addAction(fileCloseAct);
-  if(dockWidgetFileMenu)
+  if (dockWidgetFileMenu)
   {
     fileMenu->addSeparator();
-    const QList<QAction*> actions  = dockWidgetFileMenu->actions();
-    foreach(QAction* action, actions)
+    const QList<QAction*> actions = dockWidgetFileMenu->actions();
+    foreach (QAction* action, actions)
       fileMenu->addAction(action);
   }
 
-  if(recentFiles.size() > 0)
+  if (recentFiles.size() > 0)
   {
     fileMenu->addSeparator();
     char shortcut = '1';
-    for(QStringList::const_iterator i = recentFiles.begin(), end = recentFiles.end(); i != end; ++i)
+    for (QStringList::const_iterator i = recentFiles.begin(), end = recentFiles.end(); i != end; ++i)
     {
       const QString& file(*i);
       QAction* action = fileMenu->addAction("&" + QString(shortcut++) + " " + QFileInfo(file).fileName());
@@ -778,7 +794,7 @@ void MainWindow::updateFileMenu()
       recentFileMapper.setMapping(action, file);
     }
   }
-#ifndef OSX
+#ifndef MACOS
   fileMenu->addSeparator();
   fileMenu->addAction(fileExitAct);
 #endif
@@ -788,7 +804,7 @@ void MainWindow::updateRecentFileMenu()
 {
   recentFileMenu->clear();
   char shortcut = '1';
-  for(QStringList::const_iterator i = recentFiles.begin(), end = recentFiles.end(); i != end; ++i)
+  for (QStringList::const_iterator i = recentFiles.begin(), end = recentFiles.end(); i != end; ++i)
   {
     const QString& file(*i);
     QAction* action = recentFileMenu->addAction("&" + QString(shortcut++) + " " + QFileInfo(file).fileName());
@@ -805,11 +821,11 @@ void MainWindow::updateViewMenu()
 void MainWindow::updateAddonMenu()
 {
   addonMenu->clear();
-  foreach(const RegisteredModule& info, registeredModules)
+  foreach (const RegisteredModule& info, registeredModules)
   {
     QAction* action = addonMenu->addAction(info.displayName);
     action->setCheckable(true);
-    if(loadedModulesByName.contains(info.name))
+    if (loadedModulesByName.contains(info.name))
       action->setChecked(true);
     connect(action, SIGNAL(triggered()), &addonMapper, SLOT(map()));
     addonMapper.setMapping(action, info.name);
@@ -823,10 +839,9 @@ void MainWindow::setGuiUpdateRate(int rate)
 
 void MainWindow::open()
 {
-  QString fileName = QFileDialog::getOpenFileName(this,
-    tr("Open File"), settings.value("OpenDirectory", "").toString(), tr("Robot Simulation Files (*.ros *.ros2)"));
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"), settings.value("OpenDirectory", "").toString(), tr("Robot Simulation Files (*.ros *.ros2)"));
 
-  if(fileName.isEmpty())
+  if (fileName.isEmpty())
     return;
   settings.setValue("OpenDirectory", QFileInfo(fileName).dir().path());
 
@@ -845,7 +860,7 @@ void MainWindow::openFile(const QString& fileName)
   recentFiles.removeAll(filePath);
 
   // check if file exists
-  if(!fileInfo.exists())
+  if (!fileInfo.exists())
   {
     settings.setValue("RecentFiles", recentFiles);
     QMessageBox::warning(this, tr("SimRobot"), tr("Cannot open file %1.").arg(fileName));
@@ -854,9 +869,9 @@ void MainWindow::openFile(const QString& fileName)
   opened = true;
 
   // add file path to recent file list
-  const QString& baseName = fileInfo.baseName();
+  baseName = fileInfo.baseName();
   recentFiles.prepend(filePath);
-  while(recentFiles.count() > 8)
+  while (recentFiles.count() > 8)
     recentFiles.removeLast();
   settings.setValue("RecentFiles", recentFiles);
   setWindowTitle(baseName + " - " + tr("SimRobot"));
@@ -869,70 +884,53 @@ void MainWindow::openFile(const QString& fileName)
   sceneGraphDockWidget->setStyleSheet(QDOCKWIDGET_STYLE);
   connect(sceneGraphDockWidget, SIGNAL(visibilityChanged(bool)), this, SLOT(visibilityChanged(bool)));
   addDockWidget(Qt::TopDockWidgetArea, sceneGraphDockWidget);
-  connect(sceneGraphDockWidget, SIGNAL(activatedObject(const QString&, const SimRobot::Module*, SimRobot::Object*, int)), this, SLOT(openObject(const QString&, const SimRobot::Module*, SimRobot::Object*, int)));
+  connect(sceneGraphDockWidget,
+      SIGNAL(activatedObject(const QString&, const SimRobot::Module*, SimRobot::Object*, int)),
+      this,
+      SLOT(openObject(const QString&, const SimRobot::Module*, SimRobot::Object*, int)));
   connect(sceneGraphDockWidget, SIGNAL(deactivatedObject(const QString&)), this, SLOT(closeObject(const QString&)));
 
   // load all other windows
   const QVariant& openedObjectsVar = layoutSettings.value("OpenedObjects");
-  if(openedObjectsVar.isValid())
+  if (openedObjectsVar.isValid())
   {
     QStringList openedObjects = openedObjectsVar.toStringList();
-    foreach(QString object, openedObjects)
+    foreach (QString object, openedObjects)
       openObject(object, 0, 0, 0);
   }
-#ifdef FIX_LINUX_DOCK_WIDGET_SIZE_RESTORING_BUG
-  layoutSettings.beginGroup("DockedWidgetSizes");
-  for(QMap<QString, RegisteredDockWidget*>::iterator it = openedObjectsByName.begin(), end = openedObjectsByName.end(); it != end; ++it)
-  {
-    RegisteredDockWidget* widget = it.value();
-    QVariant var = layoutSettings.value(it.key());
-    if(!var.isNull())
-      widget->setMinimumSize(var.toSize());
-  }
-  QVariant var = layoutSettings.value(".SceneGraph");
-  if(!var.isNull())
-    sceneGraphDockWidget->setMinimumSize(var.toSize());
-  layoutSettings.endGroup();
-  QTimer::singleShot(500, this, SLOT(unlockLayout()));
-#endif
-#ifdef OSX
-  MacFullscreen::setActive(this, layoutSettings.value("Fullscreen").toBool());
-#endif
+
   restoreGeometry(layoutSettings.value("Geometry").toByteArray());
   restoreState(layoutSettings.value("WindowState").toByteArray());
   statusBar->setVisible(layoutSettings.value("ShowStatus", true).toBool());
-#ifdef FIX_MACOSX_TOOLBAR_VISIBILITY_RESTORING_BUG
-  toolBar->setVisible(layoutSettings.value("ShowToolbar", true).toBool());
-#endif
   manuallyLoadedModules = layoutSettings.value("LoadedModules").toStringList();
   guiUpdateRate = layoutSettings.value("GuiUpdateRate", -1).toInt();
-  if(guiUpdateRate < 0)
+  if (guiUpdateRate < 0)
     guiUpdateRate = 100;
   QAction* action = qobject_cast<QAction*>(viewUpdateRateMapper.mapping(guiUpdateRate));
-  if(action)
+  if (action)
     action->setChecked(true);
 
   // load core module
   Q_ASSERT(!compiled);
   loadModule(fileInfo.suffix() == "ros2" ? "SimRobotCore2" : "SimRobotCore");
-  foreach(QString module, manuallyLoadedModules)
+  foreach (QString module, manuallyLoadedModules)
     loadModule(module);
   compileModules();
 
   // restore focus
   layoutRestored = true;
   QVariant activeObject = layoutSettings.value("ActiveObject");
-  if(activeObject.isValid())
+  if (activeObject.isValid())
   {
     QDockWidget* activeDockWidget = findChild<QDockWidget*>(activeObject.toString());
-    if(activeDockWidget)
+    if (activeDockWidget)
     {
       activeDockWidget->raise();
       activeDockWidget->activateWindow();
       activeDockWidget->setFocus();
     }
   }
-  if(!activeDockWidget)
+  if (!activeDockWidget)
     updateMenuAndToolBar();
 
   // gui update
@@ -942,13 +940,13 @@ void MainWindow::openFile(const QString& fileName)
   simStepAct->setEnabled(true);
 
   // start simulation
-  if(compiled && layoutSettings.value("Run", true).toBool())
+  if (compiled && layoutSettings.value("Run", true).toBool())
     simStart();
 }
 
 void MainWindow::unlockLayout()
 {
-  for(QMap<QString, RegisteredDockWidget*>::iterator it = openedObjectsByName.begin(), end = openedObjectsByName.end(); it != end; ++it)
+  for (QMap<QString, RegisteredDockWidget*>::iterator it = openedObjectsByName.begin(), end = openedObjectsByName.end(); it != end; ++it)
   {
     RegisteredDockWidget* widget = it.value();
     widget->setMinimumSize(QSize(0, 0));
@@ -959,8 +957,8 @@ void MainWindow::unlockLayout()
 bool MainWindow::closeFile()
 {
   // "can close" check
-  foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
-    if(!dockWidget->canClose())
+  foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
+    if (!dockWidget->canClose())
       return false;
 
   // start closing...
@@ -970,54 +968,26 @@ bool MainWindow::closeFile()
   layoutRestored = false;
 
   // save layout
-  if(wasOpened)
+  if (wasOpened)
   {
-    layoutSettings.setValue("Geometry", saveGeometry());
-    layoutSettings.setValue("WindowState", saveState());
-#ifdef FIX_LINUX_DOCK_WIDGET_SIZE_RESTORING_BUG
-    layoutSettings.beginGroup("DockedWidgetSizes");
-    for(QMap<QString, RegisteredDockWidget*>::iterator it = openedObjectsByName.begin(), end = openedObjectsByName.end(); it != end; ++it)
-    {
-      RegisteredDockWidget* widget = it.value();
-      if(!it.value()->isFloating())
-        layoutSettings.setValue(it.key(), widget->size());
-      else
-        layoutSettings.remove(it.key());
-    }
-    if(!sceneGraphDockWidget->isFloating())
-      layoutSettings.setValue(".SceneGraph", sceneGraphDockWidget->size());
-    else
-      layoutSettings.remove(".SceneGraph");
-    layoutSettings.endGroup();
-#endif
-    layoutSettings.setValue("ShowStatus", statusBar->isVisible());
-#ifdef FIX_MACOSX_TOOLBAR_VISIBILITY_RESTORING_BUG
-    layoutSettings.setValue("ShowToolbar", toolBar->isVisible());
-#endif
-#ifdef OSX
-    layoutSettings.setValue("Fullscreen", MacFullscreen::isActive(this));
-#endif
-    layoutSettings.setValue("OpenedObjects", openedObjects);
-    layoutSettings.setValue("ActiveObject", activeDockWidget ? QVariant(activeDockWidget->objectName()) : QVariant());
-    layoutSettings.setValue("LoadedModules", manuallyLoadedModules);
-    layoutSettings.setValue("Run", running);
-    layoutSettings.setValue("GuiUpdateRate", guiUpdateRate == 100 ? -1 : guiUpdateRate);
+    saveLayout();
   }
 
   // delete menus from active window
-  if(activeDockWidget)
+  if (activeDockWidget)
     activeDockWidget = 0;
 
   updateMenuAndToolBar();
   setFocus();
 
   // close opened windows
-  if(sceneGraphDockWidget)
+  if (sceneGraphDockWidget)
   {
     delete sceneGraphDockWidget;
     sceneGraphDockWidget = 0;
   }
-  foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
+
+  foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
   {
     delete dockWidget;
   }
@@ -1029,23 +999,22 @@ bool MainWindow::closeFile()
   registeredModules.clear();
 
   // unload all modules
-  foreach(LoadedModule* loadedModule, loadedModules)
+  foreach (LoadedModule* loadedModule, loadedModules)
   {
     delete loadedModule->module;
-    loadedModule->unload();
-    delete loadedModule;
+    loadedModule->module = nullptr;
+    loadedModule->compiled = false;
   }
   loadedModules.clear();
   loadedModulesByName.clear();
   manuallyLoadedModules.clear();
   registeredModules.clear();
 
-  //
-  if(wasOpened)
+  if (wasOpened)
     layoutSettings.endGroup();
 
   // reset gui
-  if(wasOpened)
+  if (wasOpened)
   {
     fileCloseAct->setEnabled(false);
     simResetAct->setEnabled(false);
@@ -1059,78 +1028,104 @@ bool MainWindow::closeFile()
     running = false;
     performStep = false;
   }
-#ifdef FIX_WIN32_CRASH_WITHOUT_QGLWIDGET_BUG
-  else
-    // Prevents crash when no QGLWidget was created before the program terminates
-    QGLWidget helper(QGLFormat(QGL::NoStencilBuffer | QGL::SingleBuffer), 0, 0, Qt::WindowStaysOnTopHint);
-#endif
 
   return true;
+}
+
+void MainWindow::saveLayout()
+{
+  layoutSettings.setValue("Geometry", saveGeometry());
+  layoutSettings.setValue("WindowState", saveState());
+  layoutSettings.setValue("ShowStatus", statusBar->isVisible());
+  layoutSettings.setValue("OpenedObjects", openedObjects);
+  layoutSettings.setValue("ActiveObject", activeDockWidget ? QVariant(activeDockWidget->objectName()) : QVariant());
+  layoutSettings.setValue("LoadedModules", manuallyLoadedModules);
+  layoutSettings.setValue("Run", running);
+  layoutSettings.setValue("GuiUpdateRate", guiUpdateRate == 100 ? -1 : guiUpdateRate);
+
+  // save opened windows
+  if (sceneGraphDockWidget)
+  {
+    sceneGraphDockWidget->saveLayout();
+  }
+
+  foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
+  {
+    dockWidget->saveLayout();
+  }
+
+  layoutSettings.endGroup();
+  layoutSettings.sync();
+
+  // open layout settings again for saving
+  layoutSettings.beginGroup(baseName);
 }
 
 void MainWindow::simReset()
 {
   // "can close" check
-  foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
-    if(!dockWidget->canClose())
+  foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
+    if (!dockWidget->canClose())
       return;
 
   // start resetting
   QString openedFilePath = filePath;
   bool wasRunning = running || !compiled;
   QString activeObject;
-  if(activeDockWidget)
+  if (activeDockWidget)
     activeObject = activeDockWidget->objectName();
-  if(running)
+  if (running)
     simStart(); // stop
 
   filePath.clear(); // modules may read the filePath to distinguish between user request window closing and document closing / resetting
   layoutRestored = false;
 
   // delete menus from active window
-  if(activeDockWidget)
+  if (activeDockWidget)
     activeDockWidget = 0;
   updateMenuAndToolBar();
   setFocus();
 
   // remove all registered status labes and modules and most registered objects
   QSet<const SimRobot::Module*> ignoredModules;
-  if(sceneGraphDockWidget)
-    foreach(LoadedModule* loadedModule, loadedModules)
+  if (sceneGraphDockWidget)
+  {
+    foreach (LoadedModule* loadedModule, loadedModules)
     {
-      if(loadedModule->flags & SimRobot::Flag::ignoreReset)
+      if (loadedModule->flags & SimRobot::Flag::ignoreReset)
         ignoredModules.insert(loadedModule->module);
       else
         sceneGraphDockWidget->unregisterObjectsFromModule(loadedModule->module);
     }
+  }
   statusBar->removeAllLabels();
   registeredModules.clear();
 
   // destroy most widgets (just the widgets while keeping the docking frame intact)
-  foreach(RegisteredDockWidget* dockWidget, openedObjectsByName)
+  foreach (RegisteredDockWidget* dockWidget, openedObjectsByName)
   {
     const SimRobot::Module* module = dockWidget->getModule();
-    if(module && ignoredModules.contains(module))
+    if (module && ignoredModules.contains(module))
       continue;
     dockWidget->setWidget(0, 0, 0, 0);
   }
 
   // unload all modules
-  foreach(LoadedModule* loadedModule, loadedModules)
+  foreach (LoadedModule* loadedModule, loadedModules)
   {
-    if(loadedModule->flags & SimRobot::Flag::ignoreReset)
+    if (loadedModule->flags & SimRobot::Flag::ignoreReset)
       continue;
     delete loadedModule->module;
-    loadedModule->module = 0;
+    loadedModule->module = nullptr;
     loadedModule->compiled = false;
   }
   compiled = false;
   filePath = openedFilePath;
 
   // reload all modules
-  foreach(LoadedModule* loadedModule, loadedModules)
+  foreach (LoadedModule* loadedModule, loadedModules)
   {
-    if(loadedModule->module)
+    if (loadedModule->module)
       continue;
     loadedModule->module = loadedModule->createModule(*this);
     Q_ASSERT(loadedModule->module);
@@ -1141,37 +1136,37 @@ void MainWindow::simReset()
 
   // restore focus
   layoutRestored = true;
-  if(!activeObject.isEmpty())
+  if (!activeObject.isEmpty())
   {
     QDockWidget* activeDockWidget = findChild<QDockWidget*>(activeObject);
-    if(activeDockWidget)
+    if (activeDockWidget)
     {
       activeDockWidget->raise();
       activeDockWidget->activateWindow();
       activeDockWidget->setFocus();
     }
   }
-  if(!activeDockWidget)
+  if (!activeDockWidget)
     updateMenuAndToolBar();
 
   // start!?
-  if(compiled && wasRunning)
+  if (compiled && wasRunning)
     simStart();
 }
 
 void MainWindow::simStart()
 {
   simStartAct->setChecked(false);
-  if(running)
+  if (running)
     running = false;
   else
   {
-    if(!compileModules())
+    if (!compileModules())
       return;
     running = true;
     simStartAct->setChecked(true);
-    if(!timerId)
-#ifdef OSX
+    if (!timerId)
+#ifdef MACOS
       timerId = startTimer(1);
 #else
       timerId = startTimer(0);
@@ -1181,10 +1176,10 @@ void MainWindow::simStart()
 
 void MainWindow::simStep()
 {
-  if(running)
+  if (running)
     simStart(); // stop
   performStep = true;
-  if(!timerId)
+  if (!timerId)
     timerId = startTimer(0);
 }
 
@@ -1194,23 +1189,10 @@ void MainWindow::simStop()
   running = false;
 }
 
-void MainWindow::help()
-{
-  if(!sceneGraphDockWidget)
-  {
-    sceneGraphDockWidget = new SceneGraphDockWidget(createSimMenu(), this);
-    sceneGraphDockWidget->setVisible(false);
-    connect(sceneGraphDockWidget, SIGNAL(activatedObject(const QString&, const SimRobot::Module*, SimRobot::Object*, int)), this, SLOT(openObject(const QString&, const SimRobot::Module*, SimRobot::Object*, int)));
-  }
-  if(!loadModule("SimRobotHelp", true))
-    return;
-  sceneGraphDockWidget->activateObject(sceneGraphDockWidget->resolveObject("Help", 0));
-}
-
 void MainWindow::about()
 {
-  QMessageBox::about(this, tr("About SimRobot"),
-    tr("<b>SimRobot</b> 2011 (B-Human Edition)<br><br>\
+  char aboutText[700];
+  strcpy(aboutText, "<b>SimRobot</b> 2015 (B-Human Edition)<br><br>\
 Authors:\
 <blockquote>Tim Laue<br>\
 Thomas Röfer<br>\
@@ -1220,12 +1202,17 @@ Colin Graf<br>\
 Thijs Jeffry de Haas<br>\
 </blockquote>\
 German Research Center for Artificial Intelligence (DFKI)<br>University of Bremen<br><br>\
-Icons by Mark James <a href=\"http://www.famfamfam.com/lab/icons/silk/\">http://www.famfamfam.com/lab/icons/silk/</a>"));
+Icons by Mark James <a href=\"http://www.famfamfam.com/lab/icons/silk/\">http://www.famfamfam.com/lab/icons/silk/</a><br><br>Layout Settings File:<br>");
+
+  const char* layoutSettingsFileName = layoutSettings.fileName().toLatin1().data();
+  strcat(aboutText, layoutSettingsFileName);
+
+  QMessageBox::about(this, tr("About SimRobot"), tr(aboutText));
 }
 
 void MainWindow::loadAddon(const QString& name)
 {
-  if(loadedModulesByName.contains(name))
+  if (loadedModulesByName.contains(name))
     unloadModule(name);
   else
     loadModule(name, true);
@@ -1234,9 +1221,9 @@ void MainWindow::loadAddon(const QString& name)
 void MainWindow::openObject(const QString& fullName, const SimRobot::Module* module, SimRobot::Object* object, int flags)
 {
   RegisteredDockWidget* dockWidget = openedObjectsByName.value(fullName);
-  if(dockWidget && object && (!dockWidget->getObject() || dockWidget->getObject()->getKind() != object->getKind()))
+  if (dockWidget && object && (!dockWidget->getObject() || dockWidget->getObject()->getKind() != object->getKind()))
     dockWidget = 0;
-  if(dockWidget)
+  if (dockWidget)
   {
     dockWidget->setVisible(true);
     dockWidget->raise();
@@ -1246,11 +1233,11 @@ void MainWindow::openObject(const QString& fullName, const SimRobot::Module* mod
   }
 
   SimRobot::Widget* widget = object ? object->createWidget() : 0;
-  if(object && !widget)
+  if (object && !widget)
     return; // the object does not have a widget
   dockWidget = new RegisteredDockWidget(fullName, this);
   connect(dockWidget, SIGNAL(closedContextMenu()), this, SLOT(updateMenuAndToolBar()));
-  if(flags & SimRobot::Flag::verticalTitleBar)
+  if (flags & SimRobot::Flag::verticalTitleBar)
     dockWidget->setFeatures(dockWidget->features() | QDockWidget::DockWidgetVerticalTitleBar);
   dockWidget->setStyleSheet(dockWidget == activeDockWidget ? QDOCKWIDGET_STYLE_FOCUS : QDOCKWIDGET_STYLE);
   connect(dockWidget, SIGNAL(visibilityChanged(bool)), this, SLOT(visibilityChanged(bool)));
@@ -1259,38 +1246,22 @@ void MainWindow::openObject(const QString& fullName, const SimRobot::Module* mod
   dockWidget->setObjectName(fullName);
   addDockWidget(Qt::TopDockWidgetArea, dockWidget);
   dockWidget->setFloating(true);
-  if(widget)
+  if (widget)
   {
-#ifdef FIX_MACOSX_UNDOCKED_WIDGETS_DISAPPEAR_WHEN_DOCKED_BUG
-    bool workaround = widget->getWidget()->inherits("QGLWidget");
-    if(workaround)
-    {
-      dockWidget->setWindowOpacity(0);
-      dockWidget->setVisible(true);
-    }
-#endif
     dockWidget->setWidget(widget, module, object, flags);
     QWidget* qwidget = widget->getWidget();
     Q_ASSERT(qwidget->parent() == dockWidget);
     dockWidget->setFocusProxy(qwidget);
-#ifdef FIX_MACOSX_UNDOCKED_WIDGETS_DISAPPEAR_WHEN_DOCKED_BUG
-    if(workaround)
-    {
-      dockWidget->adjustSize();
-      dockWidget->setVisible(false);
-      dockWidget->setWindowOpacity(1.0f);
-    }
-#endif
   }
 
   Q_ASSERT(openedObjectsByName.value(fullName) == 0);
   openedObjectsByName.insert(fullName, dockWidget);
   openedObjects.append(fullName);
   connect(dockWidget, SIGNAL(closedObject(const QString&)), this, SLOT(closedObject(const QString&)));
-  if(sceneGraphDockWidget && object)
+  if (sceneGraphDockWidget && object)
     sceneGraphDockWidget->setOpened(object, true);
 
-  if(layoutRestored)
+  if (layoutRestored)
   {
     dockWidget->setVisible(true);
     dockWidget->raise();
@@ -1302,35 +1273,35 @@ void MainWindow::openObject(const QString& fullName, const SimRobot::Module* mod
 void MainWindow::closeObject(const QString& fullName)
 {
   RegisteredDockWidget* dockWidget = openedObjectsByName.value(fullName);
-  if(dockWidget)
+  if (dockWidget)
     dockWidget->close();
 }
 
 void MainWindow::closedObject(const QString& fullName)
 {
   RegisteredDockWidget* dockWidget = openedObjectsByName.value(fullName);
-  if(dockWidget)
+  if (dockWidget)
   {
-    if(dockWidget == activeDockWidget)
+    if (dockWidget == activeDockWidget)
     {
       activeDockWidget = 0;
       updateMenuAndToolBar(); // delete menus from active window
     }
     openedObjectsByName.remove(fullName);
     openedObjects.removeOne(fullName);
-    if(sceneGraphDockWidget)
+    if (sceneGraphDockWidget)
       sceneGraphDockWidget->setOpened(dockWidget->getObject(), false);
   }
 }
 
 void MainWindow::visibilityChanged(bool visible)
 {
-  if(visible && layoutRestored)
+  if (visible && layoutRestored)
   {
     QDockWidget* dockWidget = qobject_cast<QDockWidget*>(sender());
-    if(dockWidget)
+    if (dockWidget)
     {
-      if(dockWidget->isFloating())
+      if (dockWidget->isFloating())
       {
         dockWidget->raise();
         dockWidget->activateWindow();
@@ -1340,50 +1311,50 @@ void MainWindow::visibilityChanged(bool visible)
   }
 }
 
-void MainWindow::focusChanged(QWidget *old, QWidget* now)
+void MainWindow::focusChanged(QWidget* old, QWidget* now)
 {
-  if(!layoutRestored)
+  if (!layoutRestored)
     return;
 
   QWidget* newActive = now;
-  while(newActive)
+  while (newActive)
   {
     QWidget* parent = newActive->parentWidget();
-    if(parent == this)
+    if (parent == this)
       break;
     newActive = parent;
   }
 
   QDockWidget* newDockWidget = newActive ? qobject_cast<QDockWidget*>(newActive) : 0;
-  if(newDockWidget == activeDockWidget)
+  if (newDockWidget == activeDockWidget)
     return;
 
-  if(!newDockWidget && activeDockWidget)
-    if(activeDockWidget->isVisible())
+  if (!newDockWidget && activeDockWidget)
+    if (activeDockWidget->isVisible())
       return;
 
-  if(activeDockWidget)
+  if (activeDockWidget)
   {
     activeDockWidget->setStyleSheet(QDOCKWIDGET_STYLE);
 
     RegisteredDockWidget* regDockWidget = qobject_cast<RegisteredDockWidget*>(activeDockWidget);
-    if(sceneGraphDockWidget && regDockWidget)
+    if (sceneGraphDockWidget && regDockWidget)
     {
       sceneGraphDockWidget->setActive(regDockWidget->getObject(), false);
     }
   }
 
   activeDockWidget = newDockWidget;
-  if(activeDockWidget)
+  if (activeDockWidget)
   {
     activeDockWidget->setStyleSheet(QDOCKWIDGET_STYLE_FOCUS);
 
     RegisteredDockWidget* regDockWidget = qobject_cast<RegisteredDockWidget*>(activeDockWidget);
-    if(sceneGraphDockWidget && regDockWidget)
+    if (sceneGraphDockWidget && regDockWidget)
     {
       sceneGraphDockWidget->setActive(regDockWidget->getObject(), true);
     }
-    if(activeDockWidget->isFloating())
+    if (activeDockWidget->isFloating())
     {
       // Set focus to the main window, so that the active window does not change when the focus returns to the main window.
       // Otherwise it would not be possible to use the customized menu or toolbar.
@@ -1391,4 +1362,7 @@ void MainWindow::focusChanged(QWidget *old, QWidget* now)
     }
   }
   updateMenuAndToolBar();
+
+  if (opened && (running || performStep))
+    saveLayout();
 }

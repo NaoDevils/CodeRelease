@@ -8,8 +8,7 @@
 #include "RadialBasisFunctionApproximator.h"
 #include "Platform/BHAssert.h"
 
-RadialBasisFunctionApproximator::RadialBasisFunctionApproximator(const VectorXf& centers, const float overlap) :
-  centers(centers)
+RadialBasisFunctionApproximator::RadialBasisFunctionApproximator(const VectorXf& centers, const float overlap) : centers(centers)
 {
   ASSERT(centers.cols() > 0);
   initializeWidths(overlap);
@@ -27,7 +26,7 @@ void RadialBasisFunctionApproximator::initializeWidths(const float overlap)
   ASSERT(centers.rows() > 1);
   const float logOverlap = -logf(overlap);
   //for the first gaussian we use the next one as reference
-  for(int i = 1; i < widths.size(); ++i)
+  for (int i = 1; i < widths.size(); ++i)
   {
     const float denom = (centers[i] - centers[i - 1]);
     ASSERT(denom != 0.0f); //avoid div by zero

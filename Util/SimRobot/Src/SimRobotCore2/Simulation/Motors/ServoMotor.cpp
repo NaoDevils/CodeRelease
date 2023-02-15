@@ -13,8 +13,9 @@
 #include "Simulation/Axis.h"
 #include "CoreModule.h"
 #include "Platform/Assert.h"
+#include "Tools/Math.h"
 
-ServoMotor::ServoMotor() : maxVelocity(0), maxForce(0)
+ServoMotor::ServoMotor() : maxVelocity(0), maxForce(0), stiffness(100)
 {
   Simulation::simulation->scene->actuators.push_back(this);
 
@@ -25,42 +26,61 @@ ServoMotor::ServoMotor() : maxVelocity(0), maxForce(0)
 void ServoMotor::create(Joint* joint)
 {
   ASSERT(dJointGetType(joint->joint) == dJointTypeHinge || dJointGetType(joint->joint) == dJointTypeSlider);
-  this->joint = positionSensor.joint = joint;
-  if(dJointGetType(joint->joint) == dJointTypeHinge)
-    dJointSetHingeParam(joint->joint, dParamFMax, maxForce);
+  this->joint = joint;
+  positionSensor.servoMotor = this;
+  if (dJointGetType(joint->joint) == dJointTypeHinge)
+  {
+    dJointSetHingeParam(joint->joint, dParamFMax, maxForce * (stiffness / 100.f));
+    lastPos = static_cast<float>(dJointGetHingeAngle(joint->joint));
+  }
   else
-    dJointSetSliderParam(joint->joint, dParamFMax, maxForce);
+    dJointSetSliderParam(joint->joint, dParamFMax, maxForce * (stiffness / 100.f));
 }
 
 void ServoMotor::act()
 {
-  const float currentPos = (dJointGetType(joint->joint) == dJointTypeHinge
-                            ? (float) dJointGetHingeAngle(joint->joint)
-                            : (float) dJointGetSliderPosition(joint->joint)) + (joint->axis->deflection ? joint->axis->deflection->offset : 0.f);
+  float currentPos = (dJointGetType(joint->joint) == dJointTypeHinge
+          ? static_cast<float>(dJointGetHingeAngle(joint->joint))
+          : static_cast<float>(dJointGetSliderPosition(joint->joint)) + (joint->axis->deflection ? joint->axis->deflection->offset : 0.f));
 
-  float setpoint = this->setpoint;
-  const float maxValueChange = maxVelocity * Simulation::simulation->scene->stepLength;
-  if(std::abs(setpoint - currentPos) > maxValueChange)
+  if (dJointGetType(joint->joint) == dJointTypeHinge)
   {
-    if(setpoint < currentPos)
-      setpoint = currentPos - maxValueChange;
-    else
-      setpoint = currentPos + maxValueChange;
+    const float diff = normalize(currentPos - normalize(lastPos));
+    currentPos = lastPos + diff;
+    lastPos = currentPos;
   }
 
+  float setpoint = this->setpoint;
+  float velocity = maxVelocity;
   const float newVel = controller.getOutput(currentPos, setpoint);
-  if(dJointGetType(joint->joint) == dJointTypeHinge)
-    dJointSetHingeParam(joint->joint, dParamVel, dReal(newVel));
+  if (std::abs(newVel) < maxVelocity)
+    velocity = newVel;
+  else if (setpoint - currentPos < 0.f)
+    velocity = -maxVelocity;
+
+
+  float force = maxForce * (stiffness / 100.f);
+  if (dJointGetType(joint->joint) == dJointTypeHinge)
+  {
+    dJointSetHingeParam(joint->joint, dParamFMax, force);
+    dJointSetHingeParam(joint->joint, dParamVel, velocity);
+  }
   else
-    dJointSetSliderParam(joint->joint, dParamVel, dReal(newVel));
+  {
+    dJointSetSliderParam(joint->joint, dParamFMax, force);
+    dJointSetSliderParam(joint->joint, dParamVel, velocity);
+  }
 }
 
 float ServoMotor::Controller::getOutput(float currentPos, float setpoint)
 {
   const float deltaTime = Simulation::simulation->scene->stepLength;
   const float error = setpoint - currentPos;
-  errorSum += i * error * deltaTime;
-  float result = p * error + errorSum + (d * (error - lastError)) / deltaTime;
+  errorSum += error * deltaTime;
+  float p_portion = error;
+  float i_portion = errorSum;
+  float d_portion = (error - lastError) / deltaTime;
+  float result = p * p_portion + i * i_portion + d * d_portion;
   lastError = error;
   return result;
 }
@@ -69,19 +89,31 @@ void ServoMotor::setValue(float value)
 {
   setpoint = value;
   Axis::Deflection* deflection = joint->axis->deflection;
-  if(deflection)
+  if (deflection)
   {
-    if(setpoint > deflection->max)
+    if (setpoint > deflection->max)
       setpoint = deflection->max;
-    else if(setpoint < deflection->min)
+    else if (setpoint < deflection->min)
       setpoint = deflection->min;
+  }
+}
+
+void ServoMotor::setStiffness(int value)
+{
+  if (value != -1)
+  {
+    stiffness = value;
+    if (stiffness > 100)
+      stiffness = 100;
+    else if (stiffness < 20)
+      stiffness = 20;
   }
 }
 
 bool ServoMotor::getMinAndMax(float& min, float& max) const
 {
   Axis::Deflection* deflection = joint->axis->deflection;
-  if(deflection)
+  if (deflection)
   {
     min = deflection->min;
     max = deflection->max;
@@ -92,15 +124,20 @@ bool ServoMotor::getMinAndMax(float& min, float& max) const
 
 void ServoMotor::PositionSensor::updateValue()
 {
-  data.floatValue = (dJointGetType(joint->joint) == dJointTypeHinge
-                     ? (float) dJointGetHingeAngle(joint->joint)
-                     : (float) dJointGetSliderPosition(joint->joint)) + (joint->axis->deflection ? joint->axis->deflection->offset : 0.f);
+  data.floatValue = (dJointGetType(servoMotor->joint->joint) == dJointTypeHinge
+          ? static_cast<float>(dJointGetHingeAngle(servoMotor->joint->joint))
+          : static_cast<float>(dJointGetSliderPosition(servoMotor->joint->joint)) + (servoMotor->joint->axis->deflection ? servoMotor->joint->axis->deflection->offset : 0.f));
+  if (dJointGetType(servoMotor->joint->joint) == dJointTypeHinge)
+  {
+    const float diff = normalize(data.floatValue - normalize(servoMotor->lastPos));
+    data.floatValue = servoMotor->lastPos + diff;
+  }
 }
 
 bool ServoMotor::PositionSensor::getMinAndMax(float& min, float& max) const
 {
-  Axis::Deflection* deflection = joint->axis->deflection;
-  if(deflection)
+  Axis::Deflection* deflection = servoMotor->joint->axis->deflection;
+  if (deflection)
   {
     min = deflection->min;
     max = deflection->max;
@@ -111,7 +148,7 @@ bool ServoMotor::PositionSensor::getMinAndMax(float& min, float& max) const
 
 void ServoMotor::registerObjects()
 {
-  if(dJointGetType(joint->joint) == dJointTypeHinge)
+  if (dJointGetType(joint->joint) == dJointTypeHinge)
     positionSensor.unit = unit = QString::fromUtf8("°");
   else
     positionSensor.unit = unit = "m";

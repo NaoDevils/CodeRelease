@@ -34,8 +34,7 @@ inline float randomGauss()
     v1 = 2.0f * randomFloat() - 1.0f;
     v2 = 2.0f * randomFloat() - 1.0f;
     r = v1 * v1 + v2 * v2;
-  }
-  while(r >= 1.0f || r == 0);
+  } while (r >= 1.0f || r == 0);
   const float fac(std::sqrt(-2.0f * std::log(r) / r));
   return v1 * fac;
 }
@@ -60,7 +59,7 @@ inline float gaussianProbability(float x, float s)
 inline float sampleNormalDistribution(float b)
 {
   float result(0.0f);
-  for(int i = 0; i < 12; i++)
+  for (int i = 0; i < 12; i++)
     result += 2.0f * ((randomFloat() - 0.5f) * b);
   return result / 2.0f;
 }
@@ -74,10 +73,10 @@ inline float sampleNormalDistribution(float b)
 */
 inline int sampleNormalDistribution(int b)
 {
-  if(b != 0)
+  if (b != 0)
   {
     int result(0);
-    for(int i = 0; i < 12; i++)
+    for (int i = 0; i < 12; i++)
       result += random(2 * b) - b;
     return result / 2;
   }
@@ -106,7 +105,7 @@ inline float sampleTriangularDistribution(float b)
 */
 inline int sampleTriangularDistribution(int b)
 {
-  if(b != 0)
+  if (b != 0)
   {
     int randResult = (random(2 * b) - b) + (random(2 * b) - b);
     return static_cast<int>(sqrt6dividedBy2 * randResult);

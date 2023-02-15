@@ -8,35 +8,30 @@
 #include <algorithm>
 
 STREAMABLE(ObstacleBasePoints,
-{
   STREAMABLE(ObstacleBasePoint,
-  {
     ENUM(Direction,
-    {,
       up,
       down,
       left,
-      right,
-    }),
+      right
+    ),
     (bool)(false) upperCam, /**< whether obstacle was found in upper cam. */
     (bool)(false) certain, /**< whether preprocessor is sure there is an obstacle, usually if obstacle is very near. */
     (Direction) direction, /**< where the obstacle lies relative to base point. */
-    (Vector2f)(Vector2f::Zero()) pointInImage, /**< The nearest obstacle point in image coordinates. */
-  });
+    (Vector2f)(Vector2f::Zero()) pointInImage /**< The nearest obstacle point in image coordinates. */
+  );
   void draw() const,
-  (std::vector<ObstacleBasePoint>) basePoints,
-});
+  (std::vector<ObstacleBasePoint>) basePoints
+);
 
 STREAMABLE(RobotEstimate,
-{
   ENUM(RobotType,
-  {,
     unknownRobot,
     teammateRobot,
     opponentRobot,
     noRobot,
-    invalid,
-  }),
+    invalid
+  ),
   (Pose2f) locationOnField,                   /**< Position of the robot in local robot coordinates (rotation not filled yet (2017)). */
   (float)(10000.f) distance,
   (float)(0.f) validity,
@@ -44,27 +39,25 @@ STREAMABLE(RobotEstimate,
   (Vector2i) imageLowerRight,
   (bool)(false) fromUpperImage,
   (RobotType) robotType,
-  (unsigned int) timestampFromImage,
-});
+  (float) teamAssignmentConfidence,
+  (unsigned int) timestampFromImage
+);
 
 STREAMABLE(RobotsPercept,
-{
   RobotsPercept() = default;
 
   void draw() const,
-  (std::vector<RobotEstimate>) robots,
-});
+  (std::vector<RobotEstimate>) robots
+);
 
 STREAMABLE(RobotsPerceptUpper,
-{
   RobotsPerceptUpper() = default;
 
   void draw() const,
-  (std::vector<RobotEstimate>) robots,
-});
+  (std::vector<RobotEstimate>) robots
+);
 
 STREAMABLE(RobotsPerceptCompressed,
-{
   RobotsPerceptCompressed() = default;
   RobotsPerceptCompressed(const RobotsPercept &other)
   {
@@ -74,7 +67,7 @@ STREAMABLE(RobotsPerceptCompressed,
       robots.push_back(RobotEstimateCompressed(other.robots[i]));
     }
   }
-  
+
   operator RobotsPercept() const
   {
     RobotsPercept robotsPercept;
@@ -92,9 +85,8 @@ STREAMABLE(RobotsPerceptCompressed,
     }
     return robotsPercept;
   }
-  
+
   STREAMABLE(RobotEstimateCompressed,
-  {
     RobotEstimateCompressed() = default;
     RobotEstimateCompressed(const RobotEstimate &other)
     {
@@ -107,15 +99,14 @@ STREAMABLE(RobotsPerceptCompressed,
     (Vector2s) locationOnField, /**< Position of the robot in local robot coordinates. */
     (short)(10000) distance,
     (unsigned char)(0) validity,
-    ((RobotEstimate) RobotType) robotType,
-  }),
-  
-  (std::vector<RobotEstimateCompressed>) robots,
-});
+    ((RobotEstimate) RobotType) robotType
+  ),
+
+  (std::vector<RobotEstimateCompressed>) robots
+);
 
 
 STREAMABLE(RobotsPerceptUpperCompressed,
-{
   RobotsPerceptUpperCompressed() = default;
   RobotsPerceptUpperCompressed(const RobotsPerceptUpper &other)
   {
@@ -125,7 +116,7 @@ STREAMABLE(RobotsPerceptUpperCompressed,
       robots.push_back(RobotEstimateUpperCompressed(other.robots[i]));
     }
   }
-  
+
   operator RobotsPerceptUpper() const
   {
     RobotsPerceptUpper robotsPercept;
@@ -143,9 +134,8 @@ STREAMABLE(RobotsPerceptUpperCompressed,
     }
     return robotsPercept;
   }
-  
+
   STREAMABLE(RobotEstimateUpperCompressed,
-  {
     RobotEstimateUpperCompressed() = default;
     RobotEstimateUpperCompressed(const RobotEstimate &other)
     {
@@ -158,8 +148,8 @@ STREAMABLE(RobotsPerceptUpperCompressed,
     (Vector2s) locationOnField, /**< Position of the robot in local robot coordinates. */
     (short)(10000) distance,
     (unsigned char)(0) validity,
-    ((RobotEstimate) RobotType) robotType,
-  }),
-  
-  (std::vector<RobotEstimateUpperCompressed>) robots,
-});
+    ((RobotEstimate) RobotType) robotType
+  ),
+
+  (std::vector<RobotEstimateUpperCompressed>) robots
+);

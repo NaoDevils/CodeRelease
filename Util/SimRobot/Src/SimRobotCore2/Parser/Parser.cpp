@@ -24,6 +24,7 @@
 #include "Simulation/Geometries/SphereGeometry.h"
 #include "Simulation/Geometries/CylinderGeometry.h"
 #include "Simulation/Geometries/CapsuleGeometry.h"
+#include "Simulation/Motors/PT2Motor.h"
 #include "Simulation/Motors/ServoMotor.h"
 #include "Simulation/Motors/VelocityMotor.h"
 #include "Simulation/Appearances/BoxAppearance.h"
@@ -35,141 +36,100 @@
 #include "Simulation/Sensors/Accelerometer.h"
 #include "Simulation/Sensors/Camera.h"
 #include "Simulation/Sensors/CollisionSensor.h"
+#include "Simulation/Sensors/ObjectSegmentedImageSensor.h"
 #include "Simulation/Sensors/SingleDistanceSensor.h"
 #include "Simulation/Sensors/ApproxDistanceSensor.h"
 #include "Simulation/Sensors/DepthImageSensor.h"
+#include "Tools/Math/Constants.h"
 
 Parser::Parser() : errors(0), sceneMacro(0), recordingMacroElement(0), replayingMacroElement(0), element(0), elementData(0), passedSimulationTag(false)
 {
   static const ElementInfo elements[] = {
-    // { element, class, handler, text handler, flaga
-    //   required children, optional children, repeatable children }
-    {"Include", infrastructureClass, &Parser::includeElement, 0, 0,
-      0, 0, 0},
-    {"Simulation", infrastructureClass, &Parser::simulationElement, 0, 0,
-      sceneClass, 0, 0},
+      // { element, class, handler, text handler, flags
+      //   required children, optional children, repeatable children }
+      {"Include", infrastructureClass, &Parser::includeElement, 0, 0, 0, 0, 0},
+      {"Simulation", infrastructureClass, &Parser::simulationElement, 0, 0, sceneClass, 0, 0},
 
-    {"Set", setClass, &Parser::setElement, 0, 0,
-      0, 0, 0},
+      {"Set", setClass, &Parser::setElement, 0, 0, 0, 0, 0},
 
-    {"Scene", sceneClass, &Parser::sceneElement,0, 0,
-      0, solverClass, setClass | bodyClass | compoundClass | lightClass | userInputClass},
-    {"QuickSolver", solverClass, &Parser::quickSolverElement, 0, 0,
-      0, 0, 0},
-    {"Light", lightClass, &Parser::lightElement, 0, 0,
-      0, 0, 0},
+      {"Scene", sceneClass, &Parser::sceneElement, 0, 0, 0, solverClass, setClass | bodyClass | compoundClass | lightClass | userInputClass},
+      {"QuickSolver", solverClass, &Parser::quickSolverElement, 0, 0, 0, 0, 0},
+      {"Light", lightClass, &Parser::lightElement, 0, 0, 0, 0, 0},
 
-    {"Compound", compoundClass, &Parser::compoundElement, 0, 0,
-      0, translationClass | rotationClass, setClass | jointClass | compoundClass | bodyClass | appearanceClass | geometryClass | extSensorClass | userInputClass},
-    {"Body", bodyClass, &Parser::bodyElement, 0, 0,
-      massClass, translationClass | rotationClass, setClass | jointClass | appearanceClass | geometryClass | massClass | intSensorClass | extSensorClass | userInputClass},
+      {"Compound", compoundClass, &Parser::compoundElement, 0, 0, 0, translationClass | rotationClass, setClass | jointClass | compoundClass | bodyClass | appearanceClass | geometryClass | extSensorClass | userInputClass},
+      {"Body", bodyClass, &Parser::bodyElement, 0, 0, massClass, translationClass | rotationClass, setClass | jointClass | appearanceClass | geometryClass | massClass | intSensorClass | extSensorClass | userInputClass},
 
-    {"Translation", translationClass, &Parser::translationElement, 0, 0,
-      0, 0, 0},
-    {"Rotation", rotationClass, &Parser::rotationElement, 0, 0,
-      0, 0, 0},
+      {"Translation", translationClass, &Parser::translationElement, 0, 0, 0, 0, 0},
+      {"Rotation", rotationClass, &Parser::rotationElement, 0, 0, 0, 0, 0},
 
-    {"Mass", massClass, &Parser::massElement, 0, constantFlag,
-      0, translationClass | rotationClass, setClass | massClass},
-    {"BoxMass", massClass, &Parser::boxMassElement, 0, constantFlag,
-      0, translationClass | rotationClass, setClass | massClass},
-    {"SphereMass", massClass, &Parser::sphereMassElement, 0, constantFlag,
-      0, translationClass | rotationClass, setClass | massClass},
-    {"InertiaMatrixMass", massClass, &Parser::inertiaMatrixMassElement, 0, constantFlag,
-      0, translationClass | rotationClass, setClass | massClass},
+      {"Mass", massClass, &Parser::massElement, 0, constantFlag, 0, translationClass | rotationClass, setClass | massClass},
+      {"BoxMass", massClass, &Parser::boxMassElement, 0, constantFlag, 0, translationClass | rotationClass, setClass | massClass},
+      {"SphereMass", massClass, &Parser::sphereMassElement, 0, constantFlag, 0, translationClass | rotationClass, setClass | massClass},
+      {"InertiaMatrixMass", massClass, &Parser::inertiaMatrixMassElement, 0, constantFlag, 0, translationClass | rotationClass, setClass | massClass},
 
-    {"Geometry", geometryClass, &Parser::geometryElement, 0, 0,
-      0, translationClass | rotationClass | materialClass, setClass | geometryClass},
-    {"BoxGeometry", geometryClass, &Parser::boxGeometryElement, 0, 0,
-      0, translationClass | rotationClass | materialClass, setClass | geometryClass},
-    {"SphereGeometry", geometryClass, &Parser::sphereGeometryElement, 0, 0,
-      0, translationClass | rotationClass | materialClass, setClass | geometryClass},
-    {"CylinderGeometry", geometryClass, &Parser::cylinderGeometryElement, 0, 0,
-      0, translationClass | rotationClass | materialClass, setClass | geometryClass},
-    {"CapsuleGeometry", geometryClass, &Parser::capsuleGeometryElement, 0, 0,
-      0, translationClass | rotationClass | materialClass, setClass | geometryClass},
+      {"Geometry", geometryClass, &Parser::geometryElement, 0, 0, 0, translationClass | rotationClass | materialClass, setClass | geometryClass},
+      {"BoxGeometry", geometryClass, &Parser::boxGeometryElement, 0, 0, 0, translationClass | rotationClass | materialClass, setClass | geometryClass},
+      {"SphereGeometry", geometryClass, &Parser::sphereGeometryElement, 0, 0, 0, translationClass | rotationClass | materialClass, setClass | geometryClass},
+      {"CylinderGeometry", geometryClass, &Parser::cylinderGeometryElement, 0, 0, 0, translationClass | rotationClass | materialClass, setClass | geometryClass},
+      {"CapsuleGeometry", geometryClass, &Parser::capsuleGeometryElement, 0, 0, 0, translationClass | rotationClass | materialClass, setClass | geometryClass},
 
-    {"Material", materialClass, &Parser::materialElement, 0, constantFlag,
-      0, 0, setClass | frictionClass},
-    {"Friction", frictionClass, &Parser::frictionElement, 0, constantFlag,
-      0, 0, 0},
-    {"RollingFriction", frictionClass, &Parser::rollingFrictionElement, 0, constantFlag,
-      0, 0, 0},
+      {"Material", materialClass, &Parser::materialElement, 0, constantFlag, 0, 0, setClass | frictionClass},
+      {"Friction", frictionClass, &Parser::frictionElement, 0, constantFlag, 0, 0, 0},
+      {"RollingFriction", frictionClass, &Parser::rollingFrictionElement, 0, constantFlag, 0, 0, 0},
 
-    {"Appearance", appearanceClass, &Parser::appearanceElement, 0, constantFlag,
-      0, translationClass | rotationClass, setClass | appearanceClass},
-    {"BoxAppearance", appearanceClass, &Parser::boxAppearanceElement, 0, constantFlag,
-      surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
-    {"SphereAppearance", appearanceClass, &Parser::sphereAppearanceElement, 0, constantFlag,
-      surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
-    {"CylinderAppearance", appearanceClass, &Parser::cylinderAppearanceElement, 0, constantFlag,
-      surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
-    {"CapsuleAppearance", appearanceClass, &Parser::capsuleAppearanceElement, 0, constantFlag,
-      surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
-    {"ComplexAppearance", appearanceClass, &Parser::complexAppearanceElement, 0, constantFlag,
-      surfaceClass | verticesClass | primitiveGroupClass, translationClass | rotationClass | normalsClass | texCoordsClass, setClass | primitiveGroupClass | appearanceClass},
+      {"Appearance", appearanceClass, &Parser::appearanceElement, 0, constantFlag, 0, translationClass | rotationClass, setClass | appearanceClass},
+      {"BoxAppearance", appearanceClass, &Parser::boxAppearanceElement, 0, constantFlag, surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
+      {"SphereAppearance", appearanceClass, &Parser::sphereAppearanceElement, 0, constantFlag, surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
+      {"CylinderAppearance", appearanceClass, &Parser::cylinderAppearanceElement, 0, constantFlag, surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
+      {"CapsuleAppearance", appearanceClass, &Parser::capsuleAppearanceElement, 0, constantFlag, surfaceClass, translationClass | rotationClass, setClass | appearanceClass},
+      {"ComplexAppearance", appearanceClass, &Parser::complexAppearanceElement, 0, constantFlag, surfaceClass | verticesClass | primitiveGroupClass, translationClass | rotationClass | normalsClass | texCoordsClass, setClass | primitiveGroupClass | appearanceClass},
 
-    {"Vertices", verticesClass, &Parser::verticesElement, &Parser::verticesText, textFlag | constantFlag,
-      0, 0, 0},
-    {"Normals", normalsClass, &Parser::normalsElement, &Parser::normalsText, textFlag | constantFlag,
-      0, 0, 0},
-    {"TexCoords", texCoordsClass, &Parser::texCoordsElement, &Parser::texCoordsText, textFlag | constantFlag,
-      0, 0, 0},
-    {"Triangles", primitiveGroupClass, &Parser::trianglesElement, &Parser::trianglesAndQuadsText, textFlag | constantFlag,
-      0, 0, 0},
-    {"Quads", primitiveGroupClass, &Parser::quadsElement, &Parser::trianglesAndQuadsText, textFlag | constantFlag,
-      0, 0, 0},
+      {"Vertices", verticesClass, &Parser::verticesElement, &Parser::verticesText, textFlag | constantFlag, 0, 0, 0},
+      {"Normals", normalsClass, &Parser::normalsElement, &Parser::normalsText, textFlag | constantFlag, 0, 0, 0},
+      {"TexCoords", texCoordsClass, &Parser::texCoordsElement, &Parser::texCoordsText, textFlag | constantFlag, 0, 0, 0},
+      {"Triangles", primitiveGroupClass, &Parser::trianglesElement, &Parser::trianglesAndQuadsText, textFlag | constantFlag, 0, 0, 0},
+      {"Quads", primitiveGroupClass, &Parser::quadsElement, &Parser::trianglesAndQuadsText, textFlag | constantFlag, 0, 0, 0},
 
-    {"Surface", surfaceClass, &Parser::surfaceElement, 0, constantFlag,
-      0, 0, 0},
+      {"Surface", surfaceClass, &Parser::surfaceElement, 0, constantFlag, 0, 0, 0},
 
-    {"Hinge", jointClass, &Parser::hingeElement, 0, 0,
-      bodyClass | axisClass, translationClass | rotationClass, setClass},
-    {"Slider", jointClass, &Parser::sliderElement, 0, 0,
-      bodyClass | axisClass, translationClass | rotationClass, setClass},
-    {"Axis", axisClass, &Parser::axisElement, 0, 0,
-      0, motorClass | deflectionClass, setClass},
-    {"Deflection", deflectionClass, &Parser::deflectionElement, 0, 0,
-      0, 0, 0},
-    {"ServoMotor", motorClass, &Parser::servoMotorElement, 0, 0,
-      0, 0, 0},
-    {"VelocityMotor", motorClass, &Parser::velocityMotorElement, 0, 0,
-      0, 0, 0},
+      {"Hinge", jointClass, &Parser::hingeElement, 0, 0, bodyClass | axisClass, translationClass | rotationClass, setClass},
+      {"Slider", jointClass, &Parser::sliderElement, 0, 0, bodyClass | axisClass, translationClass | rotationClass, setClass},
+      {"Axis", axisClass, &Parser::axisElement, 0, 0, 0, motorClass | deflectionClass, setClass},
+      {"Deflection", deflectionClass, &Parser::deflectionElement, 0, 0, 0, 0, 0},
+      {"PT2Motor", motorClass, &Parser::PT2MotorElement, 0, 0, 0, 0, 0},
+      {"ServoMotor", motorClass, &Parser::servoMotorElement, 0, 0, 0, 0, 0},
+      {"VelocityMotor", motorClass, &Parser::velocityMotorElement, 0, 0, 0, 0, 0},
 
-    {"Gyroscope", intSensorClass, &Parser::gyroscopeElement, 0, 0,
-      0, 0, 0},
-    {"Accelerometer", intSensorClass, &Parser::accelerometerElement, 0, 0,
-      0, 0, 0},
-    {"Camera", extSensorClass, &Parser::cameraElement, 0, 0,
-      0, translationClass | rotationClass, 0},
-    {"CollisionSensor", intSensorClass, &Parser::collisionSensor2Element, 0, 0,
-      0, translationClass | rotationClass, geometryClass},
-    {"SingleDistanceSensor", extSensorClass, &Parser::singleDistanceSensorElement, 0, 0,
-      0, translationClass | rotationClass, 0},
-    {"ApproxDistanceSensor", extSensorClass, &Parser::approxDistanceSensorElement, 0, 0,
-      0, translationClass | rotationClass, 0},
-    {"DepthImageSensor", extSensorClass, &Parser::depthImageSensorElement, 0, 0,
-      0, translationClass | rotationClass, 0},
+      {"Gyroscope", intSensorClass, &Parser::gyroscopeElement, 0, 0, 0, translationClass | rotationClass, 0},
+      {"Accelerometer", intSensorClass, &Parser::accelerometerElement, 0, 0, 0, translationClass | rotationClass, 0},
+      {"Camera", extSensorClass, &Parser::cameraElement, 0, 0, 0, translationClass | rotationClass, 0},
+      {"CollisionSensor", intSensorClass, &Parser::collisionSensorElement, 0, 0, 0, translationClass | rotationClass, geometryClass},
+      {"ObjectSegmentedImageSensor", extSensorClass, &Parser::objectSegmentedImageSensorElement, 0, 0, 0, translationClass | rotationClass, 0},
+      {"SingleDistanceSensor", extSensorClass, &Parser::singleDistanceSensorElement, 0, 0, 0, translationClass | rotationClass, 0},
+      {"ApproxDistanceSensor", extSensorClass, &Parser::approxDistanceSensorElement, 0, 0, 0, translationClass | rotationClass, 0},
+      {"DepthImageSensor", extSensorClass, &Parser::depthImageSensorElement, 0, 0, 0, translationClass | rotationClass, 0},
 
-    {"UserInput", userInputClass, &Parser::userInputElement, 0, 0,
-      0, 0, 0},
+      {"UserInput", userInputClass, &Parser::userInputElement, 0, 0, 0, 0, 0},
   };
 
   // prepare proc info map
-  for(unsigned int i = 0; i < sizeof(elements) / sizeof(*elements); ++i)
+  for (unsigned int i = 0; i < sizeof(elements) / sizeof(*elements); ++i)
     elementInfos[elements[i].name] = &elements[i];
 }
 
 Element* Parser::simulationElement()
 {
   passedSimulationTag = true;
-  return 0;
+  simulationTagLocation = elementData->location;
+  return nullptr;
 }
 
 Element* Parser::includeElement()
 {
   includeFile = getString("href", true);
-  return 0;
+  if (!includeFile.empty())
+    includeFileLocation = attributes->find("href")->second.valueLocation;
+  return nullptr;
 }
 
 Element* Parser::setElement()
@@ -178,9 +138,9 @@ Element* Parser::setElement()
   const std::string& name = getString("name", true);
   const std::string& value = getString("value", true);
   std::unordered_map<std::string, std::string>& vars = elementData->parent->vars;
-  if(vars.find(name) == vars.end())
+  if (vars.find(name) == vars.end())
     vars[name] = value;
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::sceneElement()
@@ -189,15 +149,45 @@ Element* Parser::sceneElement()
   scene->name = getString("name", false);
   scene->controller = getString("controller", false);
   getColor("color", false, scene->color);
-  scene->stepLength = getTimeNonZeroPositive("stepLength", false, 0.01f);
+  scene->stepLength = getTimeNonZeroPositive("stepLength", false, 0.012f);
   scene->gravity = getAcceleration("gravity", false, -9.80665f);
-  scene->cfm = getFloatMinMax("CFM", false, -1.f, 0.f, 1.f);
-  scene->erp = getFloatMinMax("ERP", false, -1.f, 0.f, 1.f);
-  scene->contactSoftERP = getFloatMinMax("contactSoftERP", false, -1.f, 0.f, 1.f);
-  if(scene->contactSoftERP != -1.f)
+
+  float Kp = getFloatMinMax("Kp", false, -1.f, 0.f, 100000000.f);
+  float Kd = getFloatMinMax("Kd", false, -1.f, 0.f, 100000000.f);
+  float contactKp = getFloatMinMax("contactKp", false, -1.f, 0.f, 100000000.f);
+  float contactKd = getFloatMinMax("contactKd", false, -1.f, 0.f, 100000000.f);
+
+  scene->cfm = 1.f / (Kp * scene->stepLength + Kd);
+  scene->erp = Kp * scene->stepLength * scene->cfm;
+
+  if (scene->cfm < -1.f || scene->cfm > 1.f)
+  {
+    char msg[256];
+    sprintf(msg, "Expected a value for CFM between %g and %g instead of %g", -1.f, 1.f, scene->cfm);
+  }
+  if (scene->erp < -1.f || scene->erp > 1.f)
+  {
+    char msg[256];
+    sprintf(msg, "Expected a value for ERP between %g and %g instead of %g", -1.f, 1.f, scene->erp);
+  }
+
+  scene->contactSoftCFM = 1 / (contactKp * scene->stepLength + contactKd);
+  scene->contactSoftERP = contactKp * scene->stepLength * scene->contactSoftCFM;
+
+  if (scene->contactSoftCFM < -1.f || scene->contactSoftCFM > 1.f)
+  {
+    char msg[256];
+    sprintf(msg, "Expected a value for contactSoftCFM between %g and %g instead of %g", -1.f, 1.f, scene->contactSoftCFM);
+  }
+  if (scene->contactSoftERP < -1.f || scene->contactSoftERP > 1.f)
+  {
+    char msg[256];
+    sprintf(msg, "Expected a value for contactSoftERP between %g and %g instead of %g", -1.f, 1.f, scene->contactSoftERP);
+  }
+
+  if (scene->contactSoftERP != -1)
     scene->contactMode |= dContactSoftERP;
-  scene->contactSoftCFM = getFloatMinMax("contactSoftCFM", false, -1.f, 0.f, 1.f);
-  if(scene->contactSoftCFM != -1.f)
+  if (scene->contactSoftCFM != -1)
     scene->contactMode |= dContactSoftCFM;
   scene->detectBodyCollisions = getBool("bodyCollisions", false, true);
 
@@ -213,7 +203,7 @@ Element* Parser::quickSolverElement()
   scene->useQuickSolver = true;
   scene->quickSolverIterations = getIntegerNonZeroPositive("iterations", false, -1);
   scene->quickSolverSkip = getIntegerNonZeroPositive("skip", false, 1);
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::lightElement()
@@ -229,9 +219,9 @@ Element* Parser::lightElement()
   light->linearAttenuation = getFloatPositive("linearAttenuation", false, light->linearAttenuation);
   light->quadraticAttenuation = getFloatPositive("quadraticAttenuation", false, light->quadraticAttenuation);
   light->spotCutoff = getAngle("spotCutoff", false, light->spotCutoff);
-  light->spotDirection.x = getLength("spotDirectionX", false, light->spotDirection.x);
-  light->spotDirection.y = getLength("spotDirectionY", false, light->spotDirection.y);
-  light->spotDirection.z = getLength("spotDirectionZ", false, light->spotDirection.z);
+  light->spotDirection.x() = getLength("spotDirectionX", false, light->spotDirection.x());
+  light->spotDirection.y() = getLength("spotDirectionY", false, light->spotDirection.y());
+  light->spotDirection.z() = getLength("spotDirectionZ", false, light->spotDirection.z());
   light->spotExponent = getFloatMinMax("spotExponent", false, light->spotExponent, 0.f, 128.f);
   return light;
 }
@@ -369,7 +359,7 @@ Element* Parser::frictionElement()
   const std::string& otherMaterial = getString("material", true);
   float friction = getFloatPositive("value", true, 1.f);
   material->frictions[otherMaterial] = friction;
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::rollingFrictionElement()
@@ -379,7 +369,7 @@ Element* Parser::rollingFrictionElement()
   const std::string& otherMaterial = getString("material", true);
   float rollingFriction = getFloatPositive("value", true, 1.f);
   material->rollingFrictions[otherMaterial] = rollingFriction;
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::appearanceElement()
@@ -434,27 +424,43 @@ Element* Parser::complexAppearanceElement()
 
 Element* Parser::trianglesElement()
 {
-  return  new ComplexAppearance::PrimitiveGroup(GL_TRIANGLES);
+  return new ComplexAppearance::PrimitiveGroup(GL_TRIANGLES);
 }
 
-void Parser::trianglesAndQuadsText(std::string& text)
+void Parser::trianglesAndQuadsText(std::string& text, Location location)
 {
   ComplexAppearance::PrimitiveGroup* primitiveGroup = dynamic_cast<ComplexAppearance::PrimitiveGroup*>(element);
   ASSERT(primitiveGroup);
   std::list<unsigned int>& vs = primitiveGroup->vertices;
-  char* str = (char*)text.c_str();
+  const char* str = text.c_str();
+  char* nextStr;
   unsigned int l;
-  while(isspace(*str))
-    ++str;
-  while(*str)
+  skipWhitespace(str, location);
+  while (*str)
   {
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    l = (unsigned int) strtol(str, &str, 10);
-    while(isspace(*str))
-      ++str;
+    while (*str == '#')
+    {
+      while (*str && *str != '\n' && *str != '\r')
+      {
+        ++str;
+        ++location.column;
+      }
+      skipWhitespace(str, location);
+      if (!*str)
+        goto breakTwice;
+    }
+    l = static_cast<unsigned int>(strtol(str, &nextStr, 10));
+    if (str == nextStr)
+    {
+      handleError("Invalid index text (must be a space separated list of integers)", location);
+      break;
+    }
+    location.column += nextStr - str;
+    str = nextStr;
+    skipWhitespace(str, location);
     vs.push_back(l);
   }
-breakTwice: ;
+breakTwice:;
 }
 
 Element* Parser::quadsElement()
@@ -469,35 +475,46 @@ Element* Parser::verticesElement()
   return vertices;
 }
 
-void Parser::verticesText(std::string& text)
+void Parser::verticesText(std::string& text, Location location)
 {
   ComplexAppearance::Vertices* vertices = dynamic_cast<ComplexAppearance::Vertices*>(element);
   ASSERT(vertices);
   std::vector<ComplexAppearance::Vertex>& vs = vertices->vertices;
-  char* str = (char*)text.c_str();
-  double x, y, z;
-  while(isspace(*str))
-    ++str;
-  while(*str)
+  const char* str = text.c_str();
+  char* nextStr;
+  float components[3];
+  skipWhitespace(str, location);
+  while (*str)
   {
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    x = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    y = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    z = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    x *= vertices->unit;
-    y *= vertices->unit;
-    z *= vertices->unit;
-    vs.push_back(ComplexAppearance::Vertex((float) x, (float) y, (float) z));
+    for (int i = 0; i < 3; ++i)
+    {
+      while (*str == '#')
+      {
+        while (*str && *str != '\n' && *str != '\r')
+        {
+          ++str;
+          ++location.column;
+        }
+        skipWhitespace(str, location);
+        if (!*str)
+          goto breakThrice;
+      }
+      components[i] = strtof(str, &nextStr);
+      if (str == nextStr)
+      {
+        handleError("Invalid vertex text (must be a space separated list of floats)", location);
+        goto breakThrice;
+      }
+      location.column += nextStr - str;
+      str = nextStr;
+      skipWhitespace(str, location);
+    }
+    components[0] *= vertices->unit;
+    components[1] *= vertices->unit;
+    components[2] *= vertices->unit;
+    vs.emplace_back(components[0], components[1], components[2]);
   }
-breakTwice: ;
+breakThrice:;
 }
 
 Element* Parser::normalsElement()
@@ -505,32 +522,43 @@ Element* Parser::normalsElement()
   return new ComplexAppearance::Normals();
 }
 
-void Parser::normalsText(std::string& text)
+void Parser::normalsText(std::string& text, Location location)
 {
   ComplexAppearance::Normals* normals = dynamic_cast<ComplexAppearance::Normals*>(element);
   ASSERT(normals);
   std::vector<ComplexAppearance::Normal>& ns = normals->normals;
-  char* str = (char*)text.c_str();
-  double x, y, z;
-  while(isspace(*str))
-    ++str;
-  while(*str)
+  const char* str = text.c_str();
+  char* nextStr;
+  float components[3];
+  skipWhitespace(str, location);
+  while (*str)
   {
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    x = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    y = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    z = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    ns.push_back(ComplexAppearance::Normal((float) x, (float) y, (float) z, 1));
+    for (int i = 0; i < 3; ++i)
+    {
+      while (*str == '#')
+      {
+        while (*str && *str != '\n' && *str != '\r')
+        {
+          ++str;
+          ++location.column;
+        }
+        skipWhitespace(str, location);
+        if (!*str)
+          goto breakThrice;
+      }
+      components[i] = strtof(str, &nextStr);
+      if (str == nextStr)
+      {
+        handleError("Invalid normal text (must be a space separated list of floats)", location);
+        goto breakThrice;
+      }
+      location.column += nextStr - str;
+      str = nextStr;
+      skipWhitespace(str, location);
+    }
+    ns.emplace_back(components[0], components[1], components[2], 1);
   }
-breakTwice: ;
+breakThrice:;
 }
 
 Element* Parser::texCoordsElement()
@@ -538,36 +566,51 @@ Element* Parser::texCoordsElement()
   return new ComplexAppearance::TexCoords();
 }
 
-void Parser::texCoordsText(std::string& text)
+void Parser::texCoordsText(std::string& text, Location location)
 {
   ComplexAppearance::TexCoords* texCoords = dynamic_cast<ComplexAppearance::TexCoords*>(element);
   ASSERT(texCoords);
   std::vector<ComplexAppearance::TexCoord>& ts = texCoords->coords;
-  char* str = (char*)text.c_str();
-  double x, y;
-  while(isspace(*str))
-    ++str;
-  while(*str)
+  const char* str = text.c_str();
+  char* nextStr;
+  float components[2];
+  skipWhitespace(str, location);
+  while (*str)
   {
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    x = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    while(*str == '#') { while(*str && *str != '\n' && *str != '\r') ++str;  while(isspace(*str)) ++str; if(!*str) goto breakTwice; }
-    y = strtod(str, &str);
-    while(isspace(*str))
-      ++str;
-    ts.push_back(ComplexAppearance::TexCoord((float) x, (float) y));
+    for (int i = 0; i < 2; ++i)
+    {
+      while (*str == '#')
+      {
+        while (*str && *str != '\n' && *str != '\r')
+        {
+          ++str;
+          ++location.column;
+        }
+        skipWhitespace(str, location);
+        if (!*str)
+          goto breakThrice;
+      }
+      components[i] = strtof(str, &nextStr);
+      if (str == nextStr)
+      {
+        handleError("Invalid texture coordinate text (must be a space separated list of floats)", location);
+        goto breakThrice;
+      }
+      location.column += nextStr - str;
+      str = nextStr;
+      skipWhitespace(str, location);
+    }
+    ts.emplace_back(components[0], components[1]);
   }
-breakTwice: ;
+breakThrice:;
 }
 
 Element* Parser::translationElement()
 {
-  Vector3<>* translation = new Vector3<>(getLength("x", false, 0.f), getLength("y", false, 0.f), getLength("z", false, 0.f));
+  Vector3f* translation = new Vector3f(getLength("x", false, 0.f), getLength("y", false, 0.f), getLength("z", false, 0.f));
 
   SimObject* simObject = dynamic_cast<SimObject*>(element);
-  if(simObject)
+  if (simObject)
   {
     ASSERT(!simObject->translation);
     simObject->translation = translation;
@@ -579,17 +622,18 @@ Element* Parser::translationElement()
     ASSERT(!mass->translation);
     mass->translation = translation;
   }
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::rotationElement()
 {
-  Matrix3x3<>* rotation = new Matrix3x3<>(Vector3<>(0.f, 0.f, getAngle("z", false, 0.f)));
-  *rotation *= Matrix3x3<>(Vector3<>(0.f, getAngle("y", false, 0.f), 0.f));
-  *rotation *= Matrix3x3<>(Vector3<>(getAngle("x", false, 0.f), 0.f, 0.f));
+  RotationMatrix* rotation = new RotationMatrix;
+  *rotation *= RotationMatrix::aroundZ(getAngle("z", false, 0.f));
+  *rotation *= RotationMatrix::aroundY(getAngle("y", false, 0.f));
+  *rotation *= RotationMatrix::aroundX(getAngle("x", false, 0.f));
 
   SimObject* simObject = dynamic_cast<SimObject*>(element);
-  if(simObject)
+  if (simObject)
   {
     ASSERT(!simObject->rotation);
     simObject->rotation = rotation;
@@ -601,7 +645,7 @@ Element* Parser::rotationElement()
     ASSERT(!mass->rotation);
     mass->rotation = rotation;
   }
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::axisElement()
@@ -624,13 +668,13 @@ Element* Parser::deflectionElement()
   ASSERT(axis);
   ASSERT(axis->joint);
 
-  if(dynamic_cast<Hinge*>(axis->joint))
+  if (dynamic_cast<Hinge*>(axis->joint))
   {
     deflection->min = getAngle("min", true, 0.f);
     deflection->max = getAngle("max", true, 0.f);
     deflection->offset = getAngle("init", false, 0.f);
   }
-  else if(dynamic_cast<Slider*>(axis->joint))
+  else if (dynamic_cast<Slider*>(axis->joint))
   {
     deflection->min = getLength("min", true, 0.f);
     deflection->max = getLength("max", true, 0.f);
@@ -643,7 +687,24 @@ Element* Parser::deflectionElement()
 
   ASSERT(!axis->deflection);
   axis->deflection = deflection;
-  return 0;
+  return nullptr;
+}
+
+Element* Parser::PT2MotorElement()
+{
+  PT2Motor* pt2motor = new PT2Motor();
+  Axis* axis = dynamic_cast<Axis*>(element);
+  ASSERT(axis);
+  ASSERT(!axis->motor);
+
+  pt2motor->T = getFloat("T", true, 0.f);
+  pt2motor->D = getFloat("D", true, 0.f);
+  pt2motor->K = getFloat("K", true, 0.f);
+  pt2motor->V = getFloat("V", true, 0.f);
+  pt2motor->F = getForce("F", true, 0.f);
+
+  axis->motor = pt2motor;
+  return nullptr;
 }
 
 Element* Parser::servoMotorElement()
@@ -653,9 +714,9 @@ Element* Parser::servoMotorElement()
   ASSERT(axis);
   ASSERT(!axis->motor);
 
-  if(dynamic_cast<Hinge*>(axis->joint))
+  if (dynamic_cast<Hinge*>(axis->joint))
     servoMotor->maxVelocity = getAngularVelocity("maxVelocity", true, 0.f);
-  else if(dynamic_cast<Slider*>(axis->joint))
+  else if (dynamic_cast<Slider*>(axis->joint))
     servoMotor->maxVelocity = getVelocity("maxVelocity", true, 0.f);
   else
     ASSERT(false);
@@ -666,7 +727,7 @@ Element* Parser::servoMotorElement()
   servoMotor->controller.d = getFloat("d", false, 0.f);
 
   axis->motor = servoMotor;
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::velocityMotorElement()
@@ -676,9 +737,9 @@ Element* Parser::velocityMotorElement()
   ASSERT(axis);
   ASSERT(!axis->motor);
 
-  if(dynamic_cast<Hinge*>(axis->joint))
+  if (dynamic_cast<Hinge*>(axis->joint))
     velocityMotor->maxVelocity = getAngularVelocity("maxVelocity", true, 0.f);
-  else if(dynamic_cast<Slider*>(axis->joint))
+  else if (dynamic_cast<Slider*>(axis->joint))
     velocityMotor->maxVelocity = getVelocity("maxVelocity", true, 0.f);
   else
     ASSERT(false);
@@ -686,7 +747,7 @@ Element* Parser::velocityMotorElement()
   velocityMotor->maxForce = getForce("maxForce", true, 0.f);
 
   axis->motor = velocityMotor;
-  return 0;
+  return nullptr;
 }
 
 Element* Parser::surfaceElement()
@@ -726,11 +787,22 @@ Element* Parser::cameraElement()
   return camera;
 }
 
-Element* Parser::collisionSensor2Element()
+Element* Parser::collisionSensorElement()
 {
   CollisionSensor* collisionSensor = new CollisionSensor();
   collisionSensor->name = getString("name", false);
   return collisionSensor;
+}
+
+Element* Parser::objectSegmentedImageSensorElement()
+{
+  ObjectSegmentedImageSensor* camera = new ObjectSegmentedImageSensor();
+  camera->name = getString("name", false);
+  camera->imageWidth = getIntegerNonZeroPositive("imageWidth", true, 0);
+  camera->imageHeight = getIntegerNonZeroPositive("imageHeight", true, 0);
+  camera->angleX = getAngleNonZeroPositive("angleX", true, 0.f);
+  camera->angleY = getAngleNonZeroPositive("angleY", true, 0.f);
+  return camera;
 }
 
 Element* Parser::singleDistanceSensorElement()
@@ -765,17 +837,17 @@ Element* Parser::depthImageSensorElement()
   depthImageSensor->max = getLength("max", false, 999999.f);
 
   const std::string& projection = getString("projection", false);
-  if(projection == "" || projection == "perspective")
+  if (projection == "" || projection == "perspective")
     depthImageSensor->projection = DepthImageSensor::perspectiveProjection;
-  else if(projection == "spherical")
+  else if (projection == "spherical")
   {
-    if(depthImageSensor->imageHeight > 1)
-      handleError("Spherical projection is currently only supported for 1-D sensors (i.e. with imageHeight=\"1\")");
+    if (depthImageSensor->imageHeight > 1)
+      handleError("Spherical projection is currently only supported for 1-D sensors (i.e. with imageHeight=\"1\")", attributes->find("projection")->second.valueLocation);
     else
       depthImageSensor->projection = DepthImageSensor::sphericalProjection;
   }
   else
-    handleError("Unexpected projection type \"" + projection + "\" (expected one of \"perspective, spherical\")");
+    handleError("Unexpected projection type \"" + projection + "\" (expected one of \"perspective, spherical\")", attributes->find("projection")->second.valueLocation);
 
   return depthImageSensor;
 }
@@ -786,35 +858,35 @@ Element* Parser::userInputElement()
 
   userInput->name = getString("name", false);
   std::string type = getString("type", false);
-  if(type == "angle")
+  if (type == "angle")
   {
     userInput->inputPort.unit = QString::fromUtf8("°");
     userInput->inputPort.min = getAngle("min", true, 0.f);
     userInput->inputPort.max = getAngle("max", true, 0.f);
     userInput->inputPort.defaultValue = getAngle("default", false, 0.f);
   }
-  else if(type == "angularVelocity")
+  else if (type == "angularVelocity")
   {
     userInput->inputPort.unit = QString::fromUtf8("°/s");
     userInput->inputPort.min = getAngularVelocity("min", true, 0.f);
     userInput->inputPort.max = getAngularVelocity("max", true, 0.f);
     userInput->inputPort.defaultValue = getAngularVelocity("default", false, 0.f);
   }
-  else if(type == "length" || type == "")
+  else if (type == "length" || type == "")
   {
     userInput->inputPort.unit = QString::fromUtf8("m");
     userInput->inputPort.min = getLength("min", true, 0.f);
     userInput->inputPort.max = getLength("max", true, 0.f);
     userInput->inputPort.defaultValue = getLength("default", false, 0.f);
   }
-  else if(type == "velocity")
+  else if (type == "velocity")
   {
     userInput->inputPort.unit = QString::fromUtf8("m/s");
     userInput->inputPort.min = getVelocity("min", true, 0.f);
     userInput->inputPort.max = getVelocity("max", true, 0.f);
     userInput->inputPort.defaultValue = getVelocity("default", false, 0.f);
   }
-  else if(type == "acceleration")
+  else if (type == "acceleration")
   {
     userInput->inputPort.unit = QString::fromUtf8("m/s^2");
     userInput->inputPort.min = getAcceleration("min", true, 0.f);
@@ -822,14 +894,14 @@ Element* Parser::userInputElement()
     userInput->inputPort.defaultValue = getAcceleration("default", false, 0.f);
   }
   else
-    handleError("Unexpected user input type \"" + type + "\" (expected one of \"length, velocity, acceleration, angle, angularVelocity\")");
+    handleError("Unexpected user input type \"" + type + "\" (expected one of \"length, velocity, acceleration, angle, angularVelocity\")", attributes->find("type")->second.valueLocation);
 
   return userInput;
 }
 
 Parser::~Parser()
 {
-  for(std::unordered_map<std::string, Macro*>::const_iterator iter = macros.begin(), end = macros.end(); iter != end; ++iter)
+  for (std::unordered_map<std::string, Macro*>::const_iterator iter = macros.begin(), end = macros.end(); iter != end; ++iter)
     delete iter->second;
 }
 
@@ -837,20 +909,19 @@ void Parser::parseSimulation()
 {
   std::unordered_map<std::string, const ElementInfo*>::const_iterator iter = elementInfos.find("Simulation");
   ASSERT(iter != elementInfos.end());
-  const ElementInfo* elementInfo =  iter->second;
-  ElementData elementData(0, elementInfo);
+  const ElementInfo* elementInfo = iter->second;
+  ElementData elementData(nullptr, simulationTagLocation, elementInfo);
 
   this->elementData = &elementData;
   ASSERT(this->element == 0);
 
-  if(sceneMacro)
+  if (sceneMacro)
   {
     sceneMacro->replaying = true;
 
     replayingMacroElement = sceneMacro;
-    line = replayingMacroElement->line;
-    column = replayingMacroElement->column;
-    parseMacroElement();
+    ElementData childElementData(&elementData, replayingMacroElement->location, replayingMacroElement->elementInfo);
+    parseMacroElement(childElementData);
   }
 
   this->elementData = &elementData;
@@ -863,32 +934,30 @@ void Parser::parseMacroElements()
 
   MacroElement* parentReplayingMacroElement = replayingMacroElement;
 
-  if(!replayingMacroElement->text.empty())
-    (this->*elementData->info->textProc)(replayingMacroElement->text);
+  if (!replayingMacroElement->text.empty())
+    (this->*elementData->info->textProc)(replayingMacroElement->text, replayingMacroElement->textLocation);
 
   unsigned int parsedChildren = elementData->parsedChildren;
   elementData->parsedChildren = 0;
-  for(std::list<MacroElement*>::const_iterator iter = replayingMacroElement->children.begin(), end = replayingMacroElement->children.end(); iter != end; ++iter)
+  for (std::list<MacroElement*>::const_iterator iter = replayingMacroElement->children.begin(), end = replayingMacroElement->children.end(); iter != end; ++iter)
   {
     replayingMacroElement = *iter;
 
     const ElementInfo* parentInfo = elementData->info;
     const ElementInfo* info = replayingMacroElement->elementInfo;
-    if(parsedChildren & info->elementClass && !(parentInfo->repeatableChildren & info->elementClass))
+    if (parsedChildren & info->elementClass && !(parentInfo->repeatableChildren & info->elementClass))
     {
-      if(!(elementData->parsedChildren & info->elementClass))
+      if (!(elementData->parsedChildren & info->elementClass))
       {
         elementData->parsedChildren |= info->elementClass;
         continue;
       }
     }
 
-    line = replayingMacroElement->line;
-    column = replayingMacroElement->column;
-
     ElementData* parentElementData = elementData;
     Element* parentElement = element;
-    parseMacroElement();
+    ElementData childElementData(elementData, replayingMacroElement->location, replayingMacroElement->elementInfo);
+    parseMacroElement(childElementData);
     ASSERT(elementData->parent == parentElementData);
     parentElementData->usedPlaceholdersInAttributes |= elementData->usedPlaceholdersInAttributes;
     elementData = parentElementData;
@@ -897,13 +966,10 @@ void Parser::parseMacroElements()
   elementData->parsedChildren |= parsedChildren;
 
   replayingMacroElement = parentReplayingMacroElement;
-  line = replayingMacroElement->endLine;
-  column = replayingMacroElement->endColumn;
 }
 
-void Parser::parseMacroElement()
+void Parser::parseMacroElement(ElementData& elementData)
 {
-  ElementData elementData(this->elementData, replayingMacroElement->elementInfo);
   this->elementData = &elementData;
   this->attributes = &replayingMacroElement->attributes;
 
@@ -913,17 +979,17 @@ void Parser::parseMacroElement()
     ASSERT(parentElementData);
     const ElementInfo* parentInfo = parentElementData->info;
     const ElementInfo* info = elementData.info;
-    if(!((parentInfo->requiredChildren | parentInfo->optionalChildren | parentInfo->repeatableChildren) & info->elementClass) ||
-      (parentElementData->parsedChildren & info->elementClass && !(parentInfo->repeatableChildren & info->elementClass)))
+    if (!((parentInfo->requiredChildren | parentInfo->optionalChildren | parentInfo->repeatableChildren) & info->elementClass)
+        || (parentElementData->parsedChildren & info->elementClass && !(parentInfo->repeatableChildren & info->elementClass)))
     {
-      handleError("Unexpected element \"" + std::string(info->name) + "\"");
+      handleError("Unexpected element \"" + std::string(info->name) + "\"", replayingMacroElement->location);
       return;
     }
     parentElementData->parsedChildren |= info->elementClass;
   }
 
   // try using an already created instance of the element
-  if(replayingMacroElement->element)
+  if (replayingMacroElement->element)
   {
     replayingMacroElement->element->addParent(*element);
     return;
@@ -933,7 +999,7 @@ void Parser::parseMacroElement()
   const std::string* ref = &getString("ref", false);
 
   // handle elements without reference
-  if(ref->empty())
+  if (ref->empty())
   {
     Element* parentElement = element;
     Element* childElement = (this->*elementData.info->startElementProc)();
@@ -943,12 +1009,12 @@ void Parser::parseMacroElement()
     ASSERT(this->elementData == &elementData);
     ASSERT(element == childElement);
     checkElements();
-    if(element)
+    if (element)
     {
-      if(parentElement)
+      if (parentElement)
         element->addParent(*parentElement);
 
-      if(elementData.info->flags & constantFlag && !elementData.usedPlaceholdersInAttributes)
+      if (elementData.info->flags & constantFlag && !elementData.usedPlaceholdersInAttributes)
         replayingMacroElement->element = element;
     }
     return;
@@ -957,18 +1023,18 @@ void Parser::parseMacroElement()
   // resolve referenced macro
   std::unordered_map<std::string, Macro*>::const_iterator iter = macros.find(*ref + " " + elementData.info->name);
   Macro* const macro = iter == macros.end() ? 0 : iter->second;
-  if(!macro || macro->replaying)
+  if (!macro || macro->replaying)
   {
-    if(macro)
-      handleError("Looping reference \"" + *ref + "\"");
+    if (macro)
+      handleError("Looping reference \"" + *ref + "\"", attributes->find("ref")->second.valueLocation);
     else
-      handleError("Unresolvable reference \"" + *ref + "\"");
+      handleError("Unresolvable reference \"" + *ref + "\"", attributes->find("ref")->second.valueLocation);
     return;
   }
 
   // handle "reference-only" elements (e.g. <BoxAppearance ref="anyBox"></BoxAppearance>)
   const bool isReferenceOnlyElement = attributes->size() == 1 && !replayingMacroElement->hasTextOrChildren();
-  if(isReferenceOnlyElement && macro->element )
+  if (isReferenceOnlyElement && macro->element)
   { // use an already created "reference-only" instance
     macro->element->addParent(*element);
     replayingMacroElement->element = macro->element;
@@ -978,43 +1044,52 @@ void Parser::parseMacroElement()
   // handle normal macro references
   {
     std::list<Macro*> referencedMacros;
-    Attributes* copiedAttributes = 0; // we might need this, since this->attributes is read-only
+    Attributes* copiedAttributes = nullptr; // we might need this, since this->attributes is read-only
 
     // generate list of references macros and a combined attribute set
     macro->replaying = true;
-    for(;;)
+
+    Macro* nextMacro = macro;
+    for (;;)
     {
-      referencedMacros.push_back(macro);
+      referencedMacros.push_back(nextMacro);
 
       // combine current node attributes and attributes from macro
-      for(std::unordered_map<std::string, std::pair<std::string, int> >::const_iterator iter = macro->attributes.begin(), end = macro->attributes.end(); iter != end; ++iter)
-        if(attributes->find(iter->first) == attributes->end())
+      for (std::unordered_map<std::string, Attribute>::const_iterator iter = nextMacro->attributes.begin(), end = nextMacro->attributes.end(); iter != end; ++iter)
+        if (attributes->find(iter->first) == attributes->end())
         {
-          if(!copiedAttributes)
+          if (!copiedAttributes)
             attributes = copiedAttributes = new Attributes(*attributes);
-          (*copiedAttributes)[iter->first] = std::make_pair(iter->second.first, int(copiedAttributes->size()));
+          if (attributes->size() >= 32)
+          {
+            handleError("Node and macro attribute combination results in more than 32 attributes", replayingMacroElement->location);
+            for (std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
+              (*iter)->replaying = false;
+            return;
+          }
+          copiedAttributes->emplace(iter->first, Attribute(iter->second, static_cast<int>(copiedAttributes->size())));
         }
 
       // find another reference
-      std::unordered_map<std::string, std::pair<std::string, int> >::const_iterator refIter = macro->attributes.find("ref");
-      if(refIter == macro->attributes.end())
+      std::unordered_map<std::string, Attribute>::const_iterator refIter = nextMacro->attributes.find("ref");
+      if (refIter == nextMacro->attributes.end())
         break;
-      ref = &replacePlaceholders(refIter->second.first);
+      ref = &replacePlaceholders(refIter->second.value, refIter->second.valueLocation);
 
       // resolve next referenced macro
       std::unordered_map<std::string, Macro*>::const_iterator iter = macros.find(*ref + " " + elementData.info->name);
-      Macro* macro = iter == macros.end() ? 0 : iter->second;
-      if(!macro || macro->replaying)
+      nextMacro = iter == macros.end() ? nullptr : iter->second;
+      if (!nextMacro || nextMacro->replaying)
       {
-        if(macro)
-          handleError("Looping reference \"" + *ref + "\"");
+        if (nextMacro)
+          handleError("Looping reference \"" + *ref + "\"", refIter->second.valueLocation);
         else
-          handleError("Unresolvable reference \"" + *ref + "\"");
-        for(std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
+          handleError("Unresolvable reference \"" + *ref + "\"", refIter->second.valueLocation);
+        for (std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
           (*iter)->replaying = false;
         return;
       }
-      macro->replaying = true;
+      nextMacro->replaying = true;
     }
 
     // create element
@@ -1022,7 +1097,7 @@ void Parser::parseMacroElement()
     Element* childElement = (this->*elementData.info->startElementProc)();
     element = childElement;
     checkAttributes();
-    if(copiedAttributes)
+    if (copiedAttributes)
       delete copiedAttributes;
 
     // parse direct subordinate elements
@@ -1031,10 +1106,8 @@ void Parser::parseMacroElement()
     ASSERT(element == childElement);
 
     // parse inherited subordinate elements
-    int parentLine = line;
-    int parentColumn = column;
     MacroElement* parentReplayingMacroElement = replayingMacroElement;
-    for(std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
+    for (std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
     {
       Macro* macro = *iter;
 
@@ -1049,22 +1122,20 @@ void Parser::parseMacroElement()
       fileName.swap(macro->fileName);
       macro->replaying = false;
     }
-    line = parentLine;
-    column = parentColumn;
     replayingMacroElement = parentReplayingMacroElement;
 
     //
     checkElements();
     ASSERT(element == childElement);
-    if(element)
+    if (element)
     {
-      if(parentElement)
+      if (parentElement)
         element->addParent(*parentElement);
 
-      if(elementData.info->flags & constantFlag && !elementData.usedPlaceholdersInAttributes)
+      if (elementData.info->flags & constantFlag && !elementData.usedPlaceholdersInAttributes)
       {
         replayingMacroElement->element = element;
-        if(isReferenceOnlyElement)
+        if (isReferenceOnlyElement)
           macro->element = element;
       }
     }
@@ -1072,148 +1143,152 @@ void Parser::parseMacroElement()
   }
 }
 
-void Parser::handleNode(const std::string& nodeName, Attributes& attributes) // from an input file
+bool Parser::handleElement(const std::string& nodeName, Attributes& attributes, const Location& location) // from an input file
 {
   std::unordered_map<std::string, const ElementInfo*>::const_iterator iter = elementInfos.find(nodeName);
   const ElementInfo* elementInfo = iter != elementInfos.end() ? iter->second : 0;
   ASSERT(!elementInfo || elementInfo->startElementProc);
 
   //
-  if(!elementInfo || passedSimulationTag == (elementInfo->startElementProc == &Parser::simulationElement))
+  if (!elementInfo || passedSimulationTag == (elementInfo->startElementProc == &Parser::simulationElement))
   {
-    handleError("Unexpected element \"" + nodeName + "\"");
-    readSubNodes(false);
-    return;
+    handleError("Unexpected element \"" + nodeName + "\"", location);
+    return readElements(false);
+  }
+
+  if (attributes.size() > 32)
+  {
+    handleError("Only up to 32 attributes per element are supported", location);
+    return readElements(false);
   }
 
   // handle an infrastructural element
-  if(elementInfo->elementClass == infrastructureClass)
+  if (elementInfo->elementClass == infrastructureClass)
   {
-    ElementData elementData(0, elementInfo);
+    ElementData elementData(nullptr, location, elementInfo);
     this->elementData = &elementData;
     this->attributes = &attributes;
 
     (this->*elementInfo->startElementProc)();
 
-    if(elementInfo->startElementProc == &Parser::includeElement)
+    if (elementInfo->startElementProc == &Parser::includeElement)
     {
+      const Location includeFileLocation = this->includeFileLocation;
       std::string includeFile;
       includeFile.swap(this->includeFile);
       checkAttributes();
-      readSubNodes(true);
+      const bool result = readElements(true);
 
-      if(!includeFile.empty())
+      if (!includeFile.empty())
       {
         passedSimulationTag = false;
-        size_t preErrorCount = errors->size();
+        const size_t preErrorCount = errors->size();
+        const Location oldSimulationTagLocation = simulationTagLocation;
         std::string oldRootDir = parseRootDir;
         std::string fileName;
-        if(includeFile[0] != '/' && includeFile[0] != '\\' && // not absolute path on Unix
-           (includeFile.size() < 2 || includeFile[1] != ':')) // or Windows
+        if (includeFile[0] != '/' && includeFile[0] != '\\' && // not absolute path on Unix
+            (includeFile.size() < 2 || includeFile[1] != ':')) // or Windows
           fileName = parseRootDir + includeFile;
         else
           fileName = includeFile;
         std::string::size_type i = fileName.find_last_of("/\\");
         parseRootDir = i != std::string::npos ? fileName.substr(0, i + 1) : std::string();
-        if(!readFile(fileName))
+        if (!readFile(fileName))
         {
-          if(preErrorCount == errors->size())
-            handleError("Could not include file \"" + includeFile + "\"");
+          if (preErrorCount == errors->size())
+            handleError("Could not include file \"" + includeFile + "\"", includeFileLocation);
         }
         parseRootDir = oldRootDir;
         passedSimulationTag = true;
+        simulationTagLocation = oldSimulationTagLocation;
       }
+
+      return result;
     }
     else
     {
       ASSERT(elementInfo->startElementProc == &Parser::simulationElement);
       checkAttributes();
-      readSubNodes(true);
+      return readElements(true);
     }
-    return;
   }
 
-  if(elementInfo->elementClass == surfaceClass)
+  if (elementInfo->elementClass == surfaceClass)
   {
     Attributes::iterator iter = attributes.find("diffuseTexture");
-    if(iter != attributes.end() && iter->second.first != "" &&
-       iter->second.first[0] != '/' && iter->second.first[0] != '\\' && // not absolute path on Unix
-       (iter->second.first.size() < 2 || iter->second.first[1] != ':')) // or Windows
-      iter->second.first = parseRootDir + iter->second.first;
+    if (iter != attributes.end() && !iter->second.value.empty() && iter->second.value[0] != '/' && iter->second.value[0] != '\\' && // not absolute path on Unix
+        (iter->second.value.size() < 2 || iter->second.value[1] != ':')) // or Windows
+      iter->second.value = parseRootDir + iter->second.value;
   }
 
   // handle macro recording
-  if(recordingMacroElement)
+  if (recordingMacroElement)
   { // since we are currently parsing a macro, add the element to the macro for later instantiation
-    MacroElement* newMacroElement = new MacroElement(recordingMacroElement, elementInfo, attributes, line, column);
+    MacroElement* newMacroElement = new MacroElement(recordingMacroElement, elementInfo, attributes, location);
     recordingMacroElement->children.push_back(newMacroElement);
     recordingMacroElement = newMacroElement;
-    readSubNodes(true);
+    const bool result = readElements(true);
     ASSERT(recordingMacroElement == newMacroElement);
-    recordingMacroElement->endLine = line;
-    recordingMacroElement->endColumn = column;
     recordingMacroElement = recordingMacroElement->parent;
-    return;
+    return result;
   }
 
   // start recording a new macro
   else
   {
     const bool isScene = elementInfo->startElementProc == &Parser::sceneElement;
-    if(isScene && sceneMacro)
+    if (isScene && sceneMacro)
     {
-      handleError("Unexpected element \"" + nodeName + "\"");
-      readSubNodes(false);
-      return;
+      handleError("Unexpected element \"" + nodeName + "\"", location);
+      return readElements(false);
     }
 
-    ElementData elementData(0, elementInfo);
+    ElementData elementData(nullptr, location, elementInfo);
     this->elementData = &elementData;
     this->attributes = &attributes;
     const std::string& name = getString("name", true);
 
     std::string macroName = name + " " + nodeName;
-    if(macros.find(macroName) != macros.end())
+    if (macros.find(macroName) != macros.end())
     {
-      handleError("Duplicated name \"" + name + "\"");
-      readSubNodes(false);
-      return;
+      handleError("Duplicated name \"" + name + "\"", attributes.find("name")->second.valueLocation);
+      handleError("Note: Defined here", macros.find(macroName)->second->location);
+      return readElements(false);
     }
-    Macro* macro = new Macro(elementInfo, fileName, attributes, line, column);
+    Macro* macro = new Macro(elementInfo, fileName, attributes, location);
     macros[macroName] = macro;
-    if(isScene)
+    if (isScene)
       sceneMacro = macro;
     recordingMacroElement = macro;
-    readSubNodes(true);
-    recordingMacroElement->endLine = line;
-    recordingMacroElement->endColumn = column;
+    const bool result = readElements(true);
     recordingMacroElement = 0;
-    return;
+    return result;
   }
 }
 
-void Parser::handleText(std::string& text)
+void Parser::handleText(std::string& text, const Location& location)
 {
-  if(!recordingMacroElement || !(recordingMacroElement->elementInfo->flags & textFlag))
+  if (!recordingMacroElement || !(recordingMacroElement->elementInfo->flags & textFlag))
   {
-    handleError("Unexpected text");
+    handleError("Unexpected text", location);
     return;
   }
 
   ASSERT(recordingMacroElement->text.empty());
   recordingMacroElement->text.swap(text);
+  recordingMacroElement->textLocation = location;
 }
 
-void Parser::handleError(const std::string& message)
+void Parser::handleError(const std::string& message, const Location& location)
 {
   std::string fileName = this->fileName.find(parseRootDir) == 0 ? this->fileName.substr(parseRootDir.length()) : this->fileName;
-  if(line)
+  if (location.line)
   {
     char lineColumn[128];
-    //if(column) // not even line numbers seem to correct
-      //sprintf(lineColumn, ":%d:%d: error: ", line, column);
-    //else
-    sprintf(lineColumn, ":%d: error: ", line);
+    if (location.column)
+      sprintf(lineColumn, ":%d:%d: error: ", location.line, location.column);
+    else
+      sprintf(lineColumn, ":%d: error: ", location.line);
     errors->push_back(fileName + lineColumn + message);
   }
   else
@@ -1232,29 +1307,27 @@ bool Parser::parse(const std::string& fileName, std::list<std::string>& errors)
 
   // phase #1: reading the file and create "macros"
   size_t preErrorCount = errors.size();
-  if(!readFile(fileName) || preErrorCount != errors.size())
+  if (!readFile(fileName) || preErrorCount != errors.size())
     goto error;
   ASSERT(!Simulation::simulation->scene);
 
   // phase #2: using the macros to generate the scene graph
   parseSimulation();
-  if(preErrorCount != errors.size())
+  if (preErrorCount != errors.size())
     goto error;
 
   ASSERT(Simulation::simulation->scene);
   return true;
 
 error:
-  if(preErrorCount == errors.size())
+  if (preErrorCount == errors.size())
   {
     this->fileName = fileName;
-    this->line = 0;
-    this->column = 0;
-    handleError("Could not load file");
+    handleError("Could not load file", Location());
   }
-  if(Simulation::simulation->scene)
+  if (Simulation::simulation->scene)
   {
-    for(std::list<Element*>::const_iterator iter = Simulation::simulation->elements.begin(), end = Simulation::simulation->elements.end(); iter != end; ++iter)
+    for (std::list<Element*>::const_iterator iter = Simulation::simulation->elements.begin(), end = Simulation::simulation->elements.end(); iter != end; ++iter)
       delete *iter;
     Simulation::simulation->elements.clear();
     Simulation::simulation->scene = 0;
@@ -1265,47 +1338,48 @@ error:
 void Parser::checkAttributes()
 {
   // make name attribute optional
-  std::unordered_map<std::string, std::pair<std::string, int> >::const_iterator iter = attributes->find("name");
-  if(iter != attributes->end())
+  std::unordered_map<std::string, Attribute>::const_iterator iter = attributes->find("name");
+  if (iter != attributes->end())
   {
-    const std::pair<std::string, int>& ai = iter->second;
-    elementData->parsedAttributes |= 1 << ai.second;
+    const Attribute& ai = iter->second;
+    elementData->parsedAttributes |= 1 << ai.index;
   }
 
   const unsigned int allAttributes = attributes->empty() ? 0 : (0xffffffff >> (32 - attributes->size()));
   const unsigned int unexpectedAttributes = allAttributes & ~elementData->parsedAttributes;
-  if(unexpectedAttributes)
-  { // apparently there are unused attributs, find them and produce error messages
-    for(std::unordered_map<std::string, std::pair<std::string, int> >::const_iterator iter = attributes->begin(), end = attributes->end(); iter != end; ++iter)
-      if(unexpectedAttributes & (1 << iter->second.second))
-        handleError("Unexpected attribute \"" + iter->first + "\"");
+  if (unexpectedAttributes)
+  {
+    // apparently there are unused attributes, find them and produce error messages
+    for (std::unordered_map<std::string, Attribute>::const_iterator iter = attributes->begin(), end = attributes->end(); iter != end; ++iter)
+      if (unexpectedAttributes & (1 << iter->second.index))
+        handleError("Unexpected attribute \"" + iter->first + "\"", iter->second.nameLocation);
   }
 }
 
 void Parser::checkElements()
 {
   const unsigned int missingChildren = elementData->info->requiredChildren & ~elementData->parsedChildren;
-  if(missingChildren)
+  if (missingChildren)
   {
-    for(int i = 0; i < 32; ++i)
-      if(missingChildren & (1 << i))
+    for (int i = 0; i < 32; ++i)
+      if (missingChildren & (1 << i))
       {
         unsigned int missingClass = 1 << i;
         std::string elements;
         int count = 0;
-        for(std::unordered_map<std::string, const ElementInfo*>::const_iterator iter = elementInfos.begin(), end = elementInfos.end(); iter != end; ++iter)
-          if(iter->second->elementClass == missingClass)
+        for (std::unordered_map<std::string, const ElementInfo*>::const_iterator iter = elementInfos.begin(), end = elementInfos.end(); iter != end; ++iter)
+          if (iter->second->elementClass == missingClass)
           {
-            if(count > 0)
+            if (count > 0)
               elements += ", ";
             elements += iter->second->name;
             ++count;
           }
         ASSERT(count);
-        if(count <= 1)
-          handleError("Expected element \"" + elements + "\"");
+        if (count <= 1)
+          handleError("Expected element \"" + elements + "\" as child", elementData->location);
         else
-          handleError("Expected one of the elements \"" + elements + "\"");
+          handleError("Expected one of the elements \"" + elements + "\" as child", elementData->location);
       }
   }
 }
@@ -1318,18 +1392,18 @@ const std::string* Parser::resolvePlaceholder(const std::string& name)
   do
   {
     std::unordered_map<std::string, std::string>::const_iterator iter = elementData->vars.find(name);
-    if(iter != elementData->vars.end())
+    if (iter != elementData->vars.end())
       return &iter->second;
     elementData = elementData->parent;
-  } while(elementData);
-  return 0;
+  } while (elementData);
+  return nullptr;
 }
 
-const std::string& Parser::replacePlaceholders(const std::string& str)
+const std::string& Parser::replacePlaceholders(const std::string& str, const Location& location)
 {
   const char* src = str.c_str();
   const char* varStart = strchr(src, '$');
-  if(!varStart)
+  if (!varStart)
     return str;
 
   std::string& result = placeholderBuffer;
@@ -1337,25 +1411,25 @@ const std::string& Parser::replacePlaceholders(const std::string& str)
   result += std::string(src, varStart - src);
 
   const char* varEnd;
-  for(;;)
+  for (;;)
   {
     ++varStart;
     char c = *varStart;
-    if(c == '(' || c == '{')
+    if (c == '(' || c == '{')
     {
       ++varStart;
       char cEnd = c == '(' ? ')' : '}';
       varEnd = strchr(varStart, cEnd);
-      if(!varEnd)
+      if (!varEnd)
       {
-        handleError("Invalid attribute format");
+        handleError("Invalid attribute format", location);
         return str;
       }
       else
       {
         std::string name(varStart, varEnd - varStart);
         const std::string* value = resolvePlaceholder(name);
-        if(value)
+        if (value)
           result += *value;
         else
           result += std::string("$") + c + name + cEnd;
@@ -1365,18 +1439,18 @@ const std::string& Parser::replacePlaceholders(const std::string& str)
     else
     {
       varEnd = varStart;
-      while(isalnum(*varEnd))
+      while (isalnum(*varEnd))
         ++varEnd;
       std::string name(varStart, varEnd - varStart);
       const std::string* value = resolvePlaceholder(name);
-      if(value)
+      if (value)
         result += *value;
       else
         result += std::string("$") + name;
     }
 
     varStart = strchr(varEnd, '$');
-    if(!varStart)
+    if (!varStart)
     {
       result += varEnd;
       return result;
@@ -1386,29 +1460,29 @@ const std::string& Parser::replacePlaceholders(const std::string& str)
 
 bool Parser::getStringRaw(const char* key, bool required, const std::string*& value)
 {
-  std::unordered_map<std::string, std::pair<std::string, int> >::const_iterator iter = attributes->find(key);
-  if(iter == attributes->end())
+  std::unordered_map<std::string, Attribute>::const_iterator iter = attributes->find(key);
+  if (iter == attributes->end())
   {
-    if(required)
-      handleError("Expected attribute \"" + std::string(key) + "\"");
+    if (required)
+      handleError("Expected attribute \"" + std::string(key) + "\"", elementData->location);
     return false;
   }
-  const std::pair<std::string, int>& ai = iter->second;
-  elementData->parsedAttributes |= 1 << ai.second;
-  value = &replacePlaceholders(ai.first);
+  const Attribute& ai = iter->second;
+  elementData->parsedAttributes |= 1 << ai.index;
+  value = &replacePlaceholders(ai.value, ai.valueLocation);
   return true;
 }
 
 bool Parser::getFloatRaw(const char* key, bool required, float& value)
 {
   const std::string* strvalue;
-  if(!getStringRaw(key, required, strvalue))
+  if (!getStringRaw(key, required, strvalue))
     return false;
   char* end;
-  value = (float) strtod(strvalue->c_str(), &end);
-  if(*end)
+  value = strtof(strvalue->c_str(), &end);
+  if (*end)
   {
-    handleError("Expected float");
+    handleError("Expected float", attributes->find(key)->second.valueLocation);
     return false;
   }
   return true;
@@ -1417,13 +1491,13 @@ bool Parser::getFloatRaw(const char* key, bool required, float& value)
 bool Parser::getIntegerRaw(const char* key, bool required, int& value)
 {
   const std::string* strvalue;
-  if(!getStringRaw(key, required, strvalue))
+  if (!getStringRaw(key, required, strvalue))
     return false;
   char* end;
-  value = (int) strtol(strvalue->c_str(), &end, 10);
-  if(*end)
+  value = static_cast<int>(strtol(strvalue->c_str(), &end, 10));
+  if (*end)
   {
-    handleError("Expected integer");
+    handleError("Expected integer", attributes->find(key)->second.valueLocation);
     return false;
   }
   return true;
@@ -1432,7 +1506,7 @@ bool Parser::getIntegerRaw(const char* key, bool required, int& value)
 const std::string& Parser::getString(const char* key, bool required)
 {
   const std::string* value;
-  if(!getStringRaw(key, required, value))
+  if (!getStringRaw(key, required, value))
   {
     static const std::string emptyString;
     return emptyString;
@@ -1443,13 +1517,13 @@ const std::string& Parser::getString(const char* key, bool required)
 bool Parser::getBool(const char* key, bool required, bool defaultValue)
 {
   const std::string* value;
-  if(!getStringRaw(key, required, value))
+  if (!getStringRaw(key, required, value))
     return defaultValue;
-  if(*value == "true" || *value == "1" || *value == "on")
+  if (*value == "true" || *value == "1" || *value == "on")
     return true;
-  if(*value == "false" || *value == "0" || *value == "off")
+  if (*value == "false" || *value == "0" || *value == "off")
     return false;
-  handleError("Expected boolean value (true or false)");
+  handleError("Expected boolean value (true or false)", attributes->find(key)->second.valueLocation);
   return defaultValue;
 }
 
@@ -1462,13 +1536,13 @@ float Parser::getFloat(const char* key, bool required, float defaultValue)
 float Parser::getFloatPositive(const char* key, bool required, float defaultValue)
 {
   float value;
-  if(!getFloatRaw(key, required, value))
+  if (!getFloatRaw(key, required, value))
     return defaultValue;
-  if(value < 0.f)
+  if (value < 0.f)
   {
     char msg[256];
     sprintf(msg, "Expected a positive value instead of %g", value);
-    handleError(msg);
+    handleError(msg, attributes->find(key)->second.valueLocation);
     return defaultValue;
   }
   return value;
@@ -1483,26 +1557,33 @@ int Parser::getInteger(const char* key, bool required, int defaultValue)
 float Parser::getFloatMinMax(const char* key, bool required, float defaultValue, float min, float max)
 {
   float value;
-  if(!getFloatRaw(key, required, value))
+  if (!getFloatRaw(key, required, value))
     return defaultValue;
-  if(value < min || value > max)
+  if (value < min || value > max)
   {
     char msg[256];
     sprintf(msg, "Expected a value between %g and %g instead of %g", min, max, value);
-    handleError(msg);
+    handleError(msg, attributes->find(key)->second.valueLocation);
     return defaultValue;
   }
   return value;
 }
 
-bool Parser::getFloatAndUnit(const char* key, bool required, float defaultValue, float& value, char** unit)
+bool Parser::getFloatAndUnit(const char* key, bool required, float defaultValue, float& value, char** unit, Location& unitLocation)
 {
   const std::string* strvalue;
-  if(!getStringRaw(key, required, strvalue))
+  if (!getStringRaw(key, required, strvalue))
     return false;
-  value = (float) strtod(strvalue->c_str(), unit);
-  while(isspace(**unit))
+  unitLocation = attributes->find(key)->second.valueLocation;
+  value = strtof(strvalue->c_str(), unit);
+  if (*unit == strvalue->c_str())
+  {
+    handleError("Expected float", unitLocation);
+    return false;
+  }
+  while (isspace(**unit))
     ++(*unit);
+  unitLocation.column += *unit - strvalue->c_str();
   return true;
 }
 
@@ -1510,19 +1591,19 @@ float Parser::getUnit(const char* key, bool required, float defaultValue)
 {
   float result = 1.f;
   const std::string* s;
-  if(!getStringRaw(key, required, s))
+  if (!getStringRaw(key, required, s))
     return defaultValue;
-  if(strcmp(s->c_str(), "mm") == 0)
+  if (strcmp(s->c_str(), "mm") == 0)
     result = 0.001f;
-  else if(strcmp(s->c_str(), "cm") == 0)
+  else if (strcmp(s->c_str(), "cm") == 0)
     result = 0.01f;
-  else if(strcmp(s->c_str(), "dm") == 0)
+  else if (strcmp(s->c_str(), "dm") == 0)
     result = 0.1f;
-  else if(strcmp(s->c_str(), "km") == 0)
+  else if (strcmp(s->c_str(), "km") == 0)
     result = 1000.f;
-  else if(strcmp(s->c_str(), "m") != 0)
+  else if (strcmp(s->c_str(), "m") != 0)
   {
-    handleError("Unexpected unit \"" + *s + " (expected one of \"mm, cm, dm, m, km\")");
+    handleError("Unexpected unit \"" + *s + "\" (expected one of \"mm, cm, dm, m, km\")", attributes->find(key)->second.valueLocation);
     return defaultValue;
   }
   return result;
@@ -1531,13 +1612,13 @@ float Parser::getUnit(const char* key, bool required, float defaultValue)
 int Parser::getIntegerNonZeroPositive(const char* key, bool required, int defaultValue)
 {
   int value;
-  if(!getIntegerRaw(key, required, value))
+  if (!getIntegerRaw(key, required, value))
     return defaultValue;
-  if(value <= 0)
+  if (value <= 0)
   {
     char msg[256];
     sprintf(msg, "Expected a positive non-zero value instead of %d", value);
-    handleError(msg);
+    handleError(msg, attributes->find(key)->second.valueLocation);
     return defaultValue;
   }
   return value;
@@ -1547,21 +1628,22 @@ float Parser::getLength(const char* key, bool required, float defaultValue)
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "mm") == 0)
+    if (strcmp(endPtr, "mm") == 0)
       result *= 0.001f;
-    else if(strcmp(endPtr, "cm") == 0)
+    else if (strcmp(endPtr, "cm") == 0)
       result *= 0.01f;
-    else if(strcmp(endPtr, "dm") == 0)
+    else if (strcmp(endPtr, "dm") == 0)
       result *= 0.1f;
-    else if(strcmp(endPtr, "km") == 0)
+    else if (strcmp(endPtr, "km") == 0)
       result *= 1000.f;
-    else if(strcmp(endPtr, "m") != 0)
+    else if (strcmp(endPtr, "m") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"mm, cm, dm, m, km\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"mm, cm, dm, m, km\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1572,15 +1654,16 @@ float Parser::getMassLengthLength(const char* key, bool required, float defaultV
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "g*mm^2") == 0)
+    if (strcmp(endPtr, "g*mm^2") == 0)
       result *= 0.001f * 0.001f * 0.001f; // 1.0 * 10^-9
-    else if(strcmp(endPtr, "kg*m^2") != 0)
+    else if (strcmp(endPtr, "kg*m^2") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"g*mm^2, kg*m^2\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"g*mm^2, kg*m^2\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1591,20 +1674,21 @@ float Parser::getMass(const char* key, bool required, float defaultValue)
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "g") == 0)
+    if (strcmp(endPtr, "g") == 0)
       result *= 0.001f;
-    else if(strcmp(endPtr, "kg") != 0)
+    else if (strcmp(endPtr, "kg") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"g, kg\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"g, kg\")", unitLocation);
       return defaultValue;
     }
   }
-  if(result <= 0.f)
-    handleError("A mass should be greater than zero");
+  if (result <= 0.f)
+    handleError("A mass should be greater than zero", attributes->find(key)->second.valueLocation);
   return result;
 }
 
@@ -1612,15 +1696,16 @@ float Parser::getAngle(const char* key, bool required, float defaultValue)
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "degree") == 0)
-      result *= float(M_PI) / 180.f;
-    else if(strcmp(endPtr, "radian") != 0)
+    if (strcmp(endPtr, "degree") == 0)
+      result *= pi / 180.f;
+    else if (strcmp(endPtr, "radian") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"degree, radian\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"degree, radian\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1631,22 +1716,23 @@ float Parser::getAngleNonZeroPositive(const char* key, bool required, float defa
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(result <= 0)
+  if (result <= 0)
   {
     char msg[256];
     sprintf(msg, "Expected a positive non-zero value instead of %g", result);
-    handleError(msg);
+    handleError(msg, attributes->find(key)->second.valueLocation);
     return defaultValue;
   }
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "degree") == 0)
-      result *= float(M_PI) / 180.f;
-    else if(strcmp(endPtr, "radian") != 0)
+    if (strcmp(endPtr, "degree") == 0)
+      result *= pi / 180.f;
+    else if (strcmp(endPtr, "radian") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"degree, radian\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"degree, radian\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1657,15 +1743,16 @@ float Parser::getAngularVelocity(const char* key, bool required, float defaultVa
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "degree/s") == 0)
-      result *= float(M_PI) / 180.f;
-    else if(strcmp(endPtr, "radian/s") != 0)
+    if (strcmp(endPtr, "degree/s") == 0)
+      result *= pi / 180.f;
+    else if (strcmp(endPtr, "radian/s") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"degree/s, radian/s\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"degree/s, radian/s\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1676,13 +1763,14 @@ float Parser::getForce(const char* key, bool required, float defaultValue)
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "N") != 0)
+    if (strcmp(endPtr, "N") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected \"N\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected \"N\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1693,23 +1781,24 @@ float Parser::getVelocity(const char* key, bool required, float defaultValue)
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "mm/s") == 0)
+    if (strcmp(endPtr, "mm/s") == 0)
       result *= 0.001f;
-    else if(strcmp(endPtr, "cm/s") == 0)
+    else if (strcmp(endPtr, "cm/s") == 0)
       result *= 0.01f;
-    else if(strcmp(endPtr, "dm/s") == 0)
+    else if (strcmp(endPtr, "dm/s") == 0)
       result *= 0.1f;
-    else if(strcmp(endPtr, "km/s") == 0)
+    else if (strcmp(endPtr, "km/s") == 0)
       result *= 1000.f;
-    else if(strcmp(endPtr, "km/h") == 0)
+    else if (strcmp(endPtr, "km/h") == 0)
       result /= 3.6f;
-    else if(strcmp(endPtr, "m/s") != 0)
+    else if (strcmp(endPtr, "m/s") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"mm/s, cm/s, dm/s, m/s, km/s, km/h\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"mm/s, cm/s, dm/s, m/s, km/s, km/h\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1720,15 +1809,16 @@ float Parser::getAcceleration(const char* key, bool required, float defaultValue
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "mm/s^2") == 0)
+    if (strcmp(endPtr, "mm/s^2") == 0)
       result *= 0.001f;
-    else if(strcmp(endPtr, "m/s^2") != 0)
+    else if (strcmp(endPtr, "m/s^2") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected one of \"mm/s^2, m/s^2\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected one of \"mm/s^2, m/s^2\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1739,20 +1829,21 @@ float Parser::getTimeNonZeroPositive(const char* key, bool required, float defau
 {
   float result;
   char* endPtr;
-  if(!getFloatAndUnit(key, required, defaultValue, result, &endPtr))
+  Location unitLocation;
+  if (!getFloatAndUnit(key, required, defaultValue, result, &endPtr, unitLocation))
     return defaultValue;
-  if(result <= 0)
+  if (result <= 0)
   {
     char msg[256];
     sprintf(msg, "Expected a positive non-zero value instead of %g", result);
-    handleError(msg);
+    handleError(msg, attributes->find(key)->second.valueLocation);
     return defaultValue;
   }
-  if(*endPtr)
+  if (*endPtr)
   {
-    if(strcmp(endPtr, "s") != 0)
+    if (strcmp(endPtr, "s") != 0)
     {
-      handleError("Unexpected unit \"" + std::string(endPtr) + " (expected \"s\")");
+      handleError("Unexpected unit \"" + std::string(endPtr) + "\" (expected \"s\")", unitLocation);
       return defaultValue;
     }
   }
@@ -1762,111 +1853,114 @@ float Parser::getTimeNonZeroPositive(const char* key, bool required, float defau
 bool Parser::getColor(const char* key, bool required, float* color)
 {
   const std::string* strvalue;
-  if(!getStringRaw(key, required, strvalue))
+  if (!getStringRaw(key, required, strvalue))
     return false;
+  Location location = attributes->find(key)->second.valueLocation;
   const char* strclr = strvalue->c_str();
   static const float f1_255 = 1.f / 255.f;
-  if(*strclr == '#')
+  if (*strclr == '#')
   { // html style color (#rrggbb and #rgb)
     // + self invented #rrggbbaa and #rgba
 
     ++strclr;
     unsigned int lcol = 0;
     const char* endPtr = strclr;
-    for(;;)
+    for (;;)
     {
       int c = tolower(*endPtr);
-      if(c >= '0' && c <= '9')
+      if (c >= '0' && c <= '9')
       {
         lcol <<= 4;
         lcol |= c - '0';
       }
-      else if(c >= 'a' && c <= 'f')
+      else if (c >= 'a' && c <= 'f')
       {
         lcol <<= 4;
         lcol |= c - 'a' + 10;
       }
-      else if(!c)
+      else if (!c)
         break;
       else
       {
-        handleError("Invalid color format");
+        location.column += strclr - strvalue->c_str();
+        handleError("Invalid color format", location);
         return false;
       }
       ++endPtr;
     }
-    switch(endPtr - strclr)
+    switch (endPtr - strclr)
     {
-      case 3:
-        color[0] = float(lcol >> 8) * f1_255;
-        color[1] = float((lcol >> 4) & 0xf) * f1_255;
-        color[2] = float(lcol & 0xf) * f1_255;
-        color[3] = 1.f;
-        return true;
-      case 4:
-        color[0] = float(lcol >> 12) * f1_255;
-        color[1] = float((lcol >> 8) & 0xf) * f1_255;
-        color[2] = float((lcol >> 4) & 0xf) * f1_255;
-        color[3] = float(lcol & 0xf) * f1_255;
-        return true;
-      case 6:
-        color[0] = float(lcol >> 16) * f1_255;
-        color[1] = float((lcol >> 8) & 0xff) * f1_255;
-        color[2] = float(lcol & 0xff) * f1_255;
-        color[3] = 1.f;
-        return true;
-      case 8:
-        color[0] = float(lcol >> 24) * f1_255;
-        color[1] = float((lcol >> 16) & 0xff) * f1_255;
-        color[2] = float((lcol >> 8) & 0xff) * f1_255;
-        color[3] = float(lcol & 0xff) * f1_255;
-        return true;
-      default:
-        handleError("Invalid color format");
-        return false;
+    case 3:
+      color[0] = float(lcol >> 8) * f1_255;
+      color[1] = float((lcol >> 4) & 0xf) * f1_255;
+      color[2] = float(lcol & 0xf) * f1_255;
+      color[3] = 1.f;
+      return true;
+    case 4:
+      color[0] = float(lcol >> 12) * f1_255;
+      color[1] = float((lcol >> 8) & 0xf) * f1_255;
+      color[2] = float((lcol >> 4) & 0xf) * f1_255;
+      color[3] = float(lcol & 0xf) * f1_255;
+      return true;
+    case 6:
+      color[0] = float(lcol >> 16) * f1_255;
+      color[1] = float((lcol >> 8) & 0xff) * f1_255;
+      color[2] = float(lcol & 0xff) * f1_255;
+      color[3] = 1.f;
+      return true;
+    case 8:
+      color[0] = float(lcol >> 24) * f1_255;
+      color[1] = float((lcol >> 16) & 0xff) * f1_255;
+      color[2] = float((lcol >> 8) & 0xff) * f1_255;
+      color[3] = float(lcol & 0xff) * f1_255;
+      return true;
+    default:
+      handleError("Invalid color format", location);
+      return false;
     }
   }
-  else if(strncmp(strclr, "rgb(", 4) == 0)
+  else if (strncmp(strclr, "rgb(", 4) == 0)
   { // css style rgb color (rgb(r,g,b) with r,g,b\in[0..255]\cup[0%,..,100%])
     strclr += 4;
-    for(int i = 0;; ++i)
+    for (int i = 0;; ++i)
     {
-      while(isspace(*strclr))
+      while (isspace(*strclr))
         ++strclr;
-      color[i] = (float) strtod(strclr, (char**)&strclr);
-      if(*strclr == '%')
+      color[i] = strtof(strclr, const_cast<char**>(&strclr));
+      if (*strclr == '%')
       {
         ++strclr;
         color[i] *= 0.01f;
       }
       else
         color[i] *= f1_255;
-      while(isspace(*strclr))
+      while (isspace(*strclr))
         ++strclr;
-      if(i >= 2 || *strclr != ',')
+      if (i >= 2 || *strclr != ',')
         break;
       ++strclr;
     }
-    if(strcmp(strclr, ")") != 0)
+    if (strcmp(strclr, ")") != 0)
     {
-      handleError("Invalid color format");
+      location.column += strclr - strvalue->c_str();
+      handleError("Invalid color format", location);
       return false;
     }
     color[3] = 1.f;
     return true;
   }
-  else if(strncmp(strclr, "rgba(", 5) == 0)
+  else if (strncmp(strclr, "rgba(", 5) == 0)
   { // css3 style rgba color (rgba(r,g,b,a) with r,g,b\in[0..255]\cup[0%,..,100%] and a\in[0..1])
     // http://www.w3.org/TR/css3-color/
     strclr += 5;
-    for(int i = 0;; ++i)
+    for (int i = 0;; ++i)
     {
-      while(isspace(*strclr))
+      while (isspace(*strclr))
         ++strclr;
-      color[i] = (float) strtod(strclr, (char**)&strclr);
-      if(i < 3)
+      color[i] = strtof(strclr, const_cast<char**>(&strclr));
+      if (i < 3)
       {
-        if(*strclr == '%')
+        if (*strclr == '%')
         {
           ++strclr;
           color[i] *= 0.01f;
@@ -1874,23 +1968,23 @@ bool Parser::getColor(const char* key, bool required, float* color)
         else
           color[i] *= f1_255;
       }
-      while(isspace(*strclr))
+      while (isspace(*strclr))
         ++strclr;
-      if(i >= 3 || *strclr != ',')
+      if (i >= 3 || *strclr != ',')
         break;
       ++strclr;
     }
-    if(strcmp(strclr, ")") != 0)
+    if (strcmp(strclr, ")") != 0)
     {
-      handleError("Invalid color format");
+      location.column += strclr - strvalue->c_str();
+      handleError("Invalid color format", location);
       return false;
     }
     return true;
   }
   else
   {
-    handleError("Invalid color format");
+    handleError("Invalid color format", location);
     return false;
   }
-  return false;
 }

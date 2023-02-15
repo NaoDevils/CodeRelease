@@ -28,20 +28,20 @@ void TimeInfo::reset()
 
 bool TimeInfo::handleMessage(InMessage& message)
 {
-  if(message.getMessageID() == idStopwatch)
+  if (message.getMessageID() == idStopwatch)
   {
     timeStamp = SystemCall::getCurrentSystemTime();
     //first get the names of some of the stopwatches (usually we get 3 names per frame)
     unsigned short nameCount;
     message.bin >> nameCount;
 
-    for(int i = 0; i < nameCount; ++i)
+    for (int i = 0; i < nameCount; ++i)
     {
       string watchName;
       unsigned short watchId;
       message.bin >> watchId;
       message.bin >> watchName;
-      if(names.find(watchId) == names.end()) //new name
+      if (names.find(watchId) == names.end()) //new name
       {
         names[watchId] = watchName;
         infos[watchId] = Info();
@@ -52,7 +52,7 @@ bool TimeInfo::handleMessage(InMessage& message)
     unsigned short dataCount;
     message.bin >> dataCount;
 
-    for(int i = 0; i < dataCount; ++i)
+    for (int i = 0; i < dataCount; ++i)
     {
       unsigned short watchId;
       unsigned time;
@@ -68,8 +68,8 @@ bool TimeInfo::handleMessage(InMessage& message)
     int diff = frameNo - lastFrameNo;
     //sometimes we do not get data every frame. Compensate by assuming that the missing frames have
     // the same timing as the last one
-    if(lastFrameNo && diff < static_cast<int>(processDeltas.capacity()))
-      for(int i = 0; i < diff; ++i)
+    if (lastFrameNo && diff < static_cast<int>(processDeltas.capacity()))
+      for (int i = 0; i < diff; ++i)
       {
         processDeltas.push_front(static_cast<float>(processStartTime - lastStartTime) / static_cast<float>(diff));
       }
@@ -82,11 +82,12 @@ bool TimeInfo::handleMessage(InMessage& message)
     return false;
 }
 
-void TimeInfo::getStatistics(const Info& info, float& minTime, float& maxTime, float& avgTime) const
+void TimeInfo::getStatistics(const Info& info, float& minTime, float& maxTime, float& avgTime, float& lastTime) const
 {
   avgTime = info.average() / 1000.0f;
   minTime = info.minimum() / 1000.0f;
   maxTime = info.maximum() / 1000.0f;
+  lastTime = info.front() / 1000.0f;
 }
 
 void TimeInfo::getProcessStatistics(float& outAvgFreq) const
@@ -96,7 +97,7 @@ void TimeInfo::getProcessStatistics(float& outAvgFreq) const
 
 std::string TimeInfo::getName(unsigned short watchId) const
 {
-  if(names.find(watchId) == names.end())
+  if (names.find(watchId) == names.end())
   {
     return "unknown";
   }

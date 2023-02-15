@@ -9,6 +9,7 @@
 #pragma once
 
 #include <list>
+#include <memory>
 #include "PlatformProcess.h"
 #include "Receiver.h"
 #include "Sender.h"
@@ -16,9 +17,8 @@
 #ifdef TARGET_SIM
 #include "Controller/RoboCupCtrl.h"
 #endif
-#if defined(TARGET_ROBOT)
-#include "Tools/AlignedMemory.h"
-#endif
+
+class Logger;
 
 /**
  * The class is a helper that allows to instantiate a class as an Windows process.
@@ -26,9 +26,6 @@
  * It will only be used by the macro MAKE_PROCESS and should never be used directly.
  */
 class ProcessBase : public Thread<ProcessBase>
-#if defined(TARGET_ROBOT)
-  , public AlignedMemory
-#endif
 {
 protected:
   /**
@@ -42,7 +39,7 @@ public:
   /**
    * The function starts the process by starting the Windows thread.
    */
-  void start() {Thread<ProcessBase>::start(this, &ProcessBase::main);}
+  void start() { Thread<ProcessBase>::start(this, &ProcessBase::main); }
 
   /**
    * The functions searches for a sender with a given name.
@@ -80,7 +77,7 @@ public:
  * ProcessCreator contains the parts that need to be implemented as a template.
  * It will only be used by the macro MAKE_PROCESS and should never be used directly.
  */
-template<class T> class ProcessFrame : public ProcessBase
+template <class T> class ProcessFrame : public ProcessBase
 {
 private:
   std::string name; /**< The name of the process. */
@@ -93,31 +90,32 @@ protected:
   virtual void main()
   {
 #ifdef TARGET_SIM
-    Thread<ProcessBase>::setName(RoboCupCtrl::controller->getRobotName() + "." + name);
+    const std::string threadName = RoboCupCtrl::controller->getRobotName() + "." + name;
 #else
-    Thread<ProcessBase>::setName(name);
+    const std::string threadName = name;
 #endif
+    Thread<ProcessBase>::setName(threadName);
+    process.setThreadName(threadName);
 
     // Call process.nextFrame if no blocking receivers are waiting
     setPriority(process.getPriority());
     process.processBase = this;
     Thread<ProcessBase>::yield(); // always leave processing time to other threads
     process.setGlobals();
-    while(isRunning())
+    while (isRunning())
     {
-      if(process.getFirstReceiver())
+      if (process.getFirstReceiver())
         process.getFirstReceiver()->checkAllForPackages();
       bool wait = process.processMain();
-      if(process.getFirstSender())
+      if (process.getFirstSender())
         process.getFirstSender()->sendAllUnsentPackages();
-      if(wait)
+      if (wait)
         process.wait();
     }
     process.terminate();
   }
 
 public:
-
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wuninitialized"
@@ -127,7 +125,11 @@ public:
    * Note that process.setGlobals() is called before process is constructed.
    * @param name The name of the process.
    */
-  ProcessFrame(const std::string& name) : name((process.setGlobals(), name)) {}
+  ProcessFrame(const std::string& name, Logger* logger) : name(name)
+  {
+    process.setGlobals();
+    process.setLogger(logger);
+  }
 
 #ifdef __clang__
 #pragma clang diagnostic pop
@@ -164,7 +166,10 @@ public:
    * The function returns the name of the process.
    * @return the name of the process.
    */
-  virtual const std::string& getName() const {return name;}
+  virtual const std::string& getName() const
+  {
+    return name;
+  }
 
   /**
    * The function returns a pointer to the process if it has the given name.
@@ -174,7 +179,7 @@ public:
    */
   virtual PlatformProcess* getProcess(const std::string& processName)
   {
-    if(name == processName)
+    if (name == processName)
       return &process;
     else
       return nullptr;
@@ -207,10 +212,10 @@ protected:
    * The function creates a process.
    * @return A pointer to the new process.
    */
-  virtual ProcessBase* create() const = 0;
+  virtual std::unique_ptr<ProcessBase> create(Logger* logger) const = 0;
 
 public:
-  ProcessCreatorBase() : next(first) {first = this;}
+  ProcessCreatorBase() : next(first) { first = this; }
   virtual ~ProcessCreatorBase() = default;
 
   friend class ProcessList;
@@ -229,7 +234,7 @@ protected:
    * The function creates a process.
    * @return A pointer to the new process.
    */
-  ProcessBase* create() const {return new T(name);}
+  std::unique_ptr<ProcessBase> create(Logger* logger) const { return std::make_unique<T>(name, logger); }
 
 public:
   /**
@@ -241,23 +246,18 @@ public:
 /**
  * The class implements a list of processes.
  */
-class ProcessList : public std::list<ProcessBase*>
+class ProcessList : public std::list<std::unique_ptr<ProcessBase>>
 {
 public:
   /**
    * Creates a process for each process constructor and inserts them
    * into the list.
+   * @param logger Pointer to Logger instance.
    */
-  ProcessList()
+  void create(Logger* logger)
   {
-    for(const ProcessCreatorBase* i = ProcessCreatorBase::first; i; i = i->next)
-      push_back(i->create());
-  }
-
-  ~ProcessList()
-  {
-    for(iterator i = begin(); i != end(); ++i)
-      delete *i;
+    for (const ProcessCreatorBase* i = ProcessCreatorBase::first; i; i = i->next)
+      push_back(i->create(logger));
   }
 
   /**
@@ -265,8 +265,8 @@ public:
    */
   void announceStop()
   {
-    for(iterator i = begin(); i != end(); ++i)
-      (*i)->announceStop();
+    for (const auto& i : *this)
+      i->announceStop();
   }
 
   /**
@@ -274,8 +274,8 @@ public:
    */
   void stop()
   {
-    for(iterator i = begin(); i != end(); ++i)
-      (*i)->stop();
+    for (const auto& i : *this)
+      i->stop();
   }
 
   /**
@@ -283,21 +283,19 @@ public:
    */
   void start()
   {
-    for(iterator i = begin(); i != end(); ++i)
-      (*i)->start();
+    for (const auto& i : *this)
+      i->start();
   }
 };
 
 STREAMABLE(ConnectionParameter,
-{
-  STREAMABLE(ProcessConnection,
-  {,
+  STREAMABLE(ProcessConnection,,
     (std::string) sender,
-    (std::string) receiver,
-  }),
+    (std::string) receiver
+  ),
 
-  (std::vector<ProcessConnection>) processConnections,
-});
+  (std::vector<ProcessConnection>) processConnections
+);
 
 /**
  * The macro MAKE_PROCESS instatiates a process creator.
@@ -307,5 +305,4 @@ STREAMABLE(ConnectionParameter,
  * @param className The type of the class that will later be instantiated
  *                 as a process.
  */
-#define MAKE_PROCESS(className) \
-  ProcessCreator<ProcessFrame<className> > _create##className(#className)
+#define MAKE_PROCESS(className) ProcessCreator<ProcessFrame<className>> _create##className(#className)

@@ -11,9 +11,7 @@
 #include "Tools/Streams/AutoStreamable.h"
 
 STREAMABLE(FieldColors,
-{
   STREAMABLE(FieldColor,
-  {
     inline bool isPixelFieldColor(const int &y, const int &cb, const int &cr) const
     {
       return std::abs(y - fieldColorOptY) < 65 &&
@@ -54,8 +52,8 @@ STREAMABLE(FieldColors,
     (int)(10) fieldColorCbCrFactor,
     (int)(40) lineToFieldColorYThreshold,
     (int)(150) maxFieldColorY,
-    (float)(1.5f) fieldColorYDiffFactor,
-  });
+    (float)(1.5f) fieldColorYDiffFactor
+  );
   FieldColors& operator=(const FieldColors &other)
   {
     if (this == &other)
@@ -85,10 +83,9 @@ STREAMABLE(FieldColors,
   (FieldColor[10]) fieldColorArray, /**< [0] refers to whole image, [1] to [9] to areas on image */
   (int)(4) horizonYAvg,
   (int)(104) areaWidth,
-  (int)(77) areaHeight,
-});
+  (int)(77) areaHeight
+);
 
 struct FieldColorsUpper : public FieldColors
 {
-  
 };

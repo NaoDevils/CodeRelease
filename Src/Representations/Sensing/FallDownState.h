@@ -17,33 +17,29 @@
  * A struct that represents the current state of the robot's body
  */
 STREAMABLE(FallDownState,
-{
   ENUM(State,
-  {,
     undefined,
     upright,
     onGround,
     staggering,
     falling,
-    standingUp,
-  });
+    standingUp
+  );
 
   ENUM(Direction,
-  {,
     none,
     front,
     left,
     back,
-    right,
-  });
+    right
+  );
 
   ENUM(Sidestate,
-  {,
     noot, // since "not" is already a keyword...
     leftwards,
     rightwards,
-    fallen, // robot did not get up since last sideward fall
-  });
+    fallen // robot did not get up since last sideward fall
+  );
 
   /** Debug drawing. */
   void draw() const,
@@ -51,5 +47,5 @@ STREAMABLE(FallDownState,
   (State)(undefined) state, /**< Current state of the robot's body. */
   (Direction)(none) direction, /**< The robot is falling / fell into this direction. */
   (Sidestate)(noot) sidewards, /**< Did the robot fell sidewards before? */
-  (float)(0) odometryRotationOffset,
-});
+  (float)(0) odometryRotationOffset
+);

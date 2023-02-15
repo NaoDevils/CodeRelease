@@ -51,6 +51,7 @@ public:
 
   void update();
   void paintEvent(QPaintEvent* event);
+  virtual void saveLayout();
 
 private:
   void print(const char* name, const char* value1, const char* value2, const char* value3, const char* value4, const char* value5);
@@ -67,16 +68,15 @@ public:
   JointHeaderedWidget(JointView& sensorView, RobotConsole& console);
 
 private:
-  virtual QWidget* getWidget() {return this;}
-  virtual void update() {jointWidget->update();}
+  virtual QWidget* getWidget() { return this; }
+  virtual void update() { jointWidget->update(); }
 };
 
-JointWidget::JointWidget(JointView& jointView, QHeaderView* headerView, QWidget* parent) : QWidget(parent),
-  jointView(jointView), headerView(headerView), noPen(Qt::NoPen)
+JointWidget::JointWidget(JointView& jointView, QHeaderView* headerView, QWidget* parent) : QWidget(parent), jointView(jointView), headerView(headerView), noPen(Qt::NoPen)
 {
   setFocusPolicy(Qt::StrongFocus);
   setBackgroundRole(QPalette::Base);
-  const QFontMetrics& fontMetrics(QApplication::fontMetrics());
+  const QFontMetricsF fontMetrics(QGuiApplication::font());
   lineSpacing = fontMetrics.lineSpacing() + 2;
   textOffset = fontMetrics.descent() + 1;
 
@@ -96,6 +96,11 @@ JointWidget::JointWidget(JointView& jointView, QHeaderView* headerView, QWidget*
 
 JointWidget::~JointWidget()
 {
+  //saveLayout();
+}
+
+void JointWidget::saveLayout()
+{
   QSettings& settings = RoboCupCtrl::application->getLayoutSettings();
   settings.beginGroup(jointView.fullName);
   settings.setValue("HeaderState", headerView->saveState());
@@ -106,7 +111,7 @@ void JointWidget::update()
 {
   {
     SYNC_WITH(jointView.console);
-    if(jointView.jointSensorData.timestamp == lastUpdateTimeStamp)
+    if (jointView.jointSensorData.timestamp == lastUpdateTimeStamp)
       return;
     lastUpdateTimeStamp = jointView.jointSensorData.timestamp;
   }
@@ -134,23 +139,23 @@ void JointWidget::paintEvent(QPaintEvent* event)
     SYNC_WITH(jointView.console);
     const JointSensorData& jointSensorData(jointView.jointSensorData);
     const JointRequest& jointRequest(jointView.jointRequest);
-    for(int i = 0; i < Joints::numOfJoints; ++i)
+    for (int i = 0; i < Joints::numOfJoints; ++i)
     {
-      if(i == Joints::lShoulderPitch || i == Joints::rShoulderPitch || i == Joints::lHipYawPitch || i == Joints::rHipYawPitch)
+      if (i == Joints::lShoulderPitch || i == Joints::rShoulderPitch || i == Joints::lHipYawPitch || i == Joints::rHipYawPitch)
         newSection();
-      if(i == Joints::lHand || i == Joints::rHand)
+      if (i == Joints::lHand || i == Joints::rHand)
       {
-        jointRequest.angles[i] == JointAngles::off ? (void) strcpy(request, "off") : (void) sprintf(request, "%.1f %%", static_cast<float>(jointRequest.angles[i] * 100));
-        jointSensorData.angles[i] == JointAngles::off ? (void) strcpy(sensor, "?") : (void) sprintf(sensor, "%.1f %%", static_cast<float>(jointSensorData.angles[i] * 100));
+        jointRequest.angles[i] == JointAngles::off ? (void)strcpy(request, "off") : (void)sprintf(request, "%.2f %%", static_cast<float>(jointRequest.angles[i] * 100));
+        jointSensorData.angles[i] == JointAngles::off ? (void)strcpy(sensor, "?") : (void)sprintf(sensor, "%.2f %%", static_cast<float>(jointSensorData.angles[i] * 100));
       }
       else
       {
-        jointRequest.angles[i] == JointAngles::off ? (void) strcpy(request, "off") : (void) sprintf(request, "%.1f°", jointRequest.angles[i].toDegrees());
-        jointSensorData.angles[i] == JointAngles::off ? (void) strcpy(sensor, "?") : (void) sprintf(sensor, "%.1f°", jointSensorData.angles[i].toDegrees());
+        jointRequest.angles[i] == JointAngles::off ? (void)strcpy(request, "off") : (void)sprintf(request, "%.2f°", jointRequest.angles[i].toDegrees());
+        jointSensorData.angles[i] == JointAngles::off ? (void)strcpy(sensor, "?") : (void)sprintf(sensor, "%.2f°", jointSensorData.angles[i].toDegrees());
       }
-      jointSensorData.currents[i] == SensorData::off ? (void) strcpy(load, "off") : (void) sprintf(load, "%d mA", jointSensorData.currents[i]);
-      jointSensorData.temperatures[i] == 0 ? (void) strcpy(temp, "off") : (void) sprintf(temp, "%d °C", jointSensorData.temperatures[i]);
-      jointRequest.stiffnessData.stiffnesses[i] == StiffnessData::useDefault ? (void) strcpy(stiffness, "?") : (void) sprintf(stiffness, "%d %%", jointRequest.stiffnessData.stiffnesses[i]);
+      jointSensorData.currents[i] == SensorData::off ? (void)strcpy(load, "off") : (void)sprintf(load, "%d mA", jointSensorData.currents[i]);
+      jointSensorData.temperatures[i] == 0 ? (void)strcpy(temp, "off") : (void)sprintf(temp, "%d °C", jointSensorData.temperatures[i]);
+      jointRequest.stiffnessData.stiffnesses[i] == StiffnessData::useDefault ? (void)strcpy(stiffness, "?") : (void)sprintf(stiffness, "%d %%", jointRequest.stiffnessData.stiffnesses[i]);
       print(Joints::getName(static_cast<Joints::Joint>(i)), request, sensor, load, temp, stiffness);
     }
   }
@@ -160,7 +165,7 @@ void JointWidget::paintEvent(QPaintEvent* event)
 
 void JointWidget::print(const char* name, const char* value1, const char* value2, const char* value3, const char* value4, const char* value5)
 {
-  if(fillBackground)
+  if (fillBackground)
   {
     painter.setPen(noPen);
     painter.drawRect(paintRect.left(), paintRectField1.top(), paintRect.width(), paintRectField1.height());
@@ -197,7 +202,13 @@ void JointWidget::newSection()
 JointHeaderedWidget::JointHeaderedWidget(JointView& sensorView, RobotConsole& console)
 {
   QStringList headerLabels;
-  headerLabels << "Joint" << "Request" << "Sensor" << "Load" << "Temp" << "Stiffness";
+  headerLabels
+      << "Joint"
+      << "Request"
+      << "Sensor"
+      << "Load"
+      << "Temp"
+      << "Stiffness";
   setHeaderLabels(headerLabels, "lrrrrr");
   QHeaderView* headerView = getHeaderView();
   headerView->setMinimumSectionSize(30);
@@ -211,9 +222,10 @@ JointHeaderedWidget::JointHeaderedWidget(JointView& sensorView, RobotConsole& co
   setWidget(jointWidget);
 }
 
-JointView::JointView(const QString& fullName, RobotConsole& robotConsole, const JointSensorData& jointSensorData, const JointRequest& jointRequest) :
-  fullName(fullName), icon(":/Icons/tag_green.png"), console(robotConsole), jointSensorData(jointSensorData), jointRequest(jointRequest)
-{}
+JointView::JointView(const QString& fullName, RobotConsole& robotConsole, const JointSensorData& jointSensorData, const JointRequest& jointRequest)
+    : fullName(fullName), icon(":/Icons/tag_green.png"), console(robotConsole), jointSensorData(jointSensorData), jointRequest(jointRequest)
+{
+}
 
 SimRobot::Widget* JointView::createWidget()
 {

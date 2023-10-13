@@ -14,6 +14,7 @@
 #include "Tools/Streams/RobotParameters.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/WalkingInfo.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/ObservedFLIPMError.h"
 #include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/FLIPMObserverGains.h"
@@ -28,6 +29,7 @@
 #define COMMA ,
 
 MODULE(FLIPMObserver,
+  REQUIRES(WalkCalibration),
   REQUIRES(WalkingEngineParams),
   REQUIRES(FLIPMObservedState),
   REQUIRES(ZMPModel),

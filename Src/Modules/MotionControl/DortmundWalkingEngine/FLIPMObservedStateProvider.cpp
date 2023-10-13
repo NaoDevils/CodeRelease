@@ -17,26 +17,32 @@ void FLIPMObservedStateProvider::update(FLIPMObservedState& theFLIPMObservedStat
   DECLARE_PLOT("module:FLIPMObservedStateProvider:ActualAcc.y");
   DECLARE_PLOT("module:FLIPMObservedStateProvider:ActualAcc.z");
 
-  Point actualCoMRCS(theRobotModel.centerOfMass.x() / 1000, theRobotModel.centerOfMass.y() / 1000, (theRobotModel.centerOfMass.z()) / 1000, 0);
+  Point coM_MRE_RCS(theRobotModel.centerOfMass.x() / 1000, theRobotModel.centerOfMass.y() / 1000, (theRobotModel.centerOfMass.z()) / 1000, 0);
 
-  (Point&)theFLIPMObservedState.actualCoM_MRE = theWalkingInfo.toWorldCoords(actualCoMRCS);
+  Point CoM_MRE_WCS = theWalkingInfo.toWorldCoords(coM_MRE_RCS);
+  theFLIPMObservedState.actualCoM_MRE.x() = CoM_MRE_WCS.x;
+  theFLIPMObservedState.actualCoM_MRE.y() = CoM_MRE_WCS.y;
+  theFLIPMObservedState.actualCoM_MRE.z() = CoM_MRE_WCS.z;
 
-  actualCoMRCS.rotateAroundX(theJoinedIMUData.imuData[anglesource].angle.x());
-  actualCoMRCS.rotateAroundY(theJoinedIMUData.imuData[anglesource].angle.y());
-
-  (Point&)theFLIPMObservedState.actualCoM_IMU = theWalkingInfo.toWorldCoords(actualCoMRCS);
+  Point coM_IMU_RCS(coM_MRE_RCS);
+  coM_IMU_RCS.rotateAroundX(theJoinedIMUData.imuData[anglesource].angle.x());
+  coM_IMU_RCS.rotateAroundY(theJoinedIMUData.imuData[anglesource].angle.y());
+  Point CoM_IMU_WCS = theWalkingInfo.toWorldCoords(coM_IMU_RCS);
+  theFLIPMObservedState.actualCoM_IMU.x() = CoM_IMU_WCS.x;
+  theFLIPMObservedState.actualCoM_IMU.y() = CoM_IMU_WCS.y;
+  theFLIPMObservedState.actualCoM_IMU.z() = CoM_IMU_WCS.z;
 
   theFLIPMObservedState.actualAcc.x() = theJoinedIMUData.imuData[anglesource].acc.x();
   theFLIPMObservedState.actualAcc.y() = theJoinedIMUData.imuData[anglesource].acc.y();
   theFLIPMObservedState.actualAcc.z() = theJoinedIMUData.imuData[anglesource].acc.z();
 
-  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.x", theFLIPMObservedState.actualCoM_IMU.x);
-  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.y", theFLIPMObservedState.actualCoM_IMU.y);
-  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.z", theFLIPMObservedState.actualCoM_IMU.z);
+  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.x", theFLIPMObservedState.actualCoM_IMU.x());
+  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.y", theFLIPMObservedState.actualCoM_IMU.y());
+  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_IMU.z", theFLIPMObservedState.actualCoM_IMU.z());
 
-  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.x", theFLIPMObservedState.actualCoM_MRE.x);
-  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.y", theFLIPMObservedState.actualCoM_MRE.y);
-  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.z", theFLIPMObservedState.actualCoM_MRE.z);
+  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.x", theFLIPMObservedState.actualCoM_MRE.x());
+  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.y", theFLIPMObservedState.actualCoM_MRE.y());
+  PLOT("module:FLIPMObservedStateProvider:ActualCoMFLIPM_MRE.z", theFLIPMObservedState.actualCoM_MRE.z());
 
   PLOT("module:FLIPMObservedStateProvider:ActualAcc.x", theFLIPMObservedState.actualAcc.x());
   PLOT("module:FLIPMObservedStateProvider:ActualAcc.y", theFLIPMObservedState.actualAcc.y());

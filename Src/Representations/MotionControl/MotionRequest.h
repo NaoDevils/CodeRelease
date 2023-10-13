@@ -30,6 +30,7 @@ STREAMABLE(MotionRequest,
     stand
   );
 
+
   /**
    * Prints the motion request to a readable string. (E.g. "walk: 100mm/s 0mm/s 0°/s")
    * @param destination The string to fill
@@ -40,12 +41,14 @@ STREAMABLE(MotionRequest,
   void draw() const;
 
   bool inStandUpMotion() const;
+  bool inFallMotion() const;
   bool inBlockMotion() const,
 
   (Motion)(specialAction) motion, /**< The selected motion. */
   (SpecialActionRequest) specialActionRequest, /**< The special action request, if it is the selected motion. */
   (WalkRequest) walkRequest, /**< The walk request, if it is the selected motion. */
-  (KickRequest) kickRequest /**< The kick request, if it is the selected motion. */
+  (KickRequest) kickRequest, /**< The kick request, if it is the selected motion. */
+  (bool) (false) GoalieIsDiving
 );
 
 /**

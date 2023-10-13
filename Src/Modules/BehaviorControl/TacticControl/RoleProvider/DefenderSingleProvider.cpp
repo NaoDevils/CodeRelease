@@ -137,7 +137,7 @@ float DefenderSingleProvider::stateReady_penaltyKick_opponent(DefenderSingle& po
   //Get out of own penalty area
   float targetPosX = theFieldDimensions.xPosOwnGoalArea;
   bool robotIsLeft = (theRobotPose.translation.y() >= 0.f);
-  float targetPosY = (robotIsLeft ? 1.f : -1.f) * (theFieldDimensions.yPosLeftPenaltyArea + 200.f);
+  float targetPosY = (robotIsLeft ? 1.f : -1.f) * (theFieldDimensions.yPosLeftPenaltyArea + 400.f);
   Angle targetRotation = robotIsLeft ? -90_deg : 90_deg;
   positioningSymbols.optPosition.translation = Vector2f(targetPosX, targetPosY);
   positioningSymbols.optPosition.rotation = targetRotation;

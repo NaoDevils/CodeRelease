@@ -4,8 +4,6 @@
 #include "Tools/Debugging/Stopwatch.h"
 #include "Modules/Perception/CNNs/CLIPBallPerceptorCNNs.h"
 
-std::vector<std::string> BallPerceptTools::ballCNNsTFlite = {"ball_position_v10_bs4096_19933.tflite"};
-
 std::vector<t_cnn_fp> BallPerceptTools::cnns = {cnn_qball::cnn};
 
 bool BallPerceptTools::applyBallRadiusFromCameraMatrix(BallSpot& ballSpot, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, const float& ballRadius)
@@ -13,7 +11,7 @@ bool BallPerceptTools::applyBallRadiusFromCameraMatrix(BallSpot& ballSpot, const
   Vector2f posOnField;
   Geometry::Circle expectedCircle;
   if (Transformation::imageToRobotHorizontalPlane(ballSpot.position.cast<float>(), ballRadius, cameraMatrix, cameraInfo, posOnField)
-      && Geometry::calculateBallInImage(posOnField, cameraMatrix, cameraInfo, ballRadius, expectedCircle))
+      && Geometry::calculateBallInImage(posOnField, cameraMatrix, cameraInfo, ballRadius, expectedCircle) && expectedCircle.radius > 1.f)
   {
     ballSpot.radiusInImage = expectedCircle.radius;
     return true;
@@ -24,157 +22,198 @@ bool BallPerceptTools::applyBallRadiusFromCameraMatrix(BallSpot& ballSpot, const
   }
 }
 
-bool BallPerceptTools::verifyAndGetBallPositionOnField(
-    const BallSpot& ballSpot, const bool upper, Vector2f& posOnField, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, const FieldDimensions& fieldDimensions, bool useRobotPose, const Pose2f& robotPose)
+std::optional<Vector2f> BallPerceptTools::verifyAndGetBallPositionOnField(
+    const BallSpot& ballSpot, const CameraMatrix& cameraMatrix, const CameraInfo& cameraInfo, const FieldDimensions& fieldDimensions, bool useRobotPose, const Pose2f& robotPose)
 {
+  Vector2f posOnField;
   if (!Transformation::imageToRobotHorizontalPlane(ballSpot.position.cast<float>(), fieldDimensions.ballRadius, cameraMatrix, cameraInfo, posOnField))
-    return false;
+    return {};
 
   Vector2f ballFieldCoords = Transformation::robotToField(robotPose, posOnField);
 
   if (useRobotPose)
   {
     if (!fieldDimensions.isInsideCarpet(ballFieldCoords))
-      return false;
+      return {};
+
+    // A&A TODO: Does it make sense to filter here?
     if (posOnField.norm() < 1000 && (ballFieldCoords.x() < fieldDimensions.xPosOwnGroundline - 200 || ballFieldCoords.x() > fieldDimensions.xPosOpponentGroundline + 200))
-      return false;
+      return {};
   }
 
-  return true;
+  return posOnField;
 }
 
-void BallPerceptTools::fillBallPercept(
-    const BallSpot& spot, const bool upper, unsigned timestamp, const Vector2f posOnField, const BallPatch::DetectionSource source, const BallPatch::DetectionVerifier verifier, BallPercept& localBallPercept)
+std::tuple<bool, BallPatch> BallPerceptTools::checkBallCNNWithPositionTflite(
+    tflite::Interpreter& interpreter, CheckedBallSpot& spot, const Image& image, float ballCNNWithPositionZoomOutFactor, float ballCNNWithPositionThreshold)
 {
-  localBallPercept.status = BallPercept::seen;
-  localBallPercept.timestamp = timestamp;
-  localBallPercept.positionInImage = spot.position.cast<float>();
-  localBallPercept.radiusInImage = spot.radiusInImage;
-  localBallPercept.relativePositionOnField = posOnField;
-  localBallPercept.validity = spot.validity;
-  localBallPercept.fromUpper = upper;
-  localBallPercept.detectionSource = source;
-  localBallPercept.detectionVerifier = verifier;
-  localBallPercept.ballPatch.radiusInPatch = spot.radiusInImage / localBallPercept.ballPatch.resizeFactor;
-  localBallPercept.ballPatch.validity = spot.validity;
-  localBallPercept.ballPatch.fromUpper = upper;
-}
+  const auto [min, max, size] = image.projectIntoImage(spot.position, Vector2i::Constant(static_cast<int>(spot.radiusInImage * 2.f * ballCNNWithPositionZoomOutFactor + 0.5f)));
 
-bool BallPerceptTools::checkBallCNNWithPositionTflite(
-    tflite::Interpreter& interpreter, BallSpot& spot, const bool upper, const BallPatch::DetectionSource source, const Image& image, float ballCNNWithPositionZoomOutFactor, float ballCNNWithPositionThreshold, BallPatch& ballPatch)
-{
-  float width = std::max<float>(0.f, std::min<float>(static_cast<float>(image.width - 1), spot.radiusInImage * 2.f * ballCNNWithPositionZoomOutFactor));
-  float height = std::max<float>(0.f, std::min<float>(static_cast<float>(image.height - 1), spot.radiusInImage * 2.f * ballCNNWithPositionZoomOutFactor));
+  unsigned char* input = interpreter.typed_input_tensor<unsigned char>(0);
+  image.copyAndResizeArea<true, false>(min, size, {CNN_POSITION_SIZE, CNN_POSITION_SIZE}, input);
 
-  float xmax = std::max<float>(0.f, std::min<float>(static_cast<float>(image.width - 1), spot.position.x() + (width / 2.f)));
-  float ymax = std::max<float>(0.f, std::min<float>(static_cast<float>(image.height - 1), spot.position.y() + (height / 2.f)));
-
-  float xmin = std::max<float>(0.f, std::min<float>(static_cast<float>(image.width - 1), xmax - width));
-  float ymin = std::max<float>(0.f, std::min<float>(static_cast<float>(image.height - 1), ymax - height));
-
-  float* input = interpreter.typed_input_tensor<float>(0);
-  image.copyAndResizeAreaRGBFloat(
-      static_cast<int>(xmin + 0.5f), static_cast<int>(ymin + 0.5f), static_cast<int>(width + 0.5f), static_cast<int>(height + 0.5f), CNN_POSITION_SIZE, CNN_POSITION_SIZE, input);
-
-  if (interpreter.Invoke() != kTfLiteOk)
+  bool returnValue = false;
+  BallPatch ballPatch;
+  STOPWATCH_WITH_PLOT("BallCNNPositionTFlite:Invoke")
   {
-    OUTPUT_ERROR("Failed to invoke tflite!");
-  }
-
-  float* result = interpreter.typed_output_tensor<float>(0);
-
-  spot.validity = 1 / (1 + std::exp(-result[0]));
-
-  Vector2f ballCenter;
-  ballCenter.x() = 1 / (1 + std::exp(-result[1]));
-  ballCenter.y() = 1 / (1 + std::exp(-result[2]));
-
-  ballCenter.x() *= std::max<float>(width, height); // TODO check if neccessary
-  ballCenter.y() *= std::max<float>(width, height);
-
-  spot.position.x() = static_cast<int>(xmin + 0.5f + ballCenter.x());
-  spot.position.y() = static_cast<int>(ymin + 0.5f + ballCenter.y());
-
-  float resize_factor = std::max<float>(width, height) / CNN_POSITION_SIZE;
-  std::vector<float> input_vector{input, input + CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3};
-  ballPatch.patch = input_vector;
-  ballPatch.centerInPatch.x() = ballCenter.x() / resize_factor;
-  ballPatch.centerInPatch.y() = ballCenter.y() / resize_factor;
-  ballPatch.radiusInPatch = spot.radiusInImage / resize_factor;
-  ballPatch.resizeFactor = resize_factor;
-  ballPatch.validity = spot.validity;
-  ballPatch.fromUpper = upper;
-  ballPatch.source = source;
-  ballPatch.verifier = BallPatch::DetectionVerifier::ballPositionCNN;
-
-  if (spot.validity >= ballCNNWithPositionThreshold)
-  {
-    if (upper)
+    if (interpreter.Invoke() != kTfLiteOk)
     {
-      RECTANGLE("module:CLIPBallPerceptor:ballPosition:Upper", xmin, ymin, xmax, ymax, 3, Drawings::solidPen, ColorRGBA::black);
-      CROSS("module:CLIPBallPerceptor:ballPosition:Upper", spot.position.x(), spot.position.y(), 5, 3, Drawings::solidPen, ColorRGBA::blue);
-      DRAWTEXT("module:CLIPBallPerceptor:ballPosition:Upper", xmin + 3, ymax, 15, ColorRGBA::black, spot.validity * 100.f);
+      OUTPUT_ERROR("Failed to invoke tflite!");
+    }
+
+    float* result = interpreter.typed_output_tensor<float>(0);
+    spot.validity = 1 / (1 + std::exp(-result[0]));
+
+    Vector2f ballCenter;
+    ballCenter.x() = 1 / (1 + std::exp(-result[1]));
+    ballCenter.y() = 1 / (1 + std::exp(-result[2]));
+
+    ballCenter *= static_cast<float>(size.maxCoeff()); // TODO check if neccessary
+
+    spot.position = (min.cast<float>() + Vector2f::Constant(0.5f) + ballCenter).cast<int>();
+    spot.verifier = CheckedBallSpot::DetectionVerifier::ballPositionCNN;
+
+    ballPatch.setPatch(image, min, size, {CNN_POSITION_SIZE, CNN_POSITION_SIZE});
+    ballPatch.fromBallSpot(spot);
+
+    if (spot.validity >= ballCNNWithPositionThreshold)
+    {
+      if (spot.upper)
+      {
+        RECTANGLE("module:CLIPBallPerceptor:ballPosition:Upper", min.x(), min.y(), max.x(), max.y(), 3, Drawings::solidPen, ColorRGBA::black);
+        CROSS("module:CLIPBallPerceptor:ballPosition:Upper", spot.position.x(), spot.position.y(), 5, 3, Drawings::solidPen, ColorRGBA::blue);
+        DRAWTEXT("module:CLIPBallPerceptor:ballPosition:Upper", min.x() + 3, max.y(), 15, ColorRGBA::black, spot.validity * 100.f);
+      }
+      else
+      {
+        RECTANGLE("module:CLIPBallPerceptor:ballPosition:Lower", min.x(), min.y(), max.x(), max.y(), 3, Drawings::solidPen, ColorRGBA::black);
+        CROSS("module:CLIPBallPerceptor:ballPosition:Lower", spot.position.x(), spot.position.y(), 5, 3, Drawings::solidPen, ColorRGBA::blue);
+        DRAWTEXT("module:CLIPBallPerceptor:ballPosition:Lower", min.x() + 3, max.y(), 15, ColorRGBA::black, spot.validity * 100.f);
+      }
+      returnValue = true;
     }
     else
     {
-      RECTANGLE("module:CLIPBallPerceptor:ballPosition:Lower", xmin, ymin, xmax, ymax, 3, Drawings::solidPen, ColorRGBA::black);
-      CROSS("module:CLIPBallPerceptor:ballPosition:Lower", spot.position.x(), spot.position.y(), 5, 3, Drawings::solidPen, ColorRGBA::blue);
-      DRAWTEXT("module:CLIPBallPerceptor:ballPosition:Lower", xmin + 3, ymax, 15, ColorRGBA::black, spot.validity * 100.f);
+      returnValue = false;
     }
-    return true;
   }
-  else
-  {
-    return false;
-  }
+  return {returnValue, ballPatch};
 };
 
-bool BallPerceptTools::checkScanlinesAndCNN(
-    BallSpot& spot, const bool upper, const BallPatch::DetectionSource source, const Image& image, std::vector<float>& scanlinesCNNInputVector, const float minConfidenceForSpot, BallPatch& ballPatch, int variante)
+std::tuple<bool, BallPatch> BallPerceptTools::checkBallCNNWithPositionEarlyExitTflite(
+    const std::vector<TfliteInterpreter>& layers, CheckedBallSpot& spot, const Image& image, float ballCNNWithPositionZoomOutFactor, float ballCNNWithPositionThresholdEarlyExit, float ballCNNWithPositionThreshold)
 {
-  float width = std::max<float>(0.f, std::min<float>(static_cast<float>(image.width - 1), spot.radiusInImage * 2.f));
-  float height = std::max<float>(0.f, std::min<float>(static_cast<float>(image.height - 1), spot.radiusInImage * 2.f));
+  const auto [min, max, size] = image.projectIntoImage(spot.position, Vector2i::Constant(static_cast<int>(spot.radiusInImage * 2.f * ballCNNWithPositionZoomOutFactor + 0.5f)));
+  const Vector2i oldCenter = spot.position;
 
-  float xmax = std::max<float>(0.f, std::min<float>(static_cast<float>(image.width - 1), spot.position.x() + (width / 2.f)));
-  float ymax = std::max<float>(0.f, std::min<float>(static_cast<float>(image.height - 1), spot.position.y() + (height / 2.f)));
+  auto& firstInterpreter = layers.at(0).getInterpreter();
+  unsigned char* input = firstInterpreter.typed_input_tensor<unsigned char>(0);
+  image.copyAndResizeArea<true, false>(min, size, {CNN_POSITION_SIZE, CNN_POSITION_SIZE}, input);
 
-  float xmin = std::max<float>(0.f, std::min<float>(static_cast<float>(image.width - 1), xmax - width));
-  float ymin = std::max<float>(0.f, std::min<float>(static_cast<float>(image.height - 1), ymax - height));
+  bool returnValue = false;
+  BallPatch ballPatch;
+  STOPWATCH_WITH_PLOT("BallCNNPositionTFliteEarlyExit:Invoke")
+  {
+    if (firstInterpreter.Invoke() != kTfLiteOk)
+    {
+      OUTPUT_ERROR("Failed to invoke tflite!");
+    }
 
-  int cnnResult = -1;
+    float* early_exit_result = firstInterpreter.typed_output_tensor<float>(1);
+    float early_exit_validity = 1 / (1 + std::exp(-early_exit_result[0]));
 
-  image.copyAndResizeAreaFloat(
-      static_cast<int>(xmin + 0.5f), static_cast<int>(ymin + 0.5f), static_cast<int>(width + 0.5f), static_cast<int>(height + 0.5f), CNN_SCANLINES_SIZE, CNN_SCANLINES_SIZE, &scanlinesCNNInputVector[0]);
+    Vector2f ballCenter;
+    if (early_exit_validity >= ballCNNWithPositionThresholdEarlyExit)
+    {
+      auto& secondInterpreter = layers.at(1).getInterpreter();
+      if (secondInterpreter.Invoke() != kTfLiteOk)
+      {
+        OUTPUT_ERROR("Failed to invoke tflite!");
+      }
+
+      float* result = secondInterpreter.typed_output_tensor<float>(0);
+      spot.validity = 1 / (1 + std::exp(-result[0]));
+      ballCenter.x() = 1 / (1 + std::exp(-result[1]));
+      ballCenter.y() = 1 / (1 + std::exp(-result[2]));
+    }
+    else
+    {
+      //spot.validity = early_exit_validity * (ballCNNWithPositionThreshold / ballCNNWithPositionThresholdEarlyExit);
+      spot.validity = early_exit_validity / 100.f;
+      ballCenter.x() = 0.5;
+      ballCenter.y() = 0.5;
+    }
+
+    ballCenter *= static_cast<float>(size.maxCoeff());
+
+    spot.position = (min.cast<float>() + Vector2f::Constant(0.5f) + ballCenter).cast<int>();
+    spot.verifier = CheckedBallSpot::DetectionVerifier::ballPositionCNN;
+
+    ballPatch.setPatch(image, min, size, {CNN_POSITION_SIZE, CNN_POSITION_SIZE});
+    ballPatch.fromBallSpot(spot);
+
+    if (early_exit_validity >= ballCNNWithPositionThresholdEarlyExit)
+    {
+      if (spot.upper)
+      {
+        ARROW("module:CLIPBallPerceptor:ballPosition:Upper", oldCenter.x(), oldCenter.y(), spot.position.x(), spot.position.y(), 1, Drawings::solidPen, ColorRGBA::green);
+      }
+      else
+      {
+        ARROW("module:CLIPBallPerceptor:ballPosition:Lower", oldCenter.x(), oldCenter.y(), spot.position.x(), spot.position.y(), 1, Drawings::solidPen, ColorRGBA::green);
+      }
+    }
+
+    if (spot.validity >= ballCNNWithPositionThreshold)
+    {
+      if (spot.upper)
+      {
+        RECTANGLE("module:CLIPBallPerceptor:ballPosition:Upper", min.x(), min.y(), max.x(), max.y(), 3, Drawings::solidPen, ColorRGBA::black);
+        CROSS("module:CLIPBallPerceptor:ballPosition:Upper", spot.position.x(), spot.position.y(), 5, 3, Drawings::solidPen, ColorRGBA::black);
+        DRAWTEXT("module:CLIPBallPerceptor:ballPosition:Upper", min.x() + 3, max.y(), 15, ColorRGBA::black, spot.validity * 100.f);
+      }
+      else
+      {
+        RECTANGLE("module:CLIPBallPerceptor:ballPosition:Lower", min.x(), min.y(), max.x(), max.y(), 3, Drawings::solidPen, ColorRGBA::black);
+        CROSS("module:CLIPBallPerceptor:ballPosition:Lower", spot.position.x(), spot.position.y(), 5, 3, Drawings::solidPen, ColorRGBA::black);
+        DRAWTEXT("module:CLIPBallPerceptor:ballPosition:Lower", min.x() + 3, max.y(), 15, ColorRGBA::black, spot.validity * 100.f);
+      }
+      returnValue = true;
+    }
+    else
+    {
+      returnValue = false;
+    }
+  }
+  return {returnValue, ballPatch};
+};
+
+std::tuple<bool, BallPatch> BallPerceptTools::checkScanlinesAndCNN(CheckedBallSpot& spot, const Image& image, const float minConfidenceForSpot, const int variant, const float ballCNNWithPositionZoomOutFactor)
+{
+  std::tuple<bool, BallPatch> ret(false, {});
+  auto& [detected, ballPatch] = ret;
+
+  const auto [min, max, size] = image.projectIntoImage(spot.position, Vector2i::Constant(static_cast<int>(spot.radiusInImage * 2.f + 0.5f)));
+
+  std::array<float, CNN_SCANLINES_SIZE * CNN_SCANLINES_SIZE> scanlinesCNNInputVector{0.f};
+  image.copyAndResizeArea<false, false>(min, size, {CNN_SCANLINES_SIZE, CNN_SCANLINES_SIZE}, scanlinesCNNInputVector.data());
 
   float scores[2];
-  cnns.at(variante)(scanlinesCNNInputVector.data(), scores);
+  cnns.at(variant)(scanlinesCNNInputVector.data(), scores);
 
-  cnnResult = scores[1] > scores[0] ? 1 : 0;
-  if (cnnResult == 1)
+  detected = scores[1] > scores[0];
+  if (detected)
     spot.validity = std::min<float>(1.f / (1.f + expf(-scores[1])), 1.f);
   else
     spot.validity = std::min<float>(1.f / (1.f + expf(-scores[0])), 1.f) / 100.f; // Scale to <1% for No Ball
+  spot.verifier = CheckedBallSpot::DetectionVerifier::scanlinesAndCNN;
 
-  float resize_factor = std::max<float>(width, height) / CNN_SCANLINES_SIZE;
-  ballPatch.patch = scanlinesCNNInputVector;
-  ballPatch.centerInPatch.x() = (spot.position.x() - xmin) / resize_factor;
-  ballPatch.centerInPatch.y() = (spot.position.y() - ymin) / resize_factor;
-  ballPatch.radiusInPatch = spot.radiusInImage / resize_factor;
-  ballPatch.resizeFactor = resize_factor;
-  ballPatch.validity = spot.validity;
-  ballPatch.fromUpper = upper;
-  ballPatch.source = source;
-  ballPatch.verifier = BallPatch::DetectionVerifier::scanlinesAndCNN;
+  // Always write yolo patches with CNN_POSITION_SIZE x CNN_POSITION_SIZE
+  const auto [yoloMin, yoloMax, yoloSize] = image.projectIntoImage(spot.position, Vector2i::Constant(static_cast<int>(spot.radiusInImage * 2.f * ballCNNWithPositionZoomOutFactor + 0.5f)));
+  ballPatch.setPatch(image, yoloMin, yoloSize, {CNN_POSITION_SIZE, CNN_POSITION_SIZE});
+  ballPatch.fromBallSpot(spot);
 
-  if (cnnResult == 1 && spot.validity < minConfidenceForSpot)
-    cnnResult = 0;
+  detected = detected && spot.validity >= minConfidenceForSpot;
 
-  if (cnnResult == 1)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
+  return ret;
 };

@@ -14,7 +14,6 @@
 #include "Options/Skills/Walk.h"
 #include "Options/Skills/Cheering.h"
 #include "Options/Skills/DecideKick.h"
-#include "Options/Skills/GetInPosition.h"
 
 // Ball Search
 #include "Options/Skills/BallSearch/KeeperBallSearch.h"
@@ -48,3 +47,10 @@
 
 /*** Auto Calibration ***/
 #include "Options/AutoCalibration/AutoCalibrate.h"
+
+/*** Safety Behavior ***/
+#include "Options/Controls/RobotSafetyControl.h"
+#include "Options/Skills/RobotSafetyShutdown.h"
+
+#include "Options/Testing/Testing.h"
+#include "Options/Testing/TestingUnstiff.h"

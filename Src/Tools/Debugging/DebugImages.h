@@ -15,6 +15,7 @@
  * @param id An image id
  */
 #define DECLARE_DEBUG_IMAGE(id) mutable Image id##Image
+#define DECLARE_LOCAL_DEBUG_IMAGE(id) Image id##Image
 
 /**Gets the y, u and v values of the specified pixel in the specified debug image */
 #define DEBUG_IMAGE_GET_PIXEL_Y(id, xx, yy) id##Image[yy][xx].y

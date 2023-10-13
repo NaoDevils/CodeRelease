@@ -4,6 +4,7 @@
 #include "Tools/Settings.h"
 #include "Platform/BHAssert.h"
 #include "Tools/MessageQueue/MessageQueue.h"
+#include "Representations/Infrastructure/TeammateData.h"
 #include <numeric>
 
 MAKE_MODULE(TimeProvider, cognitionInfrastructure);
@@ -16,39 +17,36 @@ void TimeProvider::execute(tf::Subflow&)
 
   for (const auto& message : theTeamCommInput.messages)
   {
-    MessageQueue queue;
-    message.fillMessageQueue(queue);
-    queue.handleAllMessages(
-        [&](InMessage& inmessage)
-        {
-          if (inmessage.getMessageID() == idTimeSynchronization)
-          {
-            TimeSynchronization ts;
-            inmessage.bin >> ts;
+    TeammateReceived teammate;
+    if (!teammate.fromTeamCommData(message))
+      continue;
 
-            // answer on request or never answered before
-            if ((ts.requestFrom & (1 << (theRobotInfo.number - 1))) > 0 || !answered[message.playerNum - 1])
-            {
-              auto& request = receivedRequests[message.playerNum];
-              request.sent = message.getNDHeader().sendTimestamp;
-              request.received = message.receiveTimestamp;
+    if (teammate.teamNumber != theOwnTeamInfo.teamNumber)
+      continue;
 
-              answered[message.playerNum - 1] = true;
-            }
+    const TimeSynchronization& ts = teammate.timeSynchronization;
 
-            // collect roundtrips
-            for (const auto& request : ts.receivedRequests)
-            {
-              if (request.player == theRobotInfo.number)
-              {
-                auto& roundtrip = roundtrips[message.playerNum];
-                roundtrip.request = request;
-                roundtrip.response.sent = message.getNDHeader().sendTimestamp;
-                roundtrip.response.received = message.receiveTimestamp;
-              }
-            }
-          }
-        });
+    // answer on request or never answered before
+    if ((ts.requestFrom & (1 << (theRobotInfo.number - 1))) > 0 || !answered[teammate.playerNumber - 1])
+    {
+      auto& request = receivedRequests[teammate.playerNumber];
+      request.sent = teammate.sendTimestamp;
+      request.received = message.receiveTimestamp;
+
+      answered[teammate.playerNumber - 1] = true;
+    }
+
+    // collect roundtrips
+    for (const auto& request : ts.receivedRequests)
+    {
+      if (request.player == theRobotInfo.number)
+      {
+        auto& roundtrip = roundtrips[teammate.playerNumber];
+        roundtrip.request = request;
+        roundtrip.response.sent = teammate.sendTimestamp;
+        roundtrip.response.received = message.receiveTimestamp;
+      }
+    }
   }
 }
 

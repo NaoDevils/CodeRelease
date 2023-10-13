@@ -16,7 +16,7 @@
 struct TeamCommSocket : public Streamable
 {
   std::function<bool(const TeamCommData&)> send = nullptr;
-  std::function<std::vector<TeamCommData>()> receive = nullptr;
+  std::function<std::vector<TeamCommDataReceived>()> receive = nullptr;
 
   TeamCommSocket() = default;
   TeamCommSocket(const TeamCommSocket&) = delete;

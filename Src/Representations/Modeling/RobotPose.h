@@ -10,6 +10,7 @@
 
 #include "Tools/Math/Pose2f.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Streams/Compressed.h"
 #include "Representations/Modeling/SideConfidence.h"
 
 /**
@@ -33,7 +34,9 @@ STREAMABLE_WITH_BASE(RobotPose, Pose2f,
   void draw() const,
 
   (float)(0) validity,                         /**< The validity of the robot pose. (0 = invalid, 1 = perfect) */
-  ((SideConfidence) ConfidenceState)(CONFUSED) sideConfidenceState                         /**< The side confidence of the robot pose. */
+  ((SideConfidence) ConfidenceState)(CONFUSED) sideConfidenceState,                         /**< The side confidence of the robot pose. */
+  (bool)(false) bestHypothesisChanged,
+  (Pose2f) bestHypothesisPositionDifference
 );
 
 /**
@@ -66,13 +69,15 @@ STREAMABLE_WITH_BASE(FixedOdometryRobotPose, RobotPose,);
  * @struct RobotPoseCompressed
  * A compressed version of RobotPose used in team communication
  */
-STREAMABLE(RobotPoseCompressed,
-  RobotPoseCompressed() = default;
-  RobotPoseCompressed(const RobotPose& robotPose);
-  operator RobotPose() const,
+STREAMABLE_WITH_BASE(RobotPoseCompressed, Pose2fCompressed,
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 0;
 
-  (Vector2s) translation,
-  (short) rotation,
-  (unsigned char) validity,
+  RobotPoseCompressed() = default;
+  explicit RobotPoseCompressed(const RobotPose& robotPose);
+  explicit operator RobotPose() const
+  ,
+
+  (ValidityCompressed)(0.f) validity,
   ((SideConfidence) ConfidenceState)(CONFUSED) sideConfidenceState
 );

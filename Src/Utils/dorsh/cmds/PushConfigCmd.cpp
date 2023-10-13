@@ -38,14 +38,10 @@ bool PushConfigCmd::PushConfigTask::execute()
   args.push_back(QString::number(team->number));
   args.push_back(QString("-o"));
   args.push_back(QString::number(team->port));
-  //args.push_back(QString("-t"));
-  //args.push_back(team->colorOwn.c_str());
   args.push_back(QString("-own"));
-  //args.push_back(mapColorToConf(team->colorOwn).c_str());
-  args.push_back(mapColorToConf(team->colorOwn).c_str());
+  args.push_back(QString::number(mapColorToConf(team->colorOwn)));
   args.push_back(QString("-opp"));
-  //args.push_back(mapColorToConf(team->colorOpp).c_str());
-  args.push_back(mapColorToConf(team->colorOpp).c_str());
+  args.push_back(QString::number(mapColorToConf(team->colorOpp)));
   args.push_back(QString("-p"));
   args.push_back(QString::number(team->getPlayerNumber(*robot)));
   for (const std::string& overlay : team->overlays)
@@ -54,9 +50,9 @@ bool PushConfigCmd::PushConfigTask::execute()
     args.push_back(overlay.c_str());
   }
   args.push_back(QString("-g"));
-  args.push_back(team->gameMode.c_str());
+  args.push_back(QString::fromStdString(team->gameMode));
   args.push_back(QString("-w"));
-  args.push_back(team->wlanConfig.c_str());
+  args.push_back(QString::fromStdString(team->wlanConfig));
   args.push_back(QString("-v"));
   args.push_back(QString::number(team->volume));
   args.push_back(QString("-mv"));
@@ -78,24 +74,32 @@ bool PushConfigCmd::PushConfigTask::execute()
   }
 }
 
-std::string PushConfigCmd::mapColorToConf(int color)
+int PushConfigCmd::PushConfigTask::mapColorToConf(int color)
 {
-  unsigned char y;
-  unsigned char cb;
-  unsigned char cr;
+  std::map<int, int> teamColorMap{
+      {65535, 0}, //cyan
+      {16711680, 1}, //red
+      {16776960, 2}, //yellow
+      {0, 3}, //black
+      {16777215, 4}, //white
+      {891904, 5}, //darkgreen
+      {16744960, 6}, //orange
+      {14221567, 7}, //purple
+      {7024663, 8}, //brown
+      {8421504, 9}, //grey
+  };
 
-  unsigned char r = static_cast<unsigned char>(color / (256 * 256));
-  unsigned char g = static_cast<unsigned char>(color % (256 * 256) / 256);
-  unsigned char b = static_cast<unsigned char>(color % 256);
-
-  ColorModelConversions::fromRGBToYCbCr(r, g, b, y, cb, cr);
-
-  std::stringstream config;
-  config << "y = " << static_cast<int>(y) << "; cb = " << static_cast<int>(cb) << "; cr = " << static_cast<int>(cr) << ";";
-  std::cout << config.str() << "\n";
-  std::cout << "rgb( " << color << ")" << static_cast<unsigned>(r) << " " << static_cast<unsigned>(g) << " " << static_cast<unsigned>(b) << " "
-            << "\n";
-  return config.str();
+  int gcColor;
+  if (teamColorMap.find(color) == teamColorMap.end())
+  {
+    context().errorLine("Selected Color is unknown! Please use only the custom colors!");
+    gcColor = 2; //yellow
+  }
+  else
+  {
+    gcColor = teamColorMap[color];
+  }
+  return gcColor;
 }
 
 bool PushConfigCmd::preExecution(Context& context, const std::vector<std::string>& params)

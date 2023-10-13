@@ -1,6 +1,7 @@
 #include "RobotsPercept.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/ImageCoordinateTransformations.h"
 
 void ObstacleBasePoints::draw() const
 {
@@ -35,36 +36,94 @@ void ObstacleBasePoints::draw() const
 
 void RobotsPercept::draw() const
 {
-  //image
+  //Image
   DECLARE_DEBUG_DRAWING("representation:RobotsPercept:Image:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("representation:RobotsPercept:Image:Upper", "drawingOnImage");
 
   for (auto const& robotEstimate : robots)
   {
     ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green : (robotEstimate.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red : ColorRGBA::black);
+    ColorRGBA recallColor = robotEstimate.robotType == RobotEstimate::unknownRobot ? ColorRGBA::white : ColorRGBA::black;
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1) << robotEstimate.validity * 100.f << "%" << (robotEstimate.keeper ? " Keeper" : "") << (robotEstimate.fromUpperImage ? " U" : " L")
+       << (robotEstimate.source == RobotEstimate::closeRobotDetection ? "C" : "");
 
-    ASSERT(!robotEstimate.fromUpperImage);
-
-    RECTANGLE("representation:RobotsPercept:Image:Lower",
-        robotEstimate.imageUpperLeft.x(),
-        robotEstimate.imageUpperLeft.y(),
-        robotEstimate.imageLowerRight.x(),
-        robotEstimate.imageLowerRight.y(),
-        5,
-        Drawings::solidPen,
-        color);
-    char buffer[10];
-    sprintf(buffer, "%.1f", robotEstimate.validity * 100.f);
-    if (robotEstimate.imageUpperLeft.y() > (240 - robotEstimate.imageLowerRight.y()))
+    if (robotEstimate.fromUpperImage)
     {
-      DRAWTEXT("representation:RobotsPercept:Image:Lower", robotEstimate.imageUpperLeft.x(), robotEstimate.imageUpperLeft.y() - 25, 13, color, buffer << "%");
+      RECTANGLE("representation:RobotsPercept:Image:Upper",
+          robotEstimate.imageUpperLeft.x(),
+          robotEstimate.imageUpperLeft.y(),
+          robotEstimate.imageLowerRight.x(),
+          robotEstimate.imageLowerRight.y(),
+          5,
+          Drawings::solidPen,
+          color);
+      if (robotEstimate.source == RobotEstimate::recallAcceptance)
+      {
+        RECTANGLE("representation:RobotsPercept:Image:Upper",
+            robotEstimate.imageUpperLeft.x(),
+            robotEstimate.imageUpperLeft.y(),
+            robotEstimate.imageLowerRight.x(),
+            robotEstimate.imageLowerRight.y(),
+            1,
+            Drawings::dashedPen,
+            recallColor);
+      }
+      if (robotEstimate.imageUpperLeft.y() > (480 - robotEstimate.imageLowerRight.y()))
+      {
+        DRAWTEXT("representation:RobotsPercept:Image:Upper", robotEstimate.imageUpperLeft.x(), robotEstimate.imageUpperLeft.y() - 25, 13, color, ss.str());
+      }
+      else
+      {
+        DRAWTEXT("representation:RobotsPercept:Image:Upper", robotEstimate.imageUpperLeft.x(), robotEstimate.imageLowerRight.y() + 25, 13, color, ss.str());
+      }
     }
     else
     {
-      DRAWTEXT("representation:RobotsPercept:Image:Lower", robotEstimate.imageUpperLeft.x(), robotEstimate.imageLowerRight.y() + 25, 13, color, buffer << "%");
+      RECTANGLE("representation:RobotsPercept:Image:Lower",
+          robotEstimate.imageUpperLeft.x(),
+          robotEstimate.imageUpperLeft.y(),
+          robotEstimate.imageLowerRight.x(),
+          robotEstimate.imageLowerRight.y(),
+          5,
+          Drawings::solidPen,
+          color);
+      if (robotEstimate.source == RobotEstimate::recallAcceptance)
+      {
+        RECTANGLE("representation:RobotsPercept:Image:Lower",
+            robotEstimate.imageUpperLeft.x(),
+            robotEstimate.imageUpperLeft.y(),
+            robotEstimate.imageLowerRight.x(),
+            robotEstimate.imageLowerRight.y(),
+            1,
+            Drawings::dashedPen,
+            recallColor);
+      }
+      if (robotEstimate.imageUpperLeft.y() < 0)
+      {
+        //const float xFraction = 2;
+        //const float yFraction = 2;
+        //Vector2i ulTransformed(static_cast<int>(round(robotEstimate.imageUpperLeft.x() * xFraction)), static_cast<int>(round(480 + robotEstimate.imageUpperLeft.y() * yFraction)));
+        //Vector2i lrTransformed(static_cast<int>(round(robotEstimate.imageLowerRight.x() * xFraction)), static_cast<int>(round(480 + robotEstimate.imageLowerRight.y() * yFraction)));
+        Vector2i ulTransformed, lrTransformed;
+        robotEstimate.getUpperImageCoordinates(ulTransformed, lrTransformed);
+
+        RECTANGLE("representation:RobotsPercept:Image:Upper", ulTransformed.x(), ulTransformed.y(), lrTransformed.x(), lrTransformed.y(), 5, Drawings::solidPen, color);
+        DRAWTEXT("representation:RobotsPercept:Image:Upper", ulTransformed.x(), lrTransformed.y() + 25, 13, color, ss.str());
+      }
+
+      if (robotEstimate.imageUpperLeft.y() > (240 - robotEstimate.imageLowerRight.y()))
+      {
+        DRAWTEXT("representation:RobotsPercept:Image:Lower", robotEstimate.imageUpperLeft.x(), robotEstimate.imageUpperLeft.y() - 25, 13, color, ss.str());
+      }
+      else
+      {
+        DRAWTEXT("representation:RobotsPercept:Image:Lower", robotEstimate.imageUpperLeft.x(), robotEstimate.imageLowerRight.y() + 25, 13, color, ss.str());
+      }
     }
   }
-  //Field
 
+  //Field
   DECLARE_DEBUG_DRAWING("representation:RobotsPercept:Field", "drawingOnField");
   for (auto const& robotEstimate : robots)
   {
@@ -73,41 +132,15 @@ void RobotsPercept::draw() const
   }
 };
 
-void RobotsPerceptUpper::draw() const
+void RobotEstimate::getUpperImageCoordinates(Vector2i& ulRes, Vector2i& lrRes) const
 {
-  //image
-  DECLARE_DEBUG_DRAWING("representation:RobotsPerceptUpper:Image:Upper", "drawingOnImage");
-
-  for (auto const& robotEstimate : robots)
+  if (fromUpperImage)
   {
-    ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green : (robotEstimate.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red : ColorRGBA::black);
-
-    ASSERT(robotEstimate.fromUpperImage);
-    RECTANGLE("representation:RobotsPerceptUpper:Image:Upper",
-        robotEstimate.imageUpperLeft.x(),
-        robotEstimate.imageUpperLeft.y(),
-        robotEstimate.imageLowerRight.x(),
-        robotEstimate.imageLowerRight.y(),
-        5,
-        Drawings::solidPen,
-        color);
-    char buffer[10];
-    sprintf(buffer, "%.1f", robotEstimate.validity * 100.f);
-    if (robotEstimate.imageUpperLeft.y() > (480 - robotEstimate.imageLowerRight.y()))
-    {
-      DRAWTEXT("representation:RobotsPerceptUpper:Image:Upper", robotEstimate.imageUpperLeft.x(), robotEstimate.imageUpperLeft.y() - 25, 13, color, buffer << "%");
-    }
-    else
-    {
-      DRAWTEXT("representation:RobotsPerceptUpper:Image:Upper", robotEstimate.imageUpperLeft.x(), robotEstimate.imageLowerRight.y() + 25, 13, color, buffer << "%");
-    }
+    ulRes = imageUpperLeft, lrRes = imageLowerRight;
   }
-  //Field
-
-  DECLARE_DEBUG_DRAWING("representation:RobotsPerceptUpper:Field", "drawingOnField");
-  for (auto const& robotEstimate : robots)
+  else
   {
-    ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green : (robotEstimate.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red : ColorRGBA::black);
-    CIRCLE("representation:RobotsPercept:Field", robotEstimate.locationOnField.translation.x(), robotEstimate.locationOnField.translation.y(), 40, 2, Drawings::solidPen, color, Drawings::solidBrush, color);
+    ImageCoordinateTransformations::toUpper(imageUpperLeft, ulRes);
+    ImageCoordinateTransformations::toUpper(imageLowerRight, lrRes);
   }
-};
+}

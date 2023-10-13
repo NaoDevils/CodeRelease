@@ -42,11 +42,7 @@ STREAMABLE(KalmanMultiRobotMapProviderParameters,
     float goodValidity() const
     { return static_cast<float>(validity_goodPerceptsPerSecond) / static_cast<float>(validity_maxPerceptsPerSecond); }
     ,
-  
-    /// If a ball percept has at least this distance to all existing ball 
-    /// hypotheses, a new hypothesis is created with position from ball percept 
-    /// (distance in mm).
-    (float) hypotheses_minDistanceForNewHypothesis,
+
     /// Use this validity for new ball hypotheses.
     (float) hypotheses_initialValidityForNewHypotheses,
   
@@ -56,7 +52,7 @@ STREAMABLE(KalmanMultiRobotMapProviderParameters,
     /// Defines the number of percepts/s which is required for a valid hypothesis.
     (float) validity_minPerceptsPerSecond,
     /// Defines the number of percepts/s which is required for a good validity.
-	  (float) validity_goodPerceptsPerSecond,
+	(float) validity_goodPerceptsPerSecond,
     /// The percepts/s from the last second is merged with the previous validity
     /// using a weighted mean. The last seconds percepts/s has weight 1 and this
     /// parameter defines the weight of the previous validity.
@@ -70,15 +66,29 @@ STREAMABLE(KalmanMultiRobotMapProviderParameters,
   );
 
   STREAMABLE(LocalKalmanMapParameters,,
+    // Distance up to which the percepts are merged using a distance-based
+    // approach. If the percepts are further away, an angle-based approach is used.
+    (float) maxDistanceForDistanceBasedMerging,
     /// Max distance to merge hypotheses
     (float) maxDistanceToMerge,
+    /// If a ball percept has at least this distance to all existing ball
+    /// hypotheses, a new hypothesis is created with position from ball percept
+    /// (distance in mm).
+    (Vector2a) maxAngleDiffToMerge,
     /// Max difference (percentage) for robot types to merge
     (float) maxRobotTypeDifferenceToMerge
   );
   
   STREAMABLE(RemoteKalmanMapParameters,,
+    // Distance up to which the percepts are merged using a distance-based
+    // approach. If the percepts are further away, an angle-based approach is used.
+    (float) maxDistanceForDistanceBasedMerging,
     /// Max distance to merge hypotheses
     (float) maxDistanceToMerge,
+    /// If a ball percept has at least this distance to all existing ball
+    /// hypotheses, a new hypothesis is created with position from ball percept
+    /// (distance in mm).
+    (Vector2a) maxAngleDiffToMerge,
     /// Max difference (percentage) for robot types to merge
     (float) maxRobotTypeDifferenceToMerge,
     /// The influence of a teammate position
@@ -90,8 +100,15 @@ STREAMABLE(KalmanMultiRobotMapProviderParameters,
   );
   
   STREAMABLE(MergedMapParameters,,
+    // Distance up to which the percepts are merged using a distance-based
+    // approach. If the percepts are further away, an angle-based approach is used.
+    (float) maxDistanceForDistanceBasedMerging,
     /// Max distance to merge hypotheses
     (float) maxDistanceToMerge,
+    /// If a ball percept has at least this distance to all existing ball
+    /// hypotheses, a new hypothesis is created with position from ball percept
+    /// (distance in mm).
+    (Vector2a) maxAngleDiffToMerge,
     /// Max difference (percentage) for robot types to merge
     (float) maxRobotTypeDifferenceToMerge,
     /// The influence of a local robot percept
@@ -128,9 +145,5 @@ STREAMABLE(KalmanMultiRobotMapProviderParameters,
   /// The field border (all legal robot positions are inside) is enlarged by this
   /// size (in mm) for clean up. Only hypotheses outside this threshold are removed.
   /// See \c CleanUpHypotheses_outsideField.
-  (float) cleanUpHypotheses_fieldBorderThreshold,
-  /// Determine how the combined robot map is filled.
-  /// True to use the merged map that is filled with all percepts.
-  /// False to combine the local and the remote map when they've been computed.
-  (bool) useMergedMap
+  (float) cleanUpHypotheses_fieldBorderThreshold
 );

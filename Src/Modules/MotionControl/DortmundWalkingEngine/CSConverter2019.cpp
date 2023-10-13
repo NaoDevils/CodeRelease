@@ -5,6 +5,7 @@
 
 //#define LOGGING
 #include "Tools/Debugging/CSVLogger.h"
+#include "Tools/Math/Bspline.h"
 
 using namespace DWE;
 
@@ -44,16 +45,19 @@ void CSConverter2019::update(KinematicRequest& kinematicRequest)
   PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].x", kinematicRequest.leftFoot[0]);
   PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].y", kinematicRequest.leftFoot[1]);
   PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].z", kinematicRequest.leftFoot[2]);
-  PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].r", kinematicRequest.leftFoot[3]);
-  PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].rx", kinematicRequest.leftFoot[4]);
-  PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].ry", kinematicRequest.leftFoot[5]);
+  PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].rx", kinematicRequest.leftFoot[3]);
+  PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].ry", kinematicRequest.leftFoot[4]);
+  PLOT("module:CSConverter2019:Footpos[LEFT_FOOT].r", kinematicRequest.leftFoot[5]);
   PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].x", kinematicRequest.rightFoot[0]);
   PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].y", kinematicRequest.rightFoot[1]);
   PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].z", kinematicRequest.rightFoot[2]);
-  PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].r", kinematicRequest.rightFoot[3]);
-  PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].rx", kinematicRequest.rightFoot[4]);
-  PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].ry", kinematicRequest.rightFoot[5]);
+  PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].rx", kinematicRequest.rightFoot[3]);
+  PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].ry", kinematicRequest.rightFoot[4]);
+  PLOT("module:CSConverter2019:Footpos[RIGHT_FOOT].r", kinematicRequest.rightFoot[5]);
   DECLARE_PLOT("module:CSConverter2019:xOffset");
+  DECLARE_PLOT("module:CSConverter2019:rollPD");
+  DECLARE_PLOT("module:CSConverter2019:pitchPD");
+  DECLARE_DEBUG_RESPONSE("module:CSConverter2019:footPitchPD");
 };
 
 void CSConverter2019::clearKinematicRequest(KinematicRequest& kinematicRequest)
@@ -215,6 +219,11 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
     }
   }
 
+  for (size_t i = 0; i < jointError_sum.angles.size(); i++)
+  {
+    jointError_sum.angles[i] += theJointError.angles[i];
+  }
+
   if (useLegJointBalancing && !theWalkCalibration.deactivateSensorControl)
   {
     if (theFallDownState.state != FallDownState::upright || !isRunning)
@@ -256,10 +265,10 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
         if (angleErrorX < (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0]) || angleErrorX > (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1])
             || (angleErrorY < theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0] + 1_deg) || angleErrorY > (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1] - 1_deg))
         {
-          anklePIDMultiplicatorX = legJointBalanceParams.ankleParams.pidMultiplicatorX;
-          anklePIDMultiplicatorY = legJointBalanceParams.ankleParams.pidMultiplicatorY;
-          hipPIDMultiplicatorX = legJointBalanceParams.hipParams.pidMultiplicatorX;
-          hipPIDMultiplicatorY = legJointBalanceParams.hipParams.pidMultiplicatorY;
+          anklePIDMultiplicatorX = legJointBalanceParams.ankleParams.zeroPidMultiplicatorX;
+          anklePIDMultiplicatorY = legJointBalanceParams.ankleParams.zeroPidMultiplicatorY;
+          hipPIDMultiplicatorX = legJointBalanceParams.hipParams.zeroPidMultiplicatorX;
+          hipPIDMultiplicatorY = legJointBalanceParams.hipParams.zeroPidMultiplicatorY;
         }
         else
         {
@@ -285,6 +294,13 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
           + (pidAngleXHip_last - angleErrorXHip) * legJointBalanceParams.hipParams.d_x * hipPIDMultiplicatorX;
       float filteredErrorY_Hip = angleErrorYHip * legJointBalanceParams.hipParams.p_y * hipPIDMultiplicatorY + pidAngleYHip_sum * legJointBalanceParams.hipParams.i_y * hipPIDMultiplicatorY
           + (pidAngleYHip_last - angleErrorYHip) * legJointBalanceParams.hipParams.d_y * hipPIDMultiplicatorY;
+
+      JointAngles filteredJointError;
+      for (size_t i = 0; i < filteredJointError.angles.size(); i++)
+      {
+        filteredJointError.angles[i] = theJointError.angles[i] * jointErrorInfluenceParams.p_x + jointError_sum.angles[i] * jointErrorInfluenceParams.i_x
+            + (jointError_last.angles[i] - theJointError.angles[i]) * jointErrorInfluenceParams.d_x;
+      }
 
       PLOT("module:MotionCombinator:UpperBodyBalancer:errorX_Ankle", filteredErrorX_Ankle);
       PLOT("module:MotionCombinator:UpperBodyBalancer:errorY_Ankle", filteredErrorY_Ankle);
@@ -312,6 +328,21 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
         kinematicRequest.offsets.angles[Joints::rAnkleRoll] += filteredErrorX_Ankle;
       }
 
+      {
+        kinematicRequest.offsets.angles[Joints::lHipPitch] -= filteredJointError.angles[Joints::lHipPitch];
+        kinematicRequest.offsets.angles[Joints::lHipRoll] -= filteredJointError.angles[Joints::lHipRoll];
+        kinematicRequest.offsets.angles[Joints::lKneePitch] -= filteredJointError.angles[Joints::lKneePitch];
+        kinematicRequest.offsets.angles[Joints::lAnklePitch] -= filteredJointError.angles[Joints::lAnklePitch];
+        kinematicRequest.offsets.angles[Joints::lAnkleRoll] -= filteredJointError.angles[Joints::lAnkleRoll];
+
+        kinematicRequest.offsets.angles[Joints::rHipPitch] -= filteredJointError.angles[Joints::rHipPitch];
+        kinematicRequest.offsets.angles[Joints::rHipRoll] -= filteredJointError.angles[Joints::rHipRoll];
+        kinematicRequest.offsets.angles[Joints::rKneePitch] -= filteredJointError.angles[Joints::rKneePitch];
+        kinematicRequest.offsets.angles[Joints::rAnklePitch] -= filteredJointError.angles[Joints::rAnklePitch];
+        kinematicRequest.offsets.angles[Joints::rAnkleRoll] -= filteredJointError.angles[Joints::rAnkleRoll];
+      }
+
+
       if (!kinematicRequest.offsets.isValid())
       {
         kinematicRequest.offsets = JointAngles();
@@ -330,6 +361,11 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
       lastComX = newComX;
     }
   }
+
+  for (size_t i = 0; i < jointError_last.angles.size(); i++)
+  {
+    jointError_last.angles[i] += theJointError.angles[i];
+  }
 }
 
 void CSConverter2019::resetSensorControl()
@@ -342,6 +378,8 @@ void CSConverter2019::resetSensorControl()
   pidAngleYAnkle_last = 0.f;
   pidAngleXHip_last = 0.f;
   pidAngleYHip_last = 0.f;
+  jointError_sum.angles.fill(0_deg);
+  jointError_last.angles.fill(0_deg);
   accXBuffer.fill(0);
   lastSpeedX = 0.f;
   lastStepAccX = 0.f;
@@ -408,8 +446,8 @@ void CSConverter2019::updateKinematicRequest(KinematicRequest& kinematicRequest)
   lastSpeed = speed;
 
   kinematicRequest.kinematicType = determineKinematicType();
-  float xOffset = theWalkingEngineParams.comOffsets.xFixed + theWalkCalibration.comOffset.x();
-  float yOffset = theWalkingEngineParams.comOffsets.yFixed + theWalkCalibration.comOffset.y();
+  float xOffset = theWalkingEngineParams.comOffsets.xFixed;
+  float yOffset = theWalkingEngineParams.comOffsets.yFixed;
   if (isRunning)
   {
     if (!theWalkCalibration.deactivateSensorControl)
@@ -455,7 +493,7 @@ void CSConverter2019::determineFootInAir(const Footposition& curPos)
   footInAir = -1;
   if (determineSupportFootByFSR)
   {
-    if (theFsrSensorData.calcSupportFoot() >= 0.f)
+    if (theFsrSensorData.calcSupportFoot() > 0.f)
       footInAir = LEFT_FOOT;
     else
       footInAir = RIGHT_FOOT;
@@ -471,27 +509,51 @@ void CSConverter2019::applyFootPitchRollPD(Footposition& curPos)
 {
   const WalkingEngineParams& curparams = theWalkingEngineParams;
 
+  Angle staticFootPitch = theWalkingEngineParams.footMovement.footPitch * sgn(curPos.speed.translation.x());
+  Angle staticFootRoll = theWalkingEngineParams.footMovement.footRoll * sgn(curPos.speed.translation.y());
+
   // PD controller for footpitch using body angle
-  // Vector2f angleg = theJoinedIMUData.imuData[anglesource].angle;
-  float roll = curparams.footMovement.footPitchPD[0] * (theJoinedIMUData.imuData[anglesource].angle.x())
-      + curparams.footMovement.footPitchPD[1] * (theJoinedIMUData.imuData[anglesource].gyro.x()) * 0.0075f;
-  float pitch = curparams.footMovement.footPitchPD[0] * (theJoinedIMUData.imuData[anglesource].angle.y())
-      + curparams.footMovement.footPitchPD[1] * (theJoinedIMUData.imuData[anglesource].gyro.y()) * 0.0075f;
-  PLOT("module:CSConverter2019:rollPD", roll);
-  PLOT("module:CSConverter2019:pitchPD", pitch);
+  Angle dynamicFootRoll = theWalkingEngineParams.footMovement.footPitchPD[0] * (theJoinedIMUData.imuData[anglesource].angle.x())
+      + theWalkingEngineParams.footMovement.footPitchPD[1] * (theJoinedIMUData.imuData[anglesource].gyro.x());
+  Angle dynamicFootPitch = theWalkingEngineParams.footMovement.footPitchPD[0] * (theJoinedIMUData.imuData[anglesource].angle.y())
+      + theWalkingEngineParams.footMovement.footPitchPD[1] * (theJoinedIMUData.imuData[anglesource].gyro.y());
+  PLOT("module:CSConverter2019:rollPD", toDegrees(dynamicFootRoll));
+  PLOT("module:CSConverter2019:pitchPD", toDegrees(dynamicFootPitch));
+
+  const int noControlPoints = 7;
+  std::vector<float> controlVector(noControlPoints);
+  controlVector[0] = 0.f;
+  for (int i = 1; i < noControlPoints - 1; i++)
+  {
+    controlVector[i] = theWalkingEngineParams.footMovement.heightPolygon[i - 1];
+  }
+  controlVector[noControlPoints - 1] = 0.f;
+  std::vector<float> offsetSpline(curPos.singleSupportDurationInFrames);
+  BSpline<float>::bspline(noControlPoints - 1, 3, &(controlVector[0]), &(offsetSpline[0]), curPos.singleSupportDurationInFrames);
+
+  float factor = offsetSpline[curPos.singleSupportDurationInFrames - curPos.frameInPhase - 1];
 
   // TODO: apply only for support foot?
   // add roll, pitch to both foot rotation
   if (footInAir == RIGHT_FOOT)
   {
-    curPos.footPos[RIGHT_FOOT].ry -= pitch;
-    curPos.footPos[RIGHT_FOOT].rx -= roll;
+    curPos.footPos[RIGHT_FOOT].ry -= factor * (staticFootPitch + dynamicFootPitch);
+    curPos.footPos[RIGHT_FOOT].rx -= factor * (staticFootRoll + dynamicFootRoll);
   }
   else if (footInAir == LEFT_FOOT)
   {
-    curPos.footPos[LEFT_FOOT].ry -= pitch;
-    curPos.footPos[LEFT_FOOT].rx -= roll;
+    curPos.footPos[LEFT_FOOT].ry -= factor * (staticFootPitch + dynamicFootPitch);
+    curPos.footPos[LEFT_FOOT].rx -= factor * (staticFootRoll + dynamicFootRoll);
   }
+
+  DEBUG_RESPONSE("module:CSConverter2019:footPitchPD")
+  {
+    curPos.footPos[RIGHT_FOOT].ry -= (staticFootPitch + dynamicFootPitch);
+    curPos.footPos[RIGHT_FOOT].rx -= (staticFootRoll + dynamicFootRoll);
+    curPos.footPos[LEFT_FOOT].ry -= (staticFootPitch + dynamicFootPitch);
+    curPos.footPos[LEFT_FOOT].rx -= (staticFootRoll + dynamicFootRoll);
+  }
+
 
   if (rotateLegWithBody)
   {
@@ -504,8 +566,8 @@ void CSConverter2019::applyFootPitchRollPD(Footposition& curPos)
       float walkStepHeight = (1 - yFactor) * xStepHeight + yFactor * yStepHeight; // actual walkStepHeight resulting from xStepHeight and yStepHeight
       float heightOverGroundFactor = curPos.footPos[footInAir].z / walkStepHeight; // fraction of current height over ground vs. maximum height over ground
 
-      float scaledRoll = heightOverGroundFactor * roll;
-      float scaledPitch = heightOverGroundFactor * pitch;
+      float scaledRoll = heightOverGroundFactor * (staticFootRoll + dynamicFootRoll);
+      float scaledPitch = heightOverGroundFactor * (staticFootPitch + dynamicFootPitch);
 
       // rotate vector from stand foot to swing foot around scaledRoll, scaledPitch
       // and add to stand footPos to get adjusted swing foot position
@@ -719,6 +781,10 @@ void CSConverter2019::updateWalkingInfo(WalkingInfo& walkingInfo)
     walkingInfo.odometryOffset.translation.x() = 0;
     walkingInfo.odometryOffset.translation.y() = 0;
     walkingInfo.odometryOffset.rotation = 0;
+
+    walkingInfo.offsetToRobotPoseAfterPreview.translation.x() = 0;
+    walkingInfo.offsetToRobotPoseAfterPreview.translation.y() = 0;
+    walkingInfo.offsetToRobotPoseAfterPreview.rotation = 0;
   }
 }
 

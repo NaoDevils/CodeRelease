@@ -12,28 +12,13 @@ MAKE_MODULE(KalmanRobotMapProvider, modeling)
 
 void KalmanRobotMapProvider::update(RobotMap& robotMap)
 {
-  execute();
   robotMap = m_robotMap;
 }
 
-
 // MARK: KalmanRobotMapProvider methods
 
-void KalmanRobotMapProvider::initialize()
+void KalmanRobotMapProvider::execute(tf::Subflow&)
 {
-  // Remote robot map.
-  m_robotMap.reset();
-}
-
-void KalmanRobotMapProvider::execute()
-{
-  // Only update once per step.
-  if (m_lastTimeStamp == theFrameInfo.time)
-  {
-    return;
-  }
-
-
   // --- Debug methods ---
 
   // Allow modification of some parameters in SimRobot.
@@ -68,10 +53,6 @@ void KalmanRobotMapProvider::execute()
   // Do debug drawings.
   draw();
   plot();
-
-
-  // --- Save current state for next iteration ---
-  m_lastTimeStamp = theFrameInfo.time;
 }
 
 void KalmanRobotMapProvider::motionUpdate()
@@ -84,7 +65,7 @@ void KalmanRobotMapProvider::sensorUpdate()
 {
   sensorUpdateTeammates();
   sensorUpdateLocal();
-  sensorUpdateRemote();
+  //sensorUpdateRemote();
 
   // Update validity of all hypotheses.
   m_multiKalmanRobotMap.updateValidity(
@@ -94,27 +75,20 @@ void KalmanRobotMapProvider::sensorUpdate()
 void KalmanRobotMapProvider::sensorUpdateTeammates()
 {
   // Collect robot pose of all team mates.
-  for (const Teammate& teammate : theTeammateData.teammates)
+  for (const TeammateReceived& teammate : theTeammateData.teammates)
   {
     // Loop over all players which have sent data and are active.
-    if (teammate.status == Teammate::FULLY_ACTIVE)
+    if (teammate.status == TeammateReceived::Status::FULLY_ACTIVE)
     {
       // Transform local robot coordinates to global field coordinates
-      Vector2f percept = teammate.pose.translation;
-      sensorUpdateSingle(percept, 0.f, RobotEstimate::RobotType::teammateRobot, teammate.timeWhenSent, teammate.pose.validity, teammate.number);
+      Vector2f percept = teammate.robotPose.translation;
+      sensorUpdateSingle(percept, 0.f, RobotEstimate::RobotType::teammateRobot, teammate.sendTimestamp, teammate.robotPose.validity, teammate.playerNumber);
     }
   }
 }
 
 void KalmanRobotMapProvider::sensorUpdateLocal()
 {
-  for (const RobotEstimate& robot : theRobotsPerceptUpper.robots)
-  {
-    // Transform local robot coordinates to global field coordinates
-    Vector2f percept = Transformation::robotToField(theRobotPose, robot.locationOnField.translation);
-    sensorUpdateSingle(percept, robot.distance, robot.robotType, theFrameInfo.time, robot.validity, theRobotInfo.number);
-  }
-
   for (const RobotEstimate& robot : theRobotsPercept.robots)
   {
     // Transform local robot coordinates to global field coordinates
@@ -125,36 +99,38 @@ void KalmanRobotMapProvider::sensorUpdateLocal()
 
 void KalmanRobotMapProvider::sensorUpdateRemote()
 {
-  // Collect robot map information from all team mates.
-  for (const Teammate& teammate : theTeammateData.teammates)
-  {
-    // Loop over all players which have sent data and are active.
-    if (teammate.status == Teammate::FULLY_ACTIVE)
-    {
-      for (const RobotEstimate& robot : teammate.robotsPercept.robots)
-      {
-        // Transform local robot coordinates to global field coordinates.
-        Vector2f percept = Transformation::robotToField(teammate.pose, robot.locationOnField.translation);
+  // Not available as long as RobotsPercepts are not transmitted
 
-        // Ignore remote percepts which could be this robot itself.
-        float dist = Geometry::distance(percept, theRobotPose.translation);
-        // Estimate horizontal angle difference from teammate to percept and *this robot.
-        float horizontalAnglePercept = Geometry::angleTo(teammate.pose, percept);
-        float horizontalAngleThisRobot = Geometry::angleTo(teammate.pose, theRobotPose.translation);
-        float horizontalAngleDiff = Geometry::absDifferenceBetweenTwoAngles(horizontalAnglePercept, horizontalAngleThisRobot);
-        // Estimate vertical angle difference from teammates camera to percept and *this robot.
-        // (Robot height estimated by 550 mm)
-        float verticalAnglePercept = atan2f(robot.distance, 550.f);
-        float verticalAngleThisRobot = atan2f(Geometry::distance(teammate.pose.translation, theRobotPose.translation), 550.f);
-        float verticalAngleDiff = Geometry::absDifferenceBetweenTwoAngles(verticalAnglePercept, verticalAngleThisRobot);
-        // TODO: make params?
-        if (dist >= 500.f && (horizontalAngleDiff >= 0.5f || verticalAngleDiff >= 0.25f))
-        {
-          sensorUpdateSingle(percept, robot.distance, robot.robotType, teammate.timeWhenSent, robot.validity, teammate.number);
-        }
-      }
-    }
-  }
+  //// Collect robot map information from all team mates.
+  //for (const TeammateReceived& teammate : theTeammateData.teammates)
+  //{
+  //  // Loop over all players which have sent data and are active.
+  //  if (teammate.status == TeammateReceived::Status::FULLY_ACTIVE)
+  //  {
+  //    for (const RobotEstimate& robot : teammate.robotsPercept.robots)
+  //    {
+  //      // Transform local robot coordinates to global field coordinates.
+  //      Vector2f percept = Transformation::robotToField(teammate.robotPose, robot.locationOnField.translation);
+
+  //      // Ignore remote percepts which could be this robot itself.
+  //      float dist = Geometry::distance(percept, theRobotPose.translation);
+  //      // Estimate horizontal angle difference from teammate to percept and *this robot.
+  //      float horizontalAnglePercept = Geometry::angleTo(teammate.robotPose, percept);
+  //      float horizontalAngleThisRobot = Geometry::angleTo(teammate.robotPose, theRobotPose.translation);
+  //      float horizontalAngleDiff = Geometry::absDifferenceBetweenTwoAngles(horizontalAnglePercept, horizontalAngleThisRobot);
+  //      // Estimate vertical angle difference from teammates camera to percept and *this robot.
+  //      // (Robot height estimated by 550 mm)
+  //      float verticalAnglePercept = atan2f(robot.distance, 550.f);
+  //      float verticalAngleThisRobot = atan2f(Geometry::distance(teammate.robotPose.translation, theRobotPose.translation), 550.f);
+  //      float verticalAngleDiff = Geometry::absDifferenceBetweenTwoAngles(verticalAnglePercept, verticalAngleThisRobot);
+  //      // TODO: make params?
+  //      if (dist >= 500.f && (horizontalAngleDiff >= 0.5f || verticalAngleDiff >= 0.25f))
+  //      {
+  //        sensorUpdateSingle(percept, robot.distance, robot.robotType, teammate.sendTimestamp, robot.validity, teammate.playerNumber);
+  //      }
+  //    }
+  //  }
+  //}
 }
 
 void KalmanRobotMapProvider::sensorUpdateSingle(const Vector2f& position, float distanceToRobot, RobotEstimate::RobotType robotType, unsigned timeStamp, float perceptValidity, int playerNumber)
@@ -221,7 +197,7 @@ void KalmanRobotMapProvider::plot() const
    vpd kalmanRobotModelValidity module:KalmanRobotMapProvider:validityMin gray
    vpd kalmanRobotModelValidity module:KalmanRobotMapProvider:validityGood black
    vpd kalmanRobotModelValidity module:KalmanRobotMapProvider:meanValidity red
-   
+
    vp kalmanRobotModelPPS 300 0 30 PPS s 0.033
    vpd kalmanRobotModelPPS module:KalmanRobotMapProvider:ppsMin gray
    vpd kalmanRobotModelPPS module:KalmanRobotMapProvider:ppsMax black

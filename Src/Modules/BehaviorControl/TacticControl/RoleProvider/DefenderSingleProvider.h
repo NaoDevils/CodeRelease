@@ -27,7 +27,6 @@
 #include "Utils/PositionUtils.h"
 #include "Utils/TeamUtils.h"
 #include "Utils/ThresholdUtils.h"
-#include "Utils/FrontUtils.h"
 #include "RoleProvider.h"
 #include <optional>
 

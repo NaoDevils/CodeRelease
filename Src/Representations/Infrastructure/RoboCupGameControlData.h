@@ -13,19 +13,11 @@
 namespace RoboCup
 {
 #include <RoboCupGameControlData.h>
-#include <SPLStandardMessage.h>
 
-// This should be defined in one of the includes above
-// but it isn't so i will just leave this here
-#define MIXEDTEAM_INTENTION_DEFAULT 0
-#define MIXEDTEAM_INTENTION_KEEPER 1
-#define MIXEDTEAM_INTENTION_DEFENSIVE 2
-#define MIXEDTEAM_INTENTION_KICK 3
-#define MIXEDTEAM_INTENTION_LOST 4
+// We don't want to set this to 20 as of now, because we will play with a
+// maximum number of 7 robots anyway and the size of some arrays depend
+// on this parameter.
+#undef MAX_NUM_PLAYERS
+#define MAX_NUM_PLAYERS 7
 
-#define MIXEDTEAM_SUGGESTION_DEFAULT 0
-#define MIXEDTEAM_SUGGESTION_KEEPER 1
-#define MIXEDTEAM_SUGGESTION_DEFENSIVE 2
-#define MIXEDTEAM_SUGGESTION_OFFENSIVE 3
-#define MIXEDTEAM_SUGGESTION_KICK 4
 } // namespace RoboCup

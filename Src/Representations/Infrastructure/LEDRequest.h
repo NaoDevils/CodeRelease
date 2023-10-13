@@ -113,7 +113,9 @@ STREAMABLE(LEDRequest,
     on,
     blinking,
     fastBlinking,
-    half
+    half,
+    halfBlinking,
+    halfFastBlinking
   );
 
   LEDRequest()

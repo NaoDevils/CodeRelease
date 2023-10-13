@@ -62,7 +62,7 @@ public:
     // This method assumes that the desired position has already been calculated!!
     for (auto& mate : TeamUtils::getPlayingTeammates(theTeammateData))
     {
-      avoid(positioningSymbols.optPosition.translation, mate.pose.translation, theBehaviorConfiguration.behaviorParameters.positionConflictDistance);
+      avoid(positioningSymbols.optPosition.translation, mate.robotPose.translation, theBehaviorConfiguration.behaviorParameters.positionConflictDistance);
     }
   }
 };

@@ -179,6 +179,10 @@ inline nlohmann::json ExecutorObserver::dumpJson() const
         name = matches[1];
         cat = matches[2];
       }
+      else
+      {
+        name = execution.name;
+      }
 
       entry["cat"] = cat;
       entry["name"] = name;

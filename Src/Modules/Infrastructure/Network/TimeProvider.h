@@ -9,6 +9,7 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/RoboCupGameControlData.h"
 #include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeamCommData.h"
 #include "Representations/Infrastructure/Time.h"
 #include "Representations/Infrastructure/TeamCommSenderOutput.h"
@@ -17,6 +18,7 @@
 
 MODULE(TimeProvider,
   REQUIRES(RobotInfo),
+  REQUIRES(OwnTeamInfo),
   REQUIRES(TeamCommInput),
   REQUIRES(TimeOffsets),
   USES(TeamCommSenderOutput),

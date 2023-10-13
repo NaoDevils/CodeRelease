@@ -37,10 +37,10 @@ MODULE(KalmanRobotMapProvider,
   REQUIRES(RobotPose),
 
   REQUIRES(RobotsPercept),
-  REQUIRES(RobotsPerceptUpper),
   REQUIRES(TeammateData),
 
   PROVIDES(RobotMap),
+  HAS_PREEXECUTION,
 
   LOADS_PARAMETERS(,
     /// Parameters used by \c KalmanRobotMapProvider.
@@ -55,17 +55,6 @@ MODULE(KalmanRobotMapProvider,
 class KalmanRobotMapProvider : public KalmanRobotMapProviderBase
 {
 public:
-  /** 
-   * Constructor.
-   */
-  KalmanRobotMapProvider() : m_lastTimeStamp(0) { initialize(); }
-
-  /** 
-   * Destructor.
-   */
-  ~KalmanRobotMapProvider() {}
-
-
   // MARK: Update methods for provided representations
 
   /**
@@ -78,11 +67,6 @@ private:
   // MARK: KalmanRobotMapProvider methods
 
   /**
-   * Initializes the \c KalmanRobotMapProvider and the provided robot map.
-   */
-  void initialize();
-
-  /**
    * \brief Executes everything which is necessary to update the provided representations.
    *
    * This method is used to update the state of this module only once per
@@ -90,7 +74,7 @@ private:
    * timestamp is checked in order to determine whether this method was already
    * executed in the current frame.
    */
-  void execute();
+  void execute(tf::Subflow&);
 
   /**
    * \brief Prediction
@@ -181,11 +165,4 @@ private:
    * The storage of all robot map hypotheses (global field coordinates).
    */
   MultiKalmanRobotMap m_multiKalmanRobotMap;
-
-  // ----- general variables -----
-  /**
-   * Save timestamp when executing the method \c execute(), to run it only once
-   * per frame.
-   */
-  unsigned m_lastTimeStamp;
 };

@@ -1,8 +1,9 @@
 #include "CSVLogger.h"
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include <iostream>
 #include "Platform/File.h"
+#include "Platform/SystemCall.h"
 #include <filesystem>
 
 using namespace std;
@@ -154,6 +155,8 @@ void CSVLogger::flush(Logfile* f)
     (*el)->data = "0";
   }
   f->s.flush();
+
+  add(f->name, "time", to_string(SystemCall::getCurrentSystemTime()));
 }
 
 CSVLogger::Logfile* CSVLogger::getFile(string name)
@@ -208,6 +211,8 @@ CSVLogger::Logfile* CSVLogger::addFile(string name)
     neu->headerWritten = false;
     neu->name = name;
     logs.push_back(neu);
+    addColumn(neu, "time");
+    add(neu->name, "time", to_string(SystemCall::getCurrentSystemTime()));
   }
   return neu;
 }

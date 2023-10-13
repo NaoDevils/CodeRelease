@@ -14,8 +14,8 @@
 
 #include "Tools/Module/Module.h"
 #include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/Objectives/Objective.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/Objectives/ObjectivesManager.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/Objective.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/ObjectivesManager.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h"
 #include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/PositionUtils.h>
 #include "Representations/Configuration/FieldDimensions.h"
@@ -122,7 +122,7 @@ private:
   bool isSupported = false;
   bool supporterSeenBall = false;
   Vector2f ballPositionSupporter = Vector2f::Zero();
-  unsigned lastBlockTimeStamp = 0;
+  //unsigned lastBlockTimeStamp = 0;
   bool kickLeft = false;
 
 private:

@@ -20,6 +20,7 @@
 * <state> ::= '(' C-ident ')'
 *             '{'
 *             [ transition <transition> ]
+*             [ action_on_enter <action> ]
 *             [ action <action> ]
 *             '}'
 *
@@ -35,6 +36,9 @@
 * other (sub)options. 'action_done' determines whether the last suboption
 * called reached a target state in the previous execution cycle.
 * 'action_aborted' does the same for an aborted state.
+* action_on_enter <C-statements> are executed exactly once when entering the
+* state. action <C-statements> are executed repeatedly as long as the state
+* is not changed
 *
 * @author <a href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</a>
 */
@@ -512,7 +516,9 @@ template <typename CabslBehavior> typename Cabsl<CabslBehavior>::OptionInfos Cab
     _o.updateState(line, stateType);      \
   }                                       \
   _o.context.hasCommonTransition = false; \
-  if (_o.context.state == line && (_o.context.stateName = #name) && (BH_TRACE, true))
+  if (_o.context.state == line)           \
+    _o.context.stateName = #name;         \
+  if (_o.context.state == line && (BH_TRACE, true))
 
 /**
 * The macro marks a common_transition. It sets a flag so that a transition is accepted,
@@ -527,7 +533,9 @@ template <typename CabslBehavior> typename Cabsl<CabslBehavior>::OptionInfos Cab
 * Setting the flag here also allows the transition target to check whether actually
 * a transition block was used to jump to the new state.
 */
-#define transition if ((_o.context.transitionExecuted ^= true))
+#define transition                                                \
+  _o.context.transitionExecuted = !_o.context.transitionExecuted; \
+  if (_o.context.transitionExecuted)
 
 /**
 * The macro marks an action. It should be followed by a block of code that contains the
@@ -536,6 +544,8 @@ template <typename CabslBehavior> typename Cabsl<CabslBehavior>::OptionInfos Cab
 * sent before any suboptions called in the action block can send theirs.
 */
 #define action _o.addToActivationGraph();
+
+#define action_on_enter if (_currentFrameTime == _o.context.stateStart)
 
 /** The time since the execution of this option started. */
 #define option_time int(_currentFrameTime - _o.context.optionStart)
@@ -571,6 +581,7 @@ template <typename CabslBehavior> typename Cabsl<CabslBehavior>::OptionInfos Cab
 
 #define common_transition ;
 #define transition if (true)
+#define action_on_enter if (state_time == 0)
 #define action ;
 #define option_time 0
 #define state_time 0

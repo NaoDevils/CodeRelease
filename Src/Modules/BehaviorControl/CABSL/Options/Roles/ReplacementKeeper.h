@@ -13,7 +13,7 @@ option(ReplacementKeeper)
 
       if (theReplacementKeeper.kickIt && gotoFieldCoordinatesFinished)
       {
-        WalkKick(Pose2f(thePositioningSymbols.optPosition).translate(3000.f, 0.f).translation, WalkRequest::any);
+        WalkKick(Pose2f(thePositioningSymbols.optPosition).translate(1500.f, 0.f).translation, thePositioningSymbols.optPosition, WalkRequest::any);
       }
     }
   }

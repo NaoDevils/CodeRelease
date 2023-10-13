@@ -428,3 +428,146 @@ OutMapFile::OutMapFile(const std::string& name, bool singleLine) : OutMap(stream
 OutMapMemory::OutMapMemory(void* memory, bool singleLine) : OutMap(stream, singleLine), stream(memory) {}
 
 OutMapSize::OutMapSize(bool singleLine) : OutMap(stream, singleLine) {}
+
+void OutJSON::select(const char* name, int type, const char* (*enumToString)(int))
+{
+  Streaming::trimName(name);
+
+  if (!stack.empty())
+  {
+    ASSERT(name || type >= 0);
+    Entry& e = stack.back();
+    if (!e.hasSubEntries)
+    {
+      if (e.type == -1) // array
+      {
+        writeSeperator = false;
+        stream << "[";
+        writeLn();
+      }
+      else // other attribute or array element
+      {
+        writeSeperator = false;
+        stream << "{";
+        writeLn();
+      }
+      if (!singleLine)
+        indentation += "  ";
+      e.hasSubEntries = true;
+    }
+  }
+
+  if (type < 0) // attribute
+  {
+    if (writeSeperator)
+    {
+      stream << ",";
+      writeLn();
+    }
+    stream << indentation;
+    if (name)
+      stream << "\"" << name << "\""
+             << ": ";
+  }
+  else if (type == 0) // first array element
+    stream << indentation;
+  else if (type > 0) // further array elements
+  {
+    stream << ",";
+    writeLn();
+    stream << indentation;
+  }
+
+  stack.push_back(Entry(type, enumToString));
+}
+
+void OutJSON::deselect()
+{
+  Entry& e = stack.back();
+  if (e.hasSubEntries)
+  {
+    if (!singleLine)
+      indentation = indentation.substr(2);
+    if (e.type == -1) // array
+    {
+      writeLn();
+      stream << indentation << "]";
+    }
+    else // other attribute or array element
+      stream << indentation << "}";
+  }
+  else if (e.type == -1) // empty array
+    stream << "[]";
+
+  if (e.type < 0) // attribute
+  {
+    writeSeperator = true;
+  }
+  stack.pop_back();
+}
+
+void OutJSON::outString(const char* value)
+{
+  char buf[2] = {0};
+  bool containsSpecialChars = !*value || *value == '"' || strcspn(value, " \n\r\t=,;]}") < strlen(value);
+  stream << "\"";
+
+  for (; *value; ++value)
+    if (*value == '"' && containsSpecialChars)
+      stream << "\\\"";
+    else if (*value == '\n')
+      stream << "\\n";
+    else if (*value == '\r')
+      stream << "\\r";
+    else if (*value == '\t')
+      stream << "\\t";
+    else if (*value == '\\')
+      stream << "\\\\";
+    else
+    {
+      buf[0] = *value;
+      stream << buf;
+    }
+
+  stream << "\"";
+}
+
+void OutJSON::outUChar(unsigned char value)
+{
+  Entry& e = stack.back();
+  if (e.enumToString)
+  {
+    if (const char* name = e.enumToString(value))
+      stream << "\"" << name << "\"";
+    else
+    {
+      char id[4] = {0};
+      snprintf(id, sizeof(id), "%u", value);
+      stream << id;
+    }
+  }
+  else
+    stream << static_cast<unsigned>(value);
+}
+
+OutJSON::OutJSON(Out& stream, bool singleLine) : OutMap(stream, singleLine) {}
+
+void OutJSON::outAngle(const Angle& value)
+{
+  out(float(value));
+};
+
+OutJSONFile::OutJSONFile(const std::string& name, bool singleLine) : OutJSON(stream, singleLine), stream(name)
+{
+  stream << "{";
+}
+
+OutJSONMemory::OutJSONMemory(void* memory, bool singleLine) : OutJSON(stream, singleLine), stream(memory)
+{
+  stream << "{";
+}
+
+OutJSONSize::OutJSONSize(bool singleLine) : OutJSON(stream, singleLine)
+{
+  stream << "{";
+}

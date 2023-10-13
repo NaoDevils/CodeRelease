@@ -34,7 +34,6 @@ public:
       const JointAngles& jointAngles,
       const JointCalibration& jointCalibration,
       const RobotDimensions& robotDimensions,
-      const std::string& mr,
       SimRobotCore2::Body* robot);
 
   QString fullName;
@@ -44,7 +43,6 @@ public:
   const JointAngles& jointAngles;
   const JointCalibration& jointCalibration;
   const RobotDimensions& robotDimensions;
-  const std::string& motionRequestCommand;
   SimRobotCore2::Body* robot;
 
 private:

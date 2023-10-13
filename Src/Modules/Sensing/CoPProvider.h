@@ -1,14 +1,14 @@
 /**
 * @file CoPProvider.h
 *
-* Declaration of class CoPProvider, calculates zmp_acc
+* Declaration of class CoPProvider, calculates ZMP_RCS
 *
 */
 
-#ifndef __CoPProvider_h_
-#define __CoPProvider_h_
+#pragma once
 
 #include "Tools/Module/Module.h"
+#include "Tools/RobotParts/FootShape.h"
 #include "Representations/Sensing/ZMPModel.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/MotionControl/WalkingInfo.h"
@@ -24,10 +24,10 @@ MODULE(CoPProvider,
 
 class CoPProvider : public CoPProviderBase
 {
+
 public:
 private:
   void update(ZMPModel& zmpModel);
+
+  void drawFoot(bool left, const Pose2f& baseInImage);
 };
-
-
-#endif //__CoPProvider_h_

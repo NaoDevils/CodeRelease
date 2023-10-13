@@ -7,7 +7,7 @@
 
 //TODO: remove color as string from Team
 
-static const size_t MAX_PLAYERS = 6;
+static const size_t MAX_PLAYERS = 7;
 
 void Team::init()
 {

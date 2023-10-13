@@ -22,5 +22,6 @@ STREAMABLE(FsrSensorData,
   (std::array<float, FsrSensorData::numOfFsrSensorPositions>) left, /**< Values of the four pressure sensors in the left foot (in kg) */
   (std::array<float, FsrSensorData::numOfFsrSensorPositions>) right, /**< Values of the four pressure sensors in the left foot (in kg) */
   (float)(0.f) leftTotal, /**< Total mass pressing on the left foot (in kg) */
-  (float)(0.f) rightTotal /**< Total mass pressing on the right foot (in kg) */
+  (float)(0.f) rightTotal, /**< Total mass pressing on the right foot (in kg) */
+  (float)(2.5f) fsrRef /**< referenz weight (in kg) only updated while standing still*/
 );

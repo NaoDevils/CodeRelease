@@ -63,7 +63,7 @@ public:
   int lastKickingTeam = -1;
 
   void update(GameSymbols& gameSymbols);
-  bool calcAllowedInOwnPenaltyArea();
+  bool calcAllowedInOwnGoalArea();
 
 private:
   int counter = 0;

@@ -30,7 +30,7 @@ YoloRobotDetector::YoloRobotDetector()
 
   detectionVectorUpper.reserve(yoloParameterUpper.output_height * yoloParameterUpper.output_width * yoloParameterUpper.num_of_boxes);
   inputVectorUpper.resize(yoloParameterUpper.input_height * yoloParameterUpper.input_width * yoloParameterUpper.input_channel, 0.f);
-  localRobotsPerceptUpper.robots.clear();
+  localRobotsPerceptYoloUpper.robots.clear();
 
   yoloParameter.input_height = YoloRobotDetectorCNNLower::input_height;
   yoloParameter.input_width = YoloRobotDetectorCNNLower::input_width;
@@ -44,7 +44,7 @@ YoloRobotDetector::YoloRobotDetector()
 
   detectionVector.reserve(yoloParameter.output_height * yoloParameter.output_width * yoloParameter.num_of_boxes);
   inputVector.resize(yoloParameter.input_height * yoloParameter.input_width * yoloParameter.input_channel, 0.f);
-  localRobotsPercept.robots.clear();
+  localRobotsPerceptYolo.robots.clear();
 
 #ifdef NO_HORIZON
   yIdxs.reserve(yoloParameterUpper.input_height + 1);
@@ -66,17 +66,17 @@ YoloRobotDetector::YoloRobotDetector()
   // Resize input tensors
   input_tensor = interpreter->inputs()[0];
   output_tensor = interpreter->outputs()[0];
-  TfLiteIntArray* intput_dims = interpreter->tensor(input_tensor)->dims;
-  //int intput_batch = intput_dims->data[0];
-  int intput_height = intput_dims->data[1];
-  int intput_width = intput_dims->data[2];
-  int intput_channels = intput_dims->data[3];
+  TfLiteIntArray* input_dims = interpreter->tensor(input_tensor)->dims;
+  //int input_batch = input_dims->data[0];
+  int input_height = input_dims->data[1];
+  int input_width = input_dims->data[2];
+  int input_channels = input_dims->data[3];
 
   std::vector<int> new_input;
   new_input.push_back(1);
-  new_input.push_back(intput_height);
-  new_input.push_back(intput_width);
-  new_input.push_back(intput_channels);
+  new_input.push_back(input_height);
+  new_input.push_back(input_width);
+  new_input.push_back(input_channels);
   interpreter->ResizeInputTensor(input_tensor, new_input);
 
   // Allocate memory fore the tensors
@@ -84,24 +84,19 @@ YoloRobotDetector::YoloRobotDetector()
 
   // Check interpreter state
   //tflite::PrintInterpreterState(interpreter.get());
-
-  ownColor = ColorRGBA::yellow; // Default Yellow
-  ownColor = ColorRGBA::black; // Default Black
-
-  class_init();
 }
 
 void YoloRobotDetector::reset(const bool& upper)
 {
   if (upper)
   {
-    localRobotsPerceptUpper.robots.clear();
+    localRobotsPerceptYoloUpper.robots.clear();
     localBallHypotheses.ballSpotsUpper.clear();
     localPenaltyCrossHypotheses.penaltyCrossesUpper.clear();
   }
   else
   {
-    localRobotsPercept.robots.clear();
+    localRobotsPerceptYolo.robots.clear();
     localBallHypotheses.ballSpots.clear();
     localPenaltyCrossHypotheses.penaltyCrosses.clear();
   }
@@ -115,6 +110,7 @@ void YoloRobotDetector::execute(tf::Subflow& subflow)
           {
             execute(true);
           })
+      .priority(tf::TaskPriority::HIGH)
       .name("YoloUpper [YoloRobotDetector]");
 
   subflow
@@ -123,25 +119,23 @@ void YoloRobotDetector::execute(tf::Subflow& subflow)
           {
             execute(false);
           })
+      .priority(tf::TaskPriority::LOW)
       .name("YoloLower [YoloRobotDetector]");
 }
 
-void YoloRobotDetector::update(RobotsPercept& theRobotsPercept)
+void YoloRobotDetector::update(RobotsHypothesesYolo& theRobotsHypothesesYolo)
 {
-  theRobotsPercept.robots.clear();
-  setRobotColorFromGC();
+  theRobotsHypothesesYolo.robots.clear();
   addObstacleFromBumpers();
 
-  theRobotsPercept = localRobotsPercept;
+  theRobotsHypothesesYolo = localRobotsPerceptYolo;
 }
 
-void YoloRobotDetector::update(RobotsPerceptUpper& theRobotsPerceptUpper)
+void YoloRobotDetector::update(RobotsHypothesesYoloUpper& theRobotsHypothesesYoloUpper)
 {
-  DECLARE_DEBUG_DRAWING("module:YoloRobotDetector:shirtScanUpper", "drawingOnImage");
-  theRobotsPerceptUpper.robots.clear();
-  setRobotColorFromGC();
+  theRobotsHypothesesYoloUpper.robots.clear();
 
-  theRobotsPerceptUpper = localRobotsPerceptUpper;
+  theRobotsHypothesesYoloUpper = localRobotsPerceptYoloUpper;
 }
 
 void YoloRobotDetector::update(BallHypothesesYolo& theBallHypothesesYolo)
@@ -165,12 +159,15 @@ void YoloRobotDetector::update(BallHypothesesYolo& theBallHypothesesYolo)
   theBallHypothesesYolo = localBallHypotheses;
 }
 
-void YoloRobotDetector::update(PenaltyCrossHypothesesYolo& thePenaltyCrossHypothesesYolo)
+void YoloRobotDetector::update(PrePenaltyCrossHypothesesYolo& thePrePenaltyCrossHypothesesYolo)
 {
-  thePenaltyCrossHypothesesYolo.penaltyCrosses.clear();
-  thePenaltyCrossHypothesesYolo.penaltyCrossesUpper.clear();
+  thePrePenaltyCrossHypothesesYolo.penaltyCrosses.clear();
+  thePrePenaltyCrossHypothesesYolo.penaltyCrossesUpper.clear();
 
-  thePenaltyCrossHypothesesYolo = localPenaltyCrossHypotheses;
+  std::sort(localPenaltyCrossHypotheses.penaltyCrosses.begin(), localPenaltyCrossHypotheses.penaltyCrosses.end());
+  std::sort(localPenaltyCrossHypotheses.penaltyCrossesUpper.begin(), localPenaltyCrossHypotheses.penaltyCrossesUpper.end());
+
+  thePrePenaltyCrossHypothesesYolo = localPenaltyCrossHypotheses;
 }
 
 void YoloRobotDetector::update(YoloInputUpper& theYoloInputUpper)
@@ -195,10 +192,6 @@ void YoloRobotDetector::update(YoloInput& theYoloInput)
 
 void YoloRobotDetector::execute(const bool& upper)
 {
-  DECLARE_PLOT("module:YoloRobotDetector:robotPercepts");
-  DECLARE_PLOT("module:YoloRobotDetector:validatedRobotPercepts");
-  DECLARE_PLOT("module:YoloRobotDetector:declinedRobotPercepts");
-  short robotPercepts = 0, validatedRobotPercepts = 0;
   const Image& image = upper ? (Image&)theImageUpper : theImage;
   unsigned actualTimeStamp = upper ? timeStampUpper : timeStamp;
   if (actualTimeStamp != image.timeStamp)
@@ -222,7 +215,7 @@ void YoloRobotDetector::execute(const bool& upper)
     if (theFallDownState.state != FallDownState::upright || cameraMatrix.isValid == false)
       return;
 
-    RobotsPercept& localPercepts = upper ? (RobotsPercept&)localRobotsPerceptUpper : localRobotsPercept;
+    RobotsPercept& localPercepts = upper ? (RobotsPercept&)localRobotsPerceptYoloUpper : localRobotsPerceptYolo;
     YoloParameter& localParameter = upper ? (YoloParameter&)yoloParameterUpper : yoloParameter;
     const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
     std::vector<float>& input = upper ? (std::vector<float>&)inputVectorUpper : inputVector;
@@ -237,7 +230,7 @@ void YoloRobotDetector::execute(const bool& upper)
       {
         if (!upper)
         {
-          image.copyAndResizeAreaRGBFloat(0, 0, image.width, image.height, localParameter.input_width, localParameter.input_height, &input[0]);
+          image.copyAndResizeArea<true, false>({0, 0}, {image.width, image.height}, {localParameter.input_width, localParameter.input_height}, input.data());
         }
         else
         {
@@ -250,14 +243,14 @@ void YoloRobotDetector::execute(const bool& upper)
               minY = std::min(std::max(0, static_cast<int>(horizon.base.y()) + 4), static_cast<int>(image.height - localParameter.input_height));
             yIdxs = image.copyAndResizeRGBFloatNoHorizon(localParameter.input_width, localParameter.input_height, minY, &input[0]);
 #else
-            image.copyAndResizeAreaRGBFloat(0, 0, image.width, image.height, localParameter.input_width, localParameter.input_height, &input[0]);
+            image.copyAndResizeArea<true, false>({0, 0}, {image.width, image.height}, {localParameter.input_width, localParameter.input_height}, input.data());
 #endif
           }
         }
       }
       else
       {
-        image.copyAndResizeAreaFloat(0, 0, image.width, image.height, localParameter.input_width, localParameter.input_height, &input[0]);
+        image.copyAndResizeArea<false, false>({0, 0}, {image.width, image.height}, {localParameter.input_width, localParameter.input_height}, input.data());
       }
     }
 
@@ -272,7 +265,7 @@ void YoloRobotDetector::execute(const bool& upper)
           minY = std::min(std::max(0, static_cast<int>(horizon.base.y()) + 4), static_cast<int>(image.height - localParameter.input_height));
         yIdxs = image.copyAndResizeRGBFloatNoHorizon(localParameter.input_width, localParameter.input_height, minY, interpreter->typed_tensor<float>(input_tensor));
 #else
-        image.copyAndResizeAreaRGBFloat(0, 0, image.width, image.height, localParameter.input_width, localParameter.input_height, interpreter->typed_tensor<float>(input_tensor));
+        image.copyAndResizeArea<true, false>({0, 0}, {image.width, image.height}, {localParameter.input_width, localParameter.input_height}, interpreter->typed_tensor<float>(input_tensor));
 #endif
       }
     }
@@ -337,7 +330,6 @@ void YoloRobotDetector::execute(const bool& upper)
       }
     }
 
-
     if (upper)
     {
       if (!useTFlite)
@@ -376,20 +368,22 @@ void YoloRobotDetector::execute(const bool& upper)
       std::sort(localDetectionVector.begin(), localDetectionVector.end());
 
       float nms = upper ? upperNMSThreshold : lowerNMSThreshold;
-
-      for (size_t i = 0; i < localDetectionVector.size(); i++)
+      if (nms < 1.0f)
       {
-        if (localDetectionVector[i].prob == 0.f)
+        for (size_t i = 0; i < localDetectionVector.size(); i++)
         {
-          continue;
-        }
-        else
-        {
-          for (size_t j = i + 1; j < localDetectionVector.size(); j++)
+          if (localDetectionVector[i].prob == 0.f)
           {
-            if (iou(localDetectionVector[i].bbox, localDetectionVector[j].bbox, image.height, image.width) >= nms)
+            continue;
+          }
+          else
+          {
+            for (size_t j = i + 1; j < localDetectionVector.size(); j++)
             {
-              localDetectionVector[j].prob = 0.f;
+              if (iou(localDetectionVector[i].bbox, localDetectionVector[j].bbox, image.height, image.width) >= nms)
+              {
+                localDetectionVector[j].prob = 0.f;
+              }
             }
           }
         }
@@ -420,11 +414,20 @@ void YoloRobotDetector::execute(const bool& upper)
           }
 #endif
 
+          if (useXOffset)
+          {
+            // yolo percepts are not centered correctly
+            // the more near the percept is to the image corner,
+            // the more of the x-offset needs to be used!
+            float imgWidthHalf = image.width / 2.f;
+            float sign = (x < imgWidthHalf ? 1.f : -1.f);
+            float usedXOffset = (upper ? xOffset : xOffset / 2.f);
+            x += sign * usedXOffset * (1 - abs(std::min(x, image.width - x) / imgWidthHalf));
+          }
 
           if (det.sortClass == YoloClasses::Robot)
           {
             //// ROBOT ////
-            robotPercepts += 1;
             RobotEstimate re;
             re.locationOnField.rotation = 0;
             re.fromUpperImage = upper;
@@ -445,7 +448,7 @@ void YoloRobotDetector::execute(const bool& upper)
 
               if (!localUseYoloHeight)
               {
-                heightInImage = Geometry::getSizeByDistance(cameraInfo, 550.f, re.distance);
+                heightInImage = Geometry::getSizeByDistance(cameraInfo, 580.f, re.distance);
                 float widthMismatchFactor = w / (heightInImage * (2.f / 5.f));
                 if (widthMismatchFactor > 1)
                   widthMismatchFactor = 1 / widthMismatchFactor;
@@ -461,18 +464,8 @@ void YoloRobotDetector::execute(const bool& upper)
               re.imageLowerRight.x() = static_cast<int>(boxCenter.x() + heightInImage / 5.f);
               re.imageUpperLeft.x() = static_cast<int>(boxCenter.x() - heightInImage / 5.f);
               re.imageUpperLeft.y() = static_cast<int>(re.imageLowerRight.y() - heightInImage);
-              STOPWATCH("YOLO-checkRobotEstimate")
-              {
-                if (re.fromUpperImage && class_checkEstimate(image, re))
-                {
-                  STOPWATCH("YOLO-updateRobotColor")
-                  {
-                    updateRobotColor(re);
-                  }
-                  validatedRobotPercepts += 1;
-                  localPercepts.robots.push_back(re);
-                }
-              }
+
+              localPercepts.robots.push_back(re);
             }
           }
           else if (det.sortClass == YoloClasses::Ball)
@@ -484,9 +477,7 @@ void YoloRobotDetector::execute(const bool& upper)
             bs.position = Vector2f(x, y).cast<int>();
             bs.radiusInImage = std::min<float>(w / 2.f, h / 2.f);
             bs.validity = det.prob;
-            bs.cb = 128;
-            bs.cr = 128;
-            bs.y = 250;
+            bs.upper = upper;
             bsy.push_back(bs);
 
             // theoretical diameter if cameramatrix is correct
@@ -498,9 +489,9 @@ void YoloRobotDetector::execute(const bool& upper)
                 && (expectedCircle.radius > (bs.radiusInImage * 1.2f) || expectedCircle.radius < (bs.radiusInImage * (1 / 1.2f))))
             {
               bsh.radiusInImage = expectedCircle.radius;
+              bsh.validity = det.prob + 0.01f;
               bsy.push_back(bsh);
             }
-
 
             if (upper)
             {
@@ -533,75 +524,8 @@ void YoloRobotDetector::execute(const bool& upper)
             }
           }
         }
-        PLOT("module:YoloRobotDetector:robotPercepts", robotPercepts);
-        PLOT("module:YoloRobotDetector:validatedRobotPercepts", validatedRobotPercepts);
-        PLOT("module:YoloRobotDetector:declinedRobotPercepts", abs(validatedRobotPercepts - robotPercepts));
       }
     }
-  }
-}
-
-void YoloRobotDetector::class_init()
-{
-  std::string filename = std::string(File::getBHDir()) + "/Config/classificator_rgb_mini_weighted_rc22.tflite";
-
-  // Load the model
-  class_model = tflite::FlatBufferModel::BuildFromFile(filename.c_str());
-  TFLITE_MINIMAL_CHECK(class_model != nullptr);
-
-  // Build the interpreter
-  tflite::InterpreterBuilder builder(*class_model, resolver);
-  builder(&class_interpreter);
-  TFLITE_MINIMAL_CHECK(class_interpreter != nullptr);
-  class_interpreter->SetNumThreads(1);
-
-  // Allocate memory for the tensors
-  class_interpreter->AllocateTensors();
-
-  // Check interpreter state
-  //tflite::PrintInterpreterState(class_interpreter.get());
-}
-
-bool YoloRobotDetector::class_checkEstimate(const Image& image, RobotEstimate& re)
-{
-  int xPos = re.imageUpperLeft.x() - robotClassifierMargin;
-  int yPos = re.imageUpperLeft.y() - robotClassifierMargin;
-  auto size = re.imageLowerRight - re.imageUpperLeft;
-  int sizeX = size.x() + 2 * robotClassifierMargin;
-  int sizeY = size.y() + 2 * robotClassifierMargin;
-  if (robotClassifierProject)
-  {
-    image.projectIntoImage(xPos, yPos, sizeX, sizeY);
-  }
-
-  STOPWATCH("YOLO-checkRobotEstimate-copyAndResize")
-  {
-    image.copyAndResizeAreaRGBFloat(xPos, yPos, sizeX, sizeY, 16, 48, class_interpreter->typed_tensor<float>(class_interpreter->inputs()[0]));
-  }
-
-
-  float* output = class_interpreter->typed_tensor<float>(class_interpreter->outputs()[0]);
-  STOPWATCH("YOLO-checkRobotEstimate-runNet")
-  {
-    if (class_interpreter->Invoke() != kTfLiteOk)
-    {
-      OUTPUT_ERROR("Failed to invoke tflite!");
-      return true;
-    }
-  }
-  re.validity = *output;
-  return *output >= robotClassifierThreshold;
-}
-
-void YoloRobotDetector::setRobotColorFromGC()
-{
-  if (theOwnTeamInfo.teamNumber > 0)
-  {
-    ownColor = teamColorMap[theOwnTeamInfo.teamColour];
-  }
-  if (theOpponentTeamInfo.teamNumber > 0)
-  {
-    oppColor = teamColorMap[theOpponentTeamInfo.teamColour];
   }
 }
 
@@ -738,267 +662,10 @@ float YoloRobotDetector::iou(YoloRegionBox& box1, YoloRegionBox& box2, int heigt
   return intersection / unite;
 }
 
-float YoloRobotDetector::colorDistance(unsigned char& r1, unsigned char& r2, unsigned char& g1, unsigned char& g2, unsigned char& b1, unsigned char& b2)
-{
-  // See: https://www.compuphase.com/cmetric.htm
-  int rmean = ((int)r1 + (int)r2) / 2;
-  int r = (int)r1 - (int)r2;
-  int g = (int)g1 - (int)g2;
-  int b = (int)b1 - (int)b2;
-  return std::sqrt(static_cast<float>((((512 + rmean) * r * r) >> 8) + 4 * g * g + (((767 - rmean) * b * b) >> 8)));
-}
-
-float YoloRobotDetector::colorDistanceHsl(short int& h1, float& s1, float& l1, short int& h2, float& s2, float& l2)
-{
-  // the hardcoded SL values act as a color amplification
-  unsigned char r1, g1, b1;
-  ColorModelConversions::fromHSLToRGB(h1, 1.f, .5f, r1, g1, b1);
-  unsigned char r2, g2, b2;
-  ColorModelConversions::fromHSLToRGB(h2, 1.f, .5f, r2, g2, b2);
-
-  return colorDistance(r1, r2, g1, g2, b1, b2);
-}
-
-Vector2f YoloRobotDetector::getInitialCheckpoint(int upperLeftX, int upperLeftY, int lowerRightX, int lowerRightY, int& gridSampleSizeVar, float& xInterval, float& yInterval)
-{
-  int randRadius = static_cast<int>(round(randRadiusPercentage * (lowerRightX - upperLeftX)));
-
-  // bbox
-  int xGridSize = lowerRightX - upperLeftX - 2 * randRadius;
-  int yOffset = (lowerRightY - upperLeftY) / 10;
-  int yGridSize = static_cast<int>((lowerRightY - upperLeftY - yOffset) / upperFractionOfEstimate - (2 * randRadius));
-
-  // Do not use more steps than pixels if the estimate is very small
-  gridSampleSizeVar = std::min(gridSampleSize, xGridSize);
-  xInterval = xGridSize / static_cast<float>(gridSampleSizeVar - 1);
-  yInterval = yGridSize / static_cast<float>(gridSampleSizeVar - 1);
-
-  // use random offsets and intervals to calculat starting point
-  float xRandOffset = randRadius == 0 ? 0.f : static_cast<float>(rand() % (2 * randRadius) - randRadius);
-  float yRandOffset = randRadius == 0 ? 0.f : static_cast<float>(rand() % (2 * randRadius) - randRadius);
-  float checkPointY = upperLeftY + randRadius + yRandOffset + yOffset;
-  Vector2f checkPoint(upperLeftX + randRadius + xRandOffset - static_cast<int>(round(xInterval)), checkPointY);
-  return checkPoint;
-}
-
-static void printTeamAssignmentDebug(
-    const RobotEstimate& re, float ratioOwnColor, float ratioOppColor, int upperLeftX, int upperLeftY, int lowerRightX, int lowerRightY, ColorRGBA& ownColor, ColorRGBA& oppColor)
-{
-  std::stringstream ssOwn;
-  ssOwn << std::fixed << std::setprecision(1) << ratioOwnColor * 100.f << "%";
-  std::stringstream ssOpp;
-  ssOpp << std::fixed << std::setprecision(1) << ratioOppColor * 100.f << "%";
-
-  LINE("module:YoloRobotDetector:shirtScanUpper", lowerRightX + 10, lowerRightY - 15, lowerRightX + 10, lowerRightY - 15, 10, Drawings::solidPen, ownColor);
-  DRAWTEXT("module:YoloRobotDetector:shirtScanUpper", lowerRightX + 20, lowerRightY - 10, 10, ColorRGBA::green, ssOwn.str());
-
-  LINE("module:YoloRobotDetector:shirtScanUpper", lowerRightX + 10, lowerRightY + 5, lowerRightX + 10, lowerRightY + 5, 10, Drawings::solidPen, oppColor);
-  DRAWTEXT("module:YoloRobotDetector:shirtScanUpper", lowerRightX + 20, lowerRightY + 10, 10, ColorRGBA::red, ssOpp.str());
-
-  ColorRGBA color = re.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green : (re.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red : ColorRGBA::black);
-  if (!re.fromUpperImage)
-    RECTANGLE("module:YoloRobotDetector:shirtScanUpper", upperLeftX, upperLeftY, lowerRightX, lowerRightY, 10, Drawings::solidPen, color);
-}
-
-void YoloRobotDetector::transferEstimateToUpper(RobotEstimate& re, int& upperLeftX, int& upperLeftY, int& lowerRightX, int& lowerRightY)
-{
-  float xFraction = static_cast<float>(theImageUpper.width) / theImage.width;
-  float yFraction = static_cast<float>(theImageUpper.height) / theImage.height;
-  upperLeftX = static_cast<int>(round(re.imageUpperLeft.x() * xFraction));
-  upperLeftY = std::max(0, static_cast<int>(round(theImageUpper.height + re.imageUpperLeft.y() * yFraction)));
-  lowerRightX = static_cast<int>(round(re.imageLowerRight.x() * xFraction));
-  lowerRightY = static_cast<int>(round(theImageUpper.height + re.imageLowerRight.y() * yFraction));
-}
-
-void YoloRobotDetector::updateRobotColor(RobotEstimate& re)
-{
-  // counter for how many pixels are estimated to belong to which team
-  int numOwnColor = 0, numOppColor = 0;
-
-  // Get the bounding box. If the estimate comes from the lower image, the robot is very near and its jersey should be seen in the upper image.
-  int upperLeftX = re.imageUpperLeft.x(), upperLeftY = re.imageUpperLeft.y(), lowerRightX = re.imageLowerRight.x(), lowerRightY = re.imageLowerRight.y();
-  if (!re.fromUpperImage)
-  {
-    transferEstimateToUpper(re, upperLeftX, upperLeftY, lowerRightX, lowerRightY);
-  }
-
-  // own and opp color as hsv
-  short int ownH;
-  float ownS, ownL;
-  ColorModelConversions::fromRGBToHSL(ownColor.r, ownColor.g, ownColor.b, ownH, ownS, ownL);
-  short int oppH;
-  float oppS, oppL;
-  ColorModelConversions::fromRGBToHSL(oppColor.r, oppColor.g, oppColor.b, oppH, oppS, oppL);
-
-  int gridSampleSizeVar;
-  float xInterval, yInterval;
-  Vector2f checkPoint = getInitialCheckpoint(upperLeftX, upperLeftY, lowerRightX, lowerRightY, gridSampleSizeVar, xInterval, yInterval);
-  float checkPointY = checkPoint.y();
-  int debugPixelSize = static_cast<int>(ceil(std::max(xInterval, yInterval)));
-
-  // two loops that iterate over a grid in the robot estimate
-  for (int i = 0; i < gridSampleSizeVar; i++)
-  {
-    checkPoint.x() += xInterval;
-    checkPoint.y() = checkPointY;
-    for (int j = 0; j < gridSampleSizeVar; j++)
-    {
-      assignPixel(re, checkPoint, ownH, ownS, ownL, oppH, oppS, oppL, numOwnColor, numOppColor, debugPixelSize);
-      checkPoint += Vector2f(0, yInterval);
-    }
-  }
-
-  float ratioOwnColor = static_cast<float>(numOwnColor) / (gridSampleSizeVar * gridSampleSizeVar);
-  float ratioOppColor = static_cast<float>(numOppColor) / (gridSampleSizeVar * gridSampleSizeVar);
-
-  re.robotType = RobotEstimate::unknownRobot;
-
-  // if enough pixels are assigned to atleast one team, consider assignment
-  if (std::max(ratioOwnColor, ratioOppColor) > minAssignedPixelsPercentage)
-  {
-    // if atleast 2/3 belong to one team, return the according team
-    if (ratioOwnColor >= 2 * ratioOppColor)
-    {
-      re.robotType = RobotEstimate::teammateRobot;
-      re.teamAssignmentConfidence = ratioOwnColor;
-    }
-    else if (ratioOppColor >= 2 * ratioOwnColor)
-    {
-      re.robotType = RobotEstimate::opponentRobot;
-      re.teamAssignmentConfidence = ratioOppColor;
-    }
-  }
-
-  printTeamAssignmentDebug(re, ratioOwnColor, ratioOppColor, upperLeftX, upperLeftY, lowerRightX, lowerRightY, ownColor, oppColor);
-}
-
-bool YoloRobotDetector::isWhite(short int& pH, float& pS, float& pL)
-{
-  return pL > whiteLightnessMin;
-}
-
-bool YoloRobotDetector::isGray(short int& pH, float& pS, float& pL)
-{
-  return pS < greySaturationMax;
-}
-
-bool YoloRobotDetector::isBlack(short int& pH, float& pS, float& pL)
-{
-  return pL < blackLightnessMax;
-}
-
-static void printPixelAssignmentDebug(
-    const RobotEstimate& re, bool showAmplifiedColor, bool showAssignmentInfo, Vector2f& checkPoint, int debugPixelSize, ColorRGBA& amplifiedPixelColor, ColorRGBA& debugColor)
-{
-  if (showAmplifiedColor)
-    LINE("module:YoloRobotDetector:shirtScanUpper", checkPoint.x(), checkPoint.y(), checkPoint.x(), checkPoint.y(), debugPixelSize, Drawings::solidPen, amplifiedPixelColor);
-  if (showAssignmentInfo)
-    LINE("module:YoloRobotDetector:shirtScanUpper", checkPoint.x(), checkPoint.y(), checkPoint.x(), checkPoint.y(), 2, Drawings::solidPen, debugColor);
-}
-
-void YoloRobotDetector::assignPixel(
-    const RobotEstimate& re, Vector2f& checkPoint, short& ownH, float& ownS, float& ownL, short& oppH, float& oppS, float& oppL, int& numOwnColor, int& numOppColor, int& debugPixelSize)
-{
-  // the debugColor shows information about how pixels are considered. If they are assigned to a team, considered field color etc.
-  ColorRGBA debugColor = ColorRGBA::white;
-  // the amplified color based only on the hue value or whiteness, or white if the pixel is not used for team assignment
-  ColorRGBA amplifiedPixelColor = ColorRGBA::white;
-  if (!theImageUpper.isOutOfImage(checkPoint.x(), checkPoint.y(), 4))
-  {
-    Image::Pixel p = theImageUpper[static_cast<int>(checkPoint.y())][static_cast<int>(checkPoint.x())];
-
-    // if we dont look at the field, try to estimate the team for this point
-    if (theFieldColorsUpper.isPixelFieldColor(p.y, p.cb, p.cr))
-    {
-      debugColor = ColorRGBA::darkgreen;
-    }
-    else
-    {
-      debugColor = ColorRGBA::black;
-      short int pH;
-      float pS, pL;
-      ColorModelConversions::fromYCbCrToHSL(p.y, p.cb, p.cr, pH, pS, pL);
-
-      if (isBlack(pH, pS, pL))
-      {
-        if (theOwnTeamInfo.teamColour == TEAM_BLACK || theOwnTeamInfo.teamColour == TEAM_GRAY)
-        {
-          numOwnColor += 1;
-          debugColor = ColorRGBA::green;
-          amplifiedPixelColor = ColorRGBA::black;
-        }
-        else if (theOpponentTeamInfo.teamColour == TEAM_BLACK || theOpponentTeamInfo.teamColour == TEAM_GRAY || acceptBlackOpponent)
-        {
-          numOppColor += 1;
-          debugColor = ColorRGBA::red;
-          amplifiedPixelColor = ColorRGBA::black;
-        }
-      }
-      else if (isWhite(pH, pS, pL))
-      {
-        if (theOwnTeamInfo.teamColour == TEAM_WHITE || theOwnTeamInfo.teamColour == TEAM_GRAY)
-        {
-          numOwnColor += 1;
-          debugColor = ColorRGBA::green;
-          amplifiedPixelColor = ColorRGBA::gray;
-        }
-        else if (theOpponentTeamInfo.teamColour == TEAM_WHITE || theOpponentTeamInfo.teamColour == TEAM_GRAY)
-        {
-          numOppColor += 1;
-          debugColor = ColorRGBA::red;
-          amplifiedPixelColor = ColorRGBA::gray;
-        }
-      }
-      else if (isGray(pH, pS, pL))
-      {
-        if (theOwnTeamInfo.teamColour == TEAM_GRAY)
-        {
-          numOwnColor += 1;
-          debugColor = ColorRGBA::green;
-          amplifiedPixelColor = ColorRGBA::gray;
-        }
-        else if (theOpponentTeamInfo.teamColour == TEAM_GRAY)
-        {
-          numOppColor += 1;
-          debugColor = ColorRGBA::red;
-          amplifiedPixelColor = ColorRGBA::gray;
-        }
-      }
-      else
-      {
-        // we divide the distance by the max allowed distance. We use this ratio to get a normalized distance that should be less than 1 to be valid.
-        float diffToOwnColor = colorDistanceHsl(pH, pS, pL, ownH, ownS, ownL) / maxColorDistance;
-        float diffToOppColor = colorDistanceHsl(pH, pS, pL, oppH, oppS, oppL) / maxColorDistance;
-        unsigned char pR, pG, pB;
-        // the hardcoded SL values act as a color amplification
-        ColorModelConversions::fromHSLToRGB(pH, 1.f, .5f, pR, pG, pB);
-        debugColor = ColorRGBA::magenta;
-        // team assignment should not be due to chance, so the pixel color should not just be in the middle of the two colors
-        if (std::abs(diffToOwnColor - diffToOppColor) > minColorConfidence)
-        {
-          if (diffToOwnColor < diffToOppColor && diffToOwnColor < 1 && !(theOwnTeamInfo.teamColour == TEAM_BLACK || theOwnTeamInfo.teamColour == TEAM_GRAY || theOwnTeamInfo.teamColour == TEAM_WHITE))
-          {
-            numOwnColor += 1;
-            debugColor = ColorRGBA::green;
-            amplifiedPixelColor = ColorRGBA(pR, pG, pB);
-          }
-          else if (diffToOppColor < 1 && !(theOpponentTeamInfo.teamColour == TEAM_BLACK || theOpponentTeamInfo.teamColour == TEAM_GRAY || theOpponentTeamInfo.teamColour == TEAM_WHITE))
-          {
-            numOppColor += 1;
-            debugColor = ColorRGBA::red;
-            amplifiedPixelColor = ColorRGBA(pR, pG, pB);
-          }
-        }
-      }
-    }
-  }
-  printPixelAssignmentDebug(re, showAmplifiedColor, showAssignmentInfo, checkPoint, debugPixelSize, amplifiedPixelColor, debugColor);
-}
-
 void YoloRobotDetector::addObstacleFromBumpers()
 {
-  // Security check for broken bumpers
-  if (theKeySymbols.obstacle_hit)
+  // Security check for broken bumpers and upright
+  if (theKeySymbols.obstacle_hit && theFallDownState.state == FallDownState::upright)
   {
     RobotEstimate robot;
     robot.fromUpperImage = false; // should cover the whole lower image
@@ -1012,7 +679,7 @@ void YoloRobotDetector::addObstacleFromBumpers()
     robot.robotType = RobotEstimate::unknownRobot;
     robot.validity = 0.85f;
     calcImageCoords(robot, false);
-    localRobotsPercept.robots.push_back(robot);
+    localRobotsPerceptYolo.robots.push_back(robot);
   }
 }
 

@@ -10,7 +10,6 @@ using namespace DWE;
 LimbCombinator::LimbCombinator()
 {
   init = false;
-  lastInKick = false;
   for (int i = 0; i < Joints::numOfJoints; i++)
     for (int j = 0; j < 200; j++)
       angleoffset[i][j] = 0;
@@ -22,12 +21,8 @@ LimbCombinator::LimbCombinator()
 
 LimbCombinator::~LimbCombinator() {}
 
-int LimbCombinator::walkingEngineTime = 0;
-
 void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
 {
-  walkingEngineTime++;
-
   float delayMeasurementOffset = 0;
 
   MODIFY("delayMeasurementOffset", delayMeasurementOffset);
@@ -71,21 +66,22 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
     }
   }
 
-  if (theFootpositions.inKick && !lastInKick)
-    timeStampKickStarted = theFrameInfo.time;
-  lastInKick = theFootpositions.inKick;
+  bool inKick = theFootpositions.inKick;
 
-  int timeSinceKickStarted = theFrameInfo.getTimeSince(timeStampKickStarted);
+  unsigned int kickHackHipPhaseStart = static_cast<unsigned int>(std::round(theFootpositions.singleSupportDurationInFrames * theFootpositions.timeUntilKickHackHip));
+  unsigned int kickHackHipPhaseEnd = kickHackHipPhaseStart + theFootpositions.kickHackDurationHip;
+  bool doKickHackHip = inKick && theFootpositions.frameInPhase >= kickHackHipPhaseStart && theFootpositions.frameInPhase < kickHackHipPhaseEnd;
 
-  bool doKickHackHip = useKickHack && timeSinceKickStarted > theFootpositions.timeUntilKickHackHip
-      && timeSinceKickStarted < theFootpositions.timeUntilKickHackHip + theFootpositions.kickHackDurationHip;
-  bool doKickHackKnee = useKickHack && timeSinceKickStarted > theFootpositions.timeUntilKickHackKnee
-      && timeSinceKickStarted < theFootpositions.timeUntilKickHackKnee + theFootpositions.kickHackDurationKnee;
+  unsigned int kickHackKneePhaseStart = static_cast<unsigned int>(std::round(theFootpositions.singleSupportDurationInFrames * theFootpositions.timeUntilKickHackKnee));
+  unsigned int kickHackKneePhaseEnd = kickHackKneePhaseStart + theFootpositions.kickHackDurationKnee;
+  bool doKickHackKnee = inKick && theFootpositions.frameInPhase >= kickHackKneePhaseStart && theFootpositions.frameInPhase < kickHackKneePhaseEnd;
 
   if (doKickHackHip)
     applyKickHackHip(walkingEngineOutput);
   if (doKickHackKnee)
     applyKickHackKnee(walkingEngineOutput);
+  if (inKick)
+    applyAnkleCompensation(walkingEngineOutput);
 
   if (theArmMovement.usearms)
   {
@@ -129,9 +125,9 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
     walkingEngineOutput.stiffnessData.stiffnesses[i] = StiffnessData::useDefault;
   }
 
-  for (int i = 0; i < 12; i++)
+  for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
   {
-    walkingEngineOutput.angles[Joints::lHipYawPitch + i] += theWalkingEngineParams.jointCalibration.jointCalibration[i];
+    walkingEngineOutput.angles[i] += theWalkingEngineParams.jointCalibration.jointCalibration[i - Joints::lHipYawPitch];
   }
 
   // compensate joint error, i.e. when a joint is not able to reach its target
@@ -171,8 +167,6 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
   LOG("GlobalAngles", "LimbCombinator RAnklePitch", walkingEngineOutput.angles[Joints::rAnklePitch]);
   LOG("GlobalAngles", "LimbCombinator RAnkleRoll", walkingEngineOutput.angles[Joints::rAnkleRoll]);
 
-  LOG("GlobalAngles", "Walking Engine Time", walkingEngineTime);
-
   MARK("GlobalAngles", "Ego-CoM x");
   MARK("GlobalAngles", "Ego-CoM y");
   MARK("GlobalAngles", "Ego-CoM z");
@@ -189,12 +183,10 @@ void LimbCombinator::applyKickHackHip(WalkingEngineOutput& walkingEngineOutput)
   if (theFootpositions.onFloor[LEFT_FOOT])
   {
     walkingEngineOutput.angles[Joints::rHipPitch] = theFootpositions.kickHackHipAngle;
-    walkingEngineOutput.angles[Joints::rAnklePitch] = -(walkingEngineOutput.angles[Joints::rKneePitch] + walkingEngineOutput.angles[Joints::rHipPitch]);
   }
   else
   {
     walkingEngineOutput.angles[Joints::lHipPitch] = theFootpositions.kickHackHipAngle;
-    walkingEngineOutput.angles[Joints::lAnklePitch] = -(walkingEngineOutput.angles[Joints::lKneePitch] + walkingEngineOutput.angles[Joints::lHipPitch]);
   }
 }
 
@@ -202,13 +194,27 @@ void LimbCombinator::applyKickHackKnee(WalkingEngineOutput& walkingEngineOutput)
 {
   if (theFootpositions.onFloor[LEFT_FOOT])
   {
-    walkingEngineOutput.angles[Joints::rKneePitch] = theFootpositions.kickHackKneeAngle;
-    walkingEngineOutput.angles[Joints::rAnklePitch] = -(walkingEngineOutput.angles[Joints::rKneePitch] + walkingEngineOutput.angles[Joints::rHipPitch]);
+    walkingEngineOutput.angles[Joints::rKneePitch] = theFootpositions.kickHackKneeIntensity * theFootpositions.kickHackKneeAngle
+        + (1 - theFootpositions.kickHackKneeIntensity) * walkingEngineOutput.angles[Joints::rKneePitch];
   }
   else
   {
-    walkingEngineOutput.angles[Joints::lKneePitch] = theFootpositions.kickHackKneeAngle;
-    walkingEngineOutput.angles[Joints::lAnklePitch] = -(walkingEngineOutput.angles[Joints::lKneePitch] + walkingEngineOutput.angles[Joints::lHipPitch]);
+    walkingEngineOutput.angles[Joints::lKneePitch] = theFootpositions.kickHackKneeIntensity * theFootpositions.kickHackKneeAngle
+        + (1 - theFootpositions.kickHackKneeIntensity) * walkingEngineOutput.angles[Joints::lKneePitch];
+  }
+}
+
+void LimbCombinator::applyAnkleCompensation(WalkingEngineOutput& walkingEngineOutput)
+{
+  if (theFootpositions.onFloor[LEFT_FOOT])
+  {
+    walkingEngineOutput.angles[Joints::rAnklePitch] = -theFootpositions.ankleCompensationMultiplier
+        * (walkingEngineOutput.angles[Joints::rKneePitch] + walkingEngineOutput.angles[Joints::rHipPitch]);
+  }
+  else
+  {
+    walkingEngineOutput.angles[Joints::lAnklePitch] = -theFootpositions.ankleCompensationMultiplier
+        * (walkingEngineOutput.angles[Joints::lKneePitch] + walkingEngineOutput.angles[Joints::lHipPitch]);
   }
 }
 

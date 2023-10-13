@@ -4,10 +4,15 @@ MAKE_MODULE(TeamCommSender, cognitionInfrastructure);
 
 void TeamCommSender::update(TeamCommSenderOutput& teamCommDataSenderOutput)
 {
-  if (theTeamCommOutput.sendThisFrame && theRobotInfo.transitionToFramework == 1.f && theRobotInfo.penalty == PENALTY_NONE)
-    teamCommDataSenderOutput.dataSent = theTeamCommSocket.send(theTeamCommOutput);
-  else
-    teamCommDataSenderOutput.dataSent = false;
+  teamCommDataSenderOutput.dataSent = false;
+
+  if (theTeamCommOutput.sendThisFrame)
+  {
+    if (size_t size = theTeamCommOutput.data.size(); size <= TeamCommOutput::maximumSize)
+      teamCommDataSenderOutput.dataSent = theTeamCommSocket.send(theTeamCommOutput);
+    else
+      OUTPUT_ERROR("TeamCommSender: Message too big! (" << size << " > " << TeamCommOutput::maximumSize << ")");
+  }
 
   if (teamCommDataSenderOutput.dataSent)
     teamCommDataSenderOutput.dataSentTimestamp = theFrameInfo.time;

@@ -178,7 +178,6 @@ void GroundContactDetector::footContact(float& frequencyLeft, float& frequencyRi
   float fsrErrorToCurrentValRightNorm = fsrErrorToCurrentValRight < 0.f ? (-1.f) * fsrErrorToCurrentValRight : fsrErrorToCurrentValRight;
 
   //decide if foot has contact
-  unsigned int timeStampDiff = 0;
   if (fsrErrorToCurrentValLeftNorm > minFsrFootContactThreshold)
   {
     bool oldHasGroundContact = leftHasGroundContact;
@@ -189,7 +188,7 @@ void GroundContactDetector::footContact(float& frequencyLeft, float& frequencyRi
     if (leftHasGroundContact != oldHasGroundContact && leftHasGroundContact)
     {
       unsigned int currentTimeStamp = theFrameInfo.time;
-      timeStampDiff = currentTimeStamp - lastTimestampLeft;
+      unsigned int timeStampDiff = currentTimeStamp - lastTimestampLeft;
       frqLeft = 1.f / (static_cast<float>(timeStampDiff) / 1000.f);
       lastTimestampLeft = currentTimeStamp;
       frequencyBufferLeft.push_front(frqLeft);

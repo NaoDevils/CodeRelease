@@ -125,7 +125,7 @@ public:
 
   void init(const Pose2f& newPose, const SelfLocator2017Parameters& parameters);
 
-  void predict(const Pose2f& odometryDelta, const SelfLocator2017Parameters& parameters);
+  void predict(const Pose2f& odometryDelta, const SelfLocator2017Parameters& parameters, bool isStable);
 
   void fillCorrectionMatrices(const LineMatchingResult& theLineMatchingResult,
       const CLIPCenterCirclePercept& theCenterCirclePercept,

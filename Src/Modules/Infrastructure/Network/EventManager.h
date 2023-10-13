@@ -12,6 +12,8 @@
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -23,6 +25,8 @@
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/SideConfidence.h"
 #include "Representations/Sensing/FallDownState.h"
+#include "Representations/Infrastructure/Time.h"
+#include "Representations/BehaviorControl/TacticSymbols.h"
 
 
 MODULE(EventManager,
@@ -41,6 +45,10 @@ MODULE(EventManager,
   REQUIRES(RoleSymbols),
   REQUIRES(SideConfidence),
   REQUIRES(TeammateData),
+  REQUIRES(PositioningSymbols),
+  REQUIRES(TimeSynchronization),
+  REQUIRES(BallChaserDecision),
+  REQUIRES(TacticSymbols),
   USES(TeamCommSenderOutput),
   PROVIDES(TeamCommEvents),
   LOADS_PARAMETERS(
@@ -55,7 +63,7 @@ MODULE(EventManager,
       (float)(500.f) playerMovedEventDistanceForNearBall,
       (float)(1500.f) playerMovedNearBallDistance,
       (unsigned)(5000) playerMovedEventIntervalInitial,
-      (unsigned)(1000) playerMovedEventIntervalPenaltyArea,
+      (unsigned)(1000) playerMovedEventIntervalGoalArea,
       (float)(0.7f) playerMovedEventMinPoseValidity,
       (float)(0.4f) playerMovedEventMinPoseValidityInitial,
       (unsigned)(20000) goalDetectedMinTimeDiff,
@@ -77,7 +85,8 @@ private:
   bool isTeamEventOldEnough(const std::vector<TeamCommEvents::SendReason>& sendReasons) const;
   bool isLocalEventOldEnough(const std::vector<TeamCommEvents::SendReason>& sendReasons) const;
 
-  void checkForSendReasons(std::vector<TeamCommEvents::SendReason>& sendReasons);
+  std::vector<TeamCommEvents::SendReason> getSendReasons();
+  bool checkForNewBallchaser();
   bool checkForNewRoleAssignment();
   bool checkForPlayerMoved();
   bool checkForGoalDetected();
@@ -85,10 +94,10 @@ private:
   bool checkForSymmetryUpdate();
   bool checkForBallMoved();
   bool checkForBallchaserFallDown();
+  bool checkForTimeResponses();
 
   // member variables
   std::array<unsigned, TeamCommEvents::SendReason::numOfSendReasons> newestLocalUpdate{0};
   Pose2f lastSendPosition;
   bool wasKickOffInProgress = false;
-  FallDownState::State lastFallDownState = FallDownState::State::upright;
 };

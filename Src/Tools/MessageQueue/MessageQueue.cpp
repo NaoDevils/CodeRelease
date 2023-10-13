@@ -132,7 +132,7 @@ void MessageQueue::append(In& stream)
         break;
       }
 
-      char* dest = numberOfMessages != static_cast<unsigned>(-1) || id < numOfDataMessageIDs ? queue.reserve(size) : nullptr;
+      dest = numberOfMessages != static_cast<unsigned>(-1) || id < numOfDataMessageIDs ? queue.reserve(size) : nullptr;
       if (dest)
       {
         stream.read(dest, size);

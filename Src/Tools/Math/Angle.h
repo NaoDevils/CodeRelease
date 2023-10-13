@@ -2,6 +2,9 @@
 
 #include "Constants.h"
 #include "Tools/Enum.h"
+#include "Tools/Streams/Streamable.h"
+#include "Platform/BHAssert.h"
+#include <cmath>
 
 /**
  * Converts angle from rad to degrees.

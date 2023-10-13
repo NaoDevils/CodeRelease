@@ -43,6 +43,10 @@ void MotionSelector::update(MotionSelection& motionSelection)
   if (lastExecution)
   {
     MotionRequest::Motion requestedMotion = theMotionRequest.motion;
+
+    if (theFallDownState.state == FallDownState::falling)
+      requestedMotion = MotionRequest::specialAction;
+
     if (theMotionRequest.motion == MotionRequest::walk && !theGroundContactState.contact)
     {
       requestedMotion = MotionRequest::walk;
@@ -61,7 +65,8 @@ void MotionSelector::update(MotionSelection& motionSelection)
     const bool leaveSpecialAction = lastMotion == MotionRequest::specialAction && theSpecialActionsOutput.isLeavingPossible;
     const bool leaveKick = lastMotion == MotionRequest::kick && theKickEngineOutput.isLeavingPossible;
     const bool leaveStand = lastMotion == MotionRequest::stand && theStandEngineOutput.isLeavingPossible;
-    if (leaveWalk || leaveSpecialAction || leaveKick || leaveStand)
+    const bool emergencySpecialAction = theFallDownState.state == FallDownState::falling;
+    if (leaveWalk || leaveSpecialAction || leaveKick || leaveStand || emergencySpecialAction)
     {
       motionSelection.targetMotion = requestedMotion;
     }

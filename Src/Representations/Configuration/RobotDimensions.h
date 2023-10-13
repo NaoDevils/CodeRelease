@@ -11,6 +11,13 @@
 #include "Tools/Math/Eigen.h"
 #include "Tools/Streams/AutoStreamable.h"
 
+
+/**
+ * The class represents information about a single sonar sensor,
+ * i.e. its 2f pose in the robot's torso and its opening angle.
+ */
+STREAMABLE_WITH_BASE(SonarSensorInfo, Pose2f,);
+
 /**
  * This representation contains all necessary dimensions of the robot.
  * The torso coordinate frame is considert to be in the middle between the hip joints.
@@ -66,5 +73,9 @@ STREAMABLE(RobotDimensions,
   (float) footFront,               //!< The offset of the foot joints to the foot tip.
   (float) footBack,                //!< The offset of the foot joints to the back of the foot.
   (float) footOuter,               //!< The offset of the foot joints to the outer end of the foot.
-  (float) footInner               //!< The offset of the foot joints to the inner end of the foot.
+  (float) footInner,               //!< The offset of the foot joints to the inner end of the foot.
+
+  (SonarSensorInfo) leftSonarInfo,
+  (SonarSensorInfo) rightSonarInfo,
+  (Angle) sonarOpeningAngle
 );

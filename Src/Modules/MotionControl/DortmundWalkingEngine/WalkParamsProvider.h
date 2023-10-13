@@ -3,14 +3,12 @@
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/FLIPMObserverGains.h"
 #include "Representations/MotionControl/MotionState.h"
-#include "Representations/MotionControl/WalkCalibration.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Streams/RobotParameters.h"
 
 
 MODULE(WalkParamsProvider,
   USES(MotionState),
-  USES(WalkCalibration),
   PROVIDES(WalkingEngineParams),
   PROVIDES(FLIPMObserverGains),
   LOADS_PARAMETERS(,
@@ -36,6 +34,7 @@ public:
   WalkParamsProvider() = default;
 
 protected:
+  std::string annotation = "";
   bool initializedWP = false;
   bool initializedFOP = false;
   WalkingEngineParams originalParams;

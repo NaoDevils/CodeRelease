@@ -1,0 +1,47 @@
+keyFrameID = saveFall;
+initialKeyFrame = true;
+nextKeyFrameID = none;
+YstabilizationP = 0;
+YstabilizationI = 0;
+YstabilizationD = 0;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [0deg,0deg];
+    armsAngles = [77deg,20deg,0deg,-15deg,-90deg,0, 77deg,-20deg,0deg,15deg,90deg,0];
+    legsAngles = [0deg,0deg,-40deg,105deg,-45deg,0deg,  0deg,0deg,-40deg,105deg,-45deg,0deg];
+    stiffnesses = [30,30, 15,15,15,15,15,15, 15,15,15,15,15,15, 20,20,20,20,20,20, 20,20,20,20,20,20];
+    duration = 0;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  {
+    headAngles = [0deg,0deg];
+    armsAngles = [77deg,20deg,0deg,-15deg,-90deg,0, 77deg,-20deg,0deg,15deg,90deg,0];
+    legsAngles = [0deg,0deg,-40deg,105deg,-45deg,0deg,  0deg,0deg,-40deg,105deg,-45deg,0deg];
+    stiffnesses = [30,30, 15,15,15,15,15,15, 15,15,15,15,15,15, 20,20,20,20,20,20, 20,20,20,20,20,20];
+    duration = 0;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];

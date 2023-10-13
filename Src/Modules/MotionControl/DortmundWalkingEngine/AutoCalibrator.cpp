@@ -26,7 +26,6 @@ void AutoCalibrator::reset()
 {
   timeCalibrationStart = theFrameInfo.time;
   calibrationState = CalibrationState::inactive;
-
   localWalkCalibration = WalkCalibration();
   for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
   {
@@ -39,6 +38,9 @@ void AutoCalibrator::reset()
     angleDataBuffersX[i].fill(theJoinedIMUData.imuData[i].angle.x());
     angleDataBuffersY[i].fill(theJoinedIMUData.imuData[i].angle.y());
   }
+  fieldLevelingPoints.clear();
+
+  pressedHeadFront = false; // todo false
   manualCalibrationTrigger = false;
 }
 
@@ -91,11 +93,19 @@ void AutoCalibrator::loadCalibration()
     OUTPUT_ERROR("AutoCalibrator: WalkCalibration could not be loaded!");
     localWalkCalibration = WalkCalibration();
   }
+  fieldInclinationFromConfig = localWalkCalibration.fieldInclination;
+
   if constexpr (Build::targetRobot())
   {
     InTextFile walkCalibration(File::getPersistentDir() + "walkCalibration.value");
     if (walkCalibration.exists())
+    {
       walkCalibration >> localWalkCalibration;
+      if (useFieldInclinationFromFile)
+        localWalkCalibration.fieldInclination = fieldInclinationFromConfig;
+    }
+    else
+      OUTPUT_ERROR("AutoCalibrator: WalkCalibration could not be loaded on robot!");
   }
   calibrationLoaded = true;
 }
@@ -107,7 +117,6 @@ void AutoCalibrator::execute(tf::Subflow&)
   DECLARE_PLOT("module:AutoCalibrator:gyroSum");
   DECLARE_PLOT("module:AutoCalibrator:gyroVariance");
   DECLARE_PLOT("module:AutoCalibrator:gyroThreshold");
-  DECLARE_PLOT("module:AutoCalibrator:comError.x");
 
   DEBUG_RESPONSE_ONCE("module:AutoCalibrator:resetCalibration")
   {
@@ -148,6 +157,13 @@ void AutoCalibrator::execute(tf::Subflow&)
     angleDataBuffersY[i].push_front(theJoinedIMUData.imuData[i].angle.y());
   }
 
+  if (calibrationState == CalibrationState::bodyAngle && theKeySymbols.pressed_and_released[KeyStates::headFront]
+      && bodyAngleCalibrationState != BodyAngleCalibrationState::fieldLeveling && !pressedHeadFront)
+  {
+    pressedHeadFront = true;
+    SystemCall::text2Speech("Activated field leveling!");
+  }
+
   // switching of states trigger by behavior
   if (!manualCalibrationTrigger)
   {
@@ -186,6 +202,27 @@ void AutoCalibrator::execute(tf::Subflow&)
     calibrateWalk();
 
   lastCalibrationState = calibrationState;
+
+  Vector2a fieldInclination;
+  if (theRobotPose.validity > 0.4f)
+  {
+    fieldInclination = localWalkCalibration.fieldInclination;
+    fieldInclination.rotate(theRobotPose.rotation + (mirrorFieldInclination ? 180_deg : 0_deg));
+  }
+  else
+  {
+    fieldInclination = Vector2a::Zero();
+  }
+  const Rangef exponentialFactorLimit(0.005f, 1.f);
+  float exponentialFactor = exponentialFactorLimit.limit((theRobotPose.validity - 0.4f) / 10.f);
+
+  fieldInclination = (1 - exponentialFactor) * lastFieldInclination + exponentialFactor * fieldInclination;
+  localWalkCalibration.legJointCalibration[Joints::lAnkleRoll - Joints::lHipYawPitch] = -fieldInclination.x();
+  localWalkCalibration.legJointCalibration[Joints::lAnklePitch - Joints::lHipYawPitch] = fieldInclination.y();
+  localWalkCalibration.legJointCalibration[Joints::rAnkleRoll - Joints::lHipYawPitch] = -fieldInclination.x();
+  localWalkCalibration.legJointCalibration[Joints::rAnklePitch - Joints::lHipYawPitch] = fieldInclination.y();
+
+  lastFieldInclination = fieldInclination;
 }
 
 void AutoCalibrator::update(WalkCalibration& walkCalibration)
@@ -226,6 +263,10 @@ void AutoCalibrator::update(HeadControlRequest& headControlRequest)
     headControlRequest.controlType = HeadControlRequest::direct;
     headControlRequest.pan = 0_deg;
     headControlRequest.tilt = 20_deg;
+    if (bodyAngleCalibrationState == BodyAngleCalibrationState::fieldLeveling && fieldLevelingState != FieldLevelingState::adjustingFootPitch)
+    {
+      headControlRequest.controlType = HeadControlRequest::localize;
+    }
   }
   if (calibrationState == CalibrationState::walk)
   {
@@ -241,6 +282,9 @@ void AutoCalibrator::calibrateBodyGravity()
   if (lastCalibrationState != calibrationState)
   {
     bodyAngleCalibrationState = BodyAngleCalibrationState::adjustingBodyAngle;
+    fieldLevelingState = FieldLevelingState::waitingForManualPositioning;
+    fieldLevelingPoints.clear();
+
     timeInternalStateSwitch = theFrameInfo.time;
     // turn off sensor control
     localWalkCalibration.deactivateSensorControl = true;
@@ -251,66 +295,173 @@ void AutoCalibrator::calibrateBodyGravity()
 
   float bodyGravityErrorX = accDataBuffersX[anglesource].average();
   PLOT("module:AutoCalibrator:bodyGravityError.x", std::abs(bodyGravityErrorX));
-  //Angle gyroSum = (std::abs(gyroDataBuffersY[anglesource].sum()) + std::abs(gyroDataBuffersX[anglesource].sum()));
-  //PLOT("module:AutoCalibrator:gyroSum", gyroSum.toDegrees());
-  //PLOT("module:AutoCalibrator:gyroThreshold", gyroAbsMaxDeviationPerFrame.toDegrees() * IMU_BUFFER_LENGTH);
 
   Angle gyroVariance = (gyroDataBuffersY[anglesource].getVariance() + gyroDataBuffersX[anglesource].getVariance());
   PLOT("module:AutoCalibrator:gyroVariance", gyroVariance.toDegrees());
   PLOT("module:AutoCalibrator:gyroThreshold", gyroMaxVariance.toDegrees());
 
-
   // if robot is stable, check for error, otherwise, let robot come to rest
-  if (localWalkCalibration.bodyAngleCalibrated == false && theFrameInfo.getTimeSince(timeCalibrationStart) > 1500 && gyroDataBuffersX[anglesource].full()
-      && gyroDataBuffersY[anglesource].full() && gyroVariance < gyroMaxVariance)
-  //&& gyroSum < (gyroAbsMaxDeviationPerFrame * IMU_BUFFER_LENGTH))
+  if (localWalkCalibration.bodyAngleCalibrated == false && theFrameInfo.getTimeSince(timeCalibrationStart) > 1500)
   {
     if (bodyAngleCalibrationState == BodyAngleCalibrationState::adjustingBodyAngle)
     {
-      if (std::abs(bodyGravityErrorX) < targetBodyGravityMaxDiff)
+      if (gyroDataBuffersX[anglesource].full() && gyroDataBuffersY[anglesource].full() && gyroVariance < gyroMaxVariance)
       {
-        timeInternalStateSwitch = theFrameInfo.time;
-        bodyAngleCalibrationState = BodyAngleCalibrationState::checkBodyAngleWithSensorControl;
-      }
-      else
-      {
-        localWalkCalibration.legJointCalibration[Joints::lHipPitch - Joints::lHipYawPitch] -= bodyGravityErrorX * bodyAngleCorrectionP;
-        localWalkCalibration.legJointCalibration[Joints::rHipPitch - Joints::lHipYawPitch] -= bodyGravityErrorX * bodyAngleCorrectionP;
-        gyroDataBuffersX[anglesource].clear();
-        gyroDataBuffersY[anglesource].clear();
+        if (std::abs(bodyGravityErrorX) < targetBodyGravityMaxDiff)
+        {
+          if (pressedHeadFront)
+          {
+            timeInternalStateSwitch = theFrameInfo.time;
+            bodyAngleCalibrationState = BodyAngleCalibrationState::fieldLeveling;
+          }
+          else
+          {
+            localWalkCalibration.fieldInclination = fieldInclinationFromConfig;
+            localWalkCalibration.bodyAngleCalibrated = true;
+          }
+        }
+        else
+        {
+          localWalkCalibration.legJointCalibration[Joints::lHipPitch - Joints::lHipYawPitch] -= bodyGravityErrorX * bodyGravityCorrectionP;
+          localWalkCalibration.legJointCalibration[Joints::rHipPitch - Joints::lHipYawPitch] -= bodyGravityErrorX * bodyGravityCorrectionP;
+          gyroDataBuffersX[anglesource].clear();
+          gyroDataBuffersY[anglesource].clear();
+        }
       }
     }
-    else if (bodyAngleCalibrationState == BodyAngleCalibrationState::checkBodyAngleWithSensorControl)
+    else if (bodyAngleCalibrationState == BodyAngleCalibrationState::fieldLeveling)
     {
-      // TODO!
-      if (theFrameInfo.getTimeSince(timeInternalStateSwitch) < 2000)
-        localWalkCalibration.deactivateSensorControl = false;
-      else if (std::abs(bodyGravityErrorX) >= targetBodyGravityMaxDiff)
+      if (fieldLevelingState == FieldLevelingState::waitingForManualPositioning)
       {
-        timeInternalStateSwitch = theFrameInfo.time;
-        bodyAngleCalibrationState = BodyAngleCalibrationState::adjustingCoM;
+        if (theKeySymbols.pressed_and_released[KeyStates::headMiddle])
+        {
+          if (fieldLevelingPoints.size() >= 4)
+          {
+            Angle pitch = 0_deg;
+            int pitchSum = 0;
+            Angle roll = 0_deg;
+            int rollSum = 0;
+            for (auto const& [translation, inclinaton] : fieldLevelingPoints)
+            {
+              if (inclinaton.y() != 0_deg)
+              {
+                pitch += inclinaton.y();
+                pitchSum++;
+              }
+              if (inclinaton.x() != 0_deg)
+              {
+                roll += inclinaton.x();
+                rollSum++;
+              }
+            }
+
+            localWalkCalibration.fieldInclination.x() = roll / rollSum;
+            localWalkCalibration.fieldInclination.y() = pitch / pitchSum;
+
+            localWalkCalibration.legJointCalibration[Joints::lAnklePitch - Joints::lHipYawPitch] = 0_deg;
+            localWalkCalibration.legJointCalibration[Joints::rAnklePitch - Joints::lHipYawPitch] = 0_deg;
+
+            localWalkCalibration.bodyAngleCalibrated = true;
+          }
+          else
+          {
+            SystemCall::text2Speech("Not enough points for field leveling. Needing at least " + std::to_string(4 - fieldLevelingPoints.size()) + " more points!");
+          }
+        }
+        else if (theKeySymbols.pressed_and_released[KeyStates::headFront] || theKeySymbols.pressed_and_released[KeyStates::headRear])
+        {
+          opponentHalf = theKeySymbols.pressed_and_released[KeyStates::headRear];
+          if (opponentHalf)
+            SystemCall::text2Speech("Opponent half.");
+          else
+            SystemCall::text2Speech("Own half.");
+          fieldLevelingState = FieldLevelingState::adjustingFootPitch;
+        }
       }
-      else
-        localWalkCalibration.bodyAngleCalibrated = true;
-    }
-    else if (bodyAngleCalibrationState == BodyAngleCalibrationState::adjustingCoM)
-    {
-      // TODO
-      localWalkCalibration.bodyAngleCalibrated = true;
+      else if (fieldLevelingState == FieldLevelingState::adjustingFootPitch)
+      {
+        if (gyroDataBuffersX[anglesource].full() && gyroDataBuffersY[anglesource].full() && gyroVariance < gyroMaxVariance)
+        {
+          if (std::abs(bodyGravityErrorX) < targetBodyGravityMaxDiff)
+          {
+            fieldLevelingState = FieldLevelingState::waitingForGoodLocalization;
+          }
+          else
+          {
+            localWalkCalibration.legJointCalibration[Joints::lAnklePitch - Joints::lHipYawPitch] -= bodyGravityErrorX * bodyGravityCorrectionP;
+            localWalkCalibration.legJointCalibration[Joints::rAnklePitch - Joints::lHipYawPitch] -= bodyGravityErrorX * bodyGravityCorrectionP;
+            gyroDataBuffersX[anglesource].clear();
+            gyroDataBuffersY[anglesource].clear();
+          }
+        }
+      }
+      else if (fieldLevelingState == FieldLevelingState::waitingForGoodLocalization)
+      {
+        if (theRobotPose.validity >= minValidityForRobotPose)
+        {
+          Angle footPitch = localWalkCalibration.legJointCalibration[Joints::lAnklePitch - Joints::lHipYawPitch];
+          Pose2f robotPose = theRobotPose;
+          if (opponentHalf)
+          {
+            robotPose.rotate(180_deg);
+            robotPose.translation.x() *= -1.f;
+            robotPose.translation.y() *= -1.f;
+          }
+
+          Vector2a ankle = Vector2a::Zero();
+          Angle rotation = robotPose.rotation;
+          bool paralellPosition = true;
+          if (std::abs(rotation) < 5_deg)
+          {
+            ankle.y() = footPitch;
+          }
+          else if (std::abs(std::abs(rotation) - 180_deg) < 5_deg)
+          {
+            ankle.y() = -footPitch;
+          }
+          else if (std::abs(rotation - 90_deg) < 5_deg)
+          {
+            ankle.x() = -footPitch;
+          }
+          else if (std::abs(rotation + 90_deg) < 5_deg)
+          {
+            ankle.x() = footPitch;
+          }
+          else
+            paralellPosition = false;
+
+          if (paralellPosition)
+          {
+            fieldLevelingPoints.emplace_back(std::make_tuple(robotPose.translation, ankle));
+            SystemCall::text2Speech("Now put me in another place.");
+            OUTPUT_TEXT("Now put me in another place. (" + std::to_string(fieldLevelingPoints.size()) + "/4)");
+          }
+          else
+          {
+            SystemCall::text2Speech("Please put me paralell to the field lines!");
+            OUTPUT_TEXT("Please position the robot paralell to the field lines!");
+          }
+
+          fieldLevelingState = FieldLevelingState::waitingForManualPositioning;
+          localWalkCalibration.legJointCalibration[Joints::lAnklePitch - Joints::lHipYawPitch] = 0_deg;
+          localWalkCalibration.legJointCalibration[Joints::rAnklePitch - Joints::lHipYawPitch] = 0_deg;
+          gyroDataBuffersX[anglesource].clear();
+          gyroDataBuffersY[anglesource].clear();
+        }
+      }
     }
   }
 
-  if (theFrameInfo.getTimeSince(timeCalibrationStart) > 40000)
+  if (theFrameInfo.getTimeSince(timeCalibrationStart) > 40000 && !(bodyAngleCalibrationState == BodyAngleCalibrationState::fieldLeveling))
   {
     localWalkCalibration.bodyAngleCalibrated = true; // TODO: failed state needed
     SystemCall::text2Speech("Timed out walk calibration!");
     OUTPUT_TEXT("!!!Timed out walk calibration!!!");
   }
 
-
   if (std::max(theFrameInfo.getTimeSince(timeInternalStateSwitch), theFrameInfo.getTimeSince(timeCalibrationStart)) > 3000) // minimal time for calibration
   {
-    if (theBehaviorData.behaviorState != BehaviorData::calibrateBody || localWalkCalibration.bodyAngleCalibrated)
+    if ((theBehaviorData.behaviorState != BehaviorData::calibrateBody && !manualCalibrationTrigger) || localWalkCalibration.bodyAngleCalibrated)
     {
       for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
       {
@@ -323,7 +474,12 @@ void AutoCalibrator::calibrateBodyGravity()
           && localWalkCalibration.legJointCalibration[Joints::lHipPitch - Joints::lHipYawPitch] > -88_deg && localWalkCalibration.legJointCalibration[Joints::rHipPitch - Joints::lHipYawPitch] < 27.73_deg
           && localWalkCalibration.legJointCalibration[Joints::rHipPitch - Joints::lHipYawPitch] > -88_deg);
 
-      OUTPUT_TEXT("Calibrated Walk in " << theFrameInfo.getTimeSince(timeCalibrationStart) / 1000.f << "s");
+      if (manualCalibrationTrigger)
+        SystemCall::text2Speech("Finished calibrating walk!");
+
+      OUTPUT_TEXT("Calibrated Walk in "
+          << theFrameInfo.getTimeSince(timeCalibrationStart) / 1000.f << "s and using a hip pitch offset of "
+          << localWalkCalibration.legJointCalibration[Joints::lHipPitch - Joints::lHipYawPitch].toDegrees() << "°");
       localWalkCalibration.deactivateSensorControl = false;
       ModuleManager::sendModuleRequest(oldConfig);
       moduleConfigSwitched = false;

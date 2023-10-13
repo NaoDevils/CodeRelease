@@ -11,16 +11,21 @@
 #include <memory>
 #include "Tools/Streams/Streamable.h"
 #include "Modules/Perception/TFlite.h"
+#include <functional>
+
+namespace tf
+{
+  class Executor;
+}
 
 struct TfliteInterpreter : public Streamable
 {
-  std::string filename = "";
-  std::unique_ptr<tflite::Interpreter> interpreter = nullptr;
-  std::unique_ptr<tflite::FlatBufferModel> model = nullptr;
+public:
+  void updateInterpreters(const tf::Executor& executor, const std::function<std::unique_ptr<tflite::Interpreter>(const tflite::FlatBufferModel&, size_t thread)>& func);
+  void loadModel(const std::string& filename);
 
-  TfliteInterpreter() = default;
-  TfliteInterpreter(const TfliteInterpreter&) = delete;
-  TfliteInterpreter& operator=(const TfliteInterpreter&) = delete;
+  tflite::Interpreter& getInterpreter() const;
+  tflite::Interpreter& getInterpreter(size_t index) const;
 
   virtual Streamable& operator=(const Streamable&) noexcept
   {
@@ -34,8 +39,32 @@ struct TfliteInterpreter : public Streamable
     // this representation is not streamable
     ASSERT(false);
   };
+
+private:
+  std::string filename = "";
+  std::vector<std::unique_ptr<tflite::Interpreter>> interpreters;
+  std::unique_ptr<tflite::FlatBufferModel> model = nullptr;
+  const tf::Executor* executor;
 };
 
 struct BallPerceptTfliteInterpreter : public TfliteInterpreter
 {
+};
+
+struct SplittedTfliteInterpreter : public Streamable
+{
+  std::vector<TfliteInterpreter> layers;
+
+  virtual Streamable& operator=(const Streamable&) noexcept
+  {
+    // this representation is not copyable
+    ASSERT(false);
+    return *this;
+  }
+
+  virtual void serialize(In* in, Out* out)
+  {
+    // this representation is not streamable
+    ASSERT(false);
+  };
 };

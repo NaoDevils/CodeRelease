@@ -14,9 +14,9 @@
 */
 STREAMABLE(WalkCalibration,,
   (Angle[12]) legJointCalibration,
-  (Vector3f)(Vector3f::Zero()) comOffset,
   (std::array<Vector2a, JoinedIMUData::numOfInertialDataSources>) imuAngleOffsets,
   (float)(9.81f) gravity,
+  (Vector2a)(Vector2a::Zero()) fieldInclination,
   (bool)(false) deactivateSensorControl,
   (bool)(false) bodyAngleCalibrated,
   (bool)(false) walkCalibrated

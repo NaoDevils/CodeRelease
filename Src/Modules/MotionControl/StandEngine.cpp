@@ -103,8 +103,8 @@ void StandEngine::update(StandEngineOutput& jointRequest)
 
     pitchOffset += angleCorrection;
 
-    pitchOffset = std::min(pitchOffset, 10_deg);
-    pitchOffset = std::max(pitchOffset, -2_deg);
+    pitchOffset = std::min(pitchOffset, pitchOffsetMax);
+    pitchOffset = std::max(pitchOffset, pitchOffsetMin);
 
     // leaving is not possible if pitchOffset is not 0
     jointRequest.isLeavingPossible = false;

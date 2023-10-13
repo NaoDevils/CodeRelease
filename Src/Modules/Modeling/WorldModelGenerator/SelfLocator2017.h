@@ -52,6 +52,8 @@
 #include "models/PoseHypothesis2017.h"
 #include "SelfLocator2017Parameters.h"
 
+constexpr unsigned IMU_BUFFER_LENGTH = static_cast<unsigned>(0.5 * 83);
+
 MODULE(SelfLocator2017,
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
@@ -80,8 +82,10 @@ MODULE(SelfLocator2017,
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypothesesCompressed), //all compressed (for logging)
   PROVIDES_WITHOUT_MODIFY(RobotPoseHypothesis), //the best
   PROVIDES(SideConfidence),
+  HAS_PREEXECUTION,
   LOADS_PARAMETERS(,
     ((JoinedIMUData)InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
+    (Angle)(0.01_deg) gyroMaxVariance,
     (PositionsByRules) positionsByRules,
     (SelfLocator2017Parameters) parameters
   )
@@ -133,8 +137,10 @@ public:
 private:
   /* ----------------------------------- private variables here ----------------------------------*/
 
+  std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersX;
+  std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersY;
+
   bool initialized;
-  unsigned lastExecuteTimeStamp;
   Vector2f lastFieldSize = Vector2f::Zero();
 
   PoseHypotheses poseHypotheses;
@@ -168,7 +174,7 @@ private:
 
   /* ----------------------------------- private methods here ------------------------------------*/
 
-  void executeCommonCode();
+  void execute(tf::Subflow&);
 
   void adjustHypothesesToFieldDimensions();
   void checkBeingPickedUp();
@@ -193,7 +199,7 @@ private:
 
   bool addNewHypotheses();
 
-  bool addNewHypothesesFromLineMatches();
+  bool addNewHypothesesFromLineMatches(bool onlyAddUnique = false);
   bool addNewHypothesesFromLandmark();
   bool addNewHypothesesFromPenaltyCrossLine();
   bool addNewHypothesesFromCenterCirleAndLine();

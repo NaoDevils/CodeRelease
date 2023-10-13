@@ -5,13 +5,11 @@
  */
 #include "Tools/SIMD.h"
 #include <cstring>
+#include <numeric>
 
 #include "Image.h"
 #include "Tools/ColorModelConversions.h"
 #include "Platform/BHAssert.h"
-
-const int Image::maxResolutionWidth;
-const int Image::maxResolutionHeight;
 
 Image::Image(bool initialize, int width, int height) : width(width), height(height), widthStep(width * 2)
 {
@@ -28,6 +26,11 @@ Image::Image(const Image& other) : isReference(true)
   *this = other;
 }
 
+Image::Image(Image&& other) noexcept : isReference(true)
+{
+  *this = std::move(other);
+}
+
 Image::~Image()
 {
   if (!isReference)
@@ -40,7 +43,6 @@ Image& Image::operator=(const Image& other)
   width = other.width;
   widthStep = 2 * width;
   timeStamp = other.timeStamp;
-  isFullSize = other.isFullSize;
   imageSource = other.imageSource;
 
   if (isReference)
@@ -50,9 +52,28 @@ Image& Image::operator=(const Image& other)
     isReference = false;
   }
 
-  const int size = width * sizeof(Pixel) * (isFullSize ? 2 : 1);
+  const int size = width * sizeof(Pixel);
   for (int y = 0; y < height; ++y)
     memcpy((*this)[y], other[y], size);
+
+  return *this;
+}
+
+Image& Image::operator=(Image&& other) noexcept
+{
+  height = other.height;
+  width = other.width;
+  widthStep = 2 * width;
+  timeStamp = other.timeStamp;
+  imageSource = other.imageSource;
+
+  if (!isReference)
+    delete[] image;
+
+  isReference = other.isReference;
+  image = other.image;
+  other.isReference = true;
+  other.image = nullptr;
 
   return *this;
 }
@@ -96,6 +117,23 @@ bool Image::projectIntoImage(Vector2i& center, float radius) const
   if (center.y() + size >= height)
     center.y() = height - size;
   return true;
+}
+
+std::array<Vector2i, 3> Image::projectIntoImage(const Vector2i& patchCenter, const Vector2i& patchSize) const
+{
+  std::array<Vector2i, 3> ret;
+  auto& [min, max, size] = ret;
+
+  const auto clamp = [&](const Vector2i& v)
+  {
+    return Vector2i(std::clamp(v.x(), 0, width - 1), std::clamp(v.y(), 0, height - 1));
+  };
+
+  size = clamp(patchSize);
+  max = clamp(patchCenter + size / 2);
+  min = clamp(max - size);
+
+  return ret;
 }
 
 bool Image::shouldBeProcessed() const
@@ -175,12 +213,11 @@ void Image::convertFromHSIToYCbCr(const Image& hsiImage)
       ColorModelConversions::fromHSIToYCbCr(hsiImage[y][x].h, hsiImage[y][x].s, hsiImage[y][x].i, (*this)[y][x].y, (*this)[y][x].cb, (*this)[y][x].cr);
 }
 
-void Image::setResolution(int newWidth, int newHeight, bool fullSize)
+void Image::setResolution(int newWidth, int newHeight)
 {
   width = newWidth;
   height = newHeight;
   widthStep = width * 2;
-  isFullSize = fullSize;
 }
 
 float Image::getColorDistance(const Image::Pixel& a, const Image::Pixel& b)
@@ -192,247 +229,6 @@ float Image::getColorDistance(const Image::Pixel& a, const Image::Pixel& b)
   dcb *= dcb;
   dcr *= dcr;
   return std::sqrt(float(dy + dcb + dcr));
-}
-
-void Image::copyAndResizeArea(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char>& result) const
-{
-  //ASSERT(result.size() == sizeXNew*sizeYNew);
-  unsigned char* image_ptr = (unsigned char*)image;
-  const int rowStep = widthStep * 4;
-  image_ptr += yPos * rowStep + xPos * 4;
-  unsigned char* row_ptr = image_ptr;
-  float xPrecise = 0.f;
-  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
-  float yPrecise = 0.f;
-  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
-  int pixelNo = 0;
-  int lastX = 0;
-  int lastY = 0;
-
-  // precompute x offsets
-  std::vector<int> xIncs(sizeXNew);
-  for (int i = 0; i < sizeXNew; i++)
-  {
-    xPrecise += xStep;
-    xIncs[i] = static_cast<int>(xPrecise + 0.5) - lastX;
-    lastX += xIncs[i];
-  }
-
-  for (int y = 0; y < sizeYNew; y++)
-  {
-    for (int x = 0; x < sizeXNew; x++)
-    {
-      result[pixelNo] = *image_ptr;
-      int xInc = xIncs[x];
-      image_ptr += xInc * 4;
-      pixelNo++;
-    }
-    yPrecise += yStep;
-    int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
-    lastY += yInc;
-    row_ptr += yInc * rowStep;
-    image_ptr = row_ptr;
-  }
-}
-
-void Image::copyAndResizeAreaFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float* result) const
-{
-  //ASSERT(result.size() == sizeXNew*sizeYNew);
-  unsigned char* image_ptr = (unsigned char*)image;
-  const int rowStep = widthStep * 4;
-  image_ptr += yPos * rowStep + xPos * 4;
-  unsigned char* row_ptr = image_ptr;
-  float xPrecise = 0.f;
-  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
-  float yPrecise = 0.f;
-  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
-  int pixelNo = 0;
-  int lastX = 0;
-  int lastY = 0;
-
-  // precompute x offsets
-  std::vector<int> xIncs(sizeXNew);
-  for (int i = 0; i < sizeXNew; i++)
-  {
-    xPrecise += xStep;
-    xIncs[i] = static_cast<int>(xPrecise + 0.5) - lastX;
-    lastX += xIncs[i];
-  }
-
-  for (int y = 0; y < sizeYNew; y++)
-  {
-    for (int x = 0; x < sizeXNew; x++)
-    {
-      result[pixelNo] = *image_ptr / 255.f;
-      int xInc = xIncs[x];
-      image_ptr += xInc * 4;
-      pixelNo++;
-    }
-    yPrecise += yStep;
-    int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
-    lastY += yInc;
-    row_ptr += yInc * rowStep;
-    image_ptr = row_ptr;
-  }
-}
-
-void Image::copyAndResizeAreaRGBFloat(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float* result) const
-{
-  //ASSERT(result.size() == sizeXNew*sizeYNew);
-  unsigned char* image_ptr = (unsigned char*)image;
-  const int rowStep = widthStep * 4;
-  image_ptr += yPos * rowStep + xPos * 4;
-  unsigned char* row_ptr = image_ptr;
-  float xPrecise = 0.f;
-  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
-  float yPrecise = 0.f;
-  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
-  int pixelNo = 0;
-  int lastX = 0;
-  int lastY = 0;
-
-  // precompute x offsets
-  std::vector<int> xIncs(sizeXNew);
-  for (int i = 0; i < sizeXNew; i++)
-  {
-    xPrecise += xStep;
-    xIncs[i] = static_cast<int>(xPrecise + 0.5) - lastX;
-    lastX += xIncs[i];
-  }
-
-  unsigned char r, g, b, y, u, v;
-
-  int xOffset = 0;
-  for (int yIndex = 0; yIndex < sizeYNew; yIndex++)
-  {
-    xOffset = 0;
-    for (int xIndex = 0; xIndex < sizeXNew; xIndex++)
-    {
-      xOffset += xIncs[xIndex];
-      int yOffset = static_cast<int>(yIndex * yStep);
-      if (isOutOfBounds(xPos, xOffset, yPos, yOffset))
-      {
-        y = u = v = 0;
-      }
-      else
-      {
-        y = image_ptr[0];
-        u = image_ptr[1];
-        v = image_ptr[3];
-      }
-      ColorModelConversions::fromYCbCrToRGB(y, u, v, r, g, b);
-      result[pixelNo++] = r / 255.f;
-      result[pixelNo++] = g / 255.f;
-      result[pixelNo++] = b / 255.f;
-
-      int xInc = xIncs[xIndex];
-      image_ptr += xInc * 4;
-    }
-    yPrecise += yStep;
-    int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
-    lastY += yInc;
-    row_ptr += yInc * rowStep;
-    image_ptr = row_ptr;
-  }
-}
-
-void Image::copyAndResizeAreaRGB(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char>& result) const
-{
-  //ASSERT(result.size() == sizeXNew*sizeYNew);
-  unsigned char* image_ptr = (unsigned char*)image;
-  const int rowStep = widthStep * 4;
-  image_ptr += yPos * rowStep + xPos * 4;
-  unsigned char* row_ptr = image_ptr;
-  float xPrecise = 0.f;
-  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
-  float yPrecise = 0.f;
-  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
-  int pixelNo = 0;
-  int lastX = 0;
-  int lastY = 0;
-
-  // precompute x offsets
-  std::vector<int> xIncs(sizeXNew);
-  for (int i = 0; i < sizeXNew; i++)
-  {
-    xPrecise += xStep;
-    xIncs[i] = static_cast<int>(xPrecise + 0.5) - lastX;
-    lastX += xIncs[i];
-  }
-
-  unsigned char r, g, b, y, u, v;
-
-  for (int yIndex = 0; yIndex < sizeYNew; yIndex++)
-  {
-    for (int xIndex = 0; xIndex < sizeXNew; xIndex++)
-    {
-      y = image_ptr[0];
-      u = image_ptr[1];
-      v = image_ptr[3];
-      ColorModelConversions::fromYCbCrToRGB(y, u, v, r, g, b);
-      result[pixelNo++] = r;
-      result[pixelNo++] = g;
-      result[pixelNo++] = b;
-
-      int xInc = xIncs[xIndex];
-      image_ptr += xInc * 4;
-    }
-    yPrecise += yStep;
-    int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
-    lastY += yInc;
-    row_ptr += yInc * rowStep;
-    image_ptr = row_ptr;
-  }
-}
-
-void Image::copyAndResizeAreaRGBA(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, std::vector<unsigned char>& result) const
-{
-  //ASSERT(result.size() == sizeXNew*sizeYNew);
-  unsigned char* image_ptr = (unsigned char*)image;
-  const int rowStep = widthStep * 4;
-  image_ptr += yPos * rowStep + xPos * 4;
-  unsigned char* row_ptr = image_ptr;
-  float xPrecise = 0.f;
-  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
-  float yPrecise = 0.f;
-  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
-  int pixelNo = 0;
-  int lastX = 0;
-  int lastY = 0;
-
-  // precompute x offsets
-  std::vector<int> xIncs(sizeXNew);
-  for (int i = 0; i < sizeXNew; i++)
-  {
-    xPrecise += xStep;
-    xIncs[i] = static_cast<int>(xPrecise + 0.5) - lastX;
-    lastX += xIncs[i];
-  }
-
-  unsigned char r, g, b, y, u, v;
-
-  for (int yIndex = 0; yIndex < sizeYNew; yIndex++)
-  {
-    for (int xIndex = 0; xIndex < sizeXNew; xIndex++)
-    {
-      y = image_ptr[0];
-      u = image_ptr[1];
-      v = image_ptr[3];
-      ColorModelConversions::fromYCbCrToRGB(y, u, v, r, g, b);
-      result[pixelNo++] = r;
-      result[pixelNo++] = g;
-      result[pixelNo++] = b;
-      result[pixelNo++] = 255;
-
-      int xInc = xIncs[xIndex];
-      image_ptr += xInc * 4;
-    }
-    yPrecise += yStep;
-    int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
-    lastY += yInc;
-    row_ptr += yInc * rowStep;
-    image_ptr = row_ptr;
-  }
 }
 
 std::vector<int> Image::copyAndResizeRGBFloatNoHorizon(int sizeXNew, int sizeYNew, const int horizon_y, float* result) const
@@ -499,65 +295,20 @@ std::vector<int> Image::copyAndResizeRGBFloatNoHorizon(int sizeXNew, int sizeYNe
   return yIdxs;
 }
 
-void Image::copyAndResizeAreaRGBFloatZeroPadding(const int xPos, const int yPos, int sizeX, int sizeY, int sizeXNew, int sizeYNew, float* result) const
+std::vector<int> Image::getIndices(const int inputSize, const int outputSize, const int inputPos)
 {
-  //  // Set the result to all black
-  //  for (int i = 0; i < sizeXNew * sizeYNew; i++)
-  //  {
-  //    result[i] = 0.0f;
-  //  }
+  std::vector<int> ret(outputSize);
 
-  const int rowStep = widthStep * 4;
-
-  unsigned char* image_ptr = (unsigned char*)image;
-  image_ptr += yPos * rowStep + xPos * 4;
-  unsigned char* row_ptr = image_ptr;
-
-  const float xStep = static_cast<float>(sizeX) / static_cast<float>(sizeXNew);
-  const float yStep = static_cast<float>(sizeY) / static_cast<float>(sizeYNew);
-
-  float xPrecise = static_cast<float>(xPos);
-  float yPrecise = static_cast<float>(yPos);
-  int lastX = xPos;
-  int lastY = yPos;
-  int pixelNo = 0;
-
-  for (int y = 0; y < sizeYNew; y++)
+  if (inputSize == outputSize)
   {
-    xPrecise = static_cast<float>(xPos);
-    lastX = xPos;
-    for (int x = 0; x < sizeXNew; x++)
-    {
-      if (lastX >= 0 && lastX < width && lastY >= 0 && lastY < height)
-      {
-        unsigned char r;
-        unsigned char g;
-        unsigned char b;
-        unsigned char y_ = image_ptr[0];
-        unsigned char u = image_ptr[1];
-        unsigned char v = image_ptr[3];
-        ColorModelConversions::fromYCbCrToRGB(y_, u, v, r, g, b);
-        result[pixelNo++] = r / 255.0f;
-        result[pixelNo++] = g / 255.0f;
-        result[pixelNo++] = b / 255.0f;
-      }
-      else
-      {
-        result[pixelNo++] = 0.0f;
-        result[pixelNo++] = 0.0f;
-        result[pixelNo++] = 0.0f;
-      }
-      xPrecise += xStep;
-      const int xInc = static_cast<int>(xPrecise + 0.5) - lastX;
-      lastX += xInc;
-      image_ptr += xInc * 4;
-    }
-    yPrecise += yStep;
-    const int yInc = static_cast<int>(yPrecise + 0.5) - lastY;
-    lastY += yInc;
-    row_ptr += yInc * rowStep;
-    image_ptr = row_ptr;
+    std::iota(ret.begin(), ret.end(), inputPos);
   }
+  else
+  {
+    for (int i = 0; i < outputSize; ++i)
+      ret[i] = static_cast<int>(std::round(static_cast<float>(i) / outputSize * inputSize)) + inputPos;
+  }
+  return ret;
 }
 
 void Image::serialize(In* in, Out* out)
@@ -565,13 +316,10 @@ void Image::serialize(In* in, Out* out)
   STREAM_REGISTER_BEGIN;
   STREAM(width);
   STREAM(height);
-  if (isFullSize)
-    timeStamp |= 1 << 31;
   STREAM(timeStamp);
-  isFullSize = (timeStamp & 1 << 31) != 0;
-  timeStamp &= ~(1 << 31);
+  timeStamp &= ~(1 << 31); // remove legacy isFullSize bit
 
-  const int size = width * sizeof(Pixel) * (isFullSize ? 2 : 1);
+  const int size = width * sizeof(Pixel);
 
   if (out)
     for (int y = 0; y < height; ++y)

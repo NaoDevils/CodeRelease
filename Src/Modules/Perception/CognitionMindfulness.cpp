@@ -14,6 +14,10 @@ CognitionMindfulness::CognitionMindfulness()
   kickTimeStart = 0;
   kickTimeStop = 0;
   highestKickPathDist = 0.0;
+
+  firstPercentage = theSystemSensorData.batteryLevel;
+  lastPercentage = firstPercentage;
+  startTimestamp = theFrameInfo.time;
 }
 
 void CognitionMindfulness::update(CognitionState& theCognitionState)
@@ -219,6 +223,20 @@ void CognitionMindfulness::checkImageBrightness(CognitionState& cognitionState)
   /***********************************/
   cognitionState.imageStatus.lowerCameraBrightness = lowerFieldColorOptY;
   cognitionState.imageStatus.upperCameraBrightness = upperFieldColorOptY;
+}
+
+void CognitionMindfulness::checkBattery(CognitionState& cognitionState)
+{
+  if (theSystemSensorData.chargingStatus)
+  {
+    firstPercentage = theSystemSensorData.batteryLevel;
+    startTimestamp = theFrameInfo.time;
+  }
+
+  lastPercentage = theSystemSensorData.batteryLevel;
+  // Assumption one minute without charging should drain the battery of at least one percent
+  if (!theSystemSensorData.chargingStatus && theFrameInfo.getTimeSince(startTimestamp) > 60000)
+    cognitionState.batteryStatus.batteryBroken = firstPercentage == lastPercentage;
 }
 
 void CognitionMindfulness::kickDistanceDetection(CognitionState& cognitionState)

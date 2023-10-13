@@ -5,8 +5,6 @@ option(Ballchaser)
   {
     transition
     {
-      if (libTactic.kickWithOuterFoot)
-        goto kickWithOuterFoot;
       if (theBallSymbols.ballProbablyCloseButNotSeen)
         goto handleBallLost;
       if (theTacticSymbols.interceptBall)
@@ -14,27 +12,8 @@ option(Ballchaser)
     }
     action
     {
-      Positioning(theBallchaser.kickType != MotionRequest::KickType::walkKick || theBallchaser.walkKickType != WalkRequest::StepRequest::any);
+      Positioning(theBallchaser.kickType != MotionRequest::KickType::walkKick, true);
       DecideKick();
-    }
-  }
-
-  state(kickWithOuterFoot)
-  {
-    transition
-    {
-      if (state_time > 3000 || theMotionInfo.walkRequest.stepRequest != WalkRequest::StepRequest::none)
-        goto positioning;
-    }
-    action
-    {
-      Positioning();
-
-      theMotionRequest.walkRequest.stepRequest = WalkRequest::StepRequest::sideKickOuterFoot;
-      theMotionRequest.kickRequest.mirror = (theBallSymbols.ballPositionRelative.y() < -20);
-
-      timeStampLastWalkKickExecution = theFrameInfo.time;
-      libTactic.timeStampLastWalkKickExecution = timeStampLastWalkKickExecution;
     }
   }
 

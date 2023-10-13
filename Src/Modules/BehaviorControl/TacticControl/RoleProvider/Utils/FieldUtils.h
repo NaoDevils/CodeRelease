@@ -48,11 +48,28 @@ public:
     return Vector2f(theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosCenterGoal);
   }
 
+  static Vector2f getOwnGoalLeftPost(const FieldDimensions& theFieldDimensions) { return Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftGoal); }
+
+  static Vector2f getOwnGoalRightPost(const FieldDimensions& theFieldDimensions) { return Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoal); }
+
   static Vector2f getOwnGoalCenter(const FieldDimensions& theFieldDimensions) { return Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosCenterGoal); }
 
   static bool isOnOwnSide(const Vector2f& position) { return isOnOwnSide(position.x()); }
 
   static bool isOnOwnSide(const float x) { return x < 0; }
+
+  static bool isIntoOpponentsGoal(const Vector2f& origin, const Vector2f& target, const FieldDimensions& theFieldDimensions)
+  {
+    const Vector2f leftGoalPostPosition = {theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftGoal};
+    const Vector2f rightGoalPostPosition = {theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightGoal};
+    return Geometry::checkIntersectionOfLines(origin, target, leftGoalPostPosition, rightGoalPostPosition);
+  }
+
+  static bool isInDirectionOfOpponentsGoal(const Vector2f& origin, const Vector2f& direction, const FieldDimensions& theFieldDimensions)
+  {
+    const Vector2f target = origin + 2 * theFieldDimensions.xPosOpponentGroundline * direction;
+    return isIntoOpponentsGoal(origin, target, theFieldDimensions);
+  }
 
   static float getDistanceToGoalLine(const Vector2f& ballPosition, const FieldDimensions& theFieldDimensions)
   {

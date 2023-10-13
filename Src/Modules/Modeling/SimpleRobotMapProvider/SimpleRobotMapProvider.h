@@ -28,11 +28,11 @@ MODULE(SimpleRobotMapProvider,
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotPose),
   REQUIRES(RobotsPercept),
-  REQUIRES(RobotsPerceptUpper),
   REQUIRES(TeammateData),
   PROVIDES(RobotMap),
   PROVIDES(LocalRobotMap),
   PROVIDES(SimpleRobotsDistributed),
+  HAS_PREEXECUTION,
   LOADS_PARAMETERS(,
     (bool) global, // use team mate data?
     (bool) useTeamMatePercepts, // use percepts from team mates? PROBLEM: preview!
@@ -75,14 +75,12 @@ public:
     maxRobots = 15
   };
 
-  SimpleRobotMapProvider();
-
 private:
   void update(RobotMap& robotMap);
   void update(LocalRobotMap& localRobotMap);
   void update(SimpleRobotsDistributed& simpleRobotsDistributed);
-  void execute();
-  void updateWithLocalData(const bool& upper);
+  void execute(tf::Subflow&);
+  void updateWithLocalData();
   void updateWithTeamMatePoses();
   void updateWithGlobalData();
 
@@ -92,6 +90,5 @@ private:
   void fillRobotMap();
 
   std::vector<SimpleRobot> simpleRobots;
-  unsigned timeOfLastExeccution;
   RobotMap internalRobotMap;
 };

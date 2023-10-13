@@ -28,7 +28,7 @@ class UdpComm
 {
 private:
   sockaddr* target = nullptr;
-  socket_t sock = -1;
+  socket_t sock = static_cast<socket_t>(-1);
 
 public:
   UdpComm();

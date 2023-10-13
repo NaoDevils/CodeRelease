@@ -23,7 +23,7 @@
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
-#include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 
 #include <algorithm>
 

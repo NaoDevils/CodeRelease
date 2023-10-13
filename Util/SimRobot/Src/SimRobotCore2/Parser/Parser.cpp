@@ -1021,8 +1021,11 @@ void Parser::parseMacroElement(ElementData& elementData)
   }
 
   // resolve referenced macro
-  std::unordered_map<std::string, Macro*>::const_iterator iter = macros.find(*ref + " " + elementData.info->name);
-  Macro* const macro = iter == macros.end() ? 0 : iter->second;
+  Macro* const macro = [&]()
+  {
+    std::unordered_map<std::string, Macro*>::const_iterator iter = macros.find(*ref + " " + elementData.info->name);
+    return iter == macros.end() ? 0 : iter->second;
+  }();
   if (!macro || macro->replaying)
   {
     if (macro)
@@ -1063,8 +1066,8 @@ void Parser::parseMacroElement(ElementData& elementData)
           if (attributes->size() >= 32)
           {
             handleError("Node and macro attribute combination results in more than 32 attributes", replayingMacroElement->location);
-            for (std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
-              (*iter)->replaying = false;
+            for (std::list<Macro*>::const_iterator refIter = referencedMacros.begin(), refEnd = referencedMacros.end(); refIter != refEnd; ++refIter)
+              (*refIter)->replaying = false;
             return;
           }
           copiedAttributes->emplace(iter->first, Attribute(iter->second, static_cast<int>(copiedAttributes->size())));
@@ -1077,8 +1080,10 @@ void Parser::parseMacroElement(ElementData& elementData)
       ref = &replacePlaceholders(refIter->second.value, refIter->second.valueLocation);
 
       // resolve next referenced macro
-      std::unordered_map<std::string, Macro*>::const_iterator iter = macros.find(*ref + " " + elementData.info->name);
-      nextMacro = iter == macros.end() ? nullptr : iter->second;
+      {
+        std::unordered_map<std::string, Macro*>::const_iterator iter = macros.find(*ref + " " + elementData.info->name);
+        nextMacro = iter == macros.end() ? nullptr : iter->second;
+      }
       if (!nextMacro || nextMacro->replaying)
       {
         if (nextMacro)
@@ -1109,18 +1114,18 @@ void Parser::parseMacroElement(ElementData& elementData)
     MacroElement* parentReplayingMacroElement = replayingMacroElement;
     for (std::list<Macro*>::const_iterator iter = referencedMacros.begin(), end = referencedMacros.end(); iter != end; ++iter)
     {
-      Macro* macro = *iter;
+      Macro* refMacro = *iter;
 
-      ASSERT(macro->replaying);
-      fileName.swap(macro->fileName);
-      replayingMacroElement = macro;
+      ASSERT(refMacro->replaying);
+      fileName.swap(refMacro->fileName);
+      replayingMacroElement = refMacro;
 
       parseMacroElements();
       ASSERT(this->elementData == &elementData);
       ASSERT(element == childElement);
 
-      fileName.swap(macro->fileName);
-      macro->replaying = false;
+      fileName.swap(refMacro->fileName);
+      refMacro->replaying = false;
     }
     replayingMacroElement = parentReplayingMacroElement;
 
@@ -1215,10 +1220,10 @@ bool Parser::handleElement(const std::string& nodeName, Attributes& attributes, 
 
   if (elementInfo->elementClass == surfaceClass)
   {
-    Attributes::iterator iter = attributes.find("diffuseTexture");
-    if (iter != attributes.end() && !iter->second.value.empty() && iter->second.value[0] != '/' && iter->second.value[0] != '\\' && // not absolute path on Unix
-        (iter->second.value.size() < 2 || iter->second.value[1] != ':')) // or Windows
-      iter->second.value = parseRootDir + iter->second.value;
+    Attributes::iterator attIter = attributes.find("diffuseTexture");
+    if (attIter != attributes.end() && !attIter->second.value.empty() && attIter->second.value[0] != '/' && attIter->second.value[0] != '\\' && // not absolute path on Unix
+        (attIter->second.value.size() < 2 || attIter->second.value[1] != ':')) // or Windows
+      attIter->second.value = parseRootDir + attIter->second.value;
   }
 
   // handle macro recording
@@ -1350,9 +1355,9 @@ void Parser::checkAttributes()
   if (unexpectedAttributes)
   {
     // apparently there are unused attributes, find them and produce error messages
-    for (std::unordered_map<std::string, Attribute>::const_iterator iter = attributes->begin(), end = attributes->end(); iter != end; ++iter)
-      if (unexpectedAttributes & (1 << iter->second.index))
-        handleError("Unexpected attribute \"" + iter->first + "\"", iter->second.nameLocation);
+    for (std::unordered_map<std::string, Attribute>::const_iterator attIter = attributes->begin(), end = attributes->end(); attIter != end; ++attIter)
+      if (unexpectedAttributes & (1 << attIter->second.index))
+        handleError("Unexpected attribute \"" + attIter->first + "\"", attIter->second.nameLocation);
   }
 }
 

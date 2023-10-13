@@ -1,39 +1,47 @@
 keyFrameID = stand;
-YstabilizationP = 0.1;
+initialKeyFrame = true;
+nextKeyFrameID = none;
+YstabilizationP = -0.05;
 YstabilizationI = 0;
-YstabilizationD = -0.02;
+YstabilizationD = -0.6;
 XstabilizationP = 0;
 XstabilizationI = 0;
 XstabilizationD = 0;
 keyFrames = [
   {
-    headAngles = [20000,20000];
-    armsAngles = [90deg,11deg,0,0deg,-90deg,0, 90deg,-11deg,0,0deg,90deg,0];
-    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    headAngles = [0deg,20000];
+    armsAngles = [90deg,10deg,0,0deg,-90deg,0, 90deg,-10deg,0,0deg,90deg,0];
+    legsAngles = [0,0,-14.5deg,37.15deg,-22.7deg,0, 0,0,-14.5deg,37.15deg,-22.7deg,0];
     stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
     duration = 1000;
     intType = sine;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
-    stabilize = false;
-    hipYawErrorCompensation = 0;
-    waitForStable = false;
-    waitForTorsoTime = 0;
+    activateFallDownProtection = false;
+    stabilize = true;
+    waitForStable = true;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   {
     headAngles = [20000,20000];
-    armsAngles = [90deg,11deg,0,0deg,-90deg,0, 90deg,-11deg,0,0deg,90deg,0];
-    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    armsAngles = [90deg,10deg,0,0deg,-90deg,0, 90deg,-10deg,0,0deg,90deg,0];
+    legsAngles = [0,0,-14.5deg,37.15deg,-22.7deg,0, 0,0,-14.5deg,37.15deg,-22.7deg,0];
     stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 60,60,60,60,60,60, 60,60,60,60,60,60];
     duration = 100;
     intType = sine;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
-    stabilize = false;
-    hipYawErrorCompensation = 0;
-    waitForStable = false;
-    waitForTorsoTime = 0;
+    activateFallDownProtection = false;
+    stabilize = true;
+    waitForStable = true;
     leavingPossible = true;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   }
 ];

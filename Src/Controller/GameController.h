@@ -34,7 +34,11 @@ private:
     Pose2f lastPose;
     bool manuallyPlaced;
 
-    Robot() : simulatedRobot(0), timeWhenPenalized(0), manuallyPlaced(false) {}
+    Robot() : simulatedRobot(0), timeWhenPenalized(0), manuallyPlaced(false)
+    {
+      // Disable robot by default
+      info.penalty = PENALTY_SUBSTITUTE;
+    }
   };
 
   ENUM(Penalty,
@@ -54,6 +58,7 @@ private:
   DECLARE_SYNC;
   static const int numOfRobots = MAX_NUM_PLAYERS * 2;
   static const int numOfFieldPlayers = numOfRobots / 2 - 2; // Keeper, Substitute
+  static constexpr uint16_t messageBudget = 1200;
   static const int durationOfHalf = 600;
   static const int durationOfPS = 45; /**< duration of one penalty shootout attemp. */
   static const float footLength; /**< foot length for position check and manual placement at center circle. */
@@ -62,7 +67,7 @@ private:
   static Pose2f lastBallContactPose; /**< Position were the last ball contact of a robot took place, orientation is toward opponent goal (0/180 degress). */
   static int timeOfLastBallContact; /**Time when the last ball contact occured*/
   static FieldDimensions fieldDimensions;
-  GameInfo gameInfo;
+  RawGameInfo gameInfo;
   TeamInfo teamInfos[2];
   unsigned timeWhenHalfStarted;
   unsigned timeOfLastDropIn;
@@ -259,7 +264,7 @@ public:
    */
   void writeOpponentTeamInfo(int robot, Out& stream);
 
-  void setTeamColors(uint8_t firstTeamColor, uint8_t secondTeamColor);
+  void setTeamColors(uint8_t firstFieldPlayerColor, uint8_t firstGoalkeeperColor, uint8_t secondFieldPlayerColor, uint8_t secondGoalkeeperColor);
 
   /**
    * Write the current information of a certain robot to the

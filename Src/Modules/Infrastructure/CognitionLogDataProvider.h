@@ -10,8 +10,10 @@
 #include "Representations/BehaviorControl/ActivationGraph.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/MotionControl/HeadAngleRequest.h"
 #include "Representations/BehaviorControl/HeadControlRequest.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -19,13 +21,13 @@
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/JPEGImage.h"
 #include "Representations/Infrastructure/LowFrameRateImage.h"
-#include "Representations/Infrastructure/SequenceImage.h"
-#include "Representations/Infrastructure/YoloInput.h"
 #include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
+#include "Representations/Infrastructure/SequenceImage.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/Infrastructure/SensorData/JointSensorData.h"
+#include "Representations/Infrastructure/YoloInput.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Modeling/RobotMap.h"
@@ -37,12 +39,12 @@
 #include "Representations/MotionControl/OdometryData.h"
 #include "Representations/Perception/BallPercept.h"
 #include "Representations/Perception/BodyContour.h"
-#include "Representations/Perception/CameraMatrix.h"
-#include "Representations/Perception/CenterCirclePercept.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/Perception/CLIPGoalPercept.h"
-#include "Representations/Perception/PenaltyCrossPercept.h"
+#include "Representations/Perception/CameraMatrix.h"
+#include "Representations/Perception/CenterCirclePercept.h"
 #include "Representations/Perception/ImageCoordinateSystem.h"
+#include "Representations/Perception/PenaltyCrossPercept.h"
 #include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Sensing/GroundContactState.h"
 #include "Tools/Debugging/DebugImages.h"
@@ -60,6 +62,7 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(BallModel),
   PROVIDES_CONCURRENT(BallPercept),
   PROVIDES_CONCURRENT(MultipleBallPercept),
+  PROVIDES_CONCURRENT(Ballchaser),
   PROVIDES_CONCURRENT(BallSymbols),
   PROVIDES_CONCURRENT(BehaviorData),
   PROVIDES_CONCURRENT(BodyContour),
@@ -74,6 +77,7 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(GameInfo),
   PROVIDES_CONCURRENT(GroundContactState),
   PROVIDES_CONCURRENT(GroundTruthWorldState),
+  PROVIDES_CONCURRENT(HeadAngleRequest),
   PROVIDES_CONCURRENT(HeadControlRequest),
   PROVIDES_CONCURRENT_WITHOUT_MODIFY(Image),
   PROVIDES_CONCURRENT_WITHOUT_MODIFY(ImageUpper),
@@ -89,6 +93,7 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(OwnTeamInfo),
   PROVIDES_CONCURRENT(PenaltyCrossPercept),
   PROVIDES_CONCURRENT(ProcessedBallPatches),
+  PROVIDES_CONCURRENT(ProcessedRobotsHypotheses),
   PROVIDES_CONCURRENT(PositioningSymbols),
   PROVIDES_CONCURRENT(RawGameInfo),
   PROVIDES_CONCURRENT(RemoteBallModel),
@@ -96,7 +101,6 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(RobotInfo),
   PROVIDES_CONCURRENT(RobotMap),
   PROVIDES_CONCURRENT(RobotsPercept),
-  PROVIDES_CONCURRENT(RobotsPerceptUpper),
   PROVIDES_CONCURRENT(RobotPose),
   PROVIDES_CONCURRENT_WITHOUT_MODIFY(RobotPoseHypotheses),
   PROVIDES_CONCURRENT(SideConfidence),
@@ -123,6 +127,7 @@ private:
   // No-op update stubs
   void update(ActivationGraph&) override {}
   void update(AudioData&) override {}
+  void update(Ballchaser&) override {}
   void update(BallModel&) override {}
   void update(BallPercept&) override {}
   void update(MultipleBallPercept&) override {}
@@ -140,6 +145,7 @@ private:
   void update(GameInfo&) override {}
   void update(GroundContactState&) override {}
   void update(GroundTruthWorldState&) override {}
+  void update(HeadAngleRequest&) override {}
   void update(HeadControlRequest&) override {}
   void update(JointSensorData&) override {}
   void update(MotionInfo&) override {}
@@ -149,6 +155,7 @@ private:
   void update(OwnTeamInfo&) override {}
   void update(PenaltyCrossPercept&) override {}
   void update(ProcessedBallPatches&) override {}
+  void update(ProcessedRobotsHypotheses&) override {}
   void update(PositioningSymbols&) override {}
   void update(RawGameInfo&) override {}
   void update(RemoteBallModel&) override {}
@@ -157,7 +164,6 @@ private:
   void update(RobotMap&) override {}
   void update(RobotPose&) override {}
   void update(RobotsPercept&) override {}
-  void update(RobotsPerceptUpper&) override {}
   void update(SideConfidence&) override {}
   void update(TeamBallModel&) override {}
   void update(TeammateData&) override {}

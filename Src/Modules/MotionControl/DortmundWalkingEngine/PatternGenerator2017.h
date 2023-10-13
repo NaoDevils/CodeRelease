@@ -44,6 +44,7 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Representations/Sensing/JoinedIMUData.h"
+#include "Representations/MotionControl/ActualCoM.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Sensing/FallDownState.h"
@@ -68,9 +69,12 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/MotionControl/CustomStepSelection.h"
 #include "Representations/Infrastructure/GameInfo.h"
+#include "Modules/MotionControl/DortmundWalkingEngine/WalkParamsProvider.h"
+
 
 MODULE(PatternGenerator2017,
   REQUIRES(WalkingEngineParams),
+  REQUIRES(ActualCoMRCS),
   REQUIRES(SpeedRequest),
   REQUIRES(Path),
   REQUIRES(RobotModel),
@@ -102,6 +106,7 @@ MODULE(PatternGenerator2017,
   REQUIRES(GameInfo),
   HAS_PREEXECUTION,
   LOADS_PARAMETERS(,
+    (Vector2f)(Vector2f(0.03f, 0.04f)) prependStepsTransMin,
     (Vector2f)(Vector2f(0.07f, 0.10f)) prependStepsTransMax,
     (Pose2f)(Pose2f(90_deg,0.2f,0.1f)) prependStepsMaxDistance,
     (Angle)(30_deg) prependStepsRotMax,
@@ -111,7 +116,6 @@ MODULE(PatternGenerator2017,
     (float)(6.5f) maxPrependStepsScore,
     (int)(3) stepsBetweenCustomSteps,
     (bool)(false) resetPreviewDuringPrependStep,
-    ((WalkRequest) StepRequestVector) activeKicks,
     ((WalkRequest) StepRequestVector) activeGoalieKicks,
     (bool)(true) useResetPreview,
     (bool)(false) useHalfFramesInRefZMP,
@@ -134,7 +138,10 @@ MODULE(PatternGenerator2017,
     (float)(7.f) comErrorFrontForSafetySteps,
     (float)(-5.f) comErrorBackForSafetySteps,
     (Vector2f)(Vector2f(3.f,2.f)) maxSafetyStepCorrection,
-    (bool)(false) customStepOdometryCorrection
+    (bool)(false) customStepOdometryCorrection,
+    (float)(1.5f) customStepFallDownFactorStable,
+    (float)(0.95f) exponentialFactorForStepDuration,
+    (float)(1.0f) fallDownSpeedInfluenceFactor 
   )
 );
 
@@ -243,6 +250,7 @@ protected:
 
   /** Current step duration */
   float curStepDuration;
+  float lastStepDuration = 0.5f;
 
   Point distanceLeft;
   bool running = false; /* true, if the walk is active and speed is not zero, i.e. robot is not just standing. */
@@ -251,6 +259,7 @@ protected:
   int currentTimeStamp;
 
   CSConverter2019::Parameters csConverterParams;
+  WalkParamsProvider::Parameters walkParamsProviderParams;
 
   /** 
   * Time counter in current state, from <length of phase> to 1.
@@ -340,11 +349,10 @@ protected:
   bool decelByAcc;
 
   std::vector<CustomStepsFile> stepFiles;
+  WalkRequest::StepRequestVector activeKicks = {};
 
   void loadStepFiles();
-  void saveStepFiles();
-  void loadStepFile(std::string file, int idx);
-  void saveStepFile(std::string file, int idx, bool robot = false);
+
   Vector2f prependCustomStep(std::list<CustomStep>& steps, Vector2f distance, bool onFloorLeft);
   bool prependCustomSteps(std::list<CustomStep>& steps, Pose2f pose, bool startFootLeft, bool endFootLeft, int maxSteps, const CustomStepsFile& stepsFile);
   template <class it> void correctOdometry(it& steps);

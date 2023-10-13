@@ -1,9 +1,0 @@
-# from now, relative to estimated robot pose
-vfd worldState origin:RobotPose
-vfd worldState representation:MultipleBallPercept:Field
-
-# back to global coordinates
-vfd worldState origin:Reset
-
-vid lower representation:MultipleBallPercept:Image:Lower
-vid upper representation:MultipleBallPercept:Image:Upper

@@ -61,7 +61,7 @@ void UdpComm::close()
 UdpComm::UdpComm(UdpComm&& other) noexcept : target(other.target), sock(other.sock)
 {
   other.target = nullptr;
-  other.sock = -1;
+  other.sock = static_cast<socket_t>(-1);
 }
 
 UdpComm& UdpComm::operator=(UdpComm&& other) noexcept
@@ -70,7 +70,7 @@ UdpComm& UdpComm::operator=(UdpComm&& other) noexcept
   this->target = other.target;
   this->sock = other.sock;
   other.target = nullptr;
-  other.sock = -1;
+  other.sock = static_cast<socket_t>(-1);
   return *this;
 }
 
@@ -180,8 +180,13 @@ bool UdpComm::joinMulticast(const char* addrStr)
     }
 #else
     char host[128];
-    hostent* pHost;
-    if (gethostname(host, sizeof(host)) < 0 || !(pHost = (hostent*)gethostbyname(host)))
+    if (gethostname(host, sizeof(host)) < 0)
+    {
+      std::cerr << "cannot get interface list" << std::endl;
+      return false;
+    }
+    hostent* pHost = gethostbyname(host);
+    if (!pHost)
     {
       std::cerr << "cannot get interface list" << std::endl;
       return false;

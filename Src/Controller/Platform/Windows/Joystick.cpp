@@ -10,22 +10,23 @@
 
 #include "Joystick.h"
 #include "Platform/BHAssert.h"
+#include <limits>
 
 unsigned int Joystick::usedJoysticks = 0;
 
-Joystick::Joystick() : joystickId(-1) {}
+Joystick::Joystick() : joystickId(std::numeric_limits<unsigned int>::max()) {}
 
 bool Joystick::init()
 {
-  ASSERT(joystickId == -1);
+  ASSERT(joystickId == std::numeric_limits<unsigned int>::max());
   for (int i = 0; i < 32; ++i)
     if (!(usedJoysticks & (1 << i)))
     {
       usedJoysticks |= 1 << i;
       joystickId = i;
       buttonEvents[0] = buttonEvents[1] = buttonState[0] = buttonState[1] = 0;
-      for (int i = 0; i < numOfAxes; ++i)
-        axisState[i] = 32767;
+      for (int j = 0; j < numOfAxes; ++j)
+        axisState[j] = 32767;
       return true;
     }
   return false;
@@ -38,16 +39,16 @@ Joystick::~Joystick()
 
 void Joystick::deactivate()
 {
-  if (joystickId != -1)
+  if (joystickId != std::numeric_limits<unsigned int>::max())
   {
     usedJoysticks &= ~(1 << joystickId);
-    joystickId = -1;
+    joystickId = std::numeric_limits<unsigned int>::max();
   }
 }
 
 bool Joystick::update()
 {
-  if (joystickId == -1)
+  if (joystickId == std::numeric_limits<unsigned int>::max())
     return false;
 
   // poll for new events
@@ -101,7 +102,7 @@ bool Joystick::update()
 
 bool Joystick::getNextEvent(unsigned int& buttonId, bool& pressed)
 {
-  ASSERT(joystickId != -1);
+  ASSERT(joystickId != std::numeric_limits<unsigned int>::max());
   if (buttonEvents[0] == 0 && buttonEvents[1] == 0)
     return false;
 
@@ -124,14 +125,14 @@ bool Joystick::getNextEvent(unsigned int& buttonId, bool& pressed)
 
 float Joystick::getAxisState(unsigned int axisId) const
 {
-  ASSERT(joystickId != -1);
+  ASSERT(joystickId != std::numeric_limits<unsigned int>::max());
   ASSERT(axisId < numOfAxes);
   return (32767 - int(axisState[axisId])) / 32767.f;
 }
 
 bool Joystick::isButtonPressed(unsigned int buttonId) const
 {
-  ASSERT(joystickId != -1);
+  ASSERT(joystickId != std::numeric_limits<unsigned int>::max());
   ASSERT(buttonId < numOfButtons);
   return buttonState[buttonId / 32] & (1 << (buttonId % 32)) ? true : false;
 }

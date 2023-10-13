@@ -15,7 +15,7 @@
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
-#include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 #include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/InertialData.h"
@@ -57,7 +57,7 @@ MODULE(MotionLogDataProvider,
   PROVIDES(RobotInfo),
   PROVIDES(SpeedRequest),
   PROVIDES(SystemSensorData),
-  PROVIDES(UsSensorData),
+  PROVIDES(SonarSensorData),
   PROVIDES(WalkCalibration)
 );
 
@@ -102,7 +102,7 @@ public:
   void update(RobotInfo&) {}
   void update(SpeedRequest&) {}
   void update(SystemSensorData&) {}
-  void update(UsSensorData&) {}
+  void update(SonarSensorData&) {}
   void update(WalkCalibration&) {}
 
   /**

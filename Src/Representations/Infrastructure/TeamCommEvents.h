@@ -8,6 +8,7 @@
 #pragma once
 
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Streams/Compressed.h"
 #include "Tools/Enum.h"
 #include "Tools/Math/Eigen.h"
 
@@ -24,9 +25,23 @@ STREAMABLE(TeamCommEvents,
     ballMoved,
     ballchaserFallDown,
     symmetryLost,
-    symmetryUpdate
+    symmetryUpdate,
+    newBallchaser,
+    timeResponse
   );
+
+  using SendReasonVectorCompressed = EnumVectorCompressed<SendReason COMMA SendReason::numOfSendReasons>;
   ,
   (bool) sendThisFrame,
-  (std::vector<SendReason>)({}) sendReasons
+  (std::vector<SendReason>) sendReasons
+);
+
+STREAMABLE(TeamCommEventsCompressed,
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 2;
+
+  TeamCommEventsCompressed() = default;
+  explicit TeamCommEventsCompressed(const TeamCommEvents& teamCommEvents) : sendReasons(teamCommEvents.sendReasons) {};
+  ,
+  ((TeamCommEvents) SendReasonVectorCompressed) sendReasons
 );

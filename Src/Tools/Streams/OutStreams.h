@@ -834,6 +834,30 @@ public:
   virtual bool isBinary() const { return true; }
 };
 
+class OutCompressedBinaryMemory : public OutBinaryMemory
+{
+  using OutBinaryMemory::OutBinaryMemory;
+
+public:
+  /**
+   * The function returns whether this is a compressed (binary) stream.
+   * @return Does it output data in compressed binary format?
+   */
+  virtual bool isCompressed() const { return true; }
+};
+
+class OutCompressedBinarySize : public OutBinarySize
+{
+  using OutBinarySize::OutBinarySize;
+
+public:
+  /**
+   * The function returns whether this is a compressed (binary) stream.
+   * @return Does it output data in compressed binary format?
+   */
+  virtual bool isCompressed() const { return true; }
+};
+
 /**
  * @class OutTextFile
  *
@@ -950,6 +974,8 @@ class OutMap : public Out
   /**
    * An entry representing the current state in the writing process.
    */
+
+protected:
   class Entry
   {
   public:
@@ -967,7 +993,6 @@ class OutMap : public Out
   /** Writes a line break or simply a space if singleLine is active. */
   void writeLn();
 
-protected:
   /**
    * Writes to a stream in config map format.
    * @param stream The stream that is written to.
@@ -1085,4 +1110,111 @@ public:
    * @return The size of the memory block required for the data written.
    */
   size_t getSize() const { return stream.getSize(); }
+};
+
+class OutJSON : public OutMap
+{
+public:
+  /**
+   * Select an entry for writing.
+   * @param name The name of the entry if type == -2, otherwise 0.
+   * @param type The type of the entry.
+   *             -2: value or record,
+   *             -1: array,
+   *             >= 0: array element index.
+   * @param enumToString A function that translates an enum to a string.
+   */
+  virtual void select(const char* name, int type, const char* (*enumToString)(int));
+
+  /** Deselects a field for writing. */
+  virtual void deselect();
+
+  /**
+   * Writes to a stream in config map format.
+   * @param stream The stream that is written to.
+   * @param singleLine Output to a single line.
+   */
+  OutJSON(Out& stream, bool singleLine);
+
+  void finish() { stream << " }"; }
+
+protected:
+  virtual void outAngle(const Angle& value);
+  virtual void outString(const char* value);
+  virtual void outUChar(unsigned char value);
+  bool writeSeperator = false;
+};
+
+/**
+ * @class OutJSONFile
+ *
+ * A stream that writes data to a text file in json format.
+ */
+class OutJSONFile : public OutJSON
+{
+private:
+  OutTextRawFile stream; /**< The text stream to write to. */
+
+public:
+  /**
+   * Constructor.
+   * @param name The name of the config file to write to.
+   * @param singleLine Output to a single line.
+   */
+  OutJSONFile(const std::string& name, bool singleLine = false);
+
+  /**
+   * Checks whether was successfully opened.
+   * @return Was it possible to open that file for writing?
+   */
+  bool exists() const { return stream.exists(); }
+};
+
+/**
+ * @class OutJSONMemory
+ *
+ * A stream that writes data to a memory block json format.
+ */
+class OutJSONMemory : public OutJSON
+{
+private:
+  OutTextRawMemory stream; /**< The memory stream to write to. */
+
+public:
+  /**
+   * Constructor.
+   * @param memory The block of memory that will be written to.
+   * @param singleLine Output to a single line.
+   */
+  OutJSONMemory(void* memory, bool singleLine = false);
+  ~OutJSONMemory() { finish(); }
+  /**
+   * Returns the number of written bytes
+   */
+  size_t getLength() const { return stream.getLength(); }
+};
+
+/**
+ * @class OutJSONSize
+ *
+ * A stream that determines the number of bytes required to write data in json format.
+ */
+class OutJSONSize : public OutJSON
+{
+private:
+  OutTextRawSize stream; /**< The stream that determines the size required. */
+
+public:
+  /**
+   * Constructor.
+   * @param singleLine Assume that output is to a single line.
+   */
+  OutJSONSize(bool singleLine = false);
+
+  /**
+   * The function returns the number of bytes required to store the
+   * data written so far.
+   * @return The size of the memory block required for the data written.
+   */
+  size_t getSize() const { return stream.getSize() + 2; }
 };

@@ -20,7 +20,7 @@ MotionConfigurationDataProvider::MotionConfigurationDataProvider()
   readOdometryCorrectionTables();
   readRobotDimensions();
   readStiffnessSettings();
-  readUsConfiguration();
+  readSonarConfiguration();
 }
 
 void MotionConfigurationDataProvider::update(FieldDimensions& fieldDimensions)
@@ -103,12 +103,12 @@ void MotionConfigurationDataProvider::update(StiffnessSettings& stiffnessSetting
   }
 }
 
-void MotionConfigurationDataProvider::update(UsConfiguration& usConfiguration)
+void MotionConfigurationDataProvider::update(SonarConfiguration& sonarConfiguration)
 {
-  if (theUsConfiguration)
+  if (theSonarConfiguration)
   {
-    usConfiguration = *theUsConfiguration;
-    theUsConfiguration.reset();
+    sonarConfiguration = *theSonarConfiguration;
+    theSonarConfiguration.reset();
   }
 }
 
@@ -207,14 +207,14 @@ void MotionConfigurationDataProvider::readStiffnessSettings()
   }
 }
 
-void MotionConfigurationDataProvider::readUsConfiguration()
+void MotionConfigurationDataProvider::readSonarConfiguration()
 {
-  ASSERT(!theUsConfiguration);
+  ASSERT(!theSonarConfiguration);
 
-  InMapFile stream("usConfiguration.cfg");
+  InMapFile stream("sonarConfiguration.cfg");
   if (stream.exists())
   {
-    theUsConfiguration = std::make_unique<UsConfiguration>();
-    stream >> *theUsConfiguration;
+    theSonarConfiguration = std::make_unique<SonarConfiguration>();
+    stream >> *theSonarConfiguration;
   }
 }

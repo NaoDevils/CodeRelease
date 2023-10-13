@@ -307,7 +307,7 @@ std::unique_ptr<tf::Taskflow> ModuleManager::generateTaskflow(const std::list<Pr
     updateTasks[&provider] =
         taskflow
             ->emplace(
-                [&]()
+                [&]() noexcept
                 {
                   if (provider.moduleState->instance)
                     provider.update(*provider.moduleState->instance);
@@ -329,10 +329,17 @@ std::unique_ptr<tf::Taskflow> ModuleManager::generateTaskflow(const std::list<Pr
         executeTasks[provider.moduleState->module] =
             taskflow
                 ->emplace(
-                    [&, execute = info->execute](tf::Subflow& subflow)
+                    [&, execute = info->execute](tf::Subflow& subflow) noexcept
                     {
                       if (provider.moduleState->instance)
-                        execute(*provider.moduleState->instance, subflow);
+                      {
+                        STOPWATCH(provider.moduleState->module->name)
+                        {
+                          execute(*provider.moduleState->instance, subflow);
+                          if (subflow.joinable())
+                            subflow.join();
+                        }
+                      }
                     })
                 .name(std::string(provider.moduleState->module->name) + " [" + provider.moduleState->module->name + "]");
       }

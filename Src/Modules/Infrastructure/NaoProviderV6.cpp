@@ -100,9 +100,11 @@ void NaoProviderV6::send()
   for (size_t i = 0; i < positions.size(); ++i)
   {
     if (positions[i] != SensorData::off)
+    {
       positions[i] += theJointDeCalibration.joints[i].offset + theJointCalibration.joints[i].offset;
+    }
   }
-  copyAndCastWithSourceMapping(theJointRequest.angles, actuators.positions, jointsToBase);
+  copyAndCastWithSourceMapping(positions, actuators.positions, jointsToBase);
 
   /* STIFFNESS */
   // map int [0...100] to float [0.f...1.f]
@@ -129,7 +131,9 @@ void NaoProviderV6::send()
   {
     const auto state = theLEDRequest.ledStates[i];
 
-    leds[i] = (state == LEDRequest::on || (state == LEDRequest::blinking && on) || (state == LEDRequest::fastBlinking && fastOn)) ? 1.0f : (state == LEDRequest::half ? 0.5f : 0.0f);
+    leds[i] = (state == LEDRequest::on || (state == LEDRequest::blinking && on) || (state == LEDRequest::fastBlinking && fastOn))
+        ? 1.0f
+        : ((state == LEDRequest::half || (state == LEDRequest::halfBlinking && on) || (state == LEDRequest::halfFastBlinking && fastOn)) ? 0.5f : 0.0f);
   }
 
   copyAndCastWithTargetMapping(leds, actuators.chestLEDs, chestLEDsFromBase);
@@ -144,8 +148,8 @@ void NaoProviderV6::send()
   copyAndCastWithTargetMapping(leds, actuators.skullLEDs, skullLEDsFromBase);
 
   /* SONAR */
-  actuators.sonars[0] = false; // unimplemented
-  actuators.sonars[1] = false; // unimplemented
+  actuators.sonars[0] = true;
+  actuators.sonars[1] = true;
 
   naoBody.closeActuators();
 }
@@ -159,12 +163,32 @@ void NaoProviderV6::update(FrameInfo& frameInfo)
 void NaoProviderV6::update(FsrSensorData& fsrSensorData)
 {
   const auto& fsr = naoBody.getSensors().fsr;
+  unsigned currentTime = theFrameInfo.time;
 
   copyAndCastWithTargetMapping(fsr, fsrSensorData.left, lFsrToBase);
   copyAndCastWithTargetMapping(fsr, fsrSensorData.right, rFsrToBase);
 
   fsrSensorData.leftTotal = std::accumulate(fsrSensorData.left.begin(), fsrSensorData.left.end(), 0.f);
   fsrSensorData.rightTotal = std::accumulate(fsrSensorData.right.begin(), fsrSensorData.right.end(), 0.f);
+
+  // update fsrRef during set
+  const auto& angle = naoBody.getSensors().angle;
+  if (theGameInfo.state != STATE_SET)
+  {
+    updateFsrRef = true;
+    setState = false;
+  }
+  if (theGameInfo.state == STATE_SET && abs(angle[0]) < 10 && abs(angle[1]) < 10 && !setState)
+  {
+    setStarted = currentTime;
+    setState = true;
+  }
+
+  if (theGameInfo.state == STATE_SET && abs(angle[0]) < 10 && abs(angle[1]) < 10 && currentTime - setStarted > 7000 && updateFsrRef)
+  {
+    fsrSensorData.fsrRef = fsrSensorData.leftTotal + fsrSensorData.rightTotal;
+    updateFsrRef = false;
+  }
 }
 
 void NaoProviderV6::update(InertialSensorData& inertialSensorData)
@@ -232,7 +256,11 @@ void NaoProviderV6::update(JointSensorData& jointSensorData)
   copyAndCastWithTargetMapping(sensors.status, jointSensorData.status, jointsToBase);
 
   for (size_t i = 0; i < Joints::numOfJoints; i++)
-    jointSensorData.angles[i] -= theJointDeCalibration.joints[i].offset;
+  {
+    jointSensorData.angles[i] -= theJointCalibration.joints[i].offset;
+    if (i >= Joints::firstLeftLegJoint)
+      jointSensorData.angles[i] -= theWalkCalibration.legJointCalibration[i - Joints::firstLeftLegJoint];
+  }
 
   jointSensorData.timestamp = theFrameInfo.time;
 }
@@ -255,7 +283,15 @@ void NaoProviderV6::update(SystemSensorData& systemSensorData)
   systemSensorData.batteryCurrent = battery[NDData::Battery::current];
   systemSensorData.batteryLevel = battery[NDData::Battery::charge];
   systemSensorData.batteryTemperature = battery[NDData::Battery::temperature];
-  // TODO: what about Battery::status?
+  systemSensorData.chargingStatus = !(static_cast<int>(battery[NDData::Battery::status]) & 0b100000);
+}
+
+void NaoProviderV6::update(SonarSensorData& sonarSensorData)
+{
+  const auto& sonar = naoBody.getSensors().sonar;
+  sonarSensorData.leftDistanceM = sonar.at(0);
+  sonarSensorData.rightDistanceM = sonar.at(1);
+  sonarSensorData.timestamp = theFrameInfo.time;
 }
 
 #endif // TARGET_ROBOT

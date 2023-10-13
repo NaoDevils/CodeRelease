@@ -1,0 +1,35 @@
+call Includes/FieldViewsCreate
+call Includes/FieldViewsPercepts
+
+mr RobotsHypothesesYolo YoloRobotDetector
+mr RobotsHypothesesYoloUpper YoloRobotDetector
+mr ProcessedRobotsHypotheses RobotClassifier
+mr RobotsPerceptClassified RobotClassifier
+mr RobotsPerceptTeam JerseyColorDetector
+mr RobotsPerceptOrientation RobotOrientationDetector
+mr RobotsPercept RobotsPerceptProvider
+
+vd representation:RobotsPercept
+vd parameters:KalmanMultiRobotMapProvider 
+
+echo dr module:KalmanMultiRobotMapProvider:reset 
+echo
+echo === relative drawings ===
+echo vfd worldState origin:RobotPose 
+echo
+echo vfd worldState module:KalmanMultiRobotMapProvider:perceptBuffer
+echo
+echo vfd worldState module:KalmanMultiRobotMapProvider:localHypotheses 
+echo vfd worldState module:KalmanMultiRobotMapProvider:remoteHypotheses 
+echo vfd worldState module:KalmanMultiRobotMapProvider:mergedHypotheses 
+echo 
+echo vfd worldState module:KalmanMultiRobotMapProvider:hypothesisMerge 
+echo vfd worldState module:KalmanMultiRobotMapProvider:perceptCreate 
+echo vfd worldState module:KalmanMultiRobotMapProvider:perceptMerge 
+echo 
+echo vfd worldState module:KalmanMultiRobotMapProvider:sonarPercept 
+echo vfd worldState module:KalmanMultiRobotMapProvider:sonarPerceptLeft 
+echo vfd worldState module:KalmanMultiRobotMapProvider:sonarPerceptRight 
+echo
+echo === back to global coordinates ===
+echo vfd worldState origin:Reset 

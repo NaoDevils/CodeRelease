@@ -5,6 +5,7 @@
 #include "Modules/MotionControl/DortmundWalkingEngine/CSConverter2019.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/HeadControlRequest.h"
+#include "Representations/BehaviorControl/KeySymbols.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/MotionControl/KinematicOutput.h"
@@ -13,7 +14,9 @@
 #include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/WalkingInfo.h"
+#include "Representations/Modeling/RobotPose.h"
 #include "Representations/Configuration/RobotDimensions.h"
+#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/ZMPModel.h"
@@ -30,12 +33,15 @@ MODULE(AutoCalibrator,
   REQUIRES(BehaviorData),
   REQUIRES(WalkingEngineParams),
   REQUIRES(RobotDimensions),
+  REQUIRES(FieldDimensions),
   REQUIRES(JointSensorData),
   REQUIRES(MassCalibration),
   REQUIRES(RobotModel),
+  REQUIRES(RobotPose),
   REQUIRES(ZMPModel),
   REQUIRES(JoinedIMUData),
-  USES(JointRequest),
+  REQUIRES(KeySymbols),
+  USES(RawJointRequest),
   USES(KinematicOutput),
   PROVIDES(WalkCalibration),
   PROVIDES(MotionRequest),
@@ -45,11 +51,10 @@ MODULE(AutoCalibrator,
     ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
     (Angle)(0.01_deg) gyroMaxVariance,
     (float)(0.005) targetBodyGravityMaxDiff,
-    (float)(0.5f) bodyAngleCorrectionP,
-    (float)(0.1f) targetBodyCoMXMaxDiff, // in mm
-    (float)(0.f) targetBodyCoMX, // in mm
-    (float)(0.5f) bodyCoMCorrectionP,
-    (float)(0.5f) bodyCoMCorrectionD
+    (float)(0.03f) bodyGravityCorrectionP,
+    (float)(0.90f) minValidityForRobotPose,
+    (bool)(true) useFieldInclinationFromFile,
+    (bool)(false) mirrorFieldInclination
   )
 );
 
@@ -68,9 +73,13 @@ private:
 
   ENUM(BodyAngleCalibrationState,
     adjustingBodyAngle,
-    checkBodyAngleWithSensorControl,
-    adjustingCoM,
-    checkCoMWithSensorControl
+    fieldLeveling
+  );
+
+  ENUM(FieldLevelingState,
+    waitingForManualPositioning,
+    adjustingFootPitch,
+    waitingForGoodLocalization
   );
 
   ENUM(WalkCalibrationState,
@@ -89,6 +98,7 @@ private:
   void calibrateWalk();
 
   WalkCalibration localWalkCalibration;
+  Vector2a fieldInclinationFromConfig = Vector2a::Zero();
   CSConverter2019Base::Parameters csConverterParams;
 
   std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersX;
@@ -100,13 +110,18 @@ private:
   std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> angleDataBuffersX;
   std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> angleDataBuffersY;
 
-  Vector3f lastCoMError = Vector3f::Zero();
+  std::vector<std::tuple<Vector2f, Vector2a>> fieldLevelingPoints;
 
+  Vector2a lastFieldInclination = Vector2a::Zero();
+
+  bool pressedHeadFront = false;
+  bool opponentHalf = false;
   unsigned timeCalibrationStart = 0;
   unsigned timeInternalStateSwitch = 0;
   CalibrationState calibrationState = CalibrationState::inactive;
   CalibrationState lastCalibrationState = CalibrationState::inactive;
   BodyAngleCalibrationState bodyAngleCalibrationState = BodyAngleCalibrationState::adjustingBodyAngle;
+  FieldLevelingState fieldLevelingState = FieldLevelingState::waitingForManualPositioning;
   WalkCalibrationState walkCalibrationState = WalkCalibrationState::adjustingSensorControl;
   bool calibrationLoaded = false;
   ModuleManager::Configuration oldConfig; /**< Needed to save the previous Module Configuration while switching for calibration. */

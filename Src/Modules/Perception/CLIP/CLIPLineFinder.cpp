@@ -25,7 +25,32 @@ void CLIPLineFinder::reset()
   foundLinesUpper.clear();
   localCenterCirclePercept.centerCircleWasSeen = false;
   centerCircles.clear();
+  penaltyCrossHypotheses.clear();
+  penaltyCrossHypothesesUpper.clear();
   wasReset = true;
+}
+
+void CLIPLineFinder::declareDebugDrawings()
+{
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCircle:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCircle:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCirclePoints:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCirclePoints:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LineSegments:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LineSegments:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesRaw:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesRaw:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesEnhanced:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesEnhanced:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:Connections:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:Connections:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:penaltyCross:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:penaltyCross:Lower", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:checkForLineBetween", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:checkForWhiteBetween", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:verifyLineSegment", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:connectPoints:Upper", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:connectPoints:Lower", "drawingOnImage");
 }
 
 bool validityHigher(const CLIPFieldLinesPercept::FieldLine& first, const CLIPFieldLinesPercept::FieldLine& second)
@@ -35,6 +60,8 @@ bool validityHigher(const CLIPFieldLinesPercept::FieldLine& first, const CLIPFie
 
 void CLIPLineFinder::execute(const bool& upper)
 {
+  declareDebugDrawings();
+
   const Image& image = upper ? (Image&)theImageUpper : (Image&)theImage;
 
   unsigned timeStamp = upper ? lastExecutionTimeStampUpper : lastExecutionTimeStamp;
@@ -86,9 +113,7 @@ void CLIPLineFinder::execute(const bool& upper)
       pointNo++;
     }
 
-    checkYoloPenaltyCross(upper);
-
-    connectPoints();
+    connectPoints(upper);
 
     createSegments(upper);
 
@@ -185,30 +210,7 @@ void CLIPLineFinder::execute(const bool& upper)
   }
 }
 
-void CLIPLineFinder::checkYoloPenaltyCross(bool upper)
-{
-  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
-  std::vector<PenaltyCross> pcs = upper ? thePenaltyCrossHypothesesYolo.penaltyCrossesUpper : thePenaltyCrossHypothesesYolo.penaltyCrosses;
-
-  if (pcs.size() > 0)
-  {
-    std::sort(pcs.begin(), pcs.end());
-    PenaltyCross pc = pcs[0];
-    Vector2f pImage(pc.positionInImage);
-    Vector2f pField;
-    if (Transformation::imageToRobot(pImage, cameraMatrix, cameraInfo, pField))
-    {
-      localPenaltyCrossPercept.pointInImage = pImage.cast<int>();
-      localPenaltyCrossPercept.pointOnField = pField.cast<int>();
-      localPenaltyCrossPercept.penaltyCrossWasSeen = true;
-      localPenaltyCrossPercept.fromUpper = upper;
-      localPenaltyCrossPercept.detectionType = PenaltyCrossPercept::yolo;
-    }
-  }
-}
-
-void CLIPLineFinder::connectPoints()
+void CLIPLineFinder::connectPoints(const bool& upper)
 {
   int pointNo = 0, pointNoOther = 1;
   int size = static_cast<int>(linePoints.size());
@@ -216,7 +218,7 @@ void CLIPLineFinder::connectPoints()
   int closestDistance = 0, dist = 0;
   float distOther = 0.f;
   float closestDistanceOther = 0.f;
-  float maxLineSizeDiff = (float)(imageHeight / 120);
+  //float maxLineSizeDiff = (float)(imageHeight / 120);
   while (pointNo < size - 1)
   {
     pointNoOther = pointNo + 1;
@@ -227,22 +229,26 @@ void CLIPLineFinder::connectPoints()
     {
       const CLIPPointsPercept::Point* p = linePoints[pointNo].point;
       const CLIPPointsPercept::Point* pOther = linePoints[pointNoOther].point;
-      int scanLineDist = p->isVertical ? pOther->scanLineNoV - p->scanLineNoV : pOther->scanLineNoH - p->scanLineNoH;
-      if (p->isVertical == pOther->isVertical && scanLineDist > 0)
+
+      Vector2i scanLineNoP(p->scanLineNoV, p->scanLineNoH);
+      Vector2i scanLineNoPOther(pOther->scanLineNoV, pOther->scanLineNoH);
+      int scanLineDist = (scanLineNoPOther - scanLineNoP).norm();
+      if (scanLineDist > 0 && scanLineDist <= maxNoDistLinesImage)
       {
-        if (scanLineDist > maxNoDistLinesImage) // test points are too far away, stop search for near points to p
-          break;
+        float distY = std::abs(p->inImage.y() - pOther->inImage.y());
+        float distX = std::abs(p->inImage.x() - pOther->inImage.x());
         // angle to the next point in image should not be too steep, the orthogonal scan lines should get that line
-        if (((p->isVertical && std::abs(p->inImage.y() - pOther->inImage.y()) < 3 * std::abs(p->inImage.x() - pOther->inImage.x()))
-                || ((!p->isVertical) && std::abs(p->inImage.x() - pOther->inImage.x()) < 3 * std::abs(p->inImage.y() - pOther->inImage.y())))
-            && std::abs(p->lineSizeInImage - pOther->lineSizeInImage) < std::max<float>((p->lineSizeInImage + pOther->lineSizeInImage) / 12.f, maxLineSizeDiff))
+        if (((p->isVertical && distY < distX / scanLineDist) || (!p->isVertical && distX < distY / scanLineDist))
+            /*&& std::abs(p->lineSizeInImage - pOther->lineSizeInImage) < std::max<float>((p->lineSizeInImage + pOther->lineSizeInImage) / 12.f, maxLineSizeDiff)*/)
         {
           dist = scanLineDist;
-          distOther = p->isVertical ? std::abs(p->inImage.y() - pOther->inImage.y()) : std::abs(p->inImage.x() - pOther->inImage.x());
+          //distOther = p->isVertical ? distY : distX;
+          distOther = (p->inImage - pOther->inImage).norm();
+
           /*linePoints[pointNoOther].predecessor ? imageWidth :
             (p->isVertical ? abs(pOther->scanLineNoY-linePoints[pointNoOther].predecessor->point->scanLineNoY) :
               abs(pOther->scanLineNoX-linePoints[pointNoOther].predecessor->point->scanLineNoX));*/
-          if (dist < closestDistance)
+          if (dist < closestDistance || distOther < closestDistanceOther)
           {
             closestPoint = pointNoOther;
             closestDistance = dist;
@@ -265,6 +271,39 @@ void CLIPLineFinder::connectPoints()
     }
     pointNo++;
   }
+
+  if (upper)
+  {
+    COMPLEX_DRAWING("module:CLIPLineFinder:connectPoints:Upper")
+    {
+      for (size_t i = 0; i < linePoints.size(); i++)
+      {
+        if (linePoints[i].successor >= 0 && linePoints[linePoints[i].successor].predecessor == static_cast<int>(i))
+        {
+          const CLIPPointsPercept::Point* p = linePoints[i].point;
+          const CLIPPointsPercept::Point* pSuccessor = linePoints[linePoints[i].successor].point;
+          //bool vertical = p->isVertical || pSuccessor->isVertical;
+          ARROW("module:CLIPLineFinder:connectPoints:Upper", p->inImage.x(), p->inImage.y(), pSuccessor->inImage.x(), pSuccessor->inImage.y(), 1, Drawings::solidPen, ColorRGBA::orange);
+        }
+      }
+    }
+  }
+  else
+  {
+    COMPLEX_DRAWING("module:CLIPLineFinder:connectPoints:Lower")
+    {
+      for (size_t i = 0; i < linePoints.size(); i++)
+      {
+        if (linePoints[i].successor >= 0 && linePoints[linePoints[i].successor].predecessor == static_cast<int>(i))
+        {
+          const CLIPPointsPercept::Point* p = linePoints[i].point;
+          const CLIPPointsPercept::Point* pSuccessor = linePoints[linePoints[i].successor].point;
+          //bool vertical = p->isVertical || pSuccessor->isVertical;
+          ARROW("module:CLIPLineFinder:connectPoints:Lower", p->inImage.x(), p->inImage.y(), pSuccessor->inImage.x(), pSuccessor->inImage.y(), 1, Drawings::solidPen, ColorRGBA::orange);
+        }
+      }
+    }
+  }
 }
 
 void CLIPLineFinder::createSegments(const bool& upper)
@@ -273,7 +312,7 @@ void CLIPLineFinder::createSegments(const bool& upper)
   int nextPoint = -1;
   int size = (int)linePoints.size();
   std::vector<Vector2f> testPoints;
-  float lastAngle = 0.f, angle = 0.f;
+  Angle lastAngle = 0.f, angle = 0.f;
 
   for (int pointNo = 0; pointNo < size; pointNo++)
   {
@@ -291,14 +330,14 @@ void CLIPLineFinder::createSegments(const bool& upper)
       }
       testPoints.clear();
       LineSegment testSeg;
-      testSeg.startPoint = pointNo;
+      testSeg.startPoint = prevPoint;
       testSeg.endPoint = nextPoint;
-      testPoints.push_back(linePoints[pointNo].point->inImage);
+      testPoints.push_back(linePoints[prevPoint].point->inImage);
       testSeg.avgError = 0.f;
       testSeg.maxError = 0.f;
       testSeg.angleSum = 0.f;
       testSeg.onCircle = false;
-      testSeg.avgWidth = linePoints[pointNo].point->lineSizeInImage;
+      testSeg.avgWidth = linePoints[prevPoint].point->lineSizeInImage;
 
       testSeg.pointNo = 1;
       linePoints[prevPoint].onLine = true;
@@ -565,7 +604,7 @@ void CLIPLineFinder::connectSegments(const bool& upper)
   bool foundConnection = false;
   while (segNo < (int)lineSegments.size())
   {
-    if (lineSegments[segNo].pointNo <= 3 && createPenaltyCross(lineSegments[segNo], upper))
+    if (lineSegments[segNo].pointNo <= 5 && createPenaltyCross(lineSegments[segNo], upper))
     {
       Vector2f pImage((linePoints[lineSegments[segNo].endPoint].point->inImage + linePoints[lineSegments[segNo].endPoint].point->inImage) * 0.5f);
       Vector2f pField;
@@ -635,7 +674,7 @@ void CLIPLineFinder::connectSegments(const bool& upper)
 
 bool CLIPLineFinder::finishLineSegment(LineSegment& seg, int endPoint, std::vector<Vector2f>& testPoints, const bool& upper)
 {
-  if (testPoints.size() > 2)
+  if (testPoints.size() >= 2)
   {
     seg.endPoint = endPoint;
     testPoints.pop_back();
@@ -675,7 +714,7 @@ bool CLIPLineFinder::verifyLineSegment(LineSegment& seg)
   //if (std::abs(seg.angleSum) < minAngleSumCircleImage)
   {
     bool errorSumTooHigh = true;
-    while (errorSumTooHigh && seg.pointNo > 2)
+    while (errorSumTooHigh && seg.pointNo >= 2)
     {
       Geometry::Line testLine = Geometry::Line(linePoints[seg.startPoint].point->inImage, linePoints[seg.endPoint].point->inImage - linePoints[seg.startPoint].point->inImage);
       int lastPoint = seg.startPoint;
@@ -760,7 +799,7 @@ bool CLIPLineFinder::verifyLineSegment(LineSegment& seg)
     seg.avgError /= seg.pointNo;
     seg.avgWidth /= seg.pointNo;
   }
-  return seg.pointNo > 2;
+  return seg.pointNo >= 2;
 }
 
 void CLIPLineFinder::correctCenterCircle() {}
@@ -1104,80 +1143,6 @@ bool CLIPLineFinder::verifyCircle(const CenterCircle& circle, const bool checkSe
   return distSum / pointNo < maxAvgPointDistToCircleField && maxDist < maxDistPointsToCircleField && pointNo > minPointsForCenterCircle / 2; // && (!checkSeenAngle || (maxAngle-minAngle < 0.7));
 }
 
-bool CLIPLineFinder::verifyCenterCircle(const CenterCircle& circle, const bool& upper)
-{
-  const Image& image = upper ? (Image&)theImageUpper : theImage;
-  const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
-  const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
-
-  const float pi_16 = pi_4 / 4;
-  const Vector2f pFieldBase(circle.circle.center);
-
-  Vector2f pImageLeft, pImageMiddle, pImageRight;
-
-  Vector2f pFieldCenterToCircle(circle.circle.radius, 0);
-  Vector2f pFieldRight = pFieldBase + pFieldCenterToCircle;
-  pFieldCenterToCircle.rotate(pi_16);
-  Vector2f pFieldMiddle = pFieldBase + pFieldCenterToCircle;
-  pFieldCenterToCircle.rotate(pi_16);
-  Vector2f pFieldLeft = pFieldBase + pFieldCenterToCircle;
-  if (!Transformation::robotToImage(pFieldLeft, cameraMatrix, cameraInfo, pImageLeft))
-    pImageLeft.x() = -1;
-  if (!Transformation::robotToImage(pFieldMiddle, cameraMatrix, cameraInfo, pImageMiddle))
-    pImageMiddle.x() = -1;
-  if (!Transformation::robotToImage(pFieldRight, cameraMatrix, cameraInfo, pImageRight))
-    pImageRight.x() = -1;
-
-  unsigned int i = 0;
-  unsigned int fails = 0;
-  unsigned int oks = 0;
-  int tries = 16;
-
-  while ((image.isOutOfImage(pImageLeft.x(), pImageLeft.y(), 3) || image.isOutOfImage(pImageMiddle.x(), pImageMiddle.y(), 3) || image.isOutOfImage(pImageRight.x(), pImageRight.y(), 3)) && i < 15)
-  {
-    Vector2f pFieldRight = pFieldLeft;
-    pFieldCenterToCircle.rotate(pi_16);
-    Vector2f pFieldMiddle = pFieldBase + pFieldCenterToCircle;
-    pFieldCenterToCircle.rotate(pi_16);
-    Vector2f pFieldLeft = pFieldBase + pFieldCenterToCircle;
-    if (!Transformation::robotToImage(pFieldLeft, cameraMatrix, cameraInfo, pImageLeft))
-      pImageLeft.x() = -1;
-    if (!Transformation::robotToImage(pFieldMiddle, cameraMatrix, cameraInfo, pImageMiddle))
-      pImageMiddle.x() = -1;
-    if (!Transformation::robotToImage(pFieldRight, cameraMatrix, cameraInfo, pImageRight))
-      pImageRight.x() = -1;
-    i++;
-  }
-  for (; i < 16; i++)
-  {
-    Vector2f pFieldRight = pFieldLeft;
-    pFieldCenterToCircle.rotate(pi_16);
-    Vector2f pFieldMiddle = pFieldBase + pFieldCenterToCircle;
-    pFieldCenterToCircle.rotate(pi_16);
-    Vector2f pFieldLeft = pFieldBase + pFieldCenterToCircle;
-    if (!Transformation::robotToImage(pFieldLeft, cameraMatrix, cameraInfo, pImageLeft) || !Transformation::robotToImage(pFieldMiddle, cameraMatrix, cameraInfo, pImageMiddle)
-        || !Transformation::robotToImage(pFieldRight, cameraMatrix, cameraInfo, pImageRight) || image.isOutOfImage(pImageLeft.x(), pImageLeft.y(), 3)
-        || image.isOutOfImage(pImageMiddle.x(), pImageMiddle.y(), 3) || image.isOutOfImage(pImageRight.x(), pImageRight.y(), 3))
-      continue;
-    else
-    {
-      // TODO: drawing!
-      // TODO: sanity check
-      // TODO: check condition - should be between -normal and + normal?
-      float lineSize = Geometry::calculateLineSizePrecise(pImageMiddle.cast<int>(), cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth);
-      Vector2f checkPoint((pImageLeft.x() + pImageRight.x()) / 2, (pImageLeft.y() + pImageRight.y()) / 2);
-      Vector2f normal((pImageLeft.x() - pImageRight.x()), (pImageLeft.y() - pImageRight.y()));
-      normal.rotateRight().normalize(lineSize * 3);
-      if (!checkForWhiteBetween(checkPoint, checkPoint + normal, lineSize, upper))
-        fails++;
-      else
-        oks++;
-    }
-    tries--;
-  }
-  return (fails < 2 && oks > 2 && tries < 10);
-}
-
 bool CLIPLineFinder::connect2Segments(LineSegment& segA, LineSegment& segB, const bool& upper)
 {
   // TODO: check for sensible line width diffs
@@ -1381,9 +1346,29 @@ bool CLIPLineFinder::createPenaltyCross(const LineSegment& seg, const bool& uppe
   const Vector2f basePoint((linePoints[seg.endPoint].point->inImage.x() + linePoints[seg.startPoint].point->inImage.x()) / 2.f,
       (linePoints[seg.endPoint].point->inImage.y() + linePoints[seg.startPoint].point->inImage.y()) / 2.f);
   Vector2f checkPoint = basePoint;
-  float lineSize = Geometry::calculateLineSizePrecise(Vector2i((int)checkPoint.x(), (int)checkPoint.y()), cameraMatrix, cameraInfo, theFieldDimensions.fieldLinesWidth);
+  float lineSize = Geometry::calculateLineSizePrecise(Vector2i((int)checkPoint.x(), (int)checkPoint.y()), cameraMatrix, cameraInfo, theFieldDimensions.penaltyMarkSize);
+  float segLength = (linePoints[seg.endPoint].point->inImage - linePoints[seg.startPoint].point->inImage).norm();
+
+  float minConfidence = upper ? minConfidenceForPenaltyCrossUpper : minConfidenceForPenaltyCrossLower;
+  float confidence = 1.f - (abs(segLength - lineSize) / lineSize);
+
+  if (confidence < minConfidence) // First check of the confidence since it cannot get bigger
+    return false;
+
+  Vector2f checkPointOnField;
+  if (Transformation::imageToRobot(checkPoint.x(), checkPoint.y(), cameraMatrix, cameraInfo, checkPointOnField))
+  {
+    float distance = checkPointOnField.norm();
+    float distanceFactor = std::max(0.5f, std::min(1.0f, 1.f - (distance / 9000.f)));
+    confidence *= distanceFactor;
+  }
+
+  if (confidence < minConfidence) // Second check of the confidence with the distanceFactor included
+    return false;
+
   if (lineSize < imageHeight / 80)
     return false;
+
   Vector2f scanDir(1.f, 0.f);
   float count = 0.f;
   float whiteCount[8];
@@ -1395,12 +1380,13 @@ bool CLIPLineFinder::createPenaltyCross(const LineSegment& seg, const bool& uppe
     count = 0.f;
     whiteCount[i] = 0.f;
     checkPoint = basePoint;
-    while (count < lineSize * 3)
+    while (count < lineSize * 0.75f)
     {
       count++;
       checkPoint += scanDir;
       if (image.isOutOfImage((checkPoint + scanDir).x(), (checkPoint + scanDir).y(), 3))
-        return false;
+        continue;
+        //return false;
 #ifdef USE_FULL_RESOLUTION
       Image::YUVPixel p;
       image.getPixel((unsigned int)checkPoint.x, (unsigned int)checkPoint.y, &p);
@@ -1419,7 +1405,7 @@ bool CLIPLineFinder::createPenaltyCross(const LineSegment& seg, const bool& uppe
   if (result)
   {
     // verify by checking for white around potential cross
-    scanDir.x() = lineSize * 3;
+    scanDir.x() = lineSize * 0.75f;
     scanDir.y() = 0;
     for (int i = 0; i < 32; i++)
     {
@@ -1443,7 +1429,29 @@ bool CLIPLineFinder::createPenaltyCross(const LineSegment& seg, const bool& uppe
       scanDir.rotate(pi / 16);
     }
   }
-  CROSS("module:CLIPLineFinder:penaltyCross", basePoint.x(), basePoint.y(), lineSize, 5, Drawings::solidPen, result ? ColorRGBA::blue : ColorRGBA::red);
+
+  PenaltyCross pc;
+  pc.positionInImage = basePoint;
+  pc.fromUpper = upper;
+  pc.validity = result ? 1.0f : std::max(0.f, std::min(0.99f, confidence)); //TODO
+
+  if (upper)
+  {
+    CROSS("module:CLIPLineFinder:penaltyCross:Upper", basePoint.x(), basePoint.y(), lineSize / 2.f, 3, Drawings::solidPen, result ? ColorRGBA::blue : ColorRGBA::red);
+    DRAWTEXT("module:CLIPLineFinder:penaltyCross:Upper", basePoint.x() + lineSize / 6.f, basePoint.y() + lineSize / 4.f, lineSize / 2.f, ColorRGBA::white, "" << static_cast<int>(pc.validity * 100.f));
+  }
+  else
+  {
+    CROSS("module:CLIPLineFinder:penaltyCross:Lower", basePoint.x(), basePoint.y(), lineSize / 2.f, 3, Drawings::solidPen, result ? ColorRGBA::blue : ColorRGBA::red);
+    DRAWTEXT("module:CLIPLineFinder:penaltyCross:Lower", basePoint.x() + lineSize / 6.f, basePoint.y() + lineSize / 4.f, lineSize / 2.f, ColorRGBA::white, "" << static_cast<int>(pc.validity * 100.f));
+  }
+
+
+  if (upper)
+    penaltyCrossHypothesesUpper.push_back(pc);
+  else
+    penaltyCrossHypotheses.push_back(pc);
+
   return result;
 }
 
@@ -1457,22 +1465,6 @@ void CLIPLineFinder::update(CLIPCenterCirclePercept& theCenterCirclePercept)
 
 void CLIPLineFinder::update(CLIPFieldLinesPercept& theCLIPFieldLinesPercept)
 {
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCircle:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCircle:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCirclePoints:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:CenterCirclePoints:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LineSegments:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LineSegments:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesRaw:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesRaw:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesEnhanced:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:LinesEnhanced:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:Connections:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:Connections:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:penaltyCross", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:checkForLineBetween", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:checkForWhiteBetween", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:CLIPLineFinder:verifyLineSegment", "drawingOnImage");
   wasReset = false;
   execute(false);
   execute(true);
@@ -1491,6 +1483,22 @@ void CLIPLineFinder::update(PenaltyCrossPercept& thePenaltyCrossPercept)
   execute(false);
   execute(true);
   thePenaltyCrossPercept = localPenaltyCrossPercept;
+}
+
+void CLIPLineFinder::update(PrePenaltyCrossHypothesesScanlines& thePrePenaltyCrossHypothesesScanlines)
+{
+  wasReset = false;
+  execute(false);
+  execute(true);
+
+  PrePenaltyCrossHypothesesScanlines pchs;
+  pchs.penaltyCrosses = penaltyCrossHypotheses;
+  pchs.penaltyCrossesUpper = penaltyCrossHypothesesUpper;
+
+  std::sort(pchs.penaltyCrosses.begin(), pchs.penaltyCrosses.end());
+  std::sort(pchs.penaltyCrossesUpper.begin(), pchs.penaltyCrossesUpper.end());
+
+  thePrePenaltyCrossHypothesesScanlines = pchs;
 }
 
 bool CLIPLineFinder::connectSegmentToFieldLine(const Vector2f& imgStart, const Vector2f& imgEnd, CLIPFieldLinesPercept::FieldLine& line, const bool& upper)

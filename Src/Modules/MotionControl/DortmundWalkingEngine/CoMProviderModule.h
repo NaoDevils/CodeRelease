@@ -21,7 +21,7 @@ MODULE(CoMProviderModule,
   //REQUIRES(RobotModel),
   REQUIRES(ActualCoMRCS),
   USES(WalkingInfo),
-  //USES(JointRequest),
+  //USES(RawJointRequest),
   //REQUIRES(WalkingEngineParams),
   PROVIDES(ActualCoM)
 );

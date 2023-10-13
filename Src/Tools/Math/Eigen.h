@@ -34,6 +34,7 @@ using Vector5d = Eigen::Matrix<double, 5, 1>;
 using Vector5f = Eigen::Matrix<float, 5, 1>;
 using Vector6d = Eigen::Matrix<double, 6, 1>;
 using Vector6f = Eigen::Matrix<float, 6, 1>;
+using Vector6i = Eigen::Matrix<int, 6, 1>;
 using VectorXd = Eigen::VectorXd;
 using VectorXf = Eigen::VectorXf;
 

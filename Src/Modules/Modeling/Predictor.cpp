@@ -15,15 +15,7 @@
 */
 void Predictor::update(RobotPoseAfterPreview& robotPoseAfterPreview)
 {
-  execute();
-  (RobotPose&)robotPoseAfterPreview = theRobotPose;
-  PLOT("module:Predictor:robotPose.x", theRobotPose.translation.x());
-  PLOT("module:Predictor:robotPose.y", theRobotPose.translation.y());
-  PLOT("module:Predictor:robotPose.r", theRobotPose.rotation);
-  (Pose2f&)robotPoseAfterPreview += correctedOdometryOffset;
-  PLOT("module:Predictor:robotPoseAfterPreview.x", robotPoseAfterPreview.translation.x());
-  PLOT("module:Predictor:robotPoseAfterPreview.y", robotPoseAfterPreview.translation.y());
-  PLOT("module:Predictor:robotPoseAfterPreview.r", robotPoseAfterPreview.rotation);
+  robotPoseAfterPreview = this->robotPoseAfterPreview;
   ASSERT(robotPoseAfterPreview.translation.x() == robotPoseAfterPreview.translation.x());
   ASSERT(robotPoseAfterPreview.translation.y() == robotPoseAfterPreview.translation.y());
   ASSERT(robotPoseAfterPreview.rotation == robotPoseAfterPreview.rotation);
@@ -35,8 +27,7 @@ void Predictor::update(RobotPoseAfterPreview& robotPoseAfterPreview)
 */
 void Predictor::update(BallModelAfterPreview& ballModelAfterPreview)
 {
-  execute();
-  (BallModel&)ballModelAfterPreview = theBallModel;
+  static_cast<BallModel&>(ballModelAfterPreview) = theBallModel;
 
   Vector2f position, velocity;
 
@@ -54,7 +45,6 @@ void Predictor::update(BallModelAfterPreview& ballModelAfterPreview)
 */
 void Predictor::update(MultipleBallModelAfterPreview& multipleBallModelAfterPreview)
 {
-  execute();
   multipleBallModelAfterPreview.ballModels.clear();
 
   for (const BallModel& bm : theMultipleBallModel.ballModels)
@@ -73,14 +63,17 @@ void Predictor::update(MultipleBallModelAfterPreview& multipleBallModelAfterPrev
 }
 
 
-void Predictor::execute()
+void Predictor::execute(tf::Subflow& subflow)
 {
-  if (lastExecutionTimeStamp < theFrameInfo.time)
-  {
-    correctedOdometryOffset = theMotionInfo.offsetToRobotPoseAfterPreview;
-    robotPoseAfterPreview = theRobotPose + correctedOdometryOffset;
-    lastExecutionTimeStamp = theFrameInfo.time;
-  }
+  correctedOdometryOffset = theMotionInfo.offsetToRobotPoseAfterPreview;
+  static_cast<Pose2f&>(robotPoseAfterPreview) = theRobotPose + correctedOdometryOffset;
+
+  PLOT("module:Predictor:robotPose.x", theRobotPose.translation.x());
+  PLOT("module:Predictor:robotPose.y", theRobotPose.translation.y());
+  PLOT("module:Predictor:robotPose.r", theRobotPose.rotation);
+  PLOT("module:Predictor:robotPoseAfterPreview.x", robotPoseAfterPreview.translation.x());
+  PLOT("module:Predictor:robotPoseAfterPreview.y", robotPoseAfterPreview.translation.y());
+  PLOT("module:Predictor:robotPoseAfterPreview.r", robotPoseAfterPreview.rotation);
 }
 
 

@@ -31,16 +31,16 @@ void RobotModelProvider::update(RobotModel& robotModel)
     for (int i = 0; i < 2; ++i)
     {
       int firstJoint = i == 0 ? Limbs::pelvisLeft : Limbs::pelvisRight;
-      for (int i = 0; i < (Limbs::footLeft + 1) - Limbs::pelvisLeft; ++i)
+      for (int j = 0; j < (Limbs::footLeft + 1) - Limbs::pelvisLeft; ++j)
       {
-        Pose3f& next = robotModel.limbs[firstJoint + i];
+        Pose3f& next = robotModel.limbs[firstJoint + j];
         SPHERE3D("module:RobotModelProvider:joints", next.translation.x(), next.translation.y(), next.translation.z(), 3, ColorRGBA(0, 0, 0));
 
-        Vector3f axis = i == 0 ? Vector3f(0.f, firstJoint == Limbs::pelvisLeft ? -50.f : 50.f, 50.f).normalize(50.f)
-            : i == 1 || i == 5
+        Vector3f axis = j == 0 ? Vector3f(0.f, firstJoint == Limbs::pelvisLeft ? -50.f : 50.f, 50.f).normalize(50.f)
+            : j == 1 || j == 5
             ? Vector3f(50.f, 0.f, 0.f)
             : Vector3f(0.f, 50.f, 0.f);
-        ColorRGBA color = i == 0 ? ColorRGBA(0, 0, 255) : i == 1 || i == 5 ? ColorRGBA(255, 0, 0) : ColorRGBA(0, 255, 0);
+        ColorRGBA color = j == 0 ? ColorRGBA(0, 0, 255) : j == 1 || j == 5 ? ColorRGBA(255, 0, 0) : ColorRGBA(0, 255, 0);
         Vector3f p = next * axis;
         LINE3D("module:RobotModelProvider:joints", next.translation.x(), next.translation.y(), next.translation.z(), p.x(), p.y(), p.z(), axisLineWidth, color);
       }
@@ -48,13 +48,13 @@ void RobotModelProvider::update(RobotModel& robotModel)
     for (int i = 0; i < 2; ++i)
     {
       int firstJoint = i == 0 ? Limbs::shoulderLeft : Limbs::shoulderRight;
-      for (int i = 0; i < (Limbs::foreArmLeft + 1) - Limbs::shoulderLeft; ++i)
+      for (int j = 0; j < (Limbs::foreArmLeft + 1) - Limbs::shoulderLeft; ++j)
       {
-        Pose3f& next = robotModel.limbs[firstJoint + i];
+        Pose3f& next = robotModel.limbs[firstJoint + j];
         SPHERE3D("module:RobotModelProvider:joints", next.translation.x(), next.translation.y(), next.translation.z(), 3, ColorRGBA(0, 0, 0));
 
-        Vector3f axis = i == 1 || i == 3 ? Vector3f(0.f, 0.f, 50.f) : i == 2 ? Vector3f(50.f, 0.f, 0.f) : Vector3f(0.f, 50.f, 0.f);
-        ColorRGBA color = i == 1 || i == 3 ? ColorRGBA(0, 0, 255) : i == 2 ? ColorRGBA(255, 0, 0) : ColorRGBA(0, 255, 0);
+        Vector3f axis = j == 1 || j == 3 ? Vector3f(0.f, 0.f, 50.f) : j == 2 ? Vector3f(50.f, 0.f, 0.f) : Vector3f(0.f, 50.f, 0.f);
+        ColorRGBA color = j == 1 || j == 3 ? ColorRGBA(0, 0, 255) : j == 2 ? ColorRGBA(255, 0, 0) : ColorRGBA(0, 255, 0);
         Vector3f p = next * axis;
         LINE3D("module:RobotModelProvider:joints", next.translation.x(), next.translation.y(), next.translation.z(), p.x(), p.y(), p.z(), axisLineWidth, color);
       }

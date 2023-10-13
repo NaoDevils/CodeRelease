@@ -13,7 +13,8 @@
 
 Semaphore::Semaphore(unsigned int value)
 {
-  VERIFY(handle = CreateSemaphore(nullptr, value, std::numeric_limits<long>::max(), nullptr));
+  handle = CreateSemaphore(nullptr, value, std::numeric_limits<long>::max(), nullptr);
+  ASSERT(handle);
 }
 
 Semaphore::~Semaphore()

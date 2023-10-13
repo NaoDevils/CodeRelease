@@ -37,7 +37,8 @@ STREAMABLE(CameraInfo,
   (int) height,
   (Angle) openingAngleWidth,
   (Angle) openingAngleHeight,
-  (Vector2f) opticalCenter
+  (Vector2f) opticalCenter,
+  (bool)(true) usable
 );
 
 STREAMABLE_WITH_BASE(CameraInfoUpper, CameraInfo, );

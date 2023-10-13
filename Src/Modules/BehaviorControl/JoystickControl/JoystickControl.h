@@ -15,8 +15,11 @@
 // REQUIRES
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
+#include "Representations/Configuration/MotionSettings.h"
+#include "Representations/MotionControl/MotionState.h"
 // PROVIDES
 #include "Representations/Sensing/ArmContact.h"
 #include "Representations/BehaviorControl/HeadControlRequest.h"
@@ -34,12 +37,16 @@
 MODULE(JoystickControl,
   REQUIRES(FallDownState),
   REQUIRES(FrameInfo),
+  REQUIRES(RobotInfo),
   REQUIRES(KeyStates),
+  REQUIRES(MotionSettings),
+  REQUIRES(MotionState),
   USES(KickEngineOutput),
 
   PROVIDES(ArmContact), // Provide ArmContact to prevent moving arms in front of obstacles.
   PROVIDES(HeadControlRequest),
-  PROVIDES(MotionRequest)
+  PROVIDES(MotionRequest),
+  HAS_PREEXECUTION
 );
 
 
@@ -83,7 +90,7 @@ private:
   /**
    * Main entry point for execution, runs all neccessary methods to update the provided representations.
    */
-  void execute();
+  void execute(tf::Subflow&);
 
   /**
    * Reads all pending joystick events.
@@ -200,10 +207,6 @@ private:
 
   /// The \c MotionRequest is saved in this class member.
   MotionRequest localMotionRequest;
-
-  /// Time stamp of last execution of the method \c executeCommonCode().
-  /// Used to execute it only once per frame.
-  unsigned lastExecuteTimeStamp;
 
   /// true, if the robot stands.
   /// Only standing the robot is able to do all the other actions.

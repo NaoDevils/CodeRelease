@@ -58,27 +58,27 @@ void ComplexAppearance::createGraphics()
         PrimitiveGroup& primitiveGroup = *(*iter);
         ASSERT(primitiveGroup.mode == GL_TRIANGLES || primitiveGroup.mode == GL_QUADS);
         ASSERT(primitiveGroup.vertices.size() % (primitiveGroup.mode == GL_TRIANGLES ? 3 : 4) == 0);
-        for (std::list<unsigned int>::iterator iter = primitiveGroup.vertices.begin(), end = primitiveGroup.vertices.end(); iter != end;)
+        for (std::list<unsigned int>::iterator vertIter = primitiveGroup.vertices.begin(), vertEnd = primitiveGroup.vertices.end(); vertIter != vertEnd;)
         {
-          unsigned int i1 = *iter;
+          unsigned int i1 = *vertIter;
           if (i1 >= verticesSize)
-            *iter = i1 = 0; // this is bullshit, but better than crashing because of incorrect input files
-          ++iter;
-          unsigned int i2 = *iter;
+            *vertIter = i1 = 0; // this is bullshit, but better than crashing because of incorrect input files
+          ++vertIter;
+          unsigned int i2 = *vertIter;
           if (i2 >= verticesSize)
-            *iter = i2 = 0; // this is bullshit, but better than crashing because of incorrect input files
-          ++iter;
-          unsigned int i3 = *iter;
+            *vertIter = i2 = 0; // this is bullshit, but better than crashing because of incorrect input files
+          ++vertIter;
+          unsigned int i3 = *vertIter;
           if (i3 >= verticesSize)
-            *iter = i3 = 0; // this is bullshit, but better than crashing because of incorrect input files
-          ++iter;
+            *vertIter = i3 = 0; // this is bullshit, but better than crashing because of incorrect input files
+          ++vertIter;
           unsigned int i4 = 0;
           if (primitiveGroup.mode == GL_QUADS)
           {
-            i4 = *iter;
+            i4 = *vertIter;
             if (i4 >= verticesSize)
-              *iter = i4 = 0; // this is bullshit, but better than crashing because of incorrect input files
-            ++iter;
+              *vertIter = i4 = 0; // this is bullshit, but better than crashing because of incorrect input files
+            ++vertIter;
           }
 
           const Vertex& p1 = vertexLibrary[i1];
@@ -133,15 +133,15 @@ void ComplexAppearance::assembleAppearances(SurfaceColor color) const
     {
       const PrimitiveGroup& primitiveGroup = *(*iter);
       glBegin(primitiveGroup.mode);
-      for (std::list<unsigned int>::const_iterator iter = primitiveGroup.vertices.begin(), end = primitiveGroup.vertices.end(); iter != end; ++iter)
+      for (std::list<unsigned int>::const_iterator vertIter = primitiveGroup.vertices.begin(), vertEnd = primitiveGroup.vertices.end(); vertIter != vertEnd; ++vertIter)
       {
-        const unsigned int i = *iter;
+        const unsigned int i = *vertIter;
         if (texCoords && i < texCoords->coords.size())
           glTexCoord2fv(&texCoords->coords[i].x);
         if (normalsDefined)
         {
-          if (++iter != end)
-            glNormal3fv(&vertexNormals[*iter].x);
+          if (++vertIter != vertEnd)
+            glNormal3fv(&vertexNormals[*vertIter].x);
           else
             break;
         }

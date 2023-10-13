@@ -1,30 +1,29 @@
 #include "KickUtils.h"
 
-#include <optional>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Kick/Models/Optimize.h>
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/Kick.h"
-#include "Representations/Modeling/RobotMap.h"
+#include "MathUtils.h"
+#include "Modules/BehaviorControl/TacticControl/KicksProvider/Kick.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "DangerUtils.h"
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BlockUtils.h>
 #include "Representations/Configuration/FieldDimensions.h"
-#include "MathUtils.h"
+#include "Representations/Modeling/RobotMap.h"
+#include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/Sensing/RobotModel.h"
+#include <optional>
+
+Pose2f KickUtils::getKickPose(const Angle& robotRotation, const Vector2f& ballPosition, const bool mirror, const float afterRotation_optDistanceToBallX, const float afterRotation_optDistanceToBallY)
+{
+  Pose2f pose(robotRotation, ballPosition);
+  pose = pose.translate(-afterRotation_optDistanceToBallX, (mirror ? +1.f : -1.f) * afterRotation_optDistanceToBallY);
+  return pose;
+}
 
 Pose2f KickUtils::getKickPose(
-    const Vector2f& ballPosition, const Vector2f& targetPosition, const bool rotateLeft, const bool ballLeftFoot, const Angle optAngle, const float afterRotation_optDistanceToBallX, const float afterRotation_optDistanceToBallY)
+    const Vector2f& ballPosition, const Vector2f& targetPosition, const bool rotateLeft, const bool mirror, const Angle optAngle, const float afterRotation_optDistanceToBallX, const float afterRotation_optDistanceToBallY)
 {
   const Angle ballToTargetAngle = (targetPosition - ballPosition).angle();
   const Angle field_angleUnnormalized = ballToTargetAngle + (rotateLeft ? 1.f : -1.f) * optAngle;
   const Angle field_angle = Angle::normalize(field_angleUnnormalized);
-  return getKickPose(field_angle, ballPosition, ballLeftFoot, afterRotation_optDistanceToBallX, afterRotation_optDistanceToBallY);
-}
-
-Pose2f KickUtils::getKickPose(const Angle& robotRotation, const Vector2f& ballPosition, const bool ballLeftFoot, const float afterRotation_optDistanceToBallX, const float afterRotation_optDistanceToBallY)
-{
-  Pose2f pose(robotRotation, ballPosition);
-  pose = pose.translate(-afterRotation_optDistanceToBallX, (ballLeftFoot ? -1.f : +1.f) * afterRotation_optDistanceToBallY);
-  return pose;
+  return getKickPose(field_angle, ballPosition, mirror, afterRotation_optDistanceToBallX, afterRotation_optDistanceToBallY);
 }
 
 Angle KickUtils::getFastestReachableKickAngleBetweenTargets(const Vector2f& playerPosition, const Vector2f& ballPosition, const Vector2f& target1, const Vector2f& target2)
@@ -43,35 +42,6 @@ Angle KickUtils::getFastestReachableKickAngleBetweenTargets(const Vector2f& play
   const Angle playerToBallAngle = (ballPosition - playerPosition).angle();
 
   return kickAngleLimit.limit(playerToBallAngle);
-}
-
-float KickUtils::getKickTime(const Kick& kick, const Pose2f& playerPose, const Vector2f& ballPosition, const Vector2f& targetPosition, const bool hysteresis, const bool leftFootClosestToBall)
-{
-  const Angle TURN_ANGLE_PER_SECOND = 15_deg; // TODO Constant
-  const float WALK_MM_PER_SECOND = 150.f; // TODO Constant
-  const float MAX_DISTANCE = 300.f;
-
-  const Pose2f kickPose = kick.getKickPose(playerPose, ballPosition, targetPosition, leftFootClosestToBall);
-
-  float time = kick.getTime(hysteresis);
-
-  const float mult = MathUtils::clamp_f((Geometry::distance(playerPose.translation, kickPose.translation) - 200) / 200.f, 0.f, 1.f);
-
-  const Angle optAroundBallAngle = (ballPosition - kickPose.translation).angle();
-  const Angle currentAroundBallAngle = (ballPosition - playerPose.translation).angle();
-  const float aroundBallAngleDiff = MathUtils::getAngleDiff(optAroundBallAngle, currentAroundBallAngle, hysteresis);
-  time += mult * (aroundBallAngleDiff / TURN_ANGLE_PER_SECOND);
-
-  const Angle optToBallAngle = kickPose.rotation;
-  const Angle currentToBallAngle = playerPose.rotation;
-  const float toBallAngleDiff = MathUtils::getAngleDiff(optToBallAngle, currentToBallAngle, hysteresis);
-  time += (1 - mult) * (toBallAngleDiff / TURN_ANGLE_PER_SECOND);
-
-  const float distance = MathUtils::clamp_f(Geometry::distance(playerPose.translation, kickPose.translation), 0.f, MAX_DISTANCE);
-  const float walkTime = distance / WALK_MM_PER_SECOND;
-  time += walkTime;
-
-  return time;
 }
 
 bool KickUtils::fulfillsDistanceRequirements(const Kick& kick, const float targetDistance, const DistanceRequirement distanceRequirement, const bool hysteresis)
@@ -108,35 +78,22 @@ bool KickUtils::fulfillsDistanceRequirements(const Kick& kick, const float targe
   }
 }
 
-bool KickUtils::isKickToOutside(const Kick* kick, const Vector2f& ballPosition, const Vector2f& direction, const bool hysteresis, const FieldDimensions& theFieldDimensions)
-{
-  float kickDistance;
-  if (kick->isDistanceAdjustable())
-  {
-    kickDistance = kick->getMinDistance(hysteresis, false); // TODO + Inaccuracy ?
-  }
-  else
-  {
-    kickDistance = kick->getMaxDistance(hysteresis, false);
-  }
-  const Vector2f worstCaseTargetPosition = ballPosition + direction * kickDistance;
-  return !theFieldDimensions.isInsideField(worstCaseTargetPosition);
-}
-
 float KickUtils::getMinKickToObstaclesDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const FieldDimensions& theFieldDimensions, const RobotMap& theRobotMap)
 {
-  return std::min(getMinKickToGoalPostDistance(ballPosition, targetPosition, theFieldDimensions),
-      std::min(getMinRobotToKickDistance(ballPosition, targetPosition, theRobotMap), getMinFieldBorderToKickDistance(ballPosition, targetPosition, theFieldDimensions)));
+  const float minToGoalPostDistance = getMinKickToGoalPostDistance(ballPosition, targetPosition, theFieldDimensions);
+  const float minToRobotDistance = getMinRobotToKickDistance(ballPosition, targetPosition, theRobotMap);
+  const float minToFieldBorder = getMinFieldBorderToKickDistance(ballPosition, targetPosition, theFieldDimensions);
+  return std::min(minToGoalPostDistance, std::min(minToRobotDistance, minToFieldBorder));
 }
 
 float KickUtils::getMinKickToGoalPostDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const FieldDimensions& theFieldDimensions)
 {
   const float goalPostRadius = theFieldDimensions.goalPostRadius;
 
-  const Vector2f ownLeftGoalPost = {theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosLeftGoal - goalPostRadius};
-  const Vector2f ownRightGoalPost = {theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosRightGoal + goalPostRadius};
-  const Vector2f opponentLeftGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal - goalPostRadius};
-  const Vector2f opponentRightGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosRightGoal + goalPostRadius};
+  const Vector2f ownLeftGoalPost = {theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosLeftGoal};
+  const Vector2f ownRightGoalPost = {theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosRightGoal};
+  const Vector2f opponentLeftGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal};
+  const Vector2f opponentRightGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosRightGoal};
 
   std::vector<Vector2f> goalPostPositions = {};
   goalPostPositions.push_back(ownLeftGoalPost);
@@ -144,17 +101,18 @@ float KickUtils::getMinKickToGoalPostDistance(const Vector2f& ballPosition, cons
   goalPostPositions.push_back(opponentLeftGoalPost);
   goalPostPositions.push_back(opponentRightGoalPost);
 
-  return getMinDistance(ballPosition, targetPosition, goalPostPositions);
+  return getMinDistance(ballPosition, targetPosition, goalPostPositions) - goalPostRadius;
 }
 
 float KickUtils::getMinRobotToKickDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const RobotMap& theRobotMap)
 {
+  const float ROBOT_RADIUS = 140.f / 2.f;
   std::vector<Vector2f> robotPositions = {};
   for (auto& robot : theRobotMap.robots)
   {
     robotPositions.push_back(robot.pose.translation);
   }
-  return getMinDistance(ballPosition, targetPosition, robotPositions);
+  return getMinDistance(ballPosition, targetPosition, robotPositions) - ROBOT_RADIUS;
 }
 
 float KickUtils::getMinDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const std::vector<Vector2f>& obstacles)
@@ -190,16 +148,22 @@ float KickUtils::getMinDistance(const Vector2f& ballPosition, const Vector2f& ta
 
 float KickUtils::getMinFieldBorderToKickDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const FieldDimensions& theFieldDimensions)
 {
-  const Vector2f oppLeftGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal};
-  const Vector2f oppRightGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosRightGoal};
-  bool inOpponentGoal = Geometry::checkIntersectionOfLines(ballPosition, targetPosition, oppLeftGoalPost, oppRightGoalPost);
-  if (inOpponentGoal)
+  if (FieldUtils::isIntoOpponentsGoal(ballPosition, targetPosition, theFieldDimensions))
   {
-    return std::numeric_limits<float>::infinity();
+    return std::numeric_limits<float>::max();
   }
 
-  const float yToSides = std::max(0.f, theFieldDimensions.yPosLeftSideline - std::abs(targetPosition.y()));
-  const float xToGroundLines = std::max(0.f, theFieldDimensions.xPosOpponentGroundline - std::abs(targetPosition.x()));
+  const float targetPositionX = targetPosition.x();
+  const float absTargetPositionY = std::abs(targetPosition.y());
+
+  // Is onto opponents goal line
+  if (targetPositionX > 0.f && targetPositionX < theFieldDimensions.xPosOpponentGroundline + 50.f && absTargetPositionY < theFieldDimensions.yPosLeftGoal)
+  {
+    return std::numeric_limits<float>::max();
+  }
+
+  const float yToSides = std::max(0.f, theFieldDimensions.yPosLeftSideline - absTargetPositionY);
+  const float xToGroundLines = std::max(0.f, theFieldDimensions.xPosOpponentGroundline - std::abs(targetPositionX));
   return std::min(yToSides, xToGroundLines);
 }
 
@@ -316,4 +280,54 @@ std::vector<Kick*> KickUtils::unpack(const std::vector<std::unique_ptr<Kick>>& k
     unpackedKicks.push_back(kick);
   }
   return unpackedKicks;
+}
+
+std::vector<Kick*> KickUtils::unpack(const std::vector<std::unique_ptr<Kick>>& kicks1, const std::vector<std::unique_ptr<Kick>>& kicks2)
+{
+  std::vector<Kick*> unpackedKicks;
+  for (const auto& kickUniquePointer : kicks1)
+  {
+    Kick* kick = kickUniquePointer.get();
+    unpackedKicks.push_back(kick);
+  }
+  for (const auto& kickUniquePointer : kicks2)
+  {
+    Kick* kick = kickUniquePointer.get();
+    unpackedKicks.push_back(kick);
+  }
+  return unpackedKicks;
+}
+
+/**
+ * Use robot model's foot positions intersecting with best hypothesis
+ */
+bool KickUtils::isBallTouched(const Vector2f& relativeBallPosition, const RobotModel& theRobotModel, const FieldDimensions& theFieldDimensions)
+{
+  const Pose3f& kickFoot = (theRobotModel.soleLeft.translation.z() > theRobotModel.soleRight.translation.z()) ? theRobotModel.soleLeft : theRobotModel.soleRight;
+
+  const float footCenterYToBallDistance = relativeBallPosition.y() - kickFoot.translation.y();
+
+  const float footCenterXToBallDistance = relativeBallPosition.x() - kickFoot.translation.x();
+  const float footFrontXToBallDistance = footCenterXToBallDistance - 104.f;
+
+  /*
+   * The values used for calculation are fluctuating heavily. To avoid false
+   * positives and because false negatives can be tolerated the ballRadius is
+   * reduced
+  */
+  const float saferBallRadius = theFieldDimensions.ballRadius - 20.f;
+
+  const bool ballTouched = std::abs(footCenterYToBallDistance) < saferBallRadius && std::abs(footFrontXToBallDistance) < saferBallRadius;
+
+  return ballTouched;
+}
+
+/**
+ * Two ways to trigger a kick are handled here: kick engine or in walk kick
+ */
+bool KickUtils::isBallKicked(const MotionInfo& theMotionInfo)
+{
+  const bool customStepKickStartedAndCantGetInterrupted = theMotionInfo.motion == MotionRequest::Motion::walk && theMotionInfo.walkKicking;
+  const bool kickEngineKickStartedAndCantGetInterrupted = theMotionInfo.motion == MotionRequest::kick;
+  return customStepKickStartedAndCantGetInterrupted || kickEngineKickStartedAndCantGetInterrupted;
 }

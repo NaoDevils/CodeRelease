@@ -15,8 +15,9 @@ DataWidget::DataWidget(DataView& view, QtVariantPropertyManager& manager)
 
   pSetAction = new QAction(QIcon(":/Icons/upload.png"), tr("&Set"), this);
   pSetAction->setText("Set");
-  pSetAction->setToolTip("Overwrite data on robot");
+  pSetAction->setToolTip("Overwrite data on robot (F9)");
   pSetAction->setEnabled(false);
+  pSetAction->setShortcut(QKeySequence(Qt::Key_F9));
   pUnchangedAction = new QAction(QIcon(":/Icons/arrow_undo.png"), tr("&Unchanged"), this);
   pUnchangedAction->setToolTip("Switch back to using original data on robot");
   pUnchangedAction->setEnabled(false);

@@ -10,14 +10,10 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
-#include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/GoalSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
-#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -25,36 +21,28 @@
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/DangerMap.h"
-#include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Sensing/FallDownState.h"
 #include "Tools/Settings.h"
 
 MODULE(TacticProvider,
-  REQUIRES(BallModel),
-  REQUIRES(BallModelAfterPreview),
-  REQUIRES(BallChaserDecision),
   REQUIRES(BallSymbols),
   REQUIRES(BehaviorConfiguration),
-  REQUIRES(DangerMap),
-  REQUIRES(FallDownState),
   REQUIRES(FrameInfo),
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(GameSymbols),
-  REQUIRES(GoalSymbols),
   REQUIRES(OwnTeamInfo),
   REQUIRES(OpponentTeamInfo),
-  REQUIRES(RemoteBallModel),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(TeammateData),
-  PROVIDES(TacticSymbols)
+  PROVIDES(TacticSymbols),
+  LOADS_PARAMETERS(,
+    (unsigned)(5000) timeTillKeepRoleAssignmentInReady
+  )
 );
 
 /**
@@ -79,9 +67,12 @@ private:
   /** vvv--- methods for tactical decisions ---vvv */
   void calcNumberOfActiveFieldPlayers(TacticSymbols& tacticSymbols);
   bool decideDefensiveBehavior();
+  float decideActivity();
   void getBallDirection();
   void getBallSide();
   bool decideKickoffDirection(TacticSymbols& tacticSymbols);
+  void decideFightForBall(TacticSymbols& tacticSymbols);
+  void decideDefensiveCone(TacticSymbols& theTacticSymbols);
 
   enum class BallSide
   {
@@ -97,10 +88,13 @@ private:
   };
 
   // vvv--- Attributes used to keep track of calculation results over several frames. ---vvv
+  BallSide lastSide = BallSide::center;
   BallSide currentSide = BallSide::center;
+  BallDirection lastDirection = BallDirection::towardsEnemySide;
   BallDirection currentDirection = BallDirection::towardsEnemySide;
-  bool directionChanged = false;
   bool defensiveBehavior = false;
+
+  float activity = 1.f;
 
   bool lastKickoffWasOwn;
   int lastOwnScore;

@@ -20,7 +20,7 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
     {
       useBallSearchPosition = true;
       // select closest
-      if (!wasInBallSearch && theRoleSymbols.role != BehaviorData::ballchaser)
+      if (!wasInBallSearch && theBallChaserDecision.playerNumberToBall != theRobotInfo.number)
         selectClosestBallSearchPosition(positioningSymbols.optPosition);
       else
       {
@@ -63,96 +63,46 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
   switch (theRoleSymbols.role)
   {
   case BehaviorData::keeper:
-    positioningSymbols.optPosition = theKeeper.optPosition;
-    positioningSymbols.thresholdXBack = theKeeper.thresholdXBack;
-    positioningSymbols.thresholdXFront = theKeeper.thresholdXFront;
-    positioningSymbols.thresholdY = theKeeper.thresholdY;
-    positioningSymbols.thresholdRotation = theKeeper.thresholdRotation;
-    positioningSymbols.stopAtTarget = theKeeper.stopAtTarget;
-    positioningSymbols.previewArrival = theKeeper.previewArrival;
+    positioningSymbols = theKeeper;
     break;
   case BehaviorData::defenderRight:
-    positioningSymbols.optPosition = theDefenderRight.optPosition;
-    positioningSymbols.thresholdXBack = theDefenderRight.thresholdXBack;
-    positioningSymbols.thresholdXFront = theDefenderRight.thresholdXFront;
-    positioningSymbols.thresholdY = theDefenderRight.thresholdY;
-    positioningSymbols.thresholdRotation = theDefenderRight.thresholdRotation;
-    positioningSymbols.stopAtTarget = theDefenderRight.stopAtTarget;
-    positioningSymbols.previewArrival = theDefenderRight.previewArrival;
+    positioningSymbols = theDefenderRight;
     break;
   case BehaviorData::defenderLeft:
-    positioningSymbols.optPosition = theDefenderLeft.optPosition;
-    positioningSymbols.thresholdXBack = theDefenderLeft.thresholdXBack;
-    positioningSymbols.thresholdXFront = theDefenderLeft.thresholdXFront;
-    positioningSymbols.thresholdY = theDefenderLeft.thresholdY;
-    positioningSymbols.thresholdRotation = theDefenderLeft.thresholdRotation;
-    positioningSymbols.stopAtTarget = theDefenderLeft.stopAtTarget;
-    positioningSymbols.previewArrival = theDefenderLeft.previewArrival;
+    positioningSymbols = theDefenderLeft;
     break;
   case BehaviorData::defenderSingle:
-    positioningSymbols.optPosition = theDefenderSingle.optPosition;
-    positioningSymbols.thresholdXBack = theDefenderSingle.thresholdXBack;
-    positioningSymbols.thresholdXFront = theDefenderSingle.thresholdXFront;
-    positioningSymbols.thresholdY = theDefenderSingle.thresholdY;
-    positioningSymbols.thresholdRotation = theDefenderSingle.thresholdRotation;
-    positioningSymbols.stopAtTarget = theDefenderSingle.stopAtTarget;
-    positioningSymbols.previewArrival = theDefenderSingle.previewArrival;
+    positioningSymbols = theDefenderSingle;
     break;
   case BehaviorData::center:
-    positioningSymbols.optPosition = theCenter.optPosition;
-    positioningSymbols.thresholdXBack = theCenter.thresholdXBack;
-    positioningSymbols.thresholdXFront = theCenter.thresholdXFront;
-    positioningSymbols.thresholdY = theCenter.thresholdY;
-    positioningSymbols.thresholdRotation = theCenter.thresholdRotation;
-    positioningSymbols.stopAtTarget = theCenter.stopAtTarget;
-    positioningSymbols.previewArrival = theCenter.previewArrival;
+    positioningSymbols = theCenter;
     break;
   case BehaviorData::receiver:
-    positioningSymbols.optPosition = theReceiver.optPosition;
-    positioningSymbols.thresholdXBack = theReceiver.thresholdXBack;
-    positioningSymbols.thresholdXFront = theReceiver.thresholdXFront;
-    positioningSymbols.thresholdY = theReceiver.thresholdY;
-    positioningSymbols.thresholdRotation = theReceiver.thresholdRotation;
-    positioningSymbols.stopAtTarget = theReceiver.stopAtTarget;
-    positioningSymbols.previewArrival = theReceiver.previewArrival;
+    positioningSymbols = theReceiver;
     break;
   case BehaviorData::replacementKeeper:
-    positioningSymbols.optPosition = theReplacementKeeper.optPosition;
-    positioningSymbols.thresholdXBack = theReplacementKeeper.thresholdXBack;
-    positioningSymbols.thresholdXFront = theReplacementKeeper.thresholdXFront;
-    positioningSymbols.thresholdY = theReplacementKeeper.thresholdY;
-    positioningSymbols.thresholdRotation = theReplacementKeeper.thresholdRotation;
-    positioningSymbols.stopAtTarget = theReplacementKeeper.stopAtTarget;
-    positioningSymbols.previewArrival = theReplacementKeeper.previewArrival;
+    positioningSymbols = theReplacementKeeper;
     break;
-  case BehaviorData::ballchaserKeeper:
-    positioningSymbols.optPosition = theBallchaserKeeper.optPosition;
-    positioningSymbols.thresholdXBack = theBallchaserKeeper.thresholdXBack;
-    positioningSymbols.thresholdXFront = theBallchaserKeeper.thresholdXFront;
-    positioningSymbols.thresholdY = theBallchaserKeeper.thresholdY;
-    positioningSymbols.thresholdRotation = theBallchaserKeeper.thresholdRotation;
-    positioningSymbols.stopAtTarget = theBallchaserKeeper.stopAtTarget;
-    positioningSymbols.previewArrival = theBallchaserKeeper.previewArrival;
+  case BehaviorData::leftWing:
+    positioningSymbols = theLeftWing;
+    break;
+  case BehaviorData::rightWing:
+    positioningSymbols = theRightWing;
+    break;
+  case BehaviorData::backWing:
+    positioningSymbols = theBackWing;
+    break;
+  case BehaviorData::frontWing:
+    positioningSymbols = theFrontWing;
     break;
   case BehaviorData::backupBallchaser:
-    positioningSymbols.optPosition = theBackupBallchaser.optPosition;
-    positioningSymbols.thresholdXBack = theBackupBallchaser.thresholdXBack;
-    positioningSymbols.thresholdXFront = theBackupBallchaser.thresholdXFront;
-    positioningSymbols.thresholdY = theBackupBallchaser.thresholdY;
-    positioningSymbols.thresholdRotation = theBackupBallchaser.thresholdRotation;
-    positioningSymbols.stopAtTarget = theBackupBallchaser.stopAtTarget;
-    positioningSymbols.previewArrival = theBackupBallchaser.previewArrival;
+    positioningSymbols = theBackupBallchaser;
     break;
   default: //Ballchaser
-    positioningSymbols.optPosition = theBallchaser.optPosition;
-    positioningSymbols.thresholdXBack = theBallchaser.thresholdXBack;
-    positioningSymbols.thresholdXFront = theBallchaser.thresholdXFront;
-    positioningSymbols.thresholdY = theBallchaser.thresholdY;
-    positioningSymbols.thresholdRotation = theBallchaser.thresholdRotation;
-    positioningSymbols.stopAtTarget = theBallchaser.stopAtTarget;
-    positioningSymbols.previewArrival = theBallchaser.previewArrival;
+    positioningSymbols = theBallchaser;
     break;
   }
+  static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 13, "Missing role!");
 
   positioningSymbols.distanceToOptPosition = (positioningSymbols.optPosition.translation - theRobotPoseAfterPreview.translation).norm();
 
@@ -162,6 +112,14 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
       || theRobotPoseAfterPreview.translation.y() > theFieldDimensions.yPosLeftSideline || theRobotPoseAfterPreview.translation.y() < theFieldDimensions.yPosRightSideline;
   bool illegalyInCenterCircle = !theGameSymbols.ownKickOff && (theRobotPoseAfterPreview.translation - Vector2f(0.f, 0.f)).norm() < theFieldDimensions.centerCircleRadius + 200.f;
   positioningSymbols.inIllegalPosition = inOpponentHalf || notOnField || illegalyInCenterCircle;
+}
+
+void PositioningSymbolsProvider::update(PositioningAndKickSymbols& positioningAndKickSymbols)
+{
+  positioningAndKickSymbols = theBallchaser;
+
+  // TODO Add Keeper
+  // positioningAndKickSymbols = theKeeper;
 }
 
 void PositioningSymbolsProvider::selectClosestBallSearchPosition(Pose2f& position)

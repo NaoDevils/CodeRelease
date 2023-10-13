@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <taskflow/taskflow.hpp>
 #include "ExecutorObserver.h"
 
 #include "Process.h"
@@ -28,7 +27,6 @@ public:
   );
 
   SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, std::string configFile);
-  ~SuperThread();
   SuperThread(const SuperThread&) = delete;
   SuperThread& operator=(const SuperThread&) = delete;
 
@@ -49,17 +47,16 @@ protected:
   }
 
 private:
-  void each(std::function<void(std::unique_ptr<SubThread>&)>);
   void setNumOfSubthreads(unsigned);
 
   std::vector<std::unique_ptr<SubThread>> subthreads;
+  std::unique_ptr<tf::Executor> executor;
 
   std::shared_ptr<ExecutorObserver> observer;
   std::future<std::vector<uint8_t>> observerMsgpackFuture;
   std::vector<uint8_t> observerMsgpack;
   std::vector<uint8_t>::iterator observerMsgpackIt;
   bool sendMsgpackFinished = true;
-  std::unique_ptr<tf::Executor> executor;
   int threads = std::thread::hardware_concurrency();
 
   const std::string configFile;

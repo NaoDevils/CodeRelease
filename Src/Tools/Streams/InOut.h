@@ -121,6 +121,12 @@ public:
    */
   virtual bool isBinary() const { return false; }
 
+  /**
+   * The function returns whether this is a compressed (binary) stream.
+   * @return Does it output data in compressed binary format?
+   */
+  virtual bool isCompressed() const { return false; }
+
   virtual void select(const char* name, int type, const char* (*enumToString)(int) = 0) {}
   virtual void deselect() {}
 
@@ -504,6 +510,12 @@ public:
   virtual bool isBinary() const { return false; }
 
   /**
+   * The function returns whether this is a compressed (binary) stream.
+   * @return Does it output data in compressed binary format?
+   */
+  virtual bool isCompressed() const { return false; }
+
+  /**
    * Select an entry for reading.
    * Will only be implemented by class InMapFile.
    * @param name The name of the entry if type == -2, otherwise 0.
@@ -823,7 +835,7 @@ namespace EnumHelpers
 
     static In& read(In& in, T& t)
     {
-      if (sizeof(t) == 1)
+      if constexpr (sizeof(t) == 1)
       {
         unsigned char c = static_cast<unsigned char>(t); // keep old value in case streaming does nothing
         in >> c;

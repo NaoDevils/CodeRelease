@@ -44,6 +44,7 @@ private:
   QRect paintRectField3;
   QRect paintRectField4;
   QRect paintRectField5;
+  QRect paintRectField6;
 
 public:
   JointWidget(JointView& jointView, QHeaderView* headerView, QWidget* parent);
@@ -54,7 +55,7 @@ public:
   virtual void saveLayout();
 
 private:
-  void print(const char* name, const char* value1, const char* value2, const char* value3, const char* value4, const char* value5);
+  void print(const char* number, const char* name, const char* value1, const char* value2, const char* value3, const char* value4, const char* value5);
   void newSection();
   QSize sizeHint() const { return QSize(260, 400); }
 };
@@ -134,8 +135,9 @@ void JointWidget::paintEvent(QPaintEvent* event)
   paintRectField3 = QRect(headerView->sectionViewportPosition(3) + textOffset, 0, headerView->sectionSize(3) - textOffset * 2, lineSpacing);
   paintRectField4 = QRect(headerView->sectionViewportPosition(4) + textOffset, 0, headerView->sectionSize(4) - textOffset * 2, lineSpacing);
   paintRectField5 = QRect(headerView->sectionViewportPosition(5) + textOffset, 0, headerView->sectionSize(5) - textOffset * 2, lineSpacing);
+  paintRectField6 = QRect(headerView->sectionViewportPosition(6) + textOffset, 0, headerView->sectionSize(6) - textOffset * 2, lineSpacing);
   {
-    char request[32], sensor[32], load[32], temp[32], stiffness[32];
+    char request[32], sensor[32], load[32], temp[32], stiffness[32], number[32];
     SYNC_WITH(jointView.console);
     const JointSensorData& jointSensorData(jointView.jointSensorData);
     const JointRequest& jointRequest(jointView.jointRequest);
@@ -156,14 +158,15 @@ void JointWidget::paintEvent(QPaintEvent* event)
       jointSensorData.currents[i] == SensorData::off ? (void)strcpy(load, "off") : (void)sprintf(load, "%d mA", jointSensorData.currents[i]);
       jointSensorData.temperatures[i] == 0 ? (void)strcpy(temp, "off") : (void)sprintf(temp, "%d °C", jointSensorData.temperatures[i]);
       jointRequest.stiffnessData.stiffnesses[i] == StiffnessData::useDefault ? (void)strcpy(stiffness, "?") : (void)sprintf(stiffness, "%d %%", jointRequest.stiffnessData.stiffnesses[i]);
-      print(Joints::getName(static_cast<Joints::Joint>(i)), request, sensor, load, temp, stiffness);
+      (void)sprintf(number, "%d", i);
+      print(number, Joints::getName(static_cast<Joints::Joint>(i)), request, sensor, load, temp, stiffness);
     }
   }
   painter.end();
   setMinimumHeight(paintRectField1.top());
 }
 
-void JointWidget::print(const char* name, const char* value1, const char* value2, const char* value3, const char* value4, const char* value5)
+void JointWidget::print(const char* number, const char* name, const char* value1, const char* value2, const char* value3, const char* value4, const char* value5)
 {
   if (fillBackground)
   {
@@ -171,18 +174,20 @@ void JointWidget::print(const char* name, const char* value1, const char* value2
     painter.drawRect(paintRect.left(), paintRectField1.top(), paintRect.width(), paintRectField1.height());
     painter.setPen(fontPen);
   }
-  painter.drawText(paintRectField0, Qt::TextSingleLine | Qt::AlignVCenter, tr(name));
-  painter.drawText(paintRectField1, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value1));
-  painter.drawText(paintRectField2, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value2));
-  painter.drawText(paintRectField3, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value3));
-  painter.drawText(paintRectField4, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value4));
-  painter.drawText(paintRectField5, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value5));
+  painter.drawText(paintRectField0, Qt::TextSingleLine | Qt::AlignVCenter, tr(number));
+  painter.drawText(paintRectField1, Qt::TextSingleLine | Qt::AlignVCenter, tr(name));
+  painter.drawText(paintRectField2, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value1));
+  painter.drawText(paintRectField3, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value2));
+  painter.drawText(paintRectField4, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value3));
+  painter.drawText(paintRectField5, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value4));
+  painter.drawText(paintRectField6, Qt::TextSingleLine | Qt::AlignVCenter | Qt::AlignRight, tr(value5));
   paintRectField0.moveTop(paintRectField0.top() + lineSpacing);
   paintRectField1.moveTop(paintRectField1.top() + lineSpacing);
   paintRectField2.moveTop(paintRectField2.top() + lineSpacing);
   paintRectField3.moveTop(paintRectField3.top() + lineSpacing);
   paintRectField4.moveTop(paintRectField4.top() + lineSpacing);
   paintRectField5.moveTop(paintRectField5.top() + lineSpacing);
+  paintRectField6.moveTop(paintRectField6.top() + lineSpacing);
 
   fillBackground = !fillBackground;
 }
@@ -196,6 +201,7 @@ void JointWidget::newSection()
   paintRectField3.moveTop(paintRectField3.top() + 1);
   paintRectField4.moveTop(paintRectField4.top() + 1);
   paintRectField5.moveTop(paintRectField5.top() + 1);
+  paintRectField6.moveTop(paintRectField6.top() + 1);
   fillBackground = false;
 }
 
@@ -203,6 +209,7 @@ JointHeaderedWidget::JointHeaderedWidget(JointView& sensorView, RobotConsole& co
 {
   QStringList headerLabels;
   headerLabels
+      << "Number"
       << "Joint"
       << "Request"
       << "Sensor"
@@ -218,6 +225,7 @@ JointHeaderedWidget::JointHeaderedWidget(JointView& sensorView, RobotConsole& co
   headerView->resizeSection(3, 50);
   headerView->resizeSection(4, 50);
   headerView->resizeSection(5, 50);
+  headerView->resizeSection(6, 50);
   jointWidget = new JointWidget(sensorView, headerView, this);
   setWidget(jointWidget);
 }

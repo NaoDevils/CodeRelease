@@ -171,13 +171,13 @@ void ImageWidget::copyImage(const Image& srcImage)
   }
   if (imageView.gain != 1.f)
   {
-    unsigned* p = (unsigned*)imageData->bits();
+    p = (unsigned*)imageData->bits();
     float gain = imageView.gain;
     for (unsigned* pEnd = p + width * height; p < pEnd; ++p)
     {
-      int r = (int)(gain * (float)((*p >> 16) & 0xff));
-      int g = (int)(gain * (float)((*p >> 8) & 0xff));
-      int b = (int)(gain * (float)((*p) & 0xff));
+      r = (int)(gain * (float)((*p >> 16) & 0xff));
+      g = (int)(gain * (float)((*p >> 8) & 0xff));
+      b = (int)(gain * (float)((*p) & 0xff));
 
       *p++ = (r < 0 ? 0 : r > 255 ? 255 : r) << 16 | (g < 0 ? 0 : g > 255 ? 255 : g) << 8 | (b < 0 ? 0 : b > 255 ? 255 : b) | 0xff000000;
     }
@@ -271,8 +271,7 @@ void ImageWidget::mouseMoveEvent(QMouseEvent* event)
   {
     Image* image = 0;
     RobotConsole::Images& currentImages = imageView.console.camImages;
-    RobotConsole::Images::const_iterator i = currentImages.find(imageView.background);
-    if (i != currentImages.end())
+    if (auto i = currentImages.find(imageView.background); i != currentImages.end())
       image = i->second.image;
     if (image && pos.rx() >= 0 && pos.ry() >= 0 && pos.rx() < image->width && pos.ry() < image->height)
     {

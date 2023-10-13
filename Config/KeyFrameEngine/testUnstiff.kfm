@@ -1,0 +1,29 @@
+keyFrameID = testUnstiff;
+initialKeyFrame = true;
+nextKeyFrameID = none;
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [10000,10000];
+    armsAngles = [10000,10000,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000];
+    legsAngles = [10000,10000,10000,10000,10000,10000, 10000,10000,10000,10000,10000,10000];
+    stiffnesses = [0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0, 0,0,0,0,0,0];
+    duration = 0;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];

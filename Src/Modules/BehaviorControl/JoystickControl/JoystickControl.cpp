@@ -13,7 +13,7 @@
 MAKE_MODULE(JoystickControl, behaviorControl)
 
 
-JoystickControl::JoystickControl() : lastExecuteTimeStamp(0), m_inCustomStepTest(false)
+JoystickControl::JoystickControl() : m_inCustomStepTest(false)
 {
   initialize();
 }
@@ -30,15 +30,11 @@ void JoystickControl::update(ArmContact& armContact)
 
 void JoystickControl::update(HeadControlRequest& headControlRequest)
 {
-  execute();
-
   headControlRequest = localHeadControlRequest;
 }
 
 void JoystickControl::update(MotionRequest& motionRequest)
 {
-  execute();
-
   motionRequest = localMotionRequest;
 }
 
@@ -66,15 +62,15 @@ void JoystickControl::initialize()
 
   // Robot starts with centered head.
   localHeadControlRequest.controlType = HeadControlRequest::direct;
-  localHeadControlRequest.pan = 0.f;
-  localHeadControlRequest.tilt = 0.f;
+  localHeadControlRequest.pan = 0_deg;
+  localHeadControlRequest.tilt = 0_deg;
 
   // Robot starts playing dead.
   m_standing = false;
   playDead();
   localMotionRequest.walkRequest.requestType = WalkRequest::speed;
   localMotionRequest.walkRequest.request.translation << 0.f, 0.f;
-  localMotionRequest.walkRequest.request.rotation = 0.f;
+  localMotionRequest.walkRequest.request.rotation = 0_deg;
   localMotionRequest.kickRequest.kickMotionType = KickRequest::none;
 
   // No action running.
@@ -82,23 +78,25 @@ void JoystickControl::initialize()
   m_actionEndTime = 0;
 }
 
-void JoystickControl::execute()
+void JoystickControl::execute(tf::Subflow&)
 {
-  // Run this method only once per frame.
-  if (lastExecuteTimeStamp == theFrameInfo.time)
-    return;
-
-  lastExecuteTimeStamp = theFrameInfo.time;
-
   MODIFY("module:JoystickControl:parameters", parameters);
   MODIFY("module:JoystickControl:deviceParameters", parameters.device);
 
-  // Read all pending joystick events.
-  parseJoystickEvents();
+  if (theRobotInfo.transitionToFramework >= 0.f)
+  {
+    // Read all pending joystick events.
+    parseJoystickEvents();
 
-  // Process joystick events.
-  generateHeadControlRequest();
-  generateMotionRequest();
+    // Process joystick events.
+    generateHeadControlRequest();
+    generateMotionRequest();
+  }
+  else
+  {
+    m_standing = false;
+    playDead();
+  }
 }
 
 void JoystickControl::parseJoystickEvents()
@@ -188,6 +186,7 @@ void JoystickControl::processChestButton()
     // Change standing state.
     if (standing())
     {
+      m_standing = false;
       sitDown();
 
       // Reset joystick connection.
@@ -198,10 +197,9 @@ void JoystickControl::processChestButton()
     }
     else
     {
+      m_standing = true;
       stand();
     }
-
-    m_standing = !m_standing;
   }
 }
 
@@ -262,7 +260,7 @@ void JoystickControl::generateMotionRequest()
 
   if (m_inCustomStepTest)
   {
-    localMotionRequest.walkRequest.request.translation[0] = 0.5f;
+    localMotionRequest.walkRequest.request.translation[0] = 1.f;
   }
 
   // Evaluate button press if available.
@@ -492,12 +490,12 @@ void JoystickControl::playDead()
 
 void JoystickControl::stand()
 {
-  specialAction(SpecialActionRequest::stand, false, 5000);
+  specialAction(SpecialActionRequest::stand, false, 3500);
 }
 
 void JoystickControl::sitDown()
 {
-  specialAction(SpecialActionRequest::sitDown, false, 3000);
+  specialAction(SpecialActionRequest::sitDown, false, 2500);
 }
 
 void JoystickControl::standUpFallen()
@@ -512,19 +510,15 @@ void JoystickControl::standUpFallen()
   // Choose appropriate stand up action
   if (theFallDownState.state == FallDownState::onGround)
   {
-    int duration = 1000;
     if (theFallDownState.direction == FallDownState::back)
     {
-      specialAction(SpecialActionRequest::standUpBackNao, false, 5500);
-      duration = 5500;
+      specialAction(theMotionState.standUpStatus.bestStandUpMotionBack, false, 5000);
     }
     else if (theFallDownState.direction == FallDownState::front)
     {
-      specialAction(SpecialActionRequest::standUpFrontNao, false, 3100);
-      duration = 3100;
+      specialAction(theMotionState.standUpStatus.bestStandUpMotionFront, false, 2800);
     }
-    // Set duration of action.
-    m_actionEndTime = theFrameInfo.time + duration;
+    // Set the action running.
     m_actionRunning = true;
   }
   else
@@ -547,6 +541,6 @@ void JoystickControl::kick(bool kickLeft)
   localMotionRequest.kickRequest.dynamical = true;
   localMotionRequest.kickRequest.kickTarget << 1000.f, 0.f;
   // Set duration of action.
-  m_actionEndTime = theFrameInfo.time + 1000;
+  m_actionEndTime = theFrameInfo.time + 500;
   m_actionRunning = true;
 }

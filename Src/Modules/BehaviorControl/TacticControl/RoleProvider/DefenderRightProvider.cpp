@@ -12,12 +12,28 @@ void DefenderRightProvider::update(DefenderRight& positioningSymbols)
   // stay in one spot if ball is far away from own goal
   getStandardPosition(positioningSymbols);
 
+  // leave penalty area for penalty kick
+  if (theGameInfo.setPlay == SET_PLAY_PENALTY_KICK && !theGameSymbols.ownKickOff)
+  {
+    positioningSymbols.optPosition.translation.x() = theFieldDimensions.xPosOwnPenaltyArea + theFieldDimensions.xPosOwnPenaltyArea / 3;
+    positioningSymbols.optPosition.translation.y() = theFieldDimensions.yPosRightPenaltyArea - 400.f;
+    positioningSymbols.optPosition.rotation = (Vector2f(theFieldDimensions.xPosOwnGroundline, 0.f) - positioningSymbols.optPosition.translation).angle();
+
+    positioningSymbols.thresholdRotation = 10_deg;
+    positioningSymbols.thresholdXBack = 50.f;
+    positioningSymbols.thresholdXFront = 100.f;
+    positioningSymbols.thresholdY = 100.f;
+    positioningSymbols.stopAtTarget = true;
+    positioningSymbols.previewArrival = true;
+    return;
+  }
+
   // only check for alternative Position when in playing, otherwise keep standard position
   if (theGameInfo.state == STATE_PLAYING)
   {
-    // if set play is ongoing, get to predefined position
-    if (theGameInfo.setPlay != SET_PLAY_NONE)
+    if (theGameInfo.setPlay != SET_PLAY_NONE && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)
     {
+      // if set play is ongoing, get to predefined position
       if (calculateSetPlayPosition(positioningSymbols))
         return;
     }
@@ -94,8 +110,8 @@ bool DefenderRightProvider::calculateSetPlayPosition(DefenderRight& positioningS
     else // wrong side of the ball for default behavior
     {
       useStandardPosition = false;
-      positioningSymbols.optPosition.translation = theRobotPoseAfterPreview.translation + vectorFromBallPosition.normalize(minDistanceToBall);
-      positioningSymbols.optPosition.rotation = (positioningSymbols.optPosition.translation - theBallSymbols.ballPositionField).angle();
+      // positioningSymbols.optPosition.translation = theRobotPoseAfterPreview.translation + vectorFromBallPosition.normalize(minDistanceToBall);
+      //positioningSymbols.optPosition.rotation = (positioningSymbols.optPosition.translation - theBallSymbols.ballPositionField).angle();
     }
   }
   positioningSymbols.thresholdRotation = 10_deg;

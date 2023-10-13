@@ -45,8 +45,8 @@ public:
 
     void normalizeDirection(),
 
-    (Vector2f) base,
-    (Vector2f) direction
+    (Vector2f)(Vector2f::Zero()) base,
+    (Vector2f)(Vector2f::Zero()) direction
   );
 
   struct PixeledLine : public std::vector<Vector2i>
@@ -97,6 +97,7 @@ public:
   static int getIntersectionOfLineAndCircle(const Line& line, const Circle& circle, Vector2f& firstIntersection, Vector2f& secondIntersection);
   static bool checkIntersectionOfLines(const Vector2f& l1p1, const Vector2f& l1p2, const Vector2f& l2p1, const Vector2f& l2p2);
   [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Line& line);
+  [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Line& line, float hysteresis);
   [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Vector2f& linePoint1, const Vector2f& linePoint2);
   [[nodiscard]] static bool isPointLeftOfLine(const Vector2f& point, const Vector2f& linePoint1, const Vector2f& linePoint2, float hysteresis);
   [[nodiscard]] static bool getIntersectionOfLines(const Line& line1, const Line& line2, Vector2f& intersection);

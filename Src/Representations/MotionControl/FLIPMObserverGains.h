@@ -7,16 +7,16 @@
 STREAMABLE(FLIPMObserverGains,
 	ENUM(CoMProvider,
 	  targetCoM,
-	  MRE_CoM,
-	  IMU_CoM
+	  MRECoM,
+	  IMUCoM
 	);
 
 	ENUM(ACCProvider,
 	  targetAcc,
-	  ZMP_Acc,
-	  ZMP_CoM1_Acc,
-    ZMP_Target_Acc,
-	  IMU_Acc
+	  ZMPAcc,
+	  ZMPCoM1Acc,
+      ZMPTargetAcc,
+	  IMUAcc
 	);
 	,
 	(bool)(false) activateSensorX,

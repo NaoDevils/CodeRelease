@@ -15,6 +15,7 @@
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/MotionState.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Configuration/FieldDimensions.h"
@@ -33,6 +34,7 @@ MODULE(CMCorrector,
   REQUIRES(FieldDimensions),
   REQUIRES(FallDownState),
   REQUIRES(MotionSettings),
+  REQUIRES(MotionState),
   REQUIRES(CameraCalibration),
   USES(JointSensorData), // consistency with USES(CLIPFieldLinesPercept)
   USES(TorsoMatrix), // consistency with USES(CLIPFieldLinesPercept)
@@ -52,7 +54,7 @@ MODULE(CMCorrector,
     (std::vector<HeadAngleRequest>) upperHeadAngleRequests,
     (std::vector<HeadAngleRequest>) lowerHeadAngleRequests,
     (std::vector<HeadAngleRequest>) localizeHeadAngleRequests,
-    (Pose2f)({ 180_deg, {-1000.f, 0.f} }) calibrationPose,
+    (Pose2f)(180_deg, {-1000.f, 0.f}) calibrationPose,
     (unsigned)(3000) waitTimeAfterWalking,
     (unsigned)(270000) calibrationTimeout
   )

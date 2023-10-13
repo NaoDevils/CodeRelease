@@ -45,6 +45,23 @@ public:
     B = static_cast<unsigned char>(b);
   }
 
+  /** Converts an YCbCr pixel into an RGB pixel.
+   *  @param Y The Y channel of the source pixel.
+   *  @param Cb The Cb channel of the source pixel.
+   *  @param Cr The Cr channel of the source pixel.
+   *  @param R The R channel of the target pixel.
+   *  @param G The G channel of the target pixel.
+   *  @param B The B channel of the target pixel.
+   */
+  static void fromYCbCrToRGB(unsigned char Y, unsigned char Cb, unsigned char Cr, float& R, float& G, float& B)
+  {
+    unsigned char charR, charG, charB;
+    fromYCbCrToRGB(Y, Cb, Cr, charR, charG, charB);
+    R = charR / 255.f;
+    G = charG / 255.f;
+    B = charB / 255.f;
+  }
+
   /** Converts an RGB pixel into an YCbCr pixel.
    *  @param R The R channel of the source pixel.
    *  @param G The G channel of the source pixel.
@@ -332,6 +349,8 @@ public:
     float r = static_cast<float>(R) / 255.0f, g = static_cast<float>(G) / 255.0f, b = static_cast<float>(B) / 255.0f;
     float rgbMax = std::max(r, std::max(g, b));
     float rgbMin = std::min(r, std::min(g, b));
+    // L
+    L = (rgbMax + rgbMin) / 2.0f;
     // H
     if (rgbMax == rgbMin)
     {
@@ -363,7 +382,5 @@ public:
     {
       S = (rgbMax - L) / std::min(L, 1 - L);
     }
-    // L
-    L = (rgbMax + rgbMin) / 2.0f;
   }
 };

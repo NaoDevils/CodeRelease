@@ -241,6 +241,8 @@ private:
    *         hypothesis exists.
    */
   std::size_t updateBestHypothesisIndexIfNecessary();
+
+  void removeHypothesis(size_t index);
   
 public:
   /**
@@ -371,7 +373,7 @@ public:
 private:
   /// Stores the index of the best hypothesis.
   /// This is updated by the method \c updateBestHypothesis().
-  mutable std::size_t m_bestHypothesisIndex = -1;
+  mutable std::size_t m_bestHypothesisIndex = std::numeric_limits<size_t>::max();
   /// Stores the index of the best hypothesis from the last iteration.
   std::size_t m_lastBestHypothesisIndex = m_bestHypothesisIndex;
   

@@ -39,9 +39,15 @@ GameController::GameController()
   gameInfo.kickingTeam = 1;
   gameInfo.secsRemaining = durationOfHalf;
   teamInfos[TEAM_BLUE].teamNumber = 1;
-  teamInfos[TEAM_BLUE].teamColour = TEAM_BLUE;
+  teamInfos[TEAM_BLUE].fieldPlayerColour = TEAM_BLUE;
+  teamInfos[TEAM_BLUE].goalkeeperColour = TEAM_BLUE;
+  teamInfos[TEAM_BLUE].goalkeeper = 1;
+  teamInfos[TEAM_BLUE].messageBudget = messageBudget;
   teamInfos[TEAM_RED].teamNumber = 2;
-  teamInfos[TEAM_RED].teamColour = TEAM_RED;
+  teamInfos[TEAM_RED].fieldPlayerColour = TEAM_RED;
+  teamInfos[TEAM_RED].goalkeeperColour = TEAM_RED;
+  teamInfos[TEAM_RED].goalkeeper = 1;
+  teamInfos[TEAM_RED].messageBudget = messageBudget;
 }
 
 void GameController::registerSimulatedRobot(int robot, SimulatedRobot& simulatedRobot)
@@ -49,6 +55,7 @@ void GameController::registerSimulatedRobot(int robot, SimulatedRobot& simulated
   ASSERT(!robots[robot].simulatedRobot);
   robots[robot].simulatedRobot = &simulatedRobot;
   robots[robot].info.number = robot % (numOfRobots / 2) + 1;
+  robots[robot].info.penalty = PENALTY_NONE;
   if (fieldDimensions.xPosOwnPenaltyMark == 0.f)
     fieldDimensions.load();
 }
@@ -70,9 +77,6 @@ bool GameController::handleGlobalCommand(const std::string& command)
     if (gameInfo.state == STATE_INITIAL)
       gameInfo.timeFirstReadyState = SystemCall::getCurrentSystemTime();
     gameInfo.state = STATE_READY;
-    for (int i = 0; i < numOfRobots; ++i)
-      if (robots[i].info.penalty)
-        handleRobotCommand(i, "none");
     timeWhenStateBegan = SystemCall::getCurrentSystemTime();
     return true;
   }
@@ -90,8 +94,6 @@ bool GameController::handleGlobalCommand(const std::string& command)
       else
       {
         gameInfo.state = STATE_SET;
-        for (int i = 0; i < numOfRobots; ++i)
-          robots[i].info.penalty = none;
 
         if (automatic)
         {
@@ -113,8 +115,6 @@ bool GameController::handleGlobalCommand(const std::string& command)
     else
     {
       gameInfo.state = STATE_SET;
-      for (int i = 0; i < numOfRobots; ++i)
-        robots[i].info.penalty = none;
 
       gameInfo.secsRemaining = durationOfPS;
       timeWhenHalfStarted = 0;
@@ -526,16 +526,16 @@ void GameController::referee()
   for (int i = 0; i < numOfRobots; ++i)
   {
     Robot& r = robots[i];
-    if (r.info.penalty)
+
+    RoboCup::RobotInfo& tr = teamInfos[i * 2 / numOfRobots].players[i % (numOfRobots / 2)];
+
+    if (r.info.penalty != PENALTY_NONE && r.info.penalty != PENALTY_SUBSTITUTE && r.info.penalty != PENALTY_SPL_REQUEST_FOR_PICKUP)
     {
       r.info.secsTillUnpenalised = (uint8_t)(std::max(int(45 - SystemCall::getTimeSince(r.timeWhenPenalized) / 1000), 0));
-      RoboCup::RobotInfo& tr = teamInfos[i * 2 / numOfRobots].players[i % (numOfRobots / 2)];
-      tr.secsTillUnpenalised = r.info.secsTillUnpenalised;
 
       if (automatic && r.info.secsTillUnpenalised <= 0)
       {
         r.info.penalty = PENALTY_NONE;
-        tr.penalty = PENALTY_NONE;
 
         ASSERT(r.simulatedRobot);
         Vector2f ballPos;
@@ -543,6 +543,8 @@ void GameController::referee()
         placeForPenalty(i, fieldDimensions.xPosOpponentPenaltyMark, ballPos.y() >= 0 ? fieldDimensions.yPosRightSideline : fieldDimensions.yPosLeftSideline, ballPos.y() >= 0 ? pi_2 : -pi_2);
       }
     }
+    tr.secsTillUnpenalised = r.info.secsTillUnpenalised;
+    tr.penalty = r.info.penalty;
   }
 
   if (automatic)
@@ -885,15 +887,16 @@ void GameController::writeGameInfo(Out& stream)
       gameInfo.secsRemaining = (uint16_t)(durationOfPS - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
   }
   gameInfo.timeLastPackageReceived = SystemCall::getCurrentSystemTime();
+  gameInfo.controllerConnected = true;
   stream << gameInfo;
 }
 
 void GameController::writeTeamInfo(TeamInfo& teamInfo, Out& stream)
 {
   SYNC;
-  // starting value: 1200 packages or 1680 for 7v7 (see rules and GC 2022)
+  // starting value: 1200 packages (see rules and GC 2023)
   if (gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
-    teamInfo.messageBudget = (gameInfo.competitionType == COMPETITION_TYPE_7V7) ? 1680 : 1200;
+    teamInfo.messageBudget = messageBudget;
 
   teamInfo.teamPort = Global::getSettings().teamPort;
 
@@ -927,12 +930,14 @@ void GameController::writeRobotInfo(int robot, Out& stream)
   stream << r.info;
 }
 
-void GameController::setTeamColors(uint8_t firstTeamColor, uint8_t secondTeamColor)
+void GameController::setTeamColors(uint8_t firstFieldPlayerColor, uint8_t firstGoalkeeperColor, uint8_t secondFieldPlayerColor, uint8_t secondGoalkeeperColor)
 {
   teamInfos[0].teamNumber = 1;
-  teamInfos[0].teamColour = firstTeamColor;
+  teamInfos[0].fieldPlayerColour = firstFieldPlayerColor;
+  teamInfos[0].goalkeeperColour = firstGoalkeeperColor;
   teamInfos[1].teamNumber = 2;
-  teamInfos[1].teamColour = secondTeamColor;
+  teamInfos[1].fieldPlayerColour = secondFieldPlayerColor;
+  teamInfos[1].goalkeeperColour = secondGoalkeeperColor;
 }
 
 void GameController::addCompletion(std::set<std::string>& completion) const

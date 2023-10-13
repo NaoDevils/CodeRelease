@@ -126,9 +126,9 @@ class DrawingManager3D : public DrawingManager
       static const Vector3f points[8] = {                                                                                                                          \
           Vector3f(1, 0, 1), Vector3f(1, 0, 0), Vector3f(0, 0, 0), Vector3f(0, 0, 1), Vector3f(0, 0, 2), Vector3f(1, 0, 2), Vector3f(1, 0, 1), Vector3f(0, 0, 1)}; \
       static const unsigned char digits[10] = {0x3f, 0x0c, 0x76, 0x5e, 0x4d, 0x5b, 0x7b, 0x0e, 0x7f, 0x5f};                                                        \
-      digit = digits[std::abs(digit)];                                                                                                                             \
+      const unsigned char& drawDigit = digits[digit];                                                                                                              \
       for (int i = 0; i < 7; ++i)                                                                                                                                  \
-        if (digit & (1 << i))                                                                                                                                      \
+        if (drawDigit & (1 << i))                                                                                                                                  \
         {                                                                                                                                                          \
           Vector3f from = pos - points[i] * digitsize;                                                                                                             \
           Vector3f to = pos - points[i + 1] * digitsize;                                                                                                           \
@@ -356,17 +356,17 @@ class DrawingManager3D : public DrawingManager
   do                                                                                                                    \
     COMPLEX_DRAWING3D(id)                                                                                               \
     {                                                                                                                   \
-      Vector3f forward = to - from;                                                                                     \
+      Vector3f forward = (to) - (from);                                                                                 \
       float height = forward.norm() - arrowlen;                                                                         \
       forward.normalize(height * 0.5f);                                                                                 \
-      Vector3f center = from + forward;                                                                                 \
+      Vector3f center = (from) + forward;                                                                               \
       float rx = 0.f, ry = 0.f;                                                                                         \
       rx = (forward.y() != 0.f || forward.z() != 0.f) ? -std::atan2(forward.y(), forward.z()) : 0.f;                    \
       float d = std::sqrt(forward.z() * forward.z() + forward.y() * forward.y());                                       \
       ry = (forward.x() != 0.f || d != 0.f) ? std::atan2(forward.x(), d) : 0.f;                                         \
       CYLINDER3D(id, center.x(), center.y(), center.z(), rx, ry, 0.f, radius, height, color);                           \
       forward.normalize(arrowlen * 0.5f);                                                                               \
-      Vector3f arrowCenter = to - forward;                                                                              \
+      Vector3f arrowCenter = (to)-forward;                                                                              \
       CYLINDER3D2(id, arrowCenter.x(), arrowCenter.y(), arrowCenter.z(), rx, ry, 0.f, arrowradius, 0, arrowlen, color); \
     }                                                                                                                   \
   while (false)

@@ -622,12 +622,12 @@ inline const char* DrawingManager::getTypeName(char id, char processIdentifier) 
   do                                                                                                                                                                                      \
     DECLARED_DEBUG_RESPONSE("debug drawing:" id)                                                                                                                                          \
     {                                                                                                                                                                                     \
-      OutTextRawSize size;                                                                                                                                                                \
-      size << txt;                                                                                                                                                                        \
-      char* _buf = new char[size.getSize() + 1];                                                                                                                                          \
-      OutTextRawMemory stream(_buf);                                                                                                                                                      \
-      stream << txt;                                                                                                                                                                      \
-      _buf[size.getSize()] = 0;                                                                                                                                                           \
+      OutTextRawSize _size;                                                                                                                                                               \
+      _size << txt;                                                                                                                                                                       \
+      char* _buf = new char[_size.getSize() + 1];                                                                                                                                         \
+      OutTextRawMemory _stream(_buf);                                                                                                                                                     \
+      _stream << txt;                                                                                                                                                                     \
+      _buf[_size.getSize()] = 0;                                                                                                                                                          \
       OUTPUT(idDebugDrawing, bin, (char)Drawings::text << (char)Global::getDrawingManager().getDrawingId(id) << (int)(x) << (int)(y) << (short)(fontSize) << (ColorRGBA)(color) << _buf); \
       delete[] _buf;                                                                                                                                                                      \
     }                                                                                                                                                                                     \
@@ -660,12 +660,12 @@ inline const char* DrawingManager::getTypeName(char id, char processIdentifier) 
   do                                                                                                                                                                         \
     DECLARED_DEBUG_RESPONSE("debug drawing:" id)                                                                                                                             \
     {                                                                                                                                                                        \
-      OutTextRawSize size;                                                                                                                                                   \
-      size << text;                                                                                                                                                          \
-      char* _buf = new char[size.getSize() + 1];                                                                                                                             \
-      OutTextRawMemory stream(_buf);                                                                                                                                         \
-      stream << text;                                                                                                                                                        \
-      _buf[size.getSize()] = 0;                                                                                                                                              \
+      OutTextRawSize _size;                                                                                                                                                  \
+      _size << text;                                                                                                                                                         \
+      char* _buf = new char[_size.getSize() + 1];                                                                                                                            \
+      OutTextRawMemory _stream(_buf);                                                                                                                                        \
+      _stream << text;                                                                                                                                                       \
+      _buf[_size.getSize()] = 0;                                                                                                                                             \
       OUTPUT(idDebugDrawing, bin, (char)Drawings::tip << (char)Global::getDrawingManager().getDrawingId(id) << (int)(center_x) << (int)(center_y) << (int)(radius) << _buf); \
       delete[] _buf;                                                                                                                                                         \
     }                                                                                                                                                                        \

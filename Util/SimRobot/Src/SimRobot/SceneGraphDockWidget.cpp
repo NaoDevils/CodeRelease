@@ -159,10 +159,10 @@ SimRobot::Object* SceneGraphDockWidget::resolveObject(const SimRobot::Object* pa
       if (object->fullName.endsWith(lastPart))
       {
         RegisteredObject* currentObject = object;
-        for (int i = partsCount - 2; i >= 0; --i)
+        for (int j = partsCount - 2; j >= 0; --j)
         {
           currentObject = (RegisteredObject*)currentObject->parent();
-          const QString& currentPart = parts.at(i);
+          const QString& currentPart = parts.at(j);
           for (;;)
           {
             if (!currentObject)

@@ -28,7 +28,7 @@ ArmContactProvider::~ArmContactProvider() {}
 void ArmContactProvider::update(ArmContact& armContact)
 {
   // Check if lastRequest can been set and return empty armContact if not
-  requestSensorDelayBuffer.push_front(theJointRequest);
+  requestSensorDelayBuffer.push_front(theRawJointRequest);
   if (requestSensorDelayBuffer.full())
   {
     lastRequest = requestSensorDelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1];
@@ -119,7 +119,7 @@ void ArmContactProvider::update(ArmContact& armContact)
         Angle minAngle = (wasContactLeft || wasContactRight) ? minAngleToRobot : static_cast<Angle>(minAngleToRobot + 30_deg);
         float maxDist = (wasContactLeft || wasContactRight) ? maxRobotDist + 150.f : maxRobotDist;
         if (std::abs(robotRelativeAngle) < maxAngle && std::abs(robotRelativeAngle) > minAngle && robotDist < maxDist
-            && !(theRoleSymbols.role == BehaviorData::ballchaser && theBallSymbols.ballPositionField.x() > robot.pose.translation.x()))
+            && !(theBallChaserDecision.playerNumberToBall == theRobotInfo.number && theBallSymbols.ballPositionField.x() > robot.pose.translation.x()))
         {
           obstacleLeft = obstacleLeft || robotRelativeAngle > 0;
           obstacleRight = obstacleRight || robotRelativeAngle < 0;
@@ -180,8 +180,8 @@ void ArmContactProvider::update(ArmContact& armContact)
   PLOT("module:ArmContactProvider:bufferLeft", toDegrees(bufferLeft.sum()));
   PLOT("module:ArmContactProvider:bufferRight", toDegrees(bufferRight.sum()));
 
-  lastPitchLeft = theJointRequest.angles[Joints::lShoulderPitch];
-  lastPitchRight = theJointRequest.angles[Joints::rShoulderPitch];
+  lastPitchLeft = theRawJointRequest.angles[Joints::lShoulderPitch];
+  lastPitchRight = theRawJointRequest.angles[Joints::rShoulderPitch];
 
   ArmContact::ArmContactState leftState = armContact.armContactStateLeft;
   ArmContact::ArmContactState rightState = armContact.armContactStateRight;
@@ -204,7 +204,7 @@ void ArmContactProvider::update(ArmContact& armContact)
     }
   }
 
-  lastRequest = theJointRequest;
+  lastRequest = theRawJointRequest;
   armContact = localArmContact;
 }
 

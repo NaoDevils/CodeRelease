@@ -11,5 +11,5 @@ vid upper representation:CLIPFieldLinesPercept:Image:Upper
 vid upper representation:PenaltyCrossPercept:Image:Upper
 vid upper representation:BallPercept:Image:Upper
 #vid upper representation:CLIPGoalPercept:Image:Upper
-vid upper representation:RobotsPerceptUpper:Image:Upper
+vid upper representation:RobotsPercept:Image:Upper
 vid upper representation:BodyContourUpper

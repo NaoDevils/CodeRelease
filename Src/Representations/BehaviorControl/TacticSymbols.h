@@ -5,10 +5,12 @@
 */
 
 #pragma once
+
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Pose2f.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Tools/Math/Eigen.h"
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Ranges/Cone.h>
 
 /**
 * \class TacticSymbols
@@ -22,7 +24,16 @@ STREAMABLE(TacticSymbols,
   (bool)(false) iAmSupported, // TODO Not filled yet
   (bool)(false) interceptBall, // TODO Not filled yet
   (bool)(true) defensiveBehavior,
+  (float)(0.5f) activity,
   (bool)(true) kickoffToTheLeft,
   (int)(0) numberOfLeftOwnKickOffSuccess,
-  (int)(0) numberOfRightOwnKickOffSuccess
+  (int)(0) numberOfRightOwnKickOffSuccess,
+  (bool)(false) keepRoleAssignment,
+
+  (int)(0) closeToBallRobotNumber,
+  (int)(0) closeToBallOpponentRobotNumber,
+  (Pose2f)(Pose2f()) closeToBallRobot, // Not closest since there is a threshold to count as close
+  (Pose2f)(Pose2f()) closeToBallOpponentRobot, // Not closest since there is a threshold to count as close
+
+  (Cone)(Cone()) defensiveCone
 );

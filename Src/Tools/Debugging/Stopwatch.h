@@ -49,3 +49,27 @@ inline void _plot(const char* id, unsigned time)
 #define STOPWATCH_MONOTONIC_WITH_PLOT(eventID)                                                                                                                                                  \
   for (bool _start = true; (_start ? Global::getTimingManager().startTiming(eventID, false) : _plot("plot:stopwatch:" eventID, Global::getTimingManager().stopTiming(eventID, false))), _start; \
        _start ^= true)
+
+// RAII style stopwatch
+class Stopwatch
+{
+public:
+  explicit Stopwatch(const char* eventID, bool threadTime = true, const char* plotID = nullptr) : eventID(eventID), plotID(plotID), threadTime(threadTime)
+  {
+    Global::getTimingManager().startTiming(eventID, threadTime);
+  }
+  ~Stopwatch()
+  {
+    const unsigned int time = Global::getTimingManager().stopTiming(eventID, threadTime);
+    if (plotID)
+      _plot(plotID, time);
+  }
+
+private:
+  const char* const eventID;
+  const char* const plotID;
+  const bool threadTime;
+};
+
+#define MONOTONIC_WITH_PLOT(eventID) eventID, false, "plot:stopwatch:" eventID
+#define WITH_PLOT(eventID) eventID, true, "plot:stopwatch:" eventID

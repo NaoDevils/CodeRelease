@@ -131,6 +131,11 @@ void PortAudioRecorder::update(AudioData& audioData)
   {
     OUTPUT_ERROR("PortAudioRecorder: Pa_ReadStream failed: " << Pa_GetErrorText(paerr) << "(" << paerr << ")");
     audioData.samples.clear();
+
+    // restart stream immediately after timeout
+    if (paerr == paTimedOut)
+      Pa_StopStream(stream);
+
     return;
   }
   audioData.isValid = true;

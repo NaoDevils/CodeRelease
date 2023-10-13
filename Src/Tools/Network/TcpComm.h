@@ -49,6 +49,8 @@ private:
    */
   void closeTransferSocket();
 
+  void close();
+
 public:
   /**
    * Opens a TCP connection to a remote host.
@@ -63,6 +65,11 @@ public:
   TcpComm(const char* ip, int port, int maxPackageSendSize = 0, int maxPackageReceiveSize = 0);
 
   ~TcpComm();
+
+  TcpComm(TcpComm&) = delete;
+  TcpComm& operator=(const TcpComm&) = delete;
+  TcpComm(TcpComm&&) noexcept;
+  TcpComm& operator=(TcpComm&&) noexcept;
 
   /**
    * The function sends a block of bytes.

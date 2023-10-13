@@ -125,6 +125,11 @@ protected:
   */
   void stop();
 
+  /**
+  * Updates jersey colors of goalkeeper and fieldplayers.
+  */
+  void updateColors();
+
 private:
   QList<SimRobot::Object*> views; /**< List of registered views */
 };

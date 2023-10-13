@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Modules/MotionControl/KickEngine/KickEngineParameters.h"
+#include "Modules/MotionControl/KickEngine/DynPoint.h"
 #include "Tools/Streams/AutoStreamable.h"
 
 STREAMABLE(KickRequest,
@@ -27,6 +27,8 @@ STREAMABLE(KickRequest,
     none
   );
 
+  using KickMotionIDVector = std::vector<KickMotionID>;
+
   static KickMotionID getKickMotionFromName(const char* name),
 
   (KickMotionID)(none) kickMotionType,
@@ -34,5 +36,8 @@ STREAMABLE(KickRequest,
   (bool)(false) dynamical,
   (bool)(true) armsBackFix,
   (std::vector<DynPoint>) dynPoints,
-  (Vector2f)(Vector2f(1000,0)) kickTarget
+
+  // If the WalkKick::any ist used the kickTarget hast to be filled. If any other kick is used the kickPose has to be filled
+  (Vector2f)(Vector2f(1000,0)) kickTarget,
+  (Pose2f)(Pose2f(0,0,0)) kickPose
 );

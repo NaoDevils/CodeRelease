@@ -1,12 +1,21 @@
 option(Start)
 {
+  common_transition
+  {
+    // check for malfunctions
+    if (theBehaviorData.soccerState == BehaviorData::safetyShutdown)
+    {
+      goto malfunction;
+    }
+  }
+
   initial_state(playDead)
   {
     transition
     {
       if ((SystemCall::getMode() == SystemCall::simulatedRobot) // Don't wait for the button in SimRobot
           || (Global::getSettings().recover) // Skip playDead state at a restart after a crash
-          || (theRobotInfo.transitionToFramework == 1.f)) // ndevilsbase starts transition to framework (chest button was pressed once)
+          || (theRobotInfo.transitionToFramework > 0.f)) // ndevilsbase starts transition to framework (chest button was pressed once)
         goto startBehavior;
     }
     action
@@ -26,6 +35,18 @@ option(Start)
       {
         SystemCall::text2Speech("Starting calibration");
         goto autoCalibrate;
+      }
+      if (theFrameInfo.getTimeSince(theKeySymbols.lastTimeNotPressed[KeyStates::headRear]) > 100
+          && theFrameInfo.getTimeSince(theKeySymbols.lastTimeNotPressed[KeyStates::chest]) > 100 && theGameInfo.state == STATE_INITIAL)
+      {
+        SystemCall::text2Speech("Testing Joints");
+        goto testing;
+      }
+      if (theFrameInfo.getTimeSince(theKeySymbols.lastTimeNotPressed[KeyStates::headMiddle]) > 100
+          && theFrameInfo.getTimeSince(theKeySymbols.lastTimeNotPressed[KeyStates::chest]) > 100 && theGameInfo.state == STATE_INITIAL)
+      {
+        SystemCall::text2Speech("Testing Joints unstiff");
+        goto testingUnstiff;
       }
       // Penalty shootout and robot is penalized
       if ((Global::getSettings().gameMode == Settings::GameMode::penaltyShootout) && (theRobotInfo.penalty != PENALTY_NONE))
@@ -49,6 +70,7 @@ option(Start)
         SoundControl(); // Does nothing yet but tells the role
         BodyControl(); // Handles all other parts of the game
         StandUpControl(); // Triggers stand up motions when robot falls
+        RobotSafetyControl(); // Triggers safety motion when robot has a broken leg joint
         theBehaviorData.behaviorState = BehaviorData::BehaviorState::game;
       }
     }
@@ -66,7 +88,55 @@ option(Start)
     }
     action
     {
-      AutoCalibrate();
+      RobotSafetyControl();
+      if (theBehaviorData.soccerState != BehaviorData::safetyShutdown)
+        AutoCalibrate();
+    }
+  }
+  state(malfunction)
+  {
+    transition {}
+    action
+    {
+      if (theFallDownState.state == FallDownState::upright)
+      {
+        SpecialAction(SpecialActionRequest::sitDown, false);
+      }
+      else
+      {
+        SpecialAction(SpecialActionRequest::playDead, false);
+      }
+    }
+  }
+
+  state(testing)
+  {
+    transition
+    {
+      // ndevilsbase stopped framework (chest button was pressed three times or all head buttons pressed 1 sec)
+      if (theRobotInfo.transitionToFramework == 0.f)
+        goto sitDown;
+      else if (action_done && state_time > 200) // calibration finished
+        goto startBehavior;
+    }
+    action
+    {
+      Testing();
+    }
+  }
+  state(testingUnstiff)
+  {
+    transition
+    {
+      // ndevilsbase stopped framework (chest button was pressed three times or all head buttons pressed 1 sec)
+      if (theRobotInfo.transitionToFramework == 0.f)
+        goto sitDown;
+      else if (action_done && state_time > 200) // calibration finished
+        goto startBehavior;
+    }
+    action
+    {
+      TestingUnstiff();
     }
   }
 
@@ -75,7 +145,7 @@ option(Start)
   {
     transition
     {
-      if (state_time > 4000)
+      if (state_time > 1000)
         goto stopBehavior;
     }
     action
@@ -127,13 +197,14 @@ option(Start)
     transition
     {
       // ndevilsbase starts transition to framework (chest button was pressed once)
-      if (theRobotInfo.transitionToFramework == 1.f)
+      if (theRobotInfo.transitionToFramework > 0.f)
         goto startBehavior;
     }
     action
     {
       SpecialAction(SpecialActionRequest::sitDown);
-      theBehaviorData.soccerState = BehaviorData::SoccerState::waiting;
+      if (theBehaviorData.soccerState != BehaviorData::safetyShutdown)
+        theBehaviorData.soccerState = BehaviorData::SoccerState::waiting;
       theBehaviorData.behaviorState = BehaviorData::game;
     }
   }

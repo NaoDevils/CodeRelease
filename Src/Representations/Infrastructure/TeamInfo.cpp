@@ -60,10 +60,15 @@ void TeamInfo::serialize(In* in, Out* out)
 
   STREAM_REGISTER_BEGIN;
   STREAM(teamNumber); // unique team number
-  STREAM(teamColour); // TEAM_BLUE, TEAM_RED, TEAM_YELLOW, TEAM_BLACK
+  STREAM(fieldPlayerColour); // colour of the field players
+  STREAM(goalkeeperColour); // colour of the goalkeeper
+  STREAM(goalkeeper); // player number of the goalkeeper (1-MAX_NUM_PLAYERS)
   STREAM(score); // team's score
-  STREAM(messageBudget); // team's message budget
+  STREAM(penaltyShot); // penalty shot counter
+  STREAM(singleShots); // bits represent penalty shot success
+  STREAM(messageBudget); // number of team messages the team is allowed to send for the remainder of the game
   STREAM(players); // the team's players
+
   STREAM(teamPort); // the team's UDP port
   STREAM_REGISTER_FINISH;
 }
@@ -100,8 +105,8 @@ void TeamInfo::draw() const
   DECLARE_DEBUG_DRAWING3D("representation:TeamInfo", "field");
   {
     float x = teamNumber == 1 ? -1535.f : 1465.f;
-    drawDigit(score / 10, Vector3f(x, 3500, 1000), 200, teamColour);
-    drawDigit(score % 10, Vector3f(x + 270, 3500, 1000), 200, teamColour);
+    drawDigit(score / 10, Vector3f(x, 3500, 1000), 200, fieldPlayerColour);
+    drawDigit(score % 10, Vector3f(x + 270, 3500, 1000), 200, fieldPlayerColour);
   };
 }
 
@@ -114,7 +119,7 @@ void OwnTeamInfo::draw() const
 
   DEBUG_DRAWING("representation:OwnTeamInfo", "drawingOnField")
   {
-    DRAWTEXT("representation:OwnTeamInfo", -5000, -3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor)teamColour));
+    DRAWTEXT("representation:OwnTeamInfo", -5000, -3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor)fieldPlayerColour));
   }
 }
 
@@ -132,7 +137,7 @@ void OpponentTeamInfo::draw() const
 
   DEBUG_DRAWING("representation:OpponentTeamInfo", "drawingOnField")
   {
-    DRAWTEXT("representation:OpponentTeamInfo", -5000, 3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor)teamColour));
+    DRAWTEXT("representation:OpponentTeamInfo", -5000, 3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor)fieldPlayerColour));
   }
 }
 

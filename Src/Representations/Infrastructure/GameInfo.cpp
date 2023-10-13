@@ -97,16 +97,20 @@ Streamable& GameInfo::operator=(const Streamable& other) noexcept
 void GameInfo::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
+  STREAM(packetNumber); // number incremented with each packet sent (with wraparound)
+  STREAM(playersPerTeam); // the number of players on a team
   STREAM(competitionPhase); // phase of the game (COMPETITION_PHASE_ROUNDROBIN, COMPETITION_PHASE_PLAYOFF)
   STREAM(competitionType); // type of game (COMPETITION_TYPE_NORMAL, COMPETITION_TYPE_GENERAL_PENALTY_KICK, ..)
+  STREAM(gamePhase); // game phase - (GAME_PHASE_NORMAL, GAME_PHASE_PENALTYSHOOT, etc)
   STREAM(state); // STATE_READY, STATE_PLAYING, ...
+  STREAM(setPlay); // special set phases within game i.e. setting up for free kick (SET_PLAY_NONE, SET_PLAY_GOAL_KICK, ..)
   STREAM(firstHalf); // 1 = game in first half, 0 otherwise
   STREAM(kickingTeam); // team number of team with kick off/free kick off
-  STREAM(gamePhase); // game phase - (GAME_PHASE_NORMAL, GAME_PHASE_PENALTYSHOOT, etc)
-  STREAM(setPlay); // special set phases within game i.e. setting up for free kick (SET_PLAY_NONE, SET_PLAY_GOAL_KICK, ..)
   STREAM(secsRemaining); // estimate of number of seconds remaining in the half.
+  STREAM(secondaryTime); // number of seconds shown as secondary time (remaining ready, until free ball, etc)
   STREAM(timeLastPackageReceived); // used to decide whether a gameController is running
   STREAM(timeFirstReadyState);
   STREAM(oppTeamNumber);
+  STREAM(controllerConnected);
   STREAM_REGISTER_FINISH;
 }

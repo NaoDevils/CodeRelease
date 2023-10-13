@@ -29,8 +29,8 @@ STREAMABLE(Acceleration,,
 );
 
 STREAMABLE(COMOffsets,,
-  (float)(0.f) tiltFixed, // new 25_04_17
-  (float[2]) tiltSpeedDependent, // Min/Max, was speedDependentBodyTilt
+  (Angle)(0_deg) tiltFixed, // new 25_04_17
+  (Angle[2]) tiltSpeedDependent, // Min/Max, was speedDependentBodyTilt
   (float)(0.f) xArmContact, // was armContactCoMShiftX
   (float)(0.f) xFixed, // was xOffset
   (float)(0.f) xSpeedDependent, // was dynXOffset
@@ -85,7 +85,10 @@ STREAMABLE(WalkTransition,,
   (Angle[2]) fallDownAngleMinMaxX, // in rad
   (Angle[2]) fallDownAngleMinMaxY, // in rad
   (float)(0.f) stopSpeedThresholdX, // in m/s
-  (float)(0.f) stopSpeedThresholdY // in m/s
+  (float)(0.f) stopSpeedThresholdY, // in m/s
+  (Angle)(24_deg) fallDownAngleFront,
+  (Angle)(24_deg) fallDownAngleSide,
+  (Angle)(-17_deg) fallDownAngleBack
 );
 
 STREAMABLE(WalkingEngineParams,,
@@ -102,10 +105,12 @@ STREAMABLE(WalkingEngineParams,,
 );
 
 STREAMABLE(JointControlParameters,,
+  (float)(0.f) zeroPidMultiplicatorX,
   (float)(1.f) pidMultiplicatorX,
   (float)(0.f) p_x,
   (float)(0.f) i_x,
   (float)(0.f) d_x,
+  (float)(0.f) zeroPidMultiplicatorY,
   (float)(1.f) pidMultiplicatorY,
   (float)(0.f) p_y,
   (float)(0.f) i_y,

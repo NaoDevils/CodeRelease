@@ -20,5 +20,7 @@ STREAMABLE_WITH_BASE(SpecialActionsOutput, JointRequest,
   (bool)(true) isLeavingPossible, /**< Is leaving the motion module possible now? */
   (bool)(false) isArmLeavingAllowed, /**< Is leaving the motion module only for the arms allowed*/
   (bool)(false) isMotionStable, /**< Is the position of the camera directly related to the kinematic chain of joint angles? */
+  (bool)(false) isFallProtectionNeeded, /**< Is it necessary to activate the fall down protection*/
+  (bool)(true) isMotionFinished,
   (SpecialActionRequest) executedSpecialAction /**< The special action currently executed. */
 );

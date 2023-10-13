@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Streams/Compressed.h"
 #include "Representations/Infrastructure/RoboCupGameControlData.h"
 #include <limits>
 
@@ -21,6 +22,9 @@ STREAMABLE(TimeOffsets,
 );
 
 STREAMABLE(TimeSynchronization,
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 0;
+
   STREAMABLE(Measurement,,
     (unsigned)(0) sent,
     (unsigned)(0) received
@@ -29,7 +33,7 @@ STREAMABLE(TimeSynchronization,
     (unsigned char)(0) player
   );
   ,
-  (std::vector<MeasurementFromPlayer>)({}) receivedRequests,
+  (VectorCompressed<MeasurementFromPlayer>) receivedRequests,
   (unsigned char)(0) requestFrom /**< Bitmask indicating robot numbers. */
 );
 

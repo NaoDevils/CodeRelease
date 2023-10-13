@@ -73,6 +73,8 @@ public:
   // API
   void resetDynamics() override;
 
+  void setVelocity(dReal x, dReal y, dReal z) override;
+
 private:
   Vector3f centerOfMass; /**< The position of the center of mass relative to the pose of the body */
   float centerOfMassTransformation[16];

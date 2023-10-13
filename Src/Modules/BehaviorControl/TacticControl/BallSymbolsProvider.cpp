@@ -7,12 +7,14 @@
 */
 
 #include "BallSymbolsProvider.h"
-#include "Tools/Debugging/Modify.h"
+#include "Tools/Debugging/Annotation.h"
 #include "Tools/Debugging/DebugDrawings.h"
+#include "Tools/Debugging/Modify.h"
 #include "Tools/Math/Geometry.h"
 #include "Tools/Math/Transformation.h"
 #include "Tools/Modeling/BallPhysics.h"
-#include "Tools/Debugging/Annotation.h"
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h>
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h>
 
 void BallSymbolsProvider::update(BallSymbols& ballSymbols)
 {
@@ -41,19 +43,44 @@ void BallSymbolsProvider::update(BallSymbols& ballSymbols)
   chooseBallModel(localBallSymbols, currentlyUsedBallModel);
 
   // ball to field coordinates
-  localBallSymbols.ballPositionField = Transformation::robotToField(theRobotPoseAfterPreview, currentlyUsedBallModel.estimate.position);
-  localBallSymbols.ballPositionRelative = currentlyUsedBallModel.estimate.position;
-  localBallSymbols.ballVelocityRelative = currentlyUsedBallModel.estimate.velocity;
+  if (theGameInfo.state == STATE_READY)
+  {
+    // some roles use the ball for positioning during ready
+    if (theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT || theGameInfo.setPlay == SET_PLAY_PENALTY_KICK)
+    {
+      const float xPosPenaltyMark = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber ? theFieldDimensions.xPosOpponentPenaltyMark : theFieldDimensions.xPosOwnPenaltyMark;
+      localBallSymbols.ballPositionField << xPosPenaltyMark, theFieldDimensions.yPosCenterGoal;
+    }
+    else
+      localBallSymbols.ballPositionField.setZero();
 
-  // predicted ball position
-  setPredictedBallPosition(localBallSymbols);
+    localBallSymbols.ballPositionFieldPredicted = localBallSymbols.ballPositionField;
+    localBallSymbols.ballPositionRelative = Transformation::fieldToRobot(theRobotPoseAfterPreview, localBallSymbols.ballPositionField);
+    localBallSymbols.ballPositionRelativePredicted = localBallSymbols.ballPositionRelative;
+    localBallSymbols.ballPositionRelativeWOPreview = localBallSymbols.ballPositionField;
+    localBallSymbols.ballVelocityRelative.setZero();
+    localBallSymbols.ballVelocityRelativeWOPreview.setZero();
+  }
+  else
+  {
+    localBallSymbols.ballPositionField = Transformation::robotToField(theRobotPoseAfterPreview, currentlyUsedBallModel.estimate.position);
+    localBallSymbols.ballPositionRelative = currentlyUsedBallModel.estimate.position;
+    localBallSymbols.ballVelocityRelative = currentlyUsedBallModel.estimate.velocity;
+
+    // predicted ball position
+    setPredictedBallPosition(localBallSymbols);
+  }
 
   ballWasSeenRecently = localBallSymbols.timeSinceLastSeen < timeForBallWasSeen;
   ballIsRolling = currentlyUsedBallModel.estimate.velocity.norm() > 50.f; // Ball is faster than 50 mm/s
-  ballIsMovingTowardsTheRobot = ballIsRolling && sgn(currentlyUsedBallModel.estimate.velocity.x()) != sgn(currentlyUsedBallModel.estimate.position.x());
+  Vector2f vecBalltoRobot = theRobotPoseAfterPreview.translation - localBallSymbols.ballPositionField;
+  Angle difBallRobot = 180_deg;
+  if (localBallSymbols.ballVelocityRelative.norm() > 0 && vecBalltoRobot.norm() > 0)
+    difBallRobot = std::abs(localBallSymbols.ballVelocityRelative.angleTo(vecBalltoRobot));
+  bool ballIsMovingTowardsTheRobot = ballIsRolling && difBallRobot < 70_deg;
 
   // for diving / ball stopping
-  if (ballWasSeenRecently && ballIsMovingTowardsTheRobot)
+  if (ballWasSeenRecently && ballIsMovingTowardsTheRobot && ballSymbols.ballPositionField.x() > theFieldDimensions.xPosOwnGroundline) // getYPosWhenBallReachesOwnGroundLine calc doesn't make sense otherwise
   {
     localBallSymbols.yPosWhenBallReachesOwnYAxis = getYPosWhenBallReachesOwnYAxis();
     localBallSymbols.yPosWhenBallReachesGroundLine = getYPosWhenBallReachesOwnGroundLine(localBallSymbols);
@@ -72,7 +99,7 @@ void BallSymbolsProvider::update(BallSymbols& ballSymbols)
   const int bufferZoneGoal = (localBallSymbols.ballInOwnGoalArea ? 300 : 200);
   localBallSymbols.ballInOwnGoalArea = (std::abs(localBallSymbols.ballPositionField.y()) < theFieldDimensions.yPosLeftGoalArea + bufferZoneGoal)
       && (localBallSymbols.ballPositionField.x() < theFieldDimensions.xPosOwnGoalArea + bufferZoneGoal);
-  const int bufferZonePenalty = (localBallSymbols.ballInOwnGoalArea ? 300 : 200);
+  const int bufferZonePenalty = (localBallSymbols.ballInOwnGoalArea ? 300 : 100);
   localBallSymbols.ballInOwnPenaltyArea = (std::abs(localBallSymbols.ballPositionField.y()) < theFieldDimensions.yPosLeftPenaltyArea + bufferZonePenalty)
       && (localBallSymbols.ballPositionField.x() < theFieldDimensions.xPosOwnPenaltyArea + bufferZonePenalty);
 
@@ -133,26 +160,32 @@ void BallSymbolsProvider::chooseBallModel(BallSymbols& ballSymbols, BallModel& c
 
 void BallSymbolsProvider::setPredictedBallPosition(BallSymbols& ballSymbols)
 {
-  // Avoid predicted ball ? Per default yes, but not if kicking..
-  if (theMotionInfo.walkRequest.stepRequest != WalkRequest::StepRequest::none || theMotionInfo.motion == MotionRequest::kick) // kick will be executed by motion
+  if (KickUtils::isBallKicked(theMotionInfo)) // kick will be executed by motion
   {
     timeWhenLastKickTriggered = theFrameInfo.time;
-    Vector2f vectorBallToKickTarget = theMotionInfo.kickRequest.kickTarget - ballSymbols.ballPositionField;
-    ballSymbols.ballPositionFieldPredicted = ballSymbols.ballPositionField + vectorBallToKickTarget.normalize(500.f); // small step should be good enough TODO: only one time? Use Dominiks Prediction
-    ballSymbols.ballPositionRelativePredicted = Transformation::fieldToRobot(theRobotPoseAfterPreview, ballSymbols.ballPositionFieldPredicted);
     ballSymbols.avoidBall = false;
+    return;
   }
-  else if (theFrameInfo.getTimeSince(timeWhenLastKickTriggered) < ballPredictionTimeHorizon) // keep predicted position for some time after kick
+
+  if (theFrameInfo.getTimeSince(timeWhenLastKickTriggered) < ballPredictionTimeHorizon) // keep predicted position for some time after kick
   {
     ballSymbols.ballPositionRelativePredicted = Transformation::fieldToRobot(theRobotPoseAfterPreview, ballSymbols.ballPositionFieldPredicted);
     ballSymbols.avoidBall = false;
+    return;
+  }
+
+  const float MIN_VELOCITY_X = 5.f;
+  const float MIN_VELOCITY_Y = 10.f;
+  if (std::abs(ballSymbols.ballVelocityRelative.x()) < MIN_VELOCITY_X && std::abs(ballSymbols.ballVelocityRelative.y()) < MIN_VELOCITY_Y)
+  {
+    ballSymbols.ballPositionRelativePredicted = ballSymbols.ballPositionRelative;
   }
   else
   {
     ballSymbols.ballPositionRelativePredicted = BallPhysics::getEndPosition(ballSymbols.ballPositionRelative, ballSymbols.ballVelocityRelative, theBallModelAfterPreview.friction);
-    ballSymbols.ballPositionFieldPredicted = Transformation::robotToField(theRobotPoseAfterPreview, ballSymbols.ballPositionRelativePredicted);
-    ballSymbols.avoidBall = true;
   }
+  ballSymbols.ballPositionFieldPredicted = Transformation::robotToField(theRobotPoseAfterPreview, ballSymbols.ballPositionRelativePredicted);
+  ballSymbols.avoidBall = true;
 }
 
 bool BallSymbolsProvider::calculateBallCouldHaveBeenSeen(BallSymbols& ballSymbols)
@@ -234,27 +267,16 @@ bool BallSymbolsProvider::calculateBallBlockable(BallSymbols& ballSymbols)
 
 bool BallSymbolsProvider::calculateBallProbablyCloseButNotSeen(BallSymbols& ballSymbols)
 {
-  // compare current and last fall down state to detect successful stand ups
-  fallDownStateLastFrame = fallDownStateThisFrame;
-  fallDownStateThisFrame = theFallDownState.state;
-  if (fallDownStateLastFrame == FallDownState::standingUp && fallDownStateThisFrame == FallDownState::upright)
-    timeOfLastStandUp = theFrameInfo.time;
-
   bool lastBallWasClose = currentlyUsedBallModel.lastPerception.norm() < 1000;
-  //bool lastBallWasNotBehindTheRobot = currentlyUsedBallModel.lastPerception.x() > 50;
-  int timeForBallWasSeenBonus = static_cast<int>(toDegrees(std::abs(theBallModelAfterPreview.estimate.position.angle())) * 10);
-  bool ballWasNotSeenRecently = ballSymbols.timeSinceLastSeen > (timeForBallWasSeen + timeForBallWasSeenBonus);
-  bool ballLostStartedRecently = std::min(ballSymbols.timeSinceLastSeen, theFrameInfo.getTimeSince(timeOfLastStandUp)) < 10000;
-  bool ballWasNotGoneForLong = ballSymbols.timeSinceLastSeen < 16000;
-  bool isRobotUprightAndNotKicking = fallDownStateThisFrame == FallDownState::upright && theMotionSelection.targetMotion != MotionRequest::kick
-      && theMotionSelection.walkRequest.stepRequest == WalkRequest::none;
 
-  // if ballLost is true the ballchaser rotates find a recently lost ball
-  return lastBallWasClose &&
-      //lastBallWasNotBehindTheRobot && // if it was seen next or behind me, handle differently; robot should turn or walk to model target
-      ballWasNotSeenRecently && ballLostStartedRecently && // rotate for 10 seconds after losing the ball or getting up after a fall
-      ballWasNotGoneForLong && // if ball has been lost for too long its probably gone and rotating is unecessary
-      isRobotUprightAndNotKicking;
+  int timeForBallWasSeenBonus = (int)toDegrees(std::abs(theBallModelAfterPreview.estimate.position.angle())) * 10;
+  int totalTimeForBallWasSeen = (int)timeForBallWasSeen + timeForBallWasSeenBonus;
+
+  bool ballSeenRecently = ballSymbols.timeSinceLastSeen < (totalTimeForBallWasSeen + 20000);
+  bool ballSeenVeryRecently = ballSymbols.timeSinceLastSeen < (totalTimeForBallWasSeen + 2000);
+  ASSERT(!(!ballSeenRecently && ballSeenVeryRecently));
+
+  return lastBallWasClose && ballSeenRecently && !ballSeenVeryRecently;
 }
 
 float BallSymbolsProvider::getYPosWhenBallReachesOwnYAxis()

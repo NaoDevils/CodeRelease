@@ -72,8 +72,16 @@ void MotionRequest::draw() const
 
 bool MotionRequest::inStandUpMotion() const
 {
-  return motion == MotionRequest::specialAction && specialActionRequest.specialAction >= SpecialActionRequest::firstStandUpMotion
-      && specialActionRequest.specialAction <= SpecialActionRequest::lastStandUpMotion;
+  return motion == MotionRequest::specialAction
+      && ((specialActionRequest.specialAction >= SpecialActionRequest::firstStandUpMotion && specialActionRequest.specialAction <= SpecialActionRequest::lastStandUpMotion)
+          || (specialActionRequest.specialAction >= SpecialActionRequest::firstFallMotion && specialActionRequest.specialAction <= SpecialActionRequest::lastFallMotion));
+}
+
+bool MotionRequest::inFallMotion() const
+{
+  return motion == MotionRequest::specialAction
+      && ((specialActionRequest.specialAction >= SpecialActionRequest::firstFallMotion && specialActionRequest.specialAction <= SpecialActionRequest::lastFallMotion)
+          || specialActionRequest.specialAction == SpecialActionRequest::lying);
 }
 
 bool MotionRequest::inBlockMotion() const

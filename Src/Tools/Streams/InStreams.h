@@ -870,6 +870,19 @@ public:
   virtual bool isBinary() const { return true; }
 };
 
+
+class InCompressedBinaryMemory : public InBinaryMemory
+{
+  using InBinaryMemory::InBinaryMemory;
+
+public:
+  /**
+   * The function returns whether this is a compressed (binary) stream.
+   * @return Does it output data in compressed binary format?
+   */
+  virtual bool isCompressed() const { return true; }
+};
+
 /**
  * @class InTextFile
  *

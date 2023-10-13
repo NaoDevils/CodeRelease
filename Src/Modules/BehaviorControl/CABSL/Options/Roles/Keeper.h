@@ -4,7 +4,8 @@ option(Keeper)
   common_transition
   {
     //If ball was last seen close to the goal, then search for ball
-    if (theKeeper.ballSearchState != Keeper::KeeperBallSearchState::none && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
+    if (theKeeper.ballSearchState != Keeper::KeeperBallSearchState::none && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT
+        && (!theBehaviorConfiguration.behaviorParameters.goalieForEvents || theKeeper.ballSearchState != Keeper::KeeperBallSearchState::wait))
     {
       goto search_for_ball;
     }
@@ -32,8 +33,10 @@ option(Keeper)
     action
     {
       //Go to a position relativ to the ball in own penalty area
-      if ((theGameInfo.setPlay == SET_PLAY_PENALTY_KICK || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT) && !theGameSymbols.ownKickOff)
+      if ((theGameInfo.setPlay == SET_PLAY_PENALTY_KICK || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT))
         SpecialAction(SpecialActionRequest::SpecialActionID::penaltyGoaliePrepareDive);
+      else if (theBehaviorConfiguration.behaviorParameters.goalieForEvents) //bigger threshold for the goalie to prevent too much positioning in PrepareDive
+        GoToFieldCoordinates(Pose2f(0_deg, theFieldDimensions.xPosOwnGroundline + 70.f, theFieldDimensions.yPosCenterGoal), 150.f, 100.f, 200.f, 25_deg, true, true);
       else
         Positioning();
       // Ingmar, 15.07.2020: RotationType towardsBall was used here, has to be reimplemented if it is ever to be used.
@@ -96,8 +99,9 @@ option(Keeper)
 
     action
     {
+
       Positioning(theKeeper.useLongKick);
-      if (action_done)
+      if (action_done && theBallSymbols.ballWasSeen)
       {
         theMotionRequest.kickRequest.kickTarget = theKeeper.optKickTarget;
         theMotionRequest.kickRequest.mirror = theBallSymbols.ballPositionRelative.y() < 0;

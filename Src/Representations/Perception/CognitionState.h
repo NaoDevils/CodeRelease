@@ -35,6 +35,10 @@ STREAMABLE(ImageStatus,,
     (int)(0) upperCameraBrightness
   );
 
+STREAMABLE(BatteryStatus,,
+  (bool)(false) batteryBroken
+);
+
 STREAMABLE(CognitionState,
   ENUM(CognitionStateError,
     locaProblem,
@@ -51,5 +55,6 @@ STREAMABLE(CognitionState,
   (LocaStatus) locaStatus,
   (BallStatus) ballStatus,
   (ImageStatus) imageStatus,
+  (BatteryStatus) batteryStatus,
   (std::vector<CognitionStateError>) cognitionProblems
 );

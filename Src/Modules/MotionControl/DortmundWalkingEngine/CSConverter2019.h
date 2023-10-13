@@ -42,6 +42,7 @@
 
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/KinematicRequest.h"
+#include "Representations/MotionControl/JointError.h"
 #include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/Modeling/RobotPose.h"
@@ -57,6 +58,7 @@ MODULE(CSConverter2019,
   REQUIRES(RobotInfo),
   REQUIRES(FsrSensorData),
   REQUIRES(JoinedIMUData),
+  USES(JointError),
   REQUIRES(FallDownState),
   REQUIRES(Footpositions),
   REQUIRES(FootSteps),
@@ -79,6 +81,7 @@ MODULE(CSConverter2019,
     (bool)(true) balanceSupportLegOnly,
     (bool)(true) determineSupportFootByFSR,
     (BalanceParameters) legJointBalanceParams,
+    (JointControlParameters) jointErrorInfluenceParams,
     (COMShiftParameters) comShiftParameters,
     (bool)(false) rotateLegWithBody
   )
@@ -166,6 +169,8 @@ private:
   float pidAngleYAnkle_sum = 0.f, pidAngleYHip_sum = 0.f;
   float pidAngleXAnkle_last = 0.f, pidAngleXHip_last = 0.f;
   float pidAngleYAnkle_last = 0.f, pidAngleYHip_last = 0.f;
+
+  JointAngles jointError_sum, jointError_last;
   float lastComX = 0.f;
 
   //typedef std::list<Footposition *> FootList;

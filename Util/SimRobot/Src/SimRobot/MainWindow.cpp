@@ -512,8 +512,8 @@ bool MainWindow::loadModule(const QString& name, bool manually)
   // relink modules
   if (manually)
   {
-    foreach (LoadedModule* loadedModule, loadedModules)
-      loadedModule->module->link();
+    foreach (LoadedModule* lm, loadedModules)
+      lm->module->link();
   }
 
   return true;
@@ -558,8 +558,8 @@ void MainWindow::unloadModule(const QString& name)
   manuallyLoadedModules.removeOne(name);
 
   // relink modules
-  foreach (LoadedModule* loadedModule, loadedModules)
-    loadedModule->module->link();
+  foreach (LoadedModule* lm, loadedModules)
+    lm->module->link();
 }
 
 bool MainWindow::compileModules()

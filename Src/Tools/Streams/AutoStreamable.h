@@ -360,6 +360,7 @@
  * inside the header of a streamable class.
  */
 #define PROTECT(...) __VA_ARGS__
+#define COMMA ,
 
 // clang-format on
 

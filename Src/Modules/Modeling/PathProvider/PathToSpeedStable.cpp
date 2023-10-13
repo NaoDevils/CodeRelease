@@ -18,11 +18,37 @@ PathToSpeedStable::PathToSpeedStable()
     pathParameters.centerCircleInfluenceRadius = 350.f;
     pathParameters.setPlayInfluenceRadius = 800.f;
   }
+
+  for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
+  {
+    gyroDataBuffersX[i].fill(0.f);
+    gyroDataBuffersY[i].fill(0.f);
+  }
 }
 
 void PathToSpeedStable::update(SpeedRequest& speedRequest)
 {
   DECLARE_DEBUG_DRAWING("module:PathToSpeedStable:avoidBallIntermediateTarget", "drawingOnField");
+
+  for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
+  {
+    gyroDataBuffersX[i].push_front(theJoinedIMUData.imuData[i].gyro.x());
+    gyroDataBuffersY[i].push_front(theJoinedIMUData.imuData[i].gyro.y());
+  }
+
+  Angle gyroVariance = (gyroDataBuffersY[anglesource].getVariance() + gyroDataBuffersX[anglesource].getVariance());
+  PLOT("module:PathToSpeedStable:gyroVariance", gyroVariance);
+
+  // dont move if nearly falling
+  if (theMotionRequest.motion == MotionRequest::walk
+      && (std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) >= emergencyStopFallDownReductionFactorThreshold
+          || gyroVariance > emergencyStopGyroVariance))
+  {
+    speedRequest.translation = Vector2f::Zero();
+    speedRequest.rotation = 0.f;
+    return;
+  }
+
   // somehow walk towards ball (no specified kind of step requested)
   // Ingmar, 15.07.2020: Does not work like this, reimplement if needed
   if (theMotionRequest.motion == MotionRequest::walk && theMotionRequest.walkRequest.requestType == WalkRequest::destination
@@ -34,19 +60,10 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
   }
 
   // TODO: ball next to goal post
-
   speedRequest.translation = Vector2f::Zero();
   speedRequest.rotation = 0.f;
 
-  // dont move if nearly falling
-  if (std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) >= emergencyStopFallDownReductionFactorThreshold)
-  {
-    return;
-  }
-
   // TODO : remember the old way
-
-
   if (theMotionRequest.motion == MotionRequest::walk)
   {
     // walk towards destination
@@ -56,12 +73,12 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
       speedRequest.rotation = theMotionRequest.walkRequest.request.rotation;
       return;
     }
-    Pose2f destWorldCoordinates = Pose2f(theRobotPoseAfterPreview + theMotionRequest.walkRequest.request);
     // TODO: acc
     if (thePath.wayPoints.size() < 2)
       return;
 
     /**** decide state ****/
+    Pose2f destWorldCoordinates = Pose2f(theRobotPoseAfterPreview + theMotionRequest.walkRequest.request);
     Pose2f destRel = destWorldCoordinates - theRobotPoseAfterPreview;
     float distanceToTarget = destRel.translation.norm();
     float angleNextWayPointRelative = Angle::normalize((thePath.wayPoints[1].translation - thePath.wayPoints[0].translation).angle() - theRobotPoseAfterPreview.rotation);
@@ -74,13 +91,14 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
 
     // TODO: seems to be a behavior thing to decide this
     // keeper in playing, not chasing the ball (not after penalty, not without wlan)
-    if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING && goalieCloseToGoal && !(theGameSymbols.timeSinceLastPenalty < 15000)
-        && !(theBehaviorConfiguration.noWLAN || !theTeammateData.wlanOK))
+    if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING && goalieCloseToGoal && theGameSymbols.timeSinceLastPenalty >= 15000
+        && !theBehaviorConfiguration.noWLAN && theTeammateData.wlanOK && keeperInPenaltyAreaTargetOnly)
     {
       state = target;
     }
     else
     {
+      const float targetStateSwitchDistance = theRoleSymbols.role == BehaviorData::RoleAssignment::keeper ? targetStateSwitchDistanceKeeper : targetStateSwitchDistanceFieldplayer;
       switch (state)
       {
       case target:
@@ -130,10 +148,10 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
     }
 
     inDribbling = false;
-    float maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor;
+    float maxSpeedR = theWalkingEngineParams.speedLimits.rOnly * theWalkingEngineParams.speedLimits.speedFactor;
     if (state != far)
     {
-      maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor * 0.8f;
+      maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor;
     }
 
     switch (state)

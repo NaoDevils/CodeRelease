@@ -60,10 +60,15 @@ namespace
 
 
 SelfLocator2017::SelfLocator2017()
-    : initialized(false), lastExecuteTimeStamp(0), foundGoodPosition(false), timeStampLastGoodPosition(0), localizationState(positionTracking),
-      localizationStateAfterGettingUp(localizationState), penalizedTimeStamp(0), unpenalizedTimeStamp(0), lastPenalty(PENALTY_NONE), lastNonPlayingTimeStamp(0),
-      lastPositionLostTimeStamp(0), timeStampFirstReadyState(0), distanceTraveledFromLastFallDown(0.f), lastNonSetTimestamp(0), gotPickedUp(false), lastBestHypothesisUniqueId(0)
+    : initialized(false), foundGoodPosition(false), timeStampLastGoodPosition(0), localizationState(positionTracking), localizationStateAfterGettingUp(localizationState),
+      penalizedTimeStamp(0), unpenalizedTimeStamp(0), lastPenalty(PENALTY_NONE), lastNonPlayingTimeStamp(0), lastPositionLostTimeStamp(0), timeStampFirstReadyState(0),
+      distanceTraveledFromLastFallDown(0.f), lastNonSetTimestamp(0), gotPickedUp(false), lastBestHypothesisUniqueId(0)
 {
+  for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
+  {
+    gyroDataBuffersX[i].fill(theJoinedIMUData.imuData[i].gyro.x());
+    gyroDataBuffersY[i].fill(theJoinedIMUData.imuData[i].gyro.y());
+  }
 }
 
 SelfLocator2017::~SelfLocator2017()
@@ -73,32 +78,26 @@ SelfLocator2017::~SelfLocator2017()
 
 void SelfLocator2017::update(RobotPose& robotPose)
 {
-  executeCommonCode();
   robotPose = m_robotPose;
 }
 
 void SelfLocator2017::update(SideConfidence& confidence)
 {
-  executeCommonCode();
   confidence = m_sideConfidence;
 }
 
-
 void SelfLocator2017::update(RobotPoseHypothesis& robotPoseHypothesis)
 {
-  executeCommonCode();
   robotPoseHypothesis = m_robotPoseHypothesis;
 }
 
 void SelfLocator2017::update(RobotPoseHypotheses& robotPoseHypotheses)
 {
-  executeCommonCode();
   robotPoseHypotheses = m_robotPoseHypotheses;
 }
 
 void SelfLocator2017::update(RobotPoseHypothesesCompressed& robotPoseHypotheses)
 {
-  executeCommonCode();
   robotPoseHypotheses = RobotPoseHypothesesCompressed(m_robotPoseHypotheses);
 }
 
@@ -110,9 +109,21 @@ void SelfLocator2017::predictHypotheses()
 
   distanceTraveledFromLastFallDown += odometryDelta.translation.norm();
 
+
+  for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
+  {
+    gyroDataBuffersX[i].push_front(theJoinedIMUData.imuData[i].gyro.x());
+    gyroDataBuffersY[i].push_front(theJoinedIMUData.imuData[i].gyro.y());
+  }
+
+  Angle gyroVariance = (gyroDataBuffersY[anglesource].getVariance() + gyroDataBuffersX[anglesource].getVariance());
+  PLOT("module:SelfLocator2017:gyroVariance", gyroVariance.toDegrees());
+  PLOT("module:SelfLocator2017:gyroThreshold", gyroMaxVariance.toDegrees());
+  bool isStable = gyroVariance < gyroMaxVariance ? true : false;
+
   for (auto& hypothesis : poseHypotheses)
   {
-    hypothesis->predict(odometryDelta, parameters);
+    hypothesis->predict(odometryDelta, parameters, isStable);
   }
 }
 
@@ -181,7 +192,7 @@ void SelfLocator2017::updateHypothesesSymmetryConfidence()
 }
 
 
-void SelfLocator2017::executeCommonCode()
+void SelfLocator2017::execute(tf::Subflow&)
 {
   if (!initialized)
   {
@@ -191,13 +202,6 @@ void SelfLocator2017::executeCommonCode()
     distanceTraveledFromLastFallDown = parameters.spawning.minDistanceBetweenFallDowns;
     initialized = true;
   }
-
-  if (lastExecuteTimeStamp == theFrameInfo.time)
-  {
-    return;
-  }
-  lastExecuteTimeStamp = theFrameInfo.time;
-
 
   initDebugging();
 
@@ -264,6 +268,21 @@ void SelfLocator2017::executeCommonCode()
     // TODO: if it was an state update error and the position was good, maybe we only want new hypotheses from line matches?
     addHypothesesOnPenaltyPositions(0.2f);
     addNewHypothesesFromLineMatches();
+  }
+
+  // check if best hypothesis changed
+  m_robotPose.bestHypothesisChanged = false;
+  m_robotPose.bestHypothesisPositionDifference = Pose2f();
+  if (bestHypothesis)
+  {
+    const PoseHypothesis2017* newBestHypothesis = getBestHypothesis();
+    if (newBestHypothesis && bestHypothesis->getUniqueId() != newBestHypothesis->getUniqueId())
+    {
+      m_robotPose.bestHypothesisChanged = true;
+      Pose2f newPose;
+      newBestHypothesis->getRobotPose(newPose);
+      m_robotPose.bestHypothesisPositionDifference = newPose - pose;
+    }
   }
 
   // Fill local storage for representations
@@ -429,7 +448,7 @@ void SelfLocator2017::pruneHypothesesWithInvalidValues()
     const PoseHypotheses::value_type& hypothesis = (*it);
     if (hypothesis->containsInvalidValues())
     {
-      ANNOTATION("SelfLocator", "detected impossible state (NaN) -> deleting hypothesis");
+      ANNOTATION("SelfLocator2017", "detected impossible state (NaN) -> deleting hypothesis");
 
       DEBUG_LOG(TAG, "Detected impossible state (NaN) -> deleting hypothesis");
 
@@ -879,8 +898,6 @@ void SelfLocator2017::addPenaltyStrikerStartingHypothesis()
   Vector2f penaltyMarkPos = Vector2f(theFieldDimensions.xPosOpponentPenaltyMark, theFieldDimensions.yPosCenterGoal);
 
   Vector2f backTransl = Vector2f(positionsByRules.penaltyShootStartingRadius, 0);
-  Vector2f rot;
-
   for (int angle : positionsByRules.penaltyShootAngles)
   {
     Vector2f rot = Vector2f(backTransl).rotate(Angle::fromDegrees(angle));
@@ -893,24 +910,18 @@ void SelfLocator2017::addHypothesesOnInitialPositions(float newPositionConfidenc
 {
   if (Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
   {
-    SideConfidence::ConfidenceState sc = SideConfidence::ConfidenceState::CONFIDENT;
+    const SideConfidence::ConfidenceState sc = SideConfidence::ConfidenceState::CONFIDENT;
 
-    // Player 1
-    poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
-        Pose2f(-pi_2, theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosLeftSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
-    // Player 3
-    poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
-        Pose2f(-pi_2, -theFieldDimensions.xPosOpponentGroundline / 2.f, theFieldDimensions.yPosLeftSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
-    // Player 5
-    poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
-        Pose2f(-pi_2, -theFieldDimensions.centerCircleRadius, theFieldDimensions.yPosLeftSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
+    constexpr int left = (MAX_NUM_PLAYERS + 1) / 2;
+    constexpr int right = MAX_NUM_PLAYERS / 2;
 
-    // Player 2
-    poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
-        Pose2f(pi_2, theFieldDimensions.xPosOwnPenaltyMark, theFieldDimensions.yPosRightSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
-    // Player 4
-    poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
-        Pose2f(pi_2, theFieldDimensions.xPosOwnGroundline * 2.f / 3.f, theFieldDimensions.yPosRightSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
+    for (int i = 1; i <= left; ++i)
+      poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
+          Pose2f(-pi_2, theFieldDimensions.xPosOwnGroundline * i / (left + 1), theFieldDimensions.yPosLeftSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
+
+    for (int i = 1; i <= right; ++i)
+      poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
+          Pose2f(-pi_2, theFieldDimensions.xPosOwnGroundline * i / (right + 1), theFieldDimensions.yPosRightSideline), newPositionConfidence, sc, theFrameInfo.time, parameters));
   }
 }
 
@@ -946,7 +957,7 @@ void SelfLocator2017::addHypothesesOnPenaltyPositions(float newPositionConfidenc
   }
 }
 
-bool SelfLocator2017::addNewHypothesesFromLineMatches()
+bool SelfLocator2017::addNewHypothesesFromLineMatches(bool onlyAddUnique)
 {
   const bool isLost = (localizationState == positionLost);
 
@@ -957,7 +968,7 @@ bool SelfLocator2017::addNewHypothesesFromLineMatches()
 
   std::vector<HypothesisBase> additionalHypotheses;
   size_t size = theLineMatchingResult.poseHypothesis.size();
-  if (size > 0)
+  if (size > 0 && (size == 2 || !onlyAddUnique)) // size == 2 means 1 position and it's symmetrical counterpart
   {
     for (auto& ph : theLineMatchingResult.poseHypothesis)
     {
@@ -1112,6 +1123,12 @@ bool SelfLocator2017::addNewHypotheses()
         && (!bestHyp || bestHyp->getPositionConfidence() < parameters.spawning.spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold))
     {
       added |= addNewHypothesesFromLineMatches();
+      added |= addNewHypothesesFromLandmark();
+    }
+    else if (parameters.spawning.landmarkBasedHypothesesSpawn & SelfLocator2017Parameters::Spawning::spawnIfPositionTracking
+        && (!bestHyp || bestHyp->getPositionConfidence() < parameters.spawning.spawnUniqueWhilePositionTrackingWhenBestConfidenceBelowThisThreshold))
+    {
+      added |= addNewHypothesesFromLineMatches(true);
       added |= addNewHypothesesFromLandmark();
     }
     else if (gotPickedUp && theGameInfo.state != STATE_SET)

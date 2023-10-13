@@ -14,6 +14,9 @@ class PushConfigCmd : public RobotCommand
   public:
     PushConfigTask(Context& context, const QString& buildConfig, Team* team, RobotConfigDorsh* robot);
     virtual bool execute();
+
+  private:
+    int mapColorToConf(int color);
   };
 
   Team* team;
@@ -30,7 +33,4 @@ class PushConfigCmd : public RobotCommand
 
 public:
   static PushConfigCmd thePushConfigCmd;
-
-private:
-  static std::string mapColorToConf(int color);
 };

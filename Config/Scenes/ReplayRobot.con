@@ -37,6 +37,13 @@ log mr
 log pause
 log once
 
+# disable team communication
+mr TimeSynchronization default
+mr TimeOffsets off
+mr TeamCommSenderOutput default
+mr TeamCommInput off
+mr TeamCommSocket off
+
 #enable behavior graph
 dr representation:ActivationGraph
 

@@ -69,37 +69,34 @@ bool Motion::main()
       beforeRun();
     }
 
-    STOPWATCH_MONOTONIC_WITH_PLOT("Motion:monotonic") STOPWATCH_WITH_PLOT("Motion") moduleManager.execute();
+    {
+      Stopwatch s1(MONOTONIC_WITH_PLOT("Motion:monotonic"));
+      Stopwatch s2(WITH_PLOT("Motion"));
+      moduleManager.execute();
+    }
 
     STOPWATCH_WITH_PLOT("Motion:postprocessing")
     {
-      STOPWATCH("Motion:finishFrame") finishFrame();
+      finishFrame();
 
-      STOPWATCH("Motion:afterRun") afterRun();
+      afterRun();
 
-      STOPWATCH("Motion:moveMessages")
       observeFunction("moveMessages",
           [&]
           {
             moveMessages(theDebugSender);
           });
 
-      STOPWATCH("Motion:debug")
-      {
-        DEBUG_RESPONSE_ONCE("automated requests:DrawingManager") OUTPUT(idDrawingManager, bin, Global::getDrawingManager());
-        DEBUG_RESPONSE_ONCE("automated requests:DrawingManager3D") OUTPUT(idDrawingManager3D, bin, Global::getDrawingManager3D());
-        DEBUG_RESPONSE_ONCE("automated requests:StreamSpecification") OUTPUT(idStreamSpecification, bin, Global::getStreamHandler());
-      }
+      DEBUG_RESPONSE_ONCE("automated requests:DrawingManager") OUTPUT(idDrawingManager, bin, Global::getDrawingManager());
+      DEBUG_RESPONSE_ONCE("automated requests:DrawingManager3D") OUTPUT(idDrawingManager3D, bin, Global::getDrawingManager3D());
+      DEBUG_RESPONSE_ONCE("automated requests:StreamSpecification") OUTPUT(idStreamSpecification, bin, Global::getStreamHandler());
 
-      STOPWATCH("Motion:motion2cognition")
-      {
-        theMotionToCognitionSender.timeStamp = SystemCall::getCurrentSystemTime();
-        observeFunction("motion2cognition",
-            [&]
-            {
-              theMotionToCognitionSender.send();
-            });
-      }
+      theMotionToCognitionSender.timeStamp = SystemCall::getCurrentSystemTime();
+      observeFunction("motion2cognition",
+          [&]
+          {
+            theMotionToCognitionSender.send();
+          });
     }
 
     timingManager.signalProcessStop();

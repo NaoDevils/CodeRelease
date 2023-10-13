@@ -180,10 +180,10 @@ void DepthImageSensor::DistanceSensor::updateValue()
       float* const mid = lut[bufferWidth / 2];
       const float factor = 2.0f / float(renderWidth);
       const unsigned int end = std::min(bufferWidth, widthLeft);
-      for (unsigned int i = 0; i < end; ++i)
+      for (unsigned int j = 0; j < end; ++j)
       {
-        const float vx = (lut[i] - mid) * factor;
-        *val++ = std::min<float>(halfP34 / (*lut[i] + halfP33m1) * std::sqrt(1.f + vx * vx * fInvSqr), max);
+        const float vx = (lut[j] - mid) * factor;
+        *val++ = std::min<float>(halfP34 / (*lut[j] + halfP33m1) * std::sqrt(1.f + vx * vx * fInvSqr), max);
       }
       widthLeft -= end;
       pose.rotate(RotationMatrix::aroundY(-renderAngleX));

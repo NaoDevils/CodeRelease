@@ -21,6 +21,11 @@
 #include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
+#include "Representations/BehaviorControl/RoleSymbols/LeftWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/FrontWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/BackWing.h"
+#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
@@ -51,6 +56,10 @@ MODULE(RoleDynamicProvider,
   REQUIRES(DefenderLeft),
   REQUIRES(DefenderRight),
   REQUIRES(DefenderSingle),
+  REQUIRES(LeftWing),
+  REQUIRES(RightWing),
+  REQUIRES(FrontWing),
+  REQUIRES(BackWing),
   REQUIRES(Keeper),
   REQUIRES(Receiver),
   REQUIRES(ReplacementKeeper),
@@ -64,9 +73,11 @@ MODULE(RoleDynamicProvider,
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(FallDownState),
   REQUIRES(OwnTeamInfo),
+  REQUIRES(TacticSymbols),
   PROVIDES(RoleSymbols),
-  DEFINES_PARAMETERS(,
-    (bool)(true) useStaticAssignmentNoWifi
+  LOADS_PARAMETERS(,
+    (bool)(true) useStaticAssignmentNoWifi,
+    (float)(1000.f) minDistanceDiffForNewRoleAssignment
   )
 );
 
@@ -78,17 +89,7 @@ class RoleDynamicProvider : public RoleDynamicProviderBase
 {
 public:
   /** Constructor */
-  RoleDynamicProvider()
-  {
-    passiveRolePositions.clear();
-    robotPoses.clear();
-    for (int i = 0; i <= MAX_NUM_PLAYERS; i++)
-    {
-      BehaviorData::PassiveRolePositionVector prpv;
-      passiveRolePositions.push_back(prpv);
-      robotPoses.emplace_back(Pose2f());
-    }
-  }
+  RoleDynamicProvider() { rolePositions.fill(Vector2f::Zero()); }
 
 private:
   /** Updates some of the symbols */
@@ -97,28 +98,26 @@ private:
   /** Find the player numbers and current positions of the active players in the team. */
   void getCurrentTeamStatus();
 
-  /** Declare drawing for the role selection in the simulator. */
-  void declareDebugDrawing(RoleSymbols& roleSymbols);
-
   /**
    * @brief In case of no wifi, static assignment except for ball chaser
    * @param roleSymbols 
   */
   void setStaticAssignment(RoleSymbols& roleSymbols);
 
+  bool roleChangeNeccessary(RoleSymbols& roleSymbols);
+
   void addRoles(RoleSymbols& roleSymbols);
 
   void findBestRoleAssignment(RoleSymbols& roleSymbols);
 
-  void addMyPassiveRolePositions();
-
-  void getPositionForRoleAndPlayer(const BehaviorData::RoleAssignment role, const int playerNumber, Vector2f& position);
+  void compareToLastAssignment(RoleSymbols& roleSymbols, const std::vector<float>& bestWalkDistances);
 
   void takeNewestRoleAssignment(RoleSymbols& roleSymbols);
 
+  void updateRolePositions();
+
   std::vector<BehaviorData::RoleAssignment> roles; // roles that should be assigned in role selection
-  std::vector<BehaviorData::PassiveRolePositionVector> passiveRolePositions; // collecting all passive role suggestions
+  std::array<Vector2f, BehaviorData::RoleAssignment::numOfRoleAssignments> rolePositions;
   std::vector<int> playerNumbers; // all player numbers in the pool for role assignment
-  std::vector<Pose2f> robotPoses; // all player positions
-  int lastPlayerNumberToBall = 0;
+  std::array<Pose2f, MAX_NUM_PLAYERS + 1> robotPoses; // all player positions
 };

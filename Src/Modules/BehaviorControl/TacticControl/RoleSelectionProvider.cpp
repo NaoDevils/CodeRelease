@@ -1,6 +1,22 @@
 #include "RoleSelectionProvider.h"
 #include <algorithm>
 
+RoleSelectionProvider::RoleSelectionProvider()
+{
+  const auto verify = [](const std::array<RoleSelection, MAX_NUM_PLAYERS - 1>& selection)
+  {
+    for (size_t i = 0; i < selection.size(); ++i)
+    {
+      ASSERT(selection[i].selectedRoles.size() == i + 1);
+      ASSERT(std::find(selection[i].selectedRoles.begin(), selection[i].selectedRoles.end(), selection[i].ballchaserDuringOppKickoff) != selection[i].selectedRoles.end());
+      ASSERT(std::find(selection[i].selectedRoles.begin(), selection[i].selectedRoles.end(), selection[i].ballchaserDuringOwnKickoff) != selection[i].selectedRoles.end());
+      ASSERT(std::find(selection[i].selectedRoles.begin(), selection[i].selectedRoles.end(), BehaviorData::RoleAssignment::noRole) == selection[i].selectedRoles.end());
+    }
+  };
+  verify(defensive);
+  verify(offensive);
+}
+
 void RoleSelectionProvider::update(RoleSelection& roleSelection)
 {
   selectRoles(roleSelection);
@@ -18,39 +34,15 @@ void RoleSelectionProvider::update(RoleSelection& roleSelection)
 * @param defensiveBehavior Should the more defensive role selection be chosen?
 * @param closeToOwnGoal Is the ball located in front of the OffenseLine?
 */
-BehaviorData::RobotRoleAssignmentVector RoleSelectionProvider::makeFundamentalSelection(int numberOfFieldPlayers, bool defensiveBehavior)
+RoleSelection RoleSelectionProvider::makeFundamentalSelection(int numberOfFieldPlayers, bool defensiveBehavior)
 {
-  switch (numberOfFieldPlayers)
+  const auto& selection = defensiveBehavior ? defensive : offensive;
+  if (numberOfFieldPlayers < 1 || numberOfFieldPlayers > static_cast<int>(selection.size()))
   {
-  case 0:
-    // no additional roles needed => return empty vector
-    return BehaviorData::RobotRoleAssignmentVector();
-  case 1: // one active field player
-    if (defensiveBehavior)
-      return selectionDefensive1; // defensive behavior
-    else
-      return selectionOffensive1; // offensive behavior
-  case 2: // two active field players
-    if (defensiveBehavior)
-      return selectionDefensive2;
-    else
-      return selectionOffensive2;
-  case 3: // three active field players
-    if (defensiveBehavior)
-      return selectionDefensive3;
-    else
-      return selectionOffensive3;
-  case 4: // four active field players
-    if (defensiveBehavior)
-      return selectionDefensive4;
-    else
-      return selectionOffensive4;
-  default:
-    // this case should never be entered
-    // if it does anyway return most defensive selection for four players and pray
-    return selectionDefensive4;
-    break;
+    OUTPUT_ERROR("RoleSelectionProvider: Invalid number of field players!");
+    return selection.back();
   }
+  return selection[numberOfFieldPlayers - 1];
 }
 
 /**
@@ -86,15 +78,29 @@ bool RoleSelectionProvider::substituteRoles(BehaviorData::RoleAssignment toRepla
 bool RoleSelectionProvider::isKeeperAvailable()
 {
   // the keeper needs to check its own penalty seperately because it is not in its own teammateData
-  if (theRobotInfo.number == 1 && theRobotInfo.penalty == PENALTY_NONE)
-    return true;
-  for (auto& mate : theTeammateData.teammates)
+  if (theRobotInfo.number == 1)
+    return theRobotInfo.penalty == PENALTY_NONE;
+
+  if (theTeammateData.wlanOK)
   {
-    if (mate.number == 1 && mate.status >= Teammate::ACTIVE)
-      return true;
+    for (auto& mate : theTeammateData.teammates)
+    {
+      if (mate.playerNumber == 1 && mate.status >= TeammateReceived::Status::ACTIVE)
+        return true;
+    }
+    // if no active keeper has been found return false
+    return false;
   }
-  // if no active keeper has been found return false
-  return false;
+  // Fallback to game controller data
+  else if (theGameInfo.controllerConnected)
+  {
+    return theOwnTeamInfo.players[0].penalty == PENALTY_NONE;
+  }
+  // Fallback to 7 players
+  else
+  {
+    return true;
+  }
 }
 
 /**
@@ -133,9 +139,16 @@ void RoleSelectionProvider::fillRoleSelection(RoleSelection& roleSelection, int 
 {
   if (rolesNeeded > 0)
   {
-    BehaviorData::RobotRoleAssignmentVector fundamentalSelection = makeFundamentalSelection(rolesNeeded, theTacticSymbols.defensiveBehavior);
+    RoleSelection fundamentalSelection = makeFundamentalSelection(rolesNeeded, theTacticSymbols.defensiveBehavior);
     // append selected roles
-    roleSelection.selectedRoles.insert(roleSelection.selectedRoles.end(), fundamentalSelection.begin(), fundamentalSelection.end());
+    roleSelection.selectedRoles.insert(roleSelection.selectedRoles.end(), fundamentalSelection.selectedRoles.begin(), fundamentalSelection.selectedRoles.end());
+    roleSelection.ballchaserDuringOppKickoff = fundamentalSelection.ballchaserDuringOppKickoff;
+    roleSelection.ballchaserDuringOwnKickoff = fundamentalSelection.ballchaserDuringOwnKickoff;
+  }
+  else
+  {
+    roleSelection.ballchaserDuringOppKickoff = BehaviorData::RoleAssignment::noRole;
+    roleSelection.ballchaserDuringOwnKickoff = BehaviorData::RoleAssignment::noRole;
   }
 }
 
@@ -146,28 +159,15 @@ void RoleSelectionProvider::fillRoleSelection(RoleSelection& roleSelection, int 
 * First one of the predefined (fundamental) role selections given in the config is chosen
 * based on two factors:
 *     - number of active field players
-*     - tactical alignment of the team ("defensiv" or "offensiv")
+*     - tactical alignment of the team ("defensive" or "offensive")
 *
 * The chosen role selection will the be tweaked based on the current situation.
 */
 void RoleSelectionProvider::selectRoles(RoleSelection& roleSelection)
 {
   roleSelection.selectedRoles.clear();
-  // decide which type of ballchaser is needed (standard ballchaser or ballchaserKeeper)
-  BehaviorData::RoleAssignment chaserRole;
-  // only keeper on field => no ballchaser role deployed
-  if (theBallChaserDecision.playerNumberToBall == 1)
-    chaserRole = BehaviorData::keeper;
-  else
-    chaserRole = BehaviorData::ballchaser;
 
   int rolesNeeded = theTacticSymbols.numberOfActiveFieldPlayers;
-  // if ballchaser is active reduce number of needed roles (since one field player chases the ball)
-  if (chaserRole == BehaviorData::ballchaser)
-  {
-    roleSelection.selectedRoles.push_back(chaserRole);
-    rolesNeeded--;
-  }
   if (isKeeperAvailable())
     roleSelection.selectedRoles.push_back(BehaviorData::keeper);
   else if (isReplacementKeeperNeeded(roleSelection))

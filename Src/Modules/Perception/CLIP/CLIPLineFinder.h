@@ -39,9 +39,9 @@ MODULE(CLIPLineFinder,
   REQUIRES(FrameInfo),
   REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
-  REQUIRES(PenaltyCrossHypothesesYolo),
   PROVIDES(CLIPFieldLinesPercept),
   PROVIDES(CLIPCenterCirclePercept),
+  PROVIDES(PrePenaltyCrossHypothesesScanlines),
   PROVIDES(PenaltyCrossPercept),
   LOADS_PARAMETERS(,
     (float) maxDistPointsImage, /**< max distance for connection of two points */
@@ -69,9 +69,11 @@ MODULE(CLIPLineFinder,
     (float) maxTotalLineErrorImage, /**< max biggest error of linear regression through points to form a line */
     (float) maxAvgCircleErrorImage, /**< max avg error of linear regression through points to be part of a circle */
     (float) maxTotalCircleErrorImage, /**< max biggest error of linear regression through points to be part of a circle */
-    (float) maxSegmentAngleImage, /**< max angle between point connections to be on the same segment (radian)*/
-    (float) maxSegmentAngleDiffImage, /** max angle difference between two segments to connect (radian)*/
-    (float) maxValidityDenominator /**< denominator of image diagonal length for full validity */
+    (Angle) maxSegmentAngleImage, /**< max angle between point connections to be on the same segment */
+    (Angle) maxSegmentAngleDiffImage, /** max angle difference between two segments to connect */
+    (float) maxValidityDenominator, /**< denominator of image diagonal length for full validity */
+    (float)(0.5f) minConfidenceForPenaltyCrossUpper, /**< min confidence threshold for the upper image based on the deviation of the calculated penaltycross size in the image */
+    (float)(0.5f) minConfidenceForPenaltyCrossLower /**< min confidence threshold for the lower image based on the deviation of the calculated penaltycross size in the image */
   )
 );
 
@@ -114,9 +116,12 @@ public:
 
   void execute(const bool& upper);
 
+  void declareDebugDrawings();
+
   void update(CLIPFieldLinesPercept& theCLIPFieldLinesPercept);
   void update(CLIPCenterCirclePercept& theCenterCirclePercept);
   void update(PenaltyCrossPercept& thePenaltyCrossPercept);
+  void update(PrePenaltyCrossHypothesesScanlines& thePrePenaltyCrossHypothesesScanlines);
 
   std::vector<CLIPFieldLinesPercept::FieldLine> foundLines;
   std::vector<CLIPFieldLinesPercept::FieldLine> foundLinesUpper;
@@ -125,6 +130,8 @@ public:
   std::vector<LineSegment> lineSegments;
   std::vector<LinePoint> linePoints;
   std::vector<CenterCircle> centerCircles;
+  std::vector<PenaltyCross> penaltyCrossHypotheses;
+  std::vector<PenaltyCross> penaltyCrossHypothesesUpper;
 
 private:
   unsigned lastExecutionTimeStamp;
@@ -139,10 +146,8 @@ private:
   // for debugging
   bool drawUpper;
 
-  void checkYoloPenaltyCross(bool upper);
-
   // connect points that are close enough
-  void connectPoints();
+  void connectPoints(const bool& upper);
   // split connected points to fitting line segments
   void createSegments(const bool& upper);
   // connect small segments and/or create center circle/field lines
@@ -168,12 +173,6 @@ private:
   * Verifies circle by checking sum of distances to center
   **/
   bool verifyCircle(const CenterCircle& circle, const bool checkSeenAngle);
-
-  /**
-  * Verifies final center circle with checks for field green
-  * TODO: Currently unused
-  **/
-  bool verifyCenterCircle(const CenterCircle& circle, const bool& upper);
 
   /**
   * TODO : Merge similar lines!

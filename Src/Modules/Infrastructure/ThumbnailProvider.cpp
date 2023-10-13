@@ -104,7 +104,7 @@ void ThumbnailProvider::shrinkNxN(const Image& srcImage, Thumbnail::ThumbnailIma
   memset(summs, 0, destImage.width * sizeof(pixelSum));
 
   const Image::Pixel* pSrc;
-  Thumbnail::ThumbnailImage::PixelType* pDest;
+  Thumbnail::ThumbnailImage::PixelType* pDest = nullptr;
   pixelSum* pSumms;
 
   for (int y = 0; y < height; ++y)
@@ -159,7 +159,7 @@ void ThumbnailProvider::shrink8x8SSE(const Image& srcImage, Thumbnail::Thumbnail
   memset(summs, 0, summsSize);
 
   const Image::Pixel* pSrc;
-  Thumbnail::ThumbnailImage::PixelType* pDest;
+  Thumbnail::ThumbnailImage::PixelType* pDest = nullptr;
   __m128i* pSumms;
 
   __m128i tmp;
@@ -228,7 +228,7 @@ void ThumbnailProvider::shrink4x4SSE(const Image& srcImage, Thumbnail::Thumbnail
   memset(summs, 0, summsSize);
 
   const Image::Pixel* pSrc;
-  Thumbnail::ThumbnailImage::PixelType* pDest;
+  Thumbnail::ThumbnailImage::PixelType* pDest = nullptr;
   __m128i* pSumms;
 
   __m128i tmp;
@@ -290,7 +290,7 @@ void ThumbnailProvider::shrinkGrayscaleNxN(const Image& srcImage, Thumbnail::Thu
   memset(summs, 0, destImage.width * sizeof(unsigned int));
 
   const Image::Pixel* pSrc;
-  Thumbnail::ThumbnailImageGrayscale::PixelType* pDest;
+  Thumbnail::ThumbnailImageGrayscale::PixelType* pDest = nullptr;
   unsigned int* pSumms;
 
   for (int y = 0; y < height; ++y)
@@ -354,7 +354,7 @@ void ThumbnailProvider::shrinkGrayscale8x8SSE(const Image& srcImage, Thumbnail::
   memset(summs, 0, summsSize);
 
   const Image::Pixel* pSrc;
-  Thumbnail::ThumbnailImageGrayscale::PixelType* pDest;
+  Thumbnail::ThumbnailImageGrayscale::PixelType* pDest = nullptr;
   __m128i* pSumms;
 
   __m128i p0;
@@ -379,8 +379,8 @@ void ThumbnailProvider::shrinkGrayscale8x8SSE(const Image& srcImage, Thumbnail::
       p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
       p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + 4));
 
-      p0 = SHUFFLE(p0, mMask); // y0 y1 y2 y3 0 0 0 0 0 0 0 0 0 0 0 0
-      p1 = SHUFFLE(p1, mMask); // y4 y5 y6 y7 0 0 0 0 0 0 0 0 0 0 0 0
+      p0 = _mm_shuffle_epi8(p0, mMask); // y0 y1 y2 y3 0 0 0 0 0 0 0 0 0 0 0 0
+      p1 = _mm_shuffle_epi8(p1, mMask); // y4 y5 y6 y7 0 0 0 0 0 0 0 0 0 0 0 0
 
       p0 = _mm_unpacklo_epi32(p0, p1); // y0 y1 y2 y3 y4 y5 y6 y7 0 0 0 0 0 0 0 0
       p0 = _mm_unpacklo_epi8(p0, zero); // y0 y1 y2 y3 y4 y5 y6 y7
@@ -450,7 +450,7 @@ void ThumbnailProvider::shrinkGrayscale4x4SSE(const Image& srcImage, Thumbnail::
   memset(summs, 0, summsSize);
 
   const Image::Pixel* pSrc;
-  Thumbnail::ThumbnailImageGrayscale::PixelType* pDest;
+  Thumbnail::ThumbnailImageGrayscale::PixelType* pDest = nullptr;
   __m128i* pSumms;
 
   __m128i p0;
@@ -471,8 +471,8 @@ void ThumbnailProvider::shrinkGrayscale4x4SSE(const Image& srcImage, Thumbnail::
       p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc));
       p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc + 4));
 
-      p0 = SHUFFLE(p0, mMask); // y0 y1 y2 y3 0 0 0 0 0 0 0 0 0 0 0 0
-      p1 = SHUFFLE(p1, mMask); // y4 y5 y6 y7 0 0 0 0 0 0 0 0 0 0 0 0
+      p0 = _mm_shuffle_epi8(p0, mMask); // y0 y1 y2 y3 0 0 0 0 0 0 0 0 0 0 0 0
+      p1 = _mm_shuffle_epi8(p1, mMask); // y4 y5 y6 y7 0 0 0 0 0 0 0 0 0 0 0 0
 
       p0 = _mm_unpacklo_epi32(p0, p1); // y0 y1 y2 y3 y4 y5 y6 y7 0 0 0 0 0 0 0 0
       p0 = _mm_unpacklo_epi8(p0, zero); // y0 y1 y2 y3 y4 y5 y6 y7

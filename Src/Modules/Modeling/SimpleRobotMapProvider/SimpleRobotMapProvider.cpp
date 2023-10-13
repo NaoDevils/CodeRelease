@@ -2,28 +2,20 @@
 #include "Tools/Math/Transformation.h"
 #include "Tools/Math/Geometry.h"
 
-SimpleRobotMapProvider::SimpleRobotMapProvider()
-{
-  timeOfLastExeccution = 0;
-  simpleRobots.clear();
-}
-
 void SimpleRobotMapProvider::update(RobotMap& robotMap)
 {
-  execute();
   // update robot map
   robotMap = internalRobotMap;
 }
 
 void SimpleRobotMapProvider::update(LocalRobotMap& localRobotMap)
 {
-  // TODO: this is wrong, since remote percepts are not excluded!
-  execute();
+  // TODO: global execute is wrong? since remote percepts are not excluded!
   // update robot map
   (RobotMap&)localRobotMap = internalRobotMap;
 }
 
-void SimpleRobotMapProvider::execute()
+void SimpleRobotMapProvider::execute(tf::Subflow&)
 {
   if (theRobotInfo.penalty != PENALTY_NONE)
   {
@@ -31,10 +23,6 @@ void SimpleRobotMapProvider::execute()
     return;
   }
 
-  if (timeOfLastExeccution == theFrameInfo.time)
-    return;
-  else
-    timeOfLastExeccution = theFrameInfo.time;
   internalRobotMap.robots.clear();
 
   // validity decreases with every frame
@@ -47,8 +35,7 @@ void SimpleRobotMapProvider::execute()
   predict();
 
   // update with local percepts
-  updateWithLocalData(false);
-  updateWithLocalData(true);
+  updateWithLocalData();
 
   // global update
   if (global && theRobotPose.validity > 0.4)
@@ -71,7 +58,6 @@ void SimpleRobotMapProvider::execute()
 
 void SimpleRobotMapProvider::update(SimpleRobotsDistributed& simpleRobotsDistributed)
 {
-  execute();
   simpleRobotsDistributed.robots.clear();
   std::vector<SimpleRobot>::const_iterator i = simpleRobots.begin();
   std::vector<SimpleRobot>::const_iterator end = simpleRobots.end();
@@ -94,14 +80,12 @@ void SimpleRobotMapProvider::update(SimpleRobotsDistributed& simpleRobotsDistrib
   }
 }
 
-void SimpleRobotMapProvider::updateWithLocalData(const bool& upper)
+void SimpleRobotMapProvider::updateWithLocalData()
 {
-  const CameraMatrix& cameraMatrix = (upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix);
-  std::vector<RobotEstimate>::const_iterator i = upper ? theRobotsPerceptUpper.robots.begin() : theRobotsPercept.robots.begin();
-  std::vector<RobotEstimate>::const_iterator end = upper ? theRobotsPerceptUpper.robots.end() : theRobotsPercept.robots.end();
-  for (; i != end; i++)
+  for (const auto& estimate : theRobotsPercept.robots)
   {
-    Vector2f perceptFieldCoordinates = Transformation::robotToField(theRobotPose, i->locationOnField.translation);
+    const CameraMatrix& cameraMatrix = estimate.fromUpperImage ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
+    Vector2f perceptFieldCoordinates = Transformation::robotToField(theRobotPose, estimate.locationOnField.translation);
     bool merged = false;
     for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
     {
@@ -113,8 +97,8 @@ void SimpleRobotMapProvider::updateWithLocalData(const bool& upper)
       robotAngles.y() = std::atan2(cameraMatrix.translation.z(), robotRelative.norm());
 
       Vector2f perceptAngles;
-      perceptAngles.x() = std::atan2(i->locationOnField.translation.y(), i->locationOnField.translation.x());
-      perceptAngles.y() = std::atan2(cameraMatrix.translation.z(), i->locationOnField.translation.norm());
+      perceptAngles.x() = std::atan2(estimate.locationOnField.translation.y(), estimate.locationOnField.translation.x());
+      perceptAngles.y() = std::atan2(cameraMatrix.translation.z(), estimate.locationOnField.translation.norm());
 
       Angle yDiff = robotAngles.y() - perceptAngles.y();
       Angle xDiff = robotAngles.x() - perceptAngles.x();
@@ -123,8 +107,8 @@ void SimpleRobotMapProvider::updateWithLocalData(const bool& upper)
       {
         merged = true;
         Vector2f oldTrans = robot.pose.translation;
-        robot.pose.translation += poseDiff * (i->validity * mergeLocationFactor);
-        robot.validity = std::min(1.f, robot.validity + i->validity * 0.1f);
+        robot.pose.translation += poseDiff * (estimate.validity * mergeLocationFactor);
+        robot.validity = std::min(1.f, robot.validity + estimate.validity * 0.1f);
         float alpha = 0.2f;
         if (!robot.fromTeamMatePoses)
         {
@@ -135,7 +119,7 @@ void SimpleRobotMapProvider::updateWithLocalData(const bool& upper)
         if (velocityNorm > 250.f)
           robot.velocity *= 250.f / velocityNorm;
 
-        switch (i->robotType)
+        switch (estimate.robotType)
         {
         case RobotEstimate::teammateRobot:
           robot.teamMateCounter = std::max(-minColorCount + 1, robot.teamMateCounter + 1);
@@ -156,15 +140,15 @@ void SimpleRobotMapProvider::updateWithLocalData(const bool& upper)
     {
       SimpleRobot newRobot;
       newRobot.fromTeamMatePoses = false;
-      newRobot.pose = perceptFieldCoordinates;
+      newRobot.pose.translation = perceptFieldCoordinates;
       newRobot.velocity = Vector2f::Zero();
-      if (i->robotType == RobotEstimate::teammateRobot)
+      if (estimate.robotType == RobotEstimate::teammateRobot)
         newRobot.teamMateCounter = 1;
-      else if (i->robotType == RobotEstimate::opponentRobot)
+      else if (estimate.robotType == RobotEstimate::opponentRobot)
         newRobot.teamMateCounter = -1;
       else
         newRobot.teamMateCounter = 0;
-      newRobot.validity = std::min((float)i->validity, maxStartValidity);
+      newRobot.validity = std::min(estimate.validity, maxStartValidity);
       newRobot.timeOfLastUpdate = theFrameInfo.time;
       newRobot.timeOfLastLocalUpdate = theFrameInfo.time;
       simpleRobots.push_back(newRobot);
@@ -176,8 +160,8 @@ void SimpleRobotMapProvider::updateWithTeamMatePoses()
 {
   for (auto& mate : theTeammateData.teammates)
   {
-    const RobotPose& otherPose = mate.pose;
-    if (otherPose.validity > 0.7f && mate.status != Teammate::INACTIVE && mate.timeWhenLastPacketReceived == theFrameInfo.time)
+    const RobotPoseCompressed& otherPose = mate.robotPose;
+    if (otherPose.validity > 0.7f && mate.status != TeammateReceived::Status::INACTIVE && mate.receiveTimestamp == theFrameInfo.time)
     {
       bool merged = false;
       for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
@@ -191,7 +175,7 @@ void SimpleRobotMapProvider::updateWithTeamMatePoses()
           robot.pose.rotation = otherPose.rotation;
           robot.pose.translation = otherPose.translation;
           robot.validity = otherPose.validity;
-          robot.velocity = mate.walkRequest.request.translation;
+          robot.velocity = mate.speedInfo.speed.translation;
 
           robot.teamMateCounter = minColorCount * 5;
           robot.fromTeamMatePoses = true;
@@ -204,7 +188,7 @@ void SimpleRobotMapProvider::updateWithTeamMatePoses()
         SimpleRobot newRobot;
         newRobot.fromTeamMatePoses = true;
         newRobot.pose = otherPose;
-        newRobot.velocity = mate.walkRequest.request.translation;
+        newRobot.velocity = mate.speedInfo.speed.translation;
         newRobot.teamMateCounter = minColorCount * 5;
         newRobot.validity = otherPose.validity;
         newRobot.timeOfLastUpdate = theFrameInfo.time;
@@ -219,61 +203,64 @@ void SimpleRobotMapProvider::updateWithGlobalData()
 {
   for (auto& mate : theTeammateData.teammates)
   {
-    if (mate.pose.validity < 0.7f || mate.status != Teammate::FULLY_ACTIVE)
+    if (mate.robotPose.validity < 0.7f || mate.status != TeammateReceived::Status::FULLY_ACTIVE)
       continue;
-    for (auto& teamRobot : mate.simpleRobotsDistributed.robots)
-    {
-      bool merged = false;
-      Vector2f perceptFieldCoordinates = Vector2f((float)teamRobot.x, (float)teamRobot.y);
 
-      // check if percept is robot itself
-      if ((perceptFieldCoordinates - theRobotPose.translation).norm() < mergeLocationDiff)
-        continue;
-      for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
-      {
-        SimpleRobot& robot = simpleRobots[sr];
-        const Vector2f poseDiff = (perceptFieldCoordinates - robot.pose.translation);
-        if (poseDiff.norm() < mergeLocationDiff && teamRobot.timeOfLastUpdate > robot.timeOfLastUpdate)
-        {
-          merged = true;
-          Vector2f oldTrans = robot.pose.translation;
-          float otherVal = static_cast<float>(teamRobot.validity) / 1000.f;
-          robot.pose.translation += poseDiff * otherVal;
-          // TODO: work with validty from simple robots and send them
-          robot.validity = std::max(otherVal, robot.validity);
-          float alpha = 0.2f;
-          if (!robot.fromTeamMatePoses)
-          {
-            robot.velocity = robot.velocity * alpha
-                + (robot.pose.translation - oldTrans) * (1 - alpha) * ((1000.f * theFrameInfo.cycleTime) / ((float)theFrameInfo.getTimeSince(robot.timeOfLastUpdate) + 1.f));
-          }
-          float velocityNorm = robot.velocity.norm();
-          if (velocityNorm > 250.f)
-            robot.velocity *= 250.f / velocityNorm;
-          robot.teamMateCounter += sgn(teamRobot.colorCount);
+    // Not available as long as SimpleRobotsDistributed are not transmitted
 
-          robot.timeOfLastUpdate = theFrameInfo.time;
-          robot.fromTeamMatePoses = false;
-          break;
-        }
-      }
-      if (!merged && useTeamMatePercepts)
-      {
-        SimpleRobot newRobot;
-        newRobot.fromTeamMatePoses = false;
-        newRobot.pose = perceptFieldCoordinates;
-        newRobot.velocity = Vector2f((float)teamRobot.velocity.x(), (float)teamRobot.velocity.y());
-        float velocityNorm = newRobot.velocity.norm();
-        if (velocityNorm > 250.f)
-          newRobot.velocity *= 250.f / velocityNorm;
-        newRobot.teamMateCounter = teamRobot.colorCount;
+    //for (auto& teamRobot : mate.simpleRobotsDistributed.robots)
+    //{
+    //  bool merged = false;
+    //  Vector2f perceptFieldCoordinates = Vector2f((float)teamRobot.x, (float)teamRobot.y);
 
-        newRobot.validity = (float)teamRobot.validity / 1000.f;
-        newRobot.timeOfLastUpdate = teamRobot.timeOfLastUpdate;
-        newRobot.timeOfLastLocalUpdate = 0;
-        simpleRobots.push_back(newRobot);
-      }
-    }
+    //  // check if percept is robot itself
+    //  if ((perceptFieldCoordinates - theRobotPose.translation).norm() < mergeLocationDiff)
+    //    continue;
+    //  for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
+    //  {
+    //    SimpleRobot& robot = simpleRobots[sr];
+    //    const Vector2f poseDiff = (perceptFieldCoordinates - robot.pose.translation);
+    //    if (poseDiff.norm() < mergeLocationDiff && teamRobot.timeOfLastUpdate > robot.timeOfLastUpdate)
+    //    {
+    //      merged = true;
+    //      Vector2f oldTrans = robot.pose.translation;
+    //      float otherVal = static_cast<float>(teamRobot.validity) / 1000.f;
+    //      robot.pose.translation += poseDiff * otherVal;
+    //      // TODO: work with validty from simple robots and send them
+    //      robot.validity = std::max(otherVal, robot.validity);
+    //      float alpha = 0.2f;
+    //      if (!robot.fromTeamMatePoses)
+    //      {
+    //        robot.velocity = robot.velocity * alpha
+    //            + (robot.pose.translation - oldTrans) * (1 - alpha) * ((1000.f * theFrameInfo.cycleTime) / ((float)theFrameInfo.getTimeSince(robot.timeOfLastUpdate) + 1.f));
+    //      }
+    //      float velocityNorm = robot.velocity.norm();
+    //      if (velocityNorm > 250.f)
+    //        robot.velocity *= 250.f / velocityNorm;
+    //      robot.teamMateCounter += sgn(teamRobot.colorCount);
+
+    //      robot.timeOfLastUpdate = theFrameInfo.time;
+    //      robot.fromTeamMatePoses = false;
+    //      break;
+    //    }
+    //  }
+    //  if (!merged && useTeamMatePercepts)
+    //  {
+    //    SimpleRobot newRobot;
+    //    newRobot.fromTeamMatePoses = false;
+    //    newRobot.pose.translation = perceptFieldCoordinates;
+    //    newRobot.velocity = Vector2f((float)teamRobot.velocity.x(), (float)teamRobot.velocity.y());
+    //    float velocityNorm = newRobot.velocity.norm();
+    //    if (velocityNorm > 250.f)
+    //      newRobot.velocity *= 250.f / velocityNorm;
+    //    newRobot.teamMateCounter = teamRobot.colorCount;
+
+    //    newRobot.validity = (float)teamRobot.validity / 1000.f;
+    //    newRobot.timeOfLastUpdate = teamRobot.timeOfLastUpdate;
+    //    newRobot.timeOfLastLocalUpdate = 0;
+    //    simpleRobots.push_back(newRobot);
+    //  }
+    //}
   }
 }
 

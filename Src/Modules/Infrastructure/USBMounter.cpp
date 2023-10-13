@@ -32,61 +32,63 @@ void USBMounter::update(USBStatus& usbStatus)
   if constexpr (!Build::targetRobot())
   {
     usbStatus.status = USBStatus::MountStatus::notMounted;
-    return;
   }
-
-  usbStatus.path = mountPath;
-  usbStatus.logPath = mountPath + "/" + logDirectory;
-
-  // apply initial status from constructor
-  if (initialStatus != USBStatus::MountStatus::inactive)
+  else
   {
-    usbStatus.status = initialStatus;
-    initialStatus = USBStatus::MountStatus::inactive;
-  }
 
-  // ignores transitionToFramework = 1 during initialization
-  if (theRobotInfo.transitionToFramework == 0.f)
-    active = true;
-  if (!active)
-    return;
+    usbStatus.path = mountPath;
+    usbStatus.logPath = mountPath + "/" + logDirectory;
 
-  formatBehavior();
-
-  switch (usbStatus.status)
-  {
-  case USBStatus::MountStatus::inactive:
-    if (theRobotInfo.transitionToFramework > 0.f)
+    // apply initial status from constructor
+    if (initialStatus != USBStatus::MountStatus::inactive)
     {
-      usbStatus.status = USBStatus::MountStatus::mounting;
-      nextMountStatus = std::async(std::launch::async, &USBMounter::mount, this);
+      usbStatus.status = initialStatus;
+      initialStatus = USBStatus::MountStatus::inactive;
     }
-    break;
-  case USBStatus::MountStatus::mounting:
-  case USBStatus::MountStatus::unmounting:
-    if (nextMountStatus.valid() && nextMountStatus.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-      usbStatus.status = nextMountStatus.get();
 
-    if (usbStatus.status == USBStatus::MountStatus::readOnly || usbStatus.status == USBStatus::MountStatus::readWrite)
-      usbStatus.mountTimestamp = theFrameInfo.time;
-    break;
-  case USBStatus::MountStatus::readOnly:
-  case USBStatus::MountStatus::readWrite:
+    // ignores transitionToFramework = 1 during initialization
     if (theRobotInfo.transitionToFramework == 0.f)
+      active = true;
+    if (!active)
+      return;
+
+    formatBehavior();
+
+    switch (usbStatus.status)
     {
-      usbStatus.status = USBStatus::MountStatus::unmounting;
-      nextMountStatus = std::async(std::launch::async, &USBMounter::unmount, this);
+    case USBStatus::MountStatus::inactive:
+      if (theRobotInfo.transitionToFramework > 0.f)
+      {
+        usbStatus.status = USBStatus::MountStatus::mounting;
+        nextMountStatus = std::async(std::launch::async, &USBMounter::mount, this);
+      }
+      break;
+    case USBStatus::MountStatus::mounting:
+    case USBStatus::MountStatus::unmounting:
+      if (nextMountStatus.valid() && nextMountStatus.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        usbStatus.status = nextMountStatus.get();
+
+      if (usbStatus.status == USBStatus::MountStatus::readOnly || usbStatus.status == USBStatus::MountStatus::readWrite)
+        usbStatus.mountTimestamp = theFrameInfo.time;
+      break;
+    case USBStatus::MountStatus::readOnly:
+    case USBStatus::MountStatus::readWrite:
+      if (theRobotInfo.transitionToFramework == 0.f)
+      {
+        usbStatus.status = USBStatus::MountStatus::unmounting;
+        nextMountStatus = std::async(std::launch::async, &USBMounter::unmount, this);
+      }
+      break;
+    case USBStatus::MountStatus::notMounted:
+      if (theRobotInfo.transitionToFramework == 0.f)
+      {
+        usbStatus.status = USBStatus::MountStatus::inactive;
+      }
+      break;
+    case USBStatus::MountStatus::unknown:
+      // TODO: handling
+      break;
     }
-    break;
-  case USBStatus::MountStatus::notMounted:
-    if (theRobotInfo.transitionToFramework == 0.f)
-    {
-      usbStatus.status = USBStatus::MountStatus::inactive;
-    }
-    break;
-  case USBStatus::MountStatus::unknown:
-    // TODO: handling
-    break;
   }
 }
 

@@ -18,13 +18,12 @@
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Infrastructure/RobotHealth.h"
-#include "Representations/Infrastructure/USRequest.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
-#include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/TeamBallModel.h"
 #include "Representations/Modeling/RobotPose.h"
@@ -131,16 +130,19 @@ protected:
   InertialSensorData inertialSensorData; /**< The most current set of inertial sensor data received from the robot code. */
   KeyStates keyStates; /**< The most current set of key states received from the robot code. */
   SystemSensorData systemSensorData; /**< The most current set of system sensor data received from the robot code. */
-  UsSensorData usSensorData; /**< The most current set of us sensor data received from the robot code. */
+  SonarSensorData sonarSensorData; /**< The most current set of sonar sensor data received from the robot code. */
   enum MoveOp
   {
     noMove,
     movePosition,
     moveBoth,
-    moveBallPosition
+    moveBallPosition,
+    kickBallVelocity
   } moveOp = noMove; /**< The move operation to perform. */
   Vector3f movePos = Vector3f::Zero(); /**< The position the robot is moved to. */
   Vector3f moveRot = Vector3f::Zero(); /**< The rotation the robot is moved to. */
+  Angle kickAngle; /**< The angle giving the direction of the kicked ball. */
+  float kickVelocity; /**< The velocity the ball is kicked with. */
   RobotPose robotPose; /**< Robot pose from team communication. */
   BallModel ballModel; /**< Ball model from team communication. */
   TeamBallModel teamBallModel; /**< combined ball information from team communication */
@@ -165,11 +167,11 @@ protected:
   int mrCounter = 0; /**< Counts the number of mr commands. */
   JointCalibration jointCalibration; /**< The joint calibration received from the robot code. */
   RobotDimensions robotDimensions; /**< The robotDimensions received from the robot code. */
-  USRequest usRequest; /**< The current us request received from the robot code (for simulation). */
   std::string printBuffer; /**< Buffer used for command get. */
   char drawingsViaProcess = 'b'; /** Which process is used to provide field and 3D drawings */
   std::unordered_map<char, AnnotationInfo> annotationInfos;
   unsigned frame = 0; /**< Current frame number */
+  unsigned sleepTimer = 0; /**< sleep frames counter */
 
 public:
   class ImagePtr
@@ -305,7 +307,7 @@ private:
   bool joystickExecCommand(const std::string&); /**< Exec command and optionally output trace to console. */
 
   unsigned maxPlotSize = 0; /**< The maximum number of data points to remember for plots. */
-  bool kickViewSet = false; /**Indicator if there is already a KikeView, we need it just once */
+  bool kickViewSet = false; /**Indicator if there is already a KickView, we need it just once */
   int imageSaveNumber = 0; /**< A counter for generating image file names. */
   std::map<char, std::vector<uint8_t>> observerMsgpackData;
   std::map<char, bool> observerDataFinished;
@@ -479,6 +481,8 @@ private:
   bool moduleRequest(In&);
   bool moveRobot(In&);
   bool moveBall(In&);
+  bool kickBall(In&);
+  bool sleepConsole(In&);
   bool view3D(In& stream);
   bool viewField(In& stream);
   bool viewData(In& stream); /**< Creates a new representation view. Stream should contain the name of the debug data to display. */

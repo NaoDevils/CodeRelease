@@ -10,13 +10,16 @@ TeamCommUDPSocketProvider::TeamCommUDPSocketProvider() {}
 
 void TeamCommUDPSocketProvider::update(TeamCommSocket& teamCommSocket)
 {
+  bool local = Build::targetSimulator();
+  MODIFY("module:TeamCommUDPSocketProvider:local", local);
+
   int teamPort = 0;
-  if constexpr (Build::target == Build::Target::Simulator)
+  if (local)
     teamPort = Global::getSettings().teamPort;
   else
     teamPort = theOwnTeamInfo.teamPort;
 
-  if (this->port != teamPort)
+  if (this->port != teamPort || this->local != local)
   {
     if (this->port)
     {
@@ -24,7 +27,7 @@ void TeamCommUDPSocketProvider::update(TeamCommSocket& teamCommSocket)
       OUTPUT_TEXT("TeamCommUDPSocketProvider: Set port to " << teamPort);
     }
 
-    if constexpr (Build::target == Build::Target::Simulator)
+    if (local)
       startLocal(teamPort);
     else
       start(teamPort, "10.0.255.255");
@@ -62,6 +65,7 @@ void TeamCommUDPSocketProvider::start(int port, const char* subnet)
 {
   ASSERT(!this->port);
   this->port = port;
+  this->local = false;
 
   socket.setBlocking(false);
   VERIFY(socket.setBroadcast(true));
@@ -81,77 +85,57 @@ bool TeamCommUDPSocketProvider::send(const TeamCommData& teamCommData)
   if (!port)
     return false;
 
-  // Plot usage of data buffer in percent:
-  DECLARE_PLOT("module:TeamCommUDPSocketProvider:standardMessageDataBufferUsageInPercent");
-  const float usageInPercent = teamCommData.numOfDataBytes * 100.f / static_cast<float>(SPL_STANDARD_MESSAGE_DATA_SIZE);
-  PLOT("module:TeamCommUDPSocketProvider:standardMessageDataBufferUsageInPercent", usageInPercent);
-
-  TeamCommData sendTeamCommData = teamCommData;
-  sendTeamCommData.getNDHeader().sendTimestamp = SystemCall::getCurrentSystemTime();
-
-  return socket.write(sendTeamCommData.getData(), sendTeamCommData.getSize());
+  return socket.write(teamCommData.data.data(), static_cast<int>(teamCommData.data.size()));
 }
 
-std::vector<TeamCommData> TeamCommUDPSocketProvider::receive()
+std::vector<TeamCommDataReceived> TeamCommUDPSocketProvider::receive()
 {
-  std::vector<TeamCommData> messages;
+  std::vector<TeamCommDataReceived> messages;
 
   if (!port)
     return messages; // not started yet
 
   messages.reserve(maxNumOfTcMessages);
 
-  int size;
+  int size = 0;
   do
   {
-    TeamCommData message;
+    TeamCommDataReceived& message = messages.emplace_back();
 
-    size = local ? socket.readLocal(message.getData(), sizeof(RoboCup::SPLStandardMessage)) : socket.read(message.getData(), sizeof(RoboCup::SPLStandardMessage), message.remoteIp);
-    if (size >= TeamCommData::headerSize && size <= static_cast<int>(sizeof(RoboCup::SPLStandardMessage)))
+    // Allocate one byte more than necessary
+    message.data.resize(TeamCommDataReceived::maximumSize + 1);
+
+    size = local
+        ? socket.readLocal(message.data.data(), static_cast<int>(message.data.size()))
+        : socket.read(message.data.data(), static_cast<int>(message.data.size()), *reinterpret_cast<unsigned int*>(message.remoteIp.data()));
+    if (size <= 0)
     {
-      // This could be much later than the package was received by the hardware.
-      // For our time measurements, this should be enough.
-      message.receiveTimestamp = SystemCall::getCurrentSystemTime();
+      messages.pop_back();
+      continue;
+    }
 
-      if (messages.size() >= maxNumOfTcMessages)
-      {
-        OUTPUT_WARNING("Received too many packages, ignoring package from " << message.remoteIp);
-        return messages;
-      }
+    // Check if message is bigger than expected
+    if (size > static_cast<int>(TeamCommDataReceived::maximumSize))
+    {
+      OUTPUT_WARNING("Received packet with invalid size from " << message.remoteIp[3] << "." << message.remoteIp[2] << "." << message.remoteIp[1] << "." << message.remoteIp[0]);
+      messages.pop_back();
+      continue;
+    }
 
-      if (checkMessage(message, size - TeamCommData::headerSize))
-        messages.push_back(std::move(message));
+    // Adjust buffer to actual size
+    message.data.resize(size);
+
+    // This could be much later than the package was received by the hardware.
+    // For our time measurements, this should be enough.
+    message.receiveTimestamp = SystemCall::getCurrentSystemTime();
+
+    if (messages.size() >= maxNumOfTcMessages)
+    {
+      OUTPUT_WARNING("Packet buffer is full, ignoring further ones (last from "
+          << message.remoteIp[3] << "." << message.remoteIp[2] << "." << message.remoteIp[1] << "." << message.remoteIp[0] << ")");
+      return messages;
     }
   } while (size > 0);
 
   return messages;
-}
-
-bool TeamCommUDPSocketProvider::checkMessage(const TeamCommData& msg, int realNumOfDataBytes)
-{
-  if (msg.playerNum < Global::getSettings().lowestValidPlayerNumber || msg.playerNum > Global::getSettings().highestValidPlayerNumber || msg.teamNum != theOwnTeamInfo.teamNumber)
-    return false;
-
-  if (msg.numOfDataBytes != static_cast<uint16_t>(realNumOfDataBytes))
-  {
-    OUTPUT_WARNING("SPL Message: numOfDataBytes is '" << msg.numOfDataBytes << "' but realNumOfDataBytes is '" << realNumOfDataBytes << "'.  Ignoring package...");
-    return false;
-  }
-
-  if (!msg.verify())
-  {
-    OUTPUT_WARNING("Invalid package from ip " << msg.remoteIp << ". Ignoring package...");
-    return false;
-  }
-
-  if constexpr (Build::target == Build::Target::Robot)
-  {
-    if (msg.teamNum != theOwnTeamInfo.teamNumber)
-    {
-      OUTPUT_WARNING("Received package from ip " << msg.remoteIp << " with team number '" << msg.teamNum << "'. Ignoring package...");
-      return false;
-    }
-  }
-
-  return true;
 }

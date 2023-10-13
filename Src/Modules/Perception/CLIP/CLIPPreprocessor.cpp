@@ -67,7 +67,7 @@ void CLIPPreprocessor::update(CLIPPointsPercept& theCLIPPointsPercept)
   theCLIPPointsPercept = localCLIPPointsPercept;
 }
 
-void CLIPPreprocessor::update(BallSpots& ballSpots)
+void CLIPPreprocessor::update(ScanlinesBallSpots& ballSpots)
 {
   wasReset = false;
   execute(false);
@@ -121,10 +121,6 @@ void CLIPPreprocessor::reset()
   fieldBorderFront.direction = Vector2f::Zero();
 
   wasReset = true;
-
-  // just wanted to have this in a method which is only called once per frame
-  INIT_DEBUG_IMAGE(SIPField, theImage);
-  INIT_DEBUG_IMAGE(SIPFieldUpper, theImageUpper);
 }
 
 void CLIPPreprocessor::execute(const bool& upper)
@@ -251,23 +247,6 @@ void CLIPPreprocessor::execute(const bool& upper)
       {
         drawFieldHull(upper);
       }
-    }
-  }
-
-  if (upper)
-  {
-    COMPLEX_IMAGE(SIPFieldUpper)
-    {
-      drawFieldUpper();
-      SEND_DEBUG_IMAGE(SIPFieldUpper);
-    }
-  }
-  else
-  {
-    COMPLEX_IMAGE(SIPField)
-    {
-      drawFieldLower();
-      SEND_DEBUG_IMAGE(SIPField);
     }
   }
 }
@@ -901,7 +880,7 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
         // search for more precise line start
         // TODO: use full resolution here?
         int maxY = scanLinePixelBuffer[pixelCount].y;
-        int minY = maxY;
+        int localMinY = maxY;
         int maxScanWidth = std::max((3 * stepSize) / 2, 3);
         stepSizeLine = std::max(1, stepSize / 4);
         int counter = 0;
@@ -924,14 +903,14 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
           lastY = p.y;
           if (foundHigh && foundLow)
           {
-            if (minY + 5 >= lastY)
+            if (localMinY + 5 >= lastY)
             {
               foundEnd = true;
               break;
             }
             else
             {
-              minY = std::min(lastY, minY);
+              localMinY = std::min(lastY, localMinY);
               linePosLowX = linePosX;
               linePosLowY = linePosY;
             }
@@ -945,11 +924,11 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
             maxY = lastY;
             foundHigh = false;
             foundLow = false;
-            minY = maxY;
+            localMinY = maxY;
           }
-          if (foundHigh && minY > lastY)
-            minY = lastY;
-          if (foundHigh && !foundLow && maxY - minY > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)
+          if (foundHigh && localMinY > lastY)
+            localMinY = lastY;
+          if (foundHigh && !foundLow && maxY - localMinY > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)
           {
             foundLow = true;
             linePosHighX = linePosX + stepSizeLineX;
@@ -1002,7 +981,7 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
           linePosX = linePosLowX = linePosHighX = imageX;
           linePosY = linePosLowY = linePosHighY = imageY;
           counter = 0;
-          minY = maxY;
+          localMinY = maxY;
           int fieldColorCount = 0;
 
           while (counter <= maxScanWidth && !image.isOutOfImage(linePosX, linePosY, 2))
@@ -1018,14 +997,14 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
 
             if (foundHigh && foundLow)
             {
-              if (minY + 5 >= lastY)
+              if (localMinY + 5 >= lastY)
               {
                 foundEnd = true;
                 break;
               }
               else
               {
-                minY = std::min(lastY, minY);
+                localMinY = std::min(lastY, localMinY);
                 linePosLowX = linePosX;
                 linePosLowY = linePosY;
               }
@@ -1039,11 +1018,11 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
               maxY = lastY;
               foundHigh = false;
               foundLow = false;
-              minY = maxY;
+              localMinY = maxY;
             }
-            if (foundHigh && minY > lastY)
-              minY = lastY;
-            if (foundHigh && !foundLow && maxY - minY > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)
+            if (foundHigh && localMinY > lastY)
+              localMinY = lastY;
+            if (foundHigh && !foundLow && maxY - localMinY > fieldColor.fieldColorArray[0].lineToFieldColorYThreshold)
             {
               foundLow = true;
               linePosHighX = linePosX - stepSizeLineX;
@@ -1198,12 +1177,13 @@ void CLIPPreprocessor::processScanLine(ScanLine& scanLine, const bool& upper)
 
 void CLIPPreprocessor::addBallSpot(const Vector2f& point, const int& y, const int& cb, const int& cr, const bool& upper)
 {
-  BallSpot newBallSpot;
+  ScanlinesBallSpot newBallSpot;
   newBallSpot.position.x() = (int)point.x();
   newBallSpot.position.y() = (int)point.y();
   //newBallSpot.y = y; // TODO BH0215 port: add y back in?
   newBallSpot.cb = cb;
   newBallSpot.cr = cr;
+  newBallSpot.upper = upper;
   if (upper)
     localBallSpots.ballSpotsUpper.push_back(newBallSpot);
   else
@@ -1375,46 +1355,6 @@ void CLIPPreprocessor::findFieldBorders()
           LINE("module:CLIPPreprocessor:fieldBorders", fieldBorderFrontLeft.x(), fieldBorderFrontLeft.y(), fieldBorderFrontRight.x(), fieldBorderFrontRight.y(), 3, Drawings::solidPen, ColorRGBA::yellow);
         }
       }
-    }
-  }
-}
-
-void CLIPPreprocessor::drawFieldLower()
-{
-  const CameraInfo& cameraInfo = theCameraInfo;
-  for (int i = 0; i < cameraInfo.height; i++)
-  {
-    for (int j = 0; j < cameraInfo.width; j++)
-    {
-      Image::Pixel p = theImage[i][j];
-      if (theFieldColors.isPixelFieldColor(p.y, p.cb, p.cr))
-      {
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField, j, i, 150, 50, 50);
-      }
-      else if (isPixelBallColor(p.y, p.cb, p.cr))
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField, j, i, 150, 20, 230);
-      else
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPField, j, i, 0, 128, 128);
-    }
-  }
-}
-
-void CLIPPreprocessor::drawFieldUpper()
-{
-  const CameraInfo& cameraInfo = theCameraInfoUpper;
-  for (int i = 0; i < cameraInfo.height; i++)
-  {
-    for (int j = 0; j < cameraInfo.width; j++)
-    {
-      Image::Pixel p = theImageUpper[i][j];
-      if ((!useAreaBasedFieldColor && theFieldColorsUpper.isPixelFieldColor(p.y, p.cb, p.cr)) || (useAreaBasedFieldColor && theFieldColorsUpper.isPixelFieldColorInArea(p.y, p.cb, p.cr, j, i)))
-      {
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper, j, i, 150, 50, 50);
-      }
-      else if (isPixelBallColor(p.y, p.cb, p.cr))
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper, j, i, 150, 20, 230);
-      else
-        DEBUG_IMAGE_SET_PIXEL_YUV(SIPFieldUpper, j, i, 0, 128, 128);
     }
   }
 }

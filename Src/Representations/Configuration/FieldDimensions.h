@@ -120,7 +120,7 @@ struct FieldDimensions : public SimpleFieldDimensions
     bool getClosestIntersection(const Geometry::Line& l, int& outLineIndex, Vector2f& outIntersection) const;
     bool getClosestIntersection(const Geometry::Line& l, Vector2f& outIntersection) const;
 
-    /*
+    /**
      * Returns whether a given point is inside the polygon described by the line segments.
      * Only valid if the line segment table describes a closed polygon.
      */

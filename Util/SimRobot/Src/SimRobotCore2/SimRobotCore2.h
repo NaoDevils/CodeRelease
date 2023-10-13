@@ -321,6 +321,11 @@ namespace SimRobotCore2
     virtual void resetDynamics() = 0;
 
     /**
+    * Sets the velocity of the object to the given values
+    */
+    virtual void setVelocity(double x, double y, double z) = 0;
+
+    /**
     * Accesses the first body in the chain of bodies to which this body is connected
     * @return The body object
     */

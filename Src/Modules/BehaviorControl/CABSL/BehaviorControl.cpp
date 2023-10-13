@@ -5,9 +5,10 @@
  * @author Tim Laue
  */
 
-#include "Libraries.h"
+#include "BehaviorControl.h"
 #include "Tools/Streams/InStreams.h"
 #include "Tools/Debugging/Annotation.h"
+#include "Modules/BehaviorControl/BehaviorHelper.h"
 
 #ifdef __INTELLISENSE__
 #define INTELLISENSE_PREFIX NDBehavior::Behavior::
@@ -19,7 +20,7 @@ namespace NDBehavior
   /**
    * The wrapper for the behavior options.
    */
-  class Behavior : public Cabsl<Behavior>, public Libraries
+  class Behavior : public Cabsl<Behavior>, public BehaviorBase
   {
 #include "Options.h"
   public:
@@ -34,7 +35,7 @@ namespace NDBehavior
      * Constructor.
      * @param base The blackboard configured for this module.
      */
-    Behavior(const BehaviorControlBase& base, BehaviorOutput& behaviorOutput) : Cabsl<Behavior>(&behaviorOutput.theActivationGraph), Libraries(base, behaviorOutput) {}
+    Behavior(const BehaviorControlBase& base, BehaviorOutput& behaviorOutput) : Cabsl<Behavior>(&behaviorOutput.theActivationGraph), BehaviorBase(base, behaviorOutput) {}
 
     /**
      * Executes one behavior cycle.
@@ -43,27 +44,44 @@ namespace NDBehavior
     void execute(const std::vector<OptionInfos::Option>& roots)
     {
       beginFrame(theFrameInfo.time);
-      preProcessLibraries();
 
       for (std::vector<Behavior::OptionInfos::Option>::const_iterator i = roots.begin(); i != roots.end(); ++i)
         Cabsl<Behavior>::execute(*i);
 
-      postProcessLibraries();
       endFrame();
     }
 
-    void Positioning(bool preciseArrival = true)
+    void Positioning(bool preciseArrival = true, bool ballchaser = false)
     {
-      GoToFieldCoordinates(thePositioningSymbols.optPosition,
-          thePositioningSymbols.thresholdXFront,
-          thePositioningSymbols.thresholdXBack,
-          thePositioningSymbols.thresholdY,
-          thePositioningSymbols.thresholdRotation,
-          thePositioningSymbols.stopAtTarget,
-          thePositioningSymbols.previewArrival,
-          preciseArrival);
+      if (ballchaser)
+      {
+        GoToFieldCoordinates(thePositioningAndKickSymbols.optPosition,
+            thePositioningAndKickSymbols.thresholdXFront,
+            thePositioningAndKickSymbols.thresholdXBack,
+            thePositioningAndKickSymbols.thresholdY,
+            thePositioningAndKickSymbols.thresholdRotation,
+            thePositioningAndKickSymbols.stopAtTarget,
+            thePositioningAndKickSymbols.previewArrival,
+            preciseArrival);
+      }
+      else
+      {
+        GoToFieldCoordinates(thePositioningSymbols.optPosition,
+            thePositioningSymbols.thresholdXFront,
+            thePositioningSymbols.thresholdXBack,
+            thePositioningSymbols.thresholdY,
+            thePositioningSymbols.thresholdRotation,
+            thePositioningSymbols.stopAtTarget,
+            thePositioningSymbols.previewArrival,
+            preciseArrival);
+      }
     }
   };
+
+  void BehaviorBase::operator=(const BehaviorBase& other)
+  {
+    memcpy((void*)this, (void*)&other, sizeof(*this));
+  }
 } // namespace NDBehavior
 
 using namespace NDBehavior;
@@ -99,15 +117,13 @@ class BehaviorControl : public BehaviorControlBase
     behaviorData.role = theRoleSymbols.role;
     behaviorData.lastRole = theRoleSymbols.lastRole;
     behaviorData.roleSuggestions = theRoleSymbols.roleSuggestions;
-    behaviorData.playerNumberToBall = theBallChaserDecision.playerNumberToBall;
+    behaviorData.playerNumberToBall = static_cast<unsigned char>(theBallChaserDecision.playerNumberToBall);
     behaviorData.ownTimeToBall = theBallChaserDecision.ownTimeToBall;
     behaviorData.ballPositionField = theBallSymbols.ballPositionField;
     behaviorData.ballPositionFieldPredicted = theBallSymbols.ballPositionFieldPredicted;
     behaviorData.ballPositionRelative = theBallSymbols.ballPositionRelativeWOPreview;
     behaviorData.timeSinceBallWasSeen = theBallSymbols.timeSinceLastSeen;
     behaviorData.kickTarget = theMotionRequest.kickRequest.kickTarget;
-
-    addPassiveRolePositions(behaviorData);
 
     if (behaviorData.role != BehaviorData::RoleAssignment::noRole && roleFromLastFrame != BehaviorData::RoleAssignment::noRole && roleFromLastFrame != behaviorData.role)
       ANNOTATION("RoleSymbols", "Role changed from " << BehaviorData::getName(roleFromLastFrame) << " to " << BehaviorData::getName(behaviorData.role));
@@ -130,17 +146,6 @@ class BehaviorControl : public BehaviorControlBase
 
   /** Updates the arm motion request by copying it from the behavior */
   void update(HeadControlRequest& headControlRequest) { headControlRequest = theHeadControlRequest; }
-
-  void addPassiveRolePositions(BehaviorData& behaviorData)
-  {
-    behaviorData.passiveRolePositions.clear();
-    behaviorData.passiveRolePositions.emplace_back(BehaviorData::PassiveRolePosition(BehaviorData::RoleAssignment::backupBallchaser, theBackupBallchaser.optPosition.translation));
-    behaviorData.passiveRolePositions.emplace_back(BehaviorData::PassiveRolePosition(BehaviorData::RoleAssignment::center, theCenter.optPosition.translation));
-    behaviorData.passiveRolePositions.emplace_back(BehaviorData::PassiveRolePosition(BehaviorData::RoleAssignment::defenderLeft, theDefenderLeft.optPosition.translation));
-    behaviorData.passiveRolePositions.emplace_back(BehaviorData::PassiveRolePosition(BehaviorData::RoleAssignment::defenderRight, theDefenderRight.optPosition.translation));
-    behaviorData.passiveRolePositions.emplace_back(BehaviorData::PassiveRolePosition(BehaviorData::RoleAssignment::defenderSingle, theDefenderSingle.optPosition.translation));
-    behaviorData.passiveRolePositions.emplace_back(BehaviorData::PassiveRolePosition(BehaviorData::RoleAssignment::receiver, theReceiver.optPosition.translation));
-  }
 
   Parameters parameters; /**< The root options. */
   BehaviorData theBehaviorData;

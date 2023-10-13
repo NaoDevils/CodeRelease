@@ -1,40 +1,42 @@
 /*
- Copyright 2011, Oliver Urbann
- All rights reserved.
- 
- This file is part of MoToFlex.
- 
- MoToFlex is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- 
- MoToFlex is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
- 
- You should have received a copy of the GNU General Public License
- along with MoToFlex.  If not, see <http://www.gnu.org/licenses/>.
- 
- Contact e-mail: oliver.urbann@tu-dortmund.de
- */
+  Copyright 2011, Oliver Urbann
+  All rights reserved.
+
+  This file is part of MoToFlex.
+
+  MoToFlex is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  MoToFlex is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with MoToFlex.  If not, see <http://www.gnu.org/licenses/>.
+
+  Contact e-mail: oliver.urbann@tu-dortmund.de
+*/
 
 /**
- * @file Modules/MotionControl/DortmundWalkingEngine/PatternGenerator2017.cpp
- * Generator for foot steps
- * @author <a href="mailto:oliver.urbann@tu-dortmund.de> Oliver Urbann</a>
- */
+  * @file Modules/MotionControl/DortmundWalkingEngine/PatternGenerator2017.cpp
+  * Generator for foot steps
+  * @author <a href="mailto:oliver.urbann@tu-dortmund.de> Oliver Urbann</a>
+  */
 
-#include "PatternGenerator2017.h"
-#include <iostream>
-#include "Platform/File.h"
-#include "Tools/Math/Bspline.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Bezier.h"
-#include "Tools/RobotParts/FootShape.h"
+#include "PatternGenerator2017.h"
+#include "Platform/File.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Tools/Debugging/Annotation.h"
+#include "Tools/Math/Bspline.h"
+#include "Tools/RobotParts/FootShape.h"
+#include <Modules/BehaviorControl/TacticControl/KicksProvider/KicksProvider.h>
 #include <algorithm>
+#include <iostream>
+
 using namespace DWE;
 
 #define FOOT_LEN 0.1f // half of footlength is the edge of the back of the foot
@@ -57,10 +59,16 @@ PatternGenerator2017::PatternGenerator2017() : speedBuffer(Pose2f())
   baseRot = 0;
   loadStepFiles();
 
-  InMapFile stream("csConverter2019.cfg");
-  if (stream.exists())
+  InMapFile csStream("csConverter2019.cfg");
+  if (csStream.exists())
   {
-    stream >> csConverterParams;
+    csStream >> csConverterParams;
+  }
+
+  InMapFile wpStream("walkParamsProvider.cfg");
+  if (wpStream.exists())
+  {
+    wpStream >> walkParamsProviderParams;
   }
   INIT_DEBUG_IMAGE_BLACK(FootStepsDrawing, 640, 480);
 }
@@ -127,9 +135,9 @@ void PatternGenerator2017::setStepLength()
     return;
   }
   /*if (theBallchaser.kickType == MotionRequest::dribble)
-  {
-    return;
-  }*/
+   {
+     return;
+   }*/
   // calculating distance for next step
   float stepTime = curStepDuration / 2;
   Pose2f stepSpeed = currentMovement.speed;
@@ -205,9 +213,9 @@ bool PatternGenerator2017::updateWalkState()
     reset();
     currentState = newState = State::standby;
     running = false;
-    //walkHeight = z_h_limits.limit(-theRobotModel.soleLeft.translation.z() / 1000);
     return false;
   }
+
   switch (currentState)
   {
   case State::standby:
@@ -231,7 +239,6 @@ bool PatternGenerator2017::updateWalkState()
       stateCounter = desiredPreviewLength;
       updatePreview();
       stateCounter = 1;
-      walkHeight = z_h_limits.limit(-theRobotModel.soleLeft.translation.z() / 1000);
     }
     if (!(theMotionSelection.ratios[MotionRequest::walk] == 1.f && theMotionRequest.motion == MotionRequest::walk))
     {
@@ -276,7 +283,7 @@ bool PatternGenerator2017::updateWalkState()
       if (isSpeed0())
       {
         timeStampLastZeroRequest = theFrameInfo.time;
-        newState = ready;
+        newState = State::ready;
       }
       else
         currentState = newState = State::walking;
@@ -302,6 +309,7 @@ void PatternGenerator2017::updateWalkPhase()
 {
   if (currentState != walking && currentState != stopping && currentState != customSteps)
   {
+    direction = (leftFootPose2f.rotation + rightFootPose2f.rotation) / 2;
     currentWalkingPhase = unlimitedDoubleSupport;
     stateCounter = 1;
     return;
@@ -465,8 +473,6 @@ Vector2f PatternGenerator2017::prependCustomStep(std::list<CustomStep>& steps, V
   step.duration = 1;
   step.onFloor[0] = true;
   step.onFloor[1] = true;
-  step.footPos[0] = Vector2f(0.f, 0.f);
-  step.footPos[1] = Vector2f(0.f, 0.f);
   step.swingFootTraj = {};
 
   steps.push_front(step);
@@ -474,8 +480,8 @@ Vector2f PatternGenerator2017::prependCustomStep(std::list<CustomStep>& steps, V
   step.duration = getPhaseLength(1 - theWalkingEngineParams.footMovement.doubleSupportRatio, calcDynamicStepDuration(distance.x(), distance.y(), 0.f));
   step.onFloor[0] = onFloorLeft;
   step.onFloor[1] = !onFloorLeft;
-  step.footPos[0] = step.onFloor[0] ? Vector2f(0.f, 0.f) : distance;
-  step.footPos[1] = step.onFloor[1] ? Vector2f(0.f, 0.f) : distance;
+  step.footPos[0].translation = step.onFloor[0] ? Vector2f(0.f, 0.f) : distance;
+  step.footPos[1].translation = step.onFloor[1] ? Vector2f(0.f, 0.f) : distance;
   step.swingFootTraj = {};
 
   steps.push_front(step);
@@ -584,7 +590,13 @@ bool PatternGenerator2017::prependCustomSteps(std::list<CustomStep>& steps, Pose
       Vector2f perStep = A.colPivHouseholderQr().solve(pose.translation);
       xPerStep = perStep.x();
       yPerStep = perStep.y();
-      solutionFound = !std::isnan(xPerStep) && !std::isnan(yPerStep) && std::abs(xPerStep) < prependStepsTransMax.x() && std::abs(yPerStep) < prependStepsTransMax.y();
+
+      Vector2f transMax;
+      transMax.x() = std::max<float>(
+          std::min<float>(std::abs(currentMovement.speed.translation.x()) * (singleSupportDuration() * theFrameInfo.cycleTime), prependStepsTransMax.x()), prependStepsTransMin.x());
+      transMax.y() = std::max<float>(
+          std::min<float>(std::abs(currentMovement.speed.translation.y()) * (singleSupportDuration() * theFrameInfo.cycleTime), prependStepsTransMax.y()), prependStepsTransMin.y());
+      solutionFound = !std::isnan(xPerStep) && !std::isnan(yPerStep) && std::abs(xPerStep) < transMax.x() && std::abs(yPerStep) < transMax.y();
       // edge case: one rotation only at the end -> can lead to wrong solutions since yPerStep can be 0.
       if (numOfRotations == 1 && yPerStep == 0.f && pose.translation.y() != 0.f)
         solutionFound = false;
@@ -680,6 +692,7 @@ template <class it> void PatternGenerator2017::correctOdometry(it& steps)
 
     step.footPos[foot] = OdometryCorrection::correct(footSpeed,
         step.footPos[foot],
+        theOdometryCorrectionTables.odometryCorrectionFactor,
         theOdometryCorrectionTables.backCorrectionTable,
         theOdometryCorrectionTables.forwardCorrectionTable,
         theOdometryCorrectionTables.sideCorrectionTable,
@@ -729,16 +742,12 @@ bool PatternGenerator2017::isStablePosition()
   Angle angleX = theJoinedIMUData.imuData[anglesource].angle.x();
   Angle angleY = theJoinedIMUData.imuData[anglesource].angle.y();
 
-  float factor = 1.0;
-  MODIFY("fallDownFactor", factor);
-  bool xFrontStable = angleY > factor * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0] + csConverterParams.legJointBalanceParams.targetAngleY);
-  bool xBackStable = angleY < factor * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1] + csConverterParams.legJointBalanceParams.targetAngleY);
-  bool yLeftStable = angleX > factor * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0] + csConverterParams.legJointBalanceParams.targetAngleX);
-  bool yRightStable = angleX < factor * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1] + csConverterParams.legJointBalanceParams.targetAngleX);
+  bool xFrontStable = angleY > customStepFallDownFactorStable * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0] + csConverterParams.legJointBalanceParams.targetAngleY);
+  bool xBackStable = angleY < customStepFallDownFactorStable * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1] + csConverterParams.legJointBalanceParams.targetAngleY);
+  bool yLeftStable = angleX > customStepFallDownFactorStable * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0] + csConverterParams.legJointBalanceParams.targetAngleX);
+  bool yRightStable = angleX < customStepFallDownFactorStable * (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1] + csConverterParams.legJointBalanceParams.targetAngleX);
 
   return xFrontStable && xBackStable && yLeftStable && yRightStable;
-
-  return true;
 }
 
 bool PatternGenerator2017::transitionToCustomSteps()
@@ -755,15 +764,50 @@ bool PatternGenerator2017::transitionToCustomSteps()
 
   if (currentState == walking && requestedStep >= WalkRequest::StepRequest::beginScript && stepsSinceLastCustomStep > stepsBetweenCustomSteps && !customStepKickInPreview && isStablePosition())
   {
-    int idx = (int)(requestedStep - WalkRequest::StepRequest::beginScript - 1);
+    int idx = 0;
+    for (const auto& stepFile : stepFiles)
+    {
+      if (stepFile.stepRequest == requestedStep)
+      {
+        break;
+      }
+      idx++;
+    }
+    if (idx == (int)stepFiles.size())
+    {
+      throw std::exception();
+    }
 
     // if type is ::any, currentSteps are already set
     if (theMotionSelection.walkRequest.stepRequest != WalkRequest::any)
     {
       // copy steps, may be modified according to ball position / mirror afterwards
       currentSteps = stepFiles[idx];
+
       if (theMotionRequest.kickRequest.mirror)
         currentSteps.mirror();
+
+      // START :: Leons Modifikation
+      std::list<CustomStep> prependedSteps;
+
+      const Vector2f relativeKickPoseTranslation = Transformation::fieldToRobot(getRobotPoseAfterPreviewField(), theMotionRequest.kickRequest.kickPose.translation);
+      const Angle relativeKickPoseRotation = theMotionRequest.kickRequest.kickPose.rotation - getRobotPoseAfterPreviewField().rotation;
+      const Pose2f relativeKickPose(relativeKickPoseRotation, relativeKickPoseTranslation / 1000.f);
+
+      if (prependCustomSteps(prependedSteps, relativeKickPose, currentWalkingPhase == firstSingleSupport, currentSteps.steps.front().onFloor[LEFT_FOOT], maxPrependedSteps, currentSteps))
+      {
+        currentSteps.steps.insert(currentSteps.steps.begin(), prependedSteps.begin(), prependedSteps.end());
+        if (customStepOdometryCorrection)
+        {
+          correctOdometry(currentSteps.steps);
+        }
+      }
+      else
+      {
+        currentSteps.steps.clear();
+        return false;
+      }
+      // END :: Leons Modifikation
     }
 
     // initialize custom step
@@ -823,17 +867,43 @@ WalkRequest::StepRequest PatternGenerator2017::selectCustomStepForKick(const Vec
   WalkRequest::StepRequest bestKick = WalkRequest::StepRequest::none;
   float bestScore = INFINITY;
   const Vector2f ballToKickTarget = kickTarget - Transformation::robotToField(theRobotPose, theBallModel.estimate.position);
-  const std::vector<WalkRequest::StepRequest>& kickList =
-      (theRoleSymbols.role == BehaviorData::ballchaserKeeper || theRoleSymbols.role == BehaviorData::replacementKeeper || theRoleSymbols.role == BehaviorData::keeper) ? activeGoalieKicks : activeKicks;
+  const std::vector<WalkRequest::StepRequest>& kickList = (theRoleSymbols.role == BehaviorData::replacementKeeper || theRoleSymbols.role == BehaviorData::keeper) ? activeGoalieKicks : activeKicks;
 
   localCustomStepSelection.ballModel = getBallModelWalk();
   localCustomStepSelection.robotPoseAfterPreviw = getRobotPoseAfterPreviewField();
 
+  // TODO: Remove / Improve. This is a hack to specify the correct kick min distances for behavior,
+  // but there must also be a kick for shorter distances for the any kick.
+  bool first = true;
+  bool firstHasWrongDistance = false;
   for (WalkRequest::StepRequest kick : kickList)
   {
-    int idx = (int)(kick - WalkRequest::StepRequest::beginScript - 1);
-    if (!stepFiles[idx].isApplicable(ballToKickTarget.norm() / 1000.f))
+    int idx = 0;
+    for (const auto& stepFile : stepFiles)
+    {
+      if (stepFile.stepRequest == kick)
+      {
+        break;
+      }
+      idx++;
+    }
+    if (idx == (int)stepFiles.size())
+    {
+      OUTPUT_WARNING("Any kick not loaded with new kick loading!");
       continue;
+    }
+
+    if (!stepFiles[idx].isApplicable(ballToKickTarget.norm() / 1000.f))
+    {
+      if (first)
+      {
+        firstHasWrongDistance = true;
+      }
+      else
+      {
+        continue;
+      }
+    }
 
     for (int i = 0; i < 2; i++)
     {
@@ -851,10 +921,18 @@ WalkRequest::StepRequest PatternGenerator2017::selectCustomStepForKick(const Vec
       if (customStepOdometryCorrection)
         correctOdometry(steps.steps);
 
-      // TODO: better measurement or scrap it completely since maxPrependedSteps tells the story..
-      // maybe use the distance and rotation of the prepended steps
-      // TODO: distinguish between long and short kicks
-      float score = getScoreForPrependSteps(prependedSteps);
+      float score;
+      if (first && firstHasWrongDistance)
+      {
+        score = maxPrependStepsScore;
+      }
+      else
+      {
+        // TODO: better measurement or scrap it completely since maxPrependedSteps tells the story..
+        // maybe use the distance and rotation of the prepended steps
+        // TODO: distinguish between long and short kicks
+        score = getScoreForPrependSteps(prependedSteps);
+      }
 
       if (prependSuccessful)
       {
@@ -865,7 +943,7 @@ WalkRequest::StepRequest PatternGenerator2017::selectCustomStepForKick(const Vec
         k.score = score;
       }
 
-      if (prependSuccessful && score < maxPrependStepsScore && score < bestScore)
+      if (prependSuccessful && score <= maxPrependStepsScore && score < bestScore)
       {
         bestKick = kick;
         bestScore = score;
@@ -883,6 +961,7 @@ WalkRequest::StepRequest PatternGenerator2017::selectCustomStepForKick(const Vec
         localCustomStepSelection.currentSteps = steps;
       }
     }
+    first = false;
   }
 
   return bestKick;
@@ -930,21 +1009,22 @@ float PatternGenerator2017::calcDynamicStepDuration(float speedX, float speedY, 
   {
     if (running)
     {
-      //float maxSpeedR = (speedX == 0.f && speedY == 0.f) ?
-      //  (theWalkingEngineParams.speedLimits.rOnly * theWalkingEngineParams.speedLimits.speedFactor) : (theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor);
-
-      float xLimit = speedX > 0
-          ? (theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedLimits.speedFactor) / 1000.f
-          : (theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedLimits.speedFactor) / 1000.f;
-      float yLimit = xLimit; // 2.f * (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor) / 1000.f;
-      float rLimit = xLimit; // 1.5f * maxSpeedR;
+      float xLimit = speedX > 0 ? walkParamsProviderParams.maxXForward / 1000.f : walkParamsProviderParams.maxXBackward / 1000.f;
+      float yLimit = walkParamsProviderParams.maxY / 1000.f;
+      float rLimit = theWalkingEngineParams.speedLimits.rOnly * theWalkingEngineParams.speedLimits.speedFactor;
 
       float factorX = std::abs(xLimit - std::abs(speedX)) / xLimit;
       float factorY = std::abs(yLimit - std::abs(speedY)) / yLimit;
       float factorR = std::abs(rLimit - std::abs(speedR)) / rLimit;
 
       float distToMax = std::min(factorX, std::min(factorR, factorY));
+
       float result = distToMax * theWalkingEngineParams.footMovement.maxStepDuration + (1.f - distToMax) * theWalkingEngineParams.footMovement.minStepDuration;
+
+      // exponential filter
+      result = exponentialFactorForStepDuration * lastStepDuration + (1 - exponentialFactorForStepDuration) * result;
+      lastStepDuration = result;
+
       // duration of first step of side walk can be adjusted in parameters, the faster we walk sideways, the more the parameter weighs in
       if (theWalkingEngineParams.footMovement.leadingSideStepSpeedUp > 0.f && std::abs(currentMovement.speed.translation.y()) > 0.01f)
       {
@@ -1014,6 +1094,8 @@ void PatternGenerator2017::applyAcceleration()
         currentMovement.speed.rotation = std::max<float>(std::max(static_cast<float>(newMovement.speed.rotation), currentMovement.speed.rotation - maxStepAccR), -maxSpeedR);
       else // left
         currentMovement.speed.rotation = std::min<float>(std::min(static_cast<float>(newMovement.speed.rotation), currentMovement.speed.rotation + maxStepAccR), maxSpeedR);
+
+      currentMovement.speed.rotation /= std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y());
     }
   }
 
@@ -1073,8 +1155,22 @@ void PatternGenerator2017::applyAcceleration()
     else // forward
       currentMovement.speed.translation.x() = std::min(std::min(newMovement.speed.translation.x(), currentMovement.speed.translation.x() + maxStepAccX), maxSpeedXForward / 1000.f);
 
-    currentMovement.speed.translation.x() /=
-        std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y());
+    if (newMovement.speed.translation.x() < 0)
+    {
+      if (theJoinedIMUData.imuData[anglesource].angle.y() > 0.f)
+        currentMovement.speed.translation.x() /=
+            ((std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+      else
+        currentMovement.speed.translation.x() *= ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+    }
+    else
+    {
+      if (theJoinedIMUData.imuData[anglesource].angle.y() > 0.f)
+        currentMovement.speed.translation.x() *= ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+      else
+        currentMovement.speed.translation.x() /=
+            ((std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+    }
   }
 
   /************** y ****************/
@@ -1135,8 +1231,22 @@ void PatternGenerator2017::applyAcceleration()
         currentMovement.speed.translation.y() = std::min(std::min(newMovement.speed.translation.y(), currentMovement.speed.translation.y() + maxStepAccY), maxSpeedY / 1000.f);
     }
 
-    currentMovement.speed.translation.y() /=
-        std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y());
+    if (currentMovement.speed.translation.y() > 0.f)
+    {
+      if (theJoinedIMUData.imuData[anglesource].angle.x() > 0.f)
+        currentMovement.speed.translation.y() /=
+            ((std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+      else
+        currentMovement.speed.translation.y() *= ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+    }
+    else
+    {
+      if (theJoinedIMUData.imuData[anglesource].angle.x() > 0.f)
+        currentMovement.speed.translation.y() *= ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+      else
+        currentMovement.speed.translation.y() /=
+            ((std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) - 1.f) * fallDownSpeedInfluenceFactor) + 1.f;
+    }
   }
   // set step duration based on new speed
   curStepDuration = calcDynamicStepDuration(currentMovement.speed.translation.x(), currentMovement.speed.translation.y(), currentMovement.speed.rotation);
@@ -1181,6 +1291,8 @@ void PatternGenerator2017::reset()
   appliedReactiveStep[RIGHT_FOOT] = 0;
   localSteps.reset();
   stepsInPreview = 0;
+  lastStepDuration = theWalkingEngineParams.footMovement.maxStepDuration;
+  supportFootState = bothFeetSupport;
 
   //ref zmp
   localRefZMP2018.zmpWCS.clear();
@@ -1207,10 +1319,6 @@ StepData PatternGenerator2017::getNextStep()
   step.footPos[RIGHT_FOOT].r = -baseRot;
 
   // #ifndef WALKING_SIMULATOR
-  float startZ = walkHeight;
-  float factor = 0;
-  int crouchingLength = theWalkingEngineParams.walkTransition.crouchingDownPhaseLength;
-
   switch (currentState)
   {
   case ready:
@@ -1219,57 +1327,53 @@ StepData PatternGenerator2017::getNextStep()
     wasReady = true;
     break;
 
+
   case standby:
-    //startZ=sqrt(pow(theWalkingEngineParams.maxLegLength, 2)-pow(theWalkingEngineParams.xOffset, 2)-pow(theWalkingEngineParams.footYDistance, 2));
+  {
     step.direction = 0;
     step.footPos[LEFT_FOOT] = 0;
     step.footPos[RIGHT_FOOT] = 0;
-    step.footPos[RIGHT_FOOT].z = step.footPos[LEFT_FOOT].z = -startZ;
+    step.footPos[RIGHT_FOOT].x = theActualCoMRCS.x;
+    step.footPos[LEFT_FOOT].x = theActualCoMRCS.x;
+    step.footPos[RIGHT_FOOT].z = step.footPos[LEFT_FOOT].z = -walkHeight;
     step.footPos[RIGHT_FOOT].y = -theWalkingEngineParams.footMovement.footYDistance;
     step.footPos[LEFT_FOOT].y = theWalkingEngineParams.footMovement.footYDistance;
     step.footPos[LEFT_FOOT].r = baseRot;
     step.footPos[RIGHT_FOOT].r = -baseRot;
     break;
+  }
 
   case stopping:
     break;
 
   case goingToStandby:
-    if (crouchingLength > 0)
-    {
-      factor = ((float)(stateCounter) / crouchingLength);
-      //startZ=sqrt(pow(theWalkingEngineParams.maxLegLength, 2)-pow(theWalkingEngineParams.xOffset, 2)-pow(theWalkingEngineParams.footYDistance, 2));
-      step.direction = 0;
-      step.footPos[LEFT_FOOT] = 0;
-      step.footPos[RIGHT_FOOT] = 0;
-      step.footPos[RIGHT_FOOT].x = CoM.x * factor;
-      step.footPos[LEFT_FOOT].x = CoM.x * factor;
-      step.footPos[RIGHT_FOOT].z = step.footPos[LEFT_FOOT].z = (1 - factor) * (-startZ) + factor * (-theFLIPMParameter.paramsX.z_h + CoM.z);
-      step.footPos[RIGHT_FOOT].y = -theWalkingEngineParams.footMovement.footYDistance;
-      step.footPos[LEFT_FOOT].y = theWalkingEngineParams.footMovement.footYDistance;
-      step.footPos[LEFT_FOOT].r = baseRot;
-      step.footPos[RIGHT_FOOT].r = -baseRot;
-    }
+  {
+    step.direction = 0;
+    step.footPos[LEFT_FOOT] = 0;
+    step.footPos[RIGHT_FOOT] = 0;
+    step.footPos[RIGHT_FOOT].x = theActualCoMRCS.x;
+    step.footPos[LEFT_FOOT].x = theActualCoMRCS.x;
+    step.footPos[RIGHT_FOOT].z = step.footPos[LEFT_FOOT].z = -walkHeight;
+    step.footPos[RIGHT_FOOT].y = -theWalkingEngineParams.footMovement.footYDistance;
+    step.footPos[LEFT_FOOT].y = theWalkingEngineParams.footMovement.footYDistance;
+    step.footPos[LEFT_FOOT].r = baseRot;
+    step.footPos[RIGHT_FOOT].r = -baseRot;
     break;
-
+  }
   case goingToReady:
-    if (crouchingLength > 0)
-    {
-      factor = 1 - ((float)(stateCounter) / crouchingLength);
-      //startZ=sqrt(pow(theWalkingEngineParams.maxLegLength, 2)-pow(theWalkingEngineParams.xOffset, 2)-pow(theWalkingEngineParams.footYDistance, 2));
-      step.direction = 0;
-      step.footPos[LEFT_FOOT] = 0;
-      step.footPos[RIGHT_FOOT] = 0;
-      step.footPos[RIGHT_FOOT].x = CoM.x * factor;
-      step.footPos[LEFT_FOOT].x = CoM.x * factor;
-      step.footPos[RIGHT_FOOT].z = step.footPos[LEFT_FOOT].z = (1 - factor) * (-startZ) + factor * (-theFLIPMParameter.paramsX.z_h + CoM.z);
-      step.footPos[RIGHT_FOOT].y = -theWalkingEngineParams.footMovement.footYDistance;
-      step.footPos[LEFT_FOOT].y = theWalkingEngineParams.footMovement.footYDistance;
-      step.footPos[LEFT_FOOT].r = baseRot;
-      step.footPos[RIGHT_FOOT].r = -baseRot;
-    }
+  {
+    step.direction = 0;
+    step.footPos[LEFT_FOOT] = 0;
+    step.footPos[RIGHT_FOOT] = 0;
+    step.footPos[RIGHT_FOOT].x = theActualCoMRCS.x;
+    step.footPos[LEFT_FOOT].x = theActualCoMRCS.x;
+    step.footPos[RIGHT_FOOT].z = step.footPos[LEFT_FOOT].z = -walkHeight;
+    step.footPos[RIGHT_FOOT].y = -theWalkingEngineParams.footMovement.footYDistance;
+    step.footPos[LEFT_FOOT].y = theWalkingEngineParams.footMovement.footYDistance;
+    step.footPos[LEFT_FOOT].r = baseRot;
+    step.footPos[RIGHT_FOOT].r = -baseRot;
     break;
-
+  }
   case walking:
   case customSteps:
     break;
@@ -1322,7 +1426,8 @@ unsigned int PatternGenerator2017::doubleSupportDuration()
       return std::next(currentExecutedStep)->duration;
   }
 
-  return getPhaseLength(theWalkingEngineParams.footMovement.doubleSupportRatio, curStepDuration);
+  // return getPhaseLength(theWalkingEngineParams.footMovement.doubleSupportRatio, curStepDuration);
+  return 1;
 }
 
 void PatternGenerator2017::addStep()
@@ -1374,6 +1479,8 @@ void PatternGenerator2017::addStep()
     newStep.kickHackKneeAngle = currentSteps.kickHackKneeAngle;
     newStep.timeUntilKickHackKnee = currentSteps.timeUntilKickHackKnee;
     newStep.kickHackDurationKnee = currentSteps.kickHackDurationKnee;
+    newStep.kickHackKneeIntensity = currentSteps.kickHackKneeIntensity;
+    newStep.ankleCompensationMultiplier = currentSteps.ankleCompensationMultiplier;
 #ifdef TARGET_SIM
     newStep.timeUntilKickHackKnee *= 2;
     newStep.timeUntilKickHackHip *= 2;
@@ -1495,9 +1602,6 @@ void PatternGenerator2017::createFootStepTrajectory()
   float xStepHeight = curStep.speed.translation.x() > 0 ? theWalkingEngineParams.footMovement.stepHeight[0] : theWalkingEngineParams.footMovement.stepHeight[1];
   float walkStepHeight = (1 - yFac) * xStepHeight + yFac * theWalkingEngineParams.footMovement.stepHeight[2];
 
-  float footPitch = theWalkingEngineParams.footMovement.footPitch * sgn(curStep.speed.translation.x());
-  float footRoll = theWalkingEngineParams.footMovement.footRoll * sgn(curStep.speed.translation.y());
-
   // new stuff
   currentFootStepTrajectory.resize(curStep.singleSupportDurationInFrames);
   const int noControlPoints = 7;
@@ -1533,8 +1637,8 @@ void PatternGenerator2017::createFootStepTrajectory()
       plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].x = lastLeftFootPose2f.translation.x() + offsetForThisFrame.x;
       plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].y = lastLeftFootPose2f.translation.y() + offsetForThisFrame.y;
       plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].z = offsetForThisFrame.z;
-      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].rx = offsetSpline[curStep.singleSupportDurationInFrames - i - 1].z * footRoll;
-      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].ry = offsetSpline[curStep.singleSupportDurationInFrames - i - 1].z * footPitch;
+      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].rx = 0.f;
+      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].ry = 0.f;
     }
   }
   if (footNum == RIGHT_FOOT)
@@ -1553,8 +1657,8 @@ void PatternGenerator2017::createFootStepTrajectory()
       plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].x = lastRightFootPose2f.translation.x() + offsetForThisFrame.x;
       plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].y = lastRightFootPose2f.translation.y() + offsetForThisFrame.y;
       plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].z = offsetForThisFrame.z;
-      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].rx = offsetSpline[curStep.singleSupportDurationInFrames - i - 1].z * footRoll;
-      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].ry = offsetSpline[curStep.singleSupportDurationInFrames - i - 1].z * footPitch;
+      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].rx = 0.f;
+      plannedFootSteps.steps.at(numOfSteps - i - 1).footPos[footNum].ry = 0.f;
     }
   }
   if (numCustomStepOffsets > 0)
@@ -1574,41 +1678,61 @@ void PatternGenerator2017::updateCoM(Point CoM)
 void PatternGenerator2017::calcSupportFoot()
 {
   supportFootBuffer.push_front(theFsrSensorData.calcSupportFoot());
-  // get direction of support foot shift
-  float direction = supportFootBuffer[0] - 0.5f * supportFootBuffer[1] - 0.5f * supportFootBuffer[2];
-  supportFootDirectionBuffer.push_front(direction);
-  float directionSum = 0.f;
-  float alpha = 0.2f;
-  for (int i = 0; i < 5; i++)
-  {
-    directionSum += alpha * (-1 + 2 * (supportFootDirectionBuffer[i] > 0.f));
-    alpha += 0.2f;
-  }
+  //// get direction of support foot shift
+  //float direction = supportFootBuffer[0] - 0.5f * supportFootBuffer[1] - 0.5f * supportFootBuffer[2];
+  //supportFootDirectionBuffer.push_front(direction);
+  //float directionSum = 0.f;
+  //float alpha = 1.f / supportFootDirectionBuffer.size();
+  //for (int i = 0; i < supportFootDirectionBuffer.size(); i++)
+  //{
+  //  directionSum += alpha * (-1 + 2 * (supportFootDirectionBuffer[i] > 0.f));
+  //  alpha += 1.f / supportFootDirectionBuffer.size();
+  //}
+  //if (supportFootState == bothFeetSupport)
+  //{
+  //  if (directionSum > 1.f && supportFootBuffer[0] > 0.1f)
+  //    supportFootState = leftSupportOnly;
+  //  else if (directionSum < -1.f && supportFootBuffer[0] < 0.1f)
+  //    supportFootState = rightSupportOnly;
+  //}
+  //else if (supportFootState == leftSupportOnly)
+  //{
+  //  if (directionSum < -1.f && direction < 0.f)
+  //    supportFootState = bothFeetSupport;
+  //}
+  //else if (supportFootState == rightSupportOnly)
+  //{
+  //  if (directionSum > 1.f && direction > 0.f)
+  //    supportFootState = bothFeetSupport;
+  //}
+
+  float support = supportFootBuffer[0] + 1.f * (supportFootBuffer[0] - supportFootBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1]);
+  float threshold = 0.75f * theWalkingEngineParams.footMovement.footYDistance * 10.f;
+
   if (supportFootState == bothFeetSupport)
   {
-    if (directionSum > 1.f && supportFootBuffer[0] > 0.f)
+    if (support > threshold)
       supportFootState = leftSupportOnly;
-    else if (directionSum < -1.f && supportFootBuffer[0] < 0.f)
+    else if (support < -threshold)
       supportFootState = rightSupportOnly;
   }
   else if (supportFootState == leftSupportOnly)
   {
-    if (directionSum < -1.f && direction < 0.f)
+    if (support <= threshold)
       supportFootState = bothFeetSupport;
   }
   else if (supportFootState == rightSupportOnly)
   {
-    if (directionSum > 1.f && direction > 0.f)
+    if (support >= -threshold)
       supportFootState = bothFeetSupport;
   }
+
   PLOT("module:PatternGenerator2017:supportFoot", (supportFootState == bothFeetSupport) ? 0.f : ((supportFootState == rightSupportOnly) ? -0.1f : 0.1f));
 }
 
 void PatternGenerator2017::fillFootSteps()
 {
   draw();
-  DEBUG_RESPONSE_ONCE("module:PatternGenerator2017:saveCustomSteps")
-  saveStepFiles();
   DEBUG_RESPONSE_ONCE("module:PatternGenerator2017:loadCustomSteps")
   loadStepFiles();
 
@@ -1621,6 +1745,8 @@ void PatternGenerator2017::fillFootSteps()
 
   Point CoM(theRobotModel.centerOfMass.x() / 1000, theRobotModel.centerOfMass.y() / 1000, (theRobotModel.centerOfMass.z()) / 1000, 0);
   updateCoM(CoM);
+  walkHeight = theFLIPMParameter.paramsX.z_h - CoM.z;
+
   calcSupportFoot();
 
   if (walkingPhaseExtension > 0)
@@ -1774,7 +1900,9 @@ void PatternGenerator2017::updateFootPositions()
     {
       const Footposition& nextFootPosition = plannedFootSteps.steps[0];
       WalkingPhase nextPhase = nextFootPosition.phase;
-      if ((nextPhase == firstDoubleSupport && supportFootState == rightSupportOnly) || (nextPhase == secondDoubleSupport && supportFootState == leftSupportOnly))
+      WalkingPhase overNextPhase = plannedFootSteps.steps[1].phase;
+      if ((nextPhase == secondDoubleSupport && overNextPhase == firstSingleSupport && supportFootState == rightSupportOnly)
+          || (nextPhase == firstDoubleSupport && overNextPhase == secondSingleSupport && supportFootState == leftSupportOnly))
       {
         walkingPhaseExtension++;
       }
@@ -1837,11 +1965,13 @@ void PatternGenerator2017::updateRefZMP2018()
     {
       if (slowDSRefZMPUntilFSR && walkingPhaseExtension > 1)
         localRefZMP2018.zmpWCS[0] = localRefZMP2018.zmpWCS[0] * 0.5f + localRefZMP2018.zmpWCS[1] * 0.5f;
+      localRefZMP2018.inWalkingPhaseExtension = true;
     }
     else
     {
       localRefZMP2018.zmpWCS.erase(localRefZMP2018.zmpWCS.begin());
       localRefZMP2018.zmpRCS.erase(localRefZMP2018.zmpRCS.begin());
+      localRefZMP2018.inWalkingPhaseExtension = false;
     }
     // Generate ref zmp from foot steps. Usually just one new frame - except at start of controller.
     while (!localSteps.empty() && walkingPhaseExtension == 0)
@@ -2046,6 +2176,7 @@ void PatternGenerator2017::previewReset()
   localRefZMP2018.zmpWCS.clear();
   localRefZMP2018.zmpRCS.clear();
   localRefZMP2018.reset = true;
+  localRefZMP2018.inWalkingPhaseExtension = false;
   leftFootPose2f = resetFootPosition.leftFootPose2f;
   rightFootPose2f = resetFootPosition.rightFootPose2f;
   if (useSafetySteps) // if active, move foot position below upper body
@@ -2149,6 +2280,7 @@ void PatternGenerator2017::update(FootSteps& steps)
 
 void PatternGenerator2017::update(Footpositions& footPositions)
 {
+  PLOT("module:PatternGenerator2017:currentState", static_cast<float>(localFootPositions.currentState) / static_cast<float>(DWE::State::NA));
   footPositions = localFootPositions;
 }
 
@@ -2207,80 +2339,12 @@ void PatternGenerator2017::update(CustomStepSelection& customStepSelection)
   }
 }
 
-void PatternGenerator2017::loadStepFile(std::string file, int idx)
-{
-  stepFiles[idx].steps.clear();
-
-  InMapFile s(file);
-  if (s.exists())
-    s >> stepFiles[idx];
-  else
-  {
-    InMapFile s(file);
-    if (s.exists())
-      s >> stepFiles[idx];
-    else
-    {
-      OUTPUT(idText, text, std::string("Unable to load ") << file << ". Creating new.");
-      stepFiles[idx].steps.push_back(CustomStep());
-      saveStepFile(file, idx);
-    }
-  }
-
-  // Must begin with single support
-  ASSERT(stepFiles[idx].steps.size() == 0 || !(stepFiles[idx].steps.front().onFloor[0] && stepFiles[idx].steps.front().onFloor[1]));
-}
-
-void PatternGenerator2017::saveStepFile(std::string file, int idx, bool robot)
-{
-
-  std::string fullPath;
-  if (robot)
-  {
-    std::list<std::string> names = File::getFullNames(file);
-    std::list<std::string>::const_iterator i;
-    for (i = names.begin(); i != names.end(); ++i)
-    {
-      File path(*i, "r", false);
-      if (path.exists())
-        break;
-    }
-
-    fullPath = (i == names.end()) ? file : *i;
-  }
-  else
-  {
-    fullPath = File::getBHDir() + std::string("/Config/Robots/Default/") + file;
-  }
-
-  OutMapFile stream(fullPath);
-
-  if (stream.exists())
-  {
-    stream << stepFiles[idx];
-    OUTPUT(idText, text, std::string("Saved ") << file);
-  }
-  else
-    OUTPUT(idText, text, std::string("Failed to save ") << file);
-}
-
-// To add a new file, add a new member to ENUM StepRequest in WalkRequest.h
-
 void PatternGenerator2017::loadStepFiles()
 {
-  stepFiles.clear();
-  stepFiles.resize(WalkRequest::numOfStepRequests);
-  for (int i = 0; i < WalkRequest::numOfStepRequests - WalkRequest::StepRequest::beginScript - 1; i++)
+  stepFiles = KicksProvider::loadCustomStepFiles();
+  for (const auto& stepFile : stepFiles)
   {
-    loadStepFile(WalkRequest::getName((WalkRequest::StepRequest)(WalkRequest::StepRequest::beginScript + 1 + i)), i);
-  }
-}
-
-void PatternGenerator2017::saveStepFiles()
-{
-  for (int i = 0; i < WalkRequest::numOfStepRequests - WalkRequest::StepRequest::beginScript - 1; i++)
-  {
-    saveStepFile(WalkRequest::getName((WalkRequest::StepRequest)(WalkRequest::StepRequest::beginScript + 1 + i)), i);
+    activeKicks.push_back(stepFile.stepRequest);
   }
 }
 
@@ -2369,6 +2433,7 @@ void PatternGenerator2017::draw()
   DECLARE_PLOT("module:PatternGenerator2017:refZMPFull:X");
   DECLARE_PLOT("module:PatternGenerator2017:refZMPFull:Y");
   DECLARE_PLOT("module:PatternGenerator2017:supportFoot");
+  DECLARE_PLOT("module:PatternGenerator2017:currentState");
 
   DECLARE_DEBUG_DRAWING3D("module:PatternGenerator2017:customSteps", "field");
 

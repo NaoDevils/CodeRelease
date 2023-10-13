@@ -19,7 +19,7 @@
  *              If not all logs will become unreplayable !!!
  */
 BIGENUM(MessageID,
-  ( 
+  (
     undefined,
     idProcessBegin,
     idProcessFinished,
@@ -30,16 +30,16 @@ BIGENUM(MessageID,
     idBallModel,
     idBallPercept,
     idMultipleBallPercept, // added by NDevils
-    idBehaviorData,// added by NDevils
+    idBehaviorData, // added by NDevils
     idBodyContour,
     idCameraInfo,
-    idCameraInfoUpper,// added by NDevils
+    idCameraInfoUpper, // added by NDevils
     idCameraMatrix,
-    idCameraMatrixUpper,// added by NDevils
-    idCLIPCenterCirclePercept,// added by NDevils
-    idCLIPFieldLinesPercept,// added by NDevils
-    idCLIPGoalPercept,// added by NDevils
-    idCLIPPointsPercept,// added by NDevils
+    idCameraMatrixUpper, // added by NDevils
+    idCLIPCenterCirclePercept, // added by NDevils
+    idCLIPFieldLinesPercept, // added by NDevils
+    idCLIPGoalPercept, // added by NDevils
+    idCLIPPointsPercept, // added by NDevils
     idColorCalibration,
     idFilteredJointData,
     idFsrSensorData,
@@ -49,7 +49,7 @@ BIGENUM(MessageID,
     idGroundTruthOdometryData,
     idGroundTruthWorldState,
     idImage,
-    idImageUpper,// added by NDevils
+    idImageUpper, // added by NDevils
     idImageCoordinateSystem,
     idInertialData,
     idInertialSensorData,
@@ -83,7 +83,7 @@ BIGENUM(MessageID,
     idTeammateData,
     idRoleSymbols, // added by NDevils
     idThumbnail,
-    idUsSensorData,
+    idSonarSensorData,
     // added by NDevils
     idSpeedRequest,
     idBallModelAfterPreview,
@@ -100,7 +100,7 @@ BIGENUM(MessageID,
     idYoloInputUpper,
     idSequenceImage,
     idSequenceImageUpper,
-    idRobotsPerceptUpper,
+    idProcessedRobotsHypotheses,
     idJointRequest,
     idFootpositions,
     idMotionSelection,
@@ -112,10 +112,11 @@ BIGENUM(MessageID,
     idWalkCalibration,
     idCustomStepSelection,
     idTeamCommEvents,
+    idBallchaser,
+    idHeadAngleRequest,
 
     numOfDataMessageIDs /**< everything below this does not belong into log files */
-  ),
-  (
+  ),(
     // ids used in team communication
     idTimeSynchronization = numOfDataMessageIDs,
     idPlaceholder1,

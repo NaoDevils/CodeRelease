@@ -209,8 +209,12 @@ bool Reader::readAttributes()
   {
     bool readWhitespace = false;
     Token token;
-    while (tokenIsSpace(token = readToken()) && (readWhitespace = true))
-      ;
+    do
+    {
+      token = readToken();
+      if (tokenIsSpace(token))
+        readWhitespace = true;
+    } while (tokenIsSpace(token));
     undoReadToken(token);
     if (token == tagEnd || token == emptyTagEnd)
       return true;

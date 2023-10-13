@@ -216,16 +216,15 @@ void KickViewHeaderedWidget::newButtonClicked()
 void KickViewHeaderedWidget::loadButtonClicked()
 {
   char dirname[260];
-  sprintf(dirname, "%s/Config/KickEngine/", File::getBHDir());
+  sprintf(dirname, "%s/Config/Kicks/KickEngine/", File::getBHDir());
   fileName = QFileDialog::getOpenFileName(this, tr("Open Kick Motion"), dirname, tr("Kick Motion Config Files (*.kmc)"));
-  QString name;
-  name = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
 
-  InMapFile stream(name.toUtf8().constData());
+  InMapFile stream(fileName.toStdString());
   if (stream.exists())
   {
     stream >> parameters;
-    name = name.remove(0, name.lastIndexOf("/") + 1);
+    QString name = fileName;
+    name.remove(0, name.lastIndexOf("/") + 1);
     strcpy(parameters.name, name.remove(name.lastIndexOf("."), name.length()).toUtf8().constData());
 
     parameters.initFirstPhase();
@@ -246,10 +245,11 @@ void KickViewHeaderedWidget::saveAsButtonClicked()
 
   if (fileName.begin() != fileName.end())
   {
-    QString temp = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
+    QString temp = fileName;
+    temp.remove(0, temp.lastIndexOf("/", temp.lastIndexOf("/") - 1) + 1);
     temp = temp.remove(0, temp.lastIndexOf("/") + 1);
     strcpy(parameters.name, temp.remove(temp.lastIndexOf("."), temp.length()).toUtf8().constData());
-    writeParametersToFile(fileName.toUtf8().constData());
+    writeParametersToFile(fileName.toStdString());
     undo.clear();
     redo.clear();
     emit undoAvailable(false);
@@ -260,9 +260,7 @@ void KickViewHeaderedWidget::saveButtonClicked()
 {
   if (fileName.begin() != fileName.end() && fileName != QString("newKick.kmc"))
   {
-    QString name;
-    name = fileName.remove(0, fileName.lastIndexOf("/", fileName.lastIndexOf("/") - 1) + 1);
-    writeParametersToFile(name.toUtf8().constData());
+    writeParametersToFile(fileName.toStdString());
     undo.clear();
     redo.clear();
     emit undoAvailable(false);
@@ -367,16 +365,9 @@ void KickViewHeaderedWidget::redoChanges()
     emit redoAvailable(false);
 }
 
-KickView::KickView(const QString& fullName,
-    RobotConsole& console,
-    const MotionRequest& motionRequest,
-    const JointAngles& jointAngles,
-    const JointCalibration& jointCalibration,
-    const RobotDimensions& robotDimensions,
-    const std::string& mr,
-    SimRobotCore2::Body* robot)
-    : fullName(fullName), console(console), motionRequest(motionRequest), jointAngles(jointAngles), jointCalibration(jointCalibration), robotDimensions(robotDimensions),
-      motionRequestCommand(mr), robot(robot)
+KickView::KickView(
+    const QString& fullName, RobotConsole& console, const MotionRequest& motionRequest, const JointAngles& jointAngles, const JointCalibration& jointCalibration, const RobotDimensions& robotDimensions, SimRobotCore2::Body* robot)
+    : fullName(fullName), console(console), motionRequest(motionRequest), jointAngles(jointAngles), jointCalibration(jointCalibration), robotDimensions(robotDimensions), robot(robot)
 {
 }
 

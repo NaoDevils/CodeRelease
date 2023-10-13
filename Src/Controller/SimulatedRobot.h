@@ -9,7 +9,7 @@
 
 #include <SimRobotCore2.h>
 #include "Representations/Configuration/JointCalibration.h"
-#include "Representations/Configuration/UsConfiguration.h"
+#include "Representations/Configuration/SonarConfiguration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/CameraIntrinsics.h"
@@ -32,8 +32,7 @@ struct ImageUpper;
 struct InertialSensorData;
 struct JointRequest;
 struct OdometryData;
-struct USRequest;
-struct UsSensorData;
+struct SonarSensorData;
 struct Pose2f;
 
 /**
@@ -61,10 +60,10 @@ private:
   SimRobot::Object* lowerCameraSensor; /**< The handle to the sensor port of the lower camera. */
   SimRobot::Object* accSensor; /**< The handle to the sensor port of the virtual accelerometer. */
   SimRobot::Object* gyroSensor; /**< The handle to the sensor port of the virtual gyrosope. */
-  SimRobot::Object* leftUsSensor; /** The handle to the sensor port of the virtual us sensor */
-  SimRobot::Object* rightUsSensor; /** The handle to the sensor port of the virtual us sensor */
-  SimRobot::Object* centerLeftUsSensor; /** The handle to the sensor port of the virtual us sensor */
-  SimRobot::Object* centerRightUsSensor; /** The handle to the sensor port of the virtual us sensor */
+  SimRobot::Object* leftSonarSensor; /** The handle to the sensor port of the virtual sonar sensor */
+  SimRobot::Object* rightSonarSensor; /** The handle to the sensor port of the virtual sonar sensor */
+  SimRobot::Object* centerLeftSonarSensor; /** The handle to the sensor port of the virtual sonar sensor */
+  SimRobot::Object* centerRightSonarSensor; /** The handle to the sensor port of the virtual sonar sensor */
 
   static SimRobotCore2::SensorPort* activeCameras[MAX_NUM_PLAYERS * 2]; /**< An array of all activated cameras */
   static unsigned activeCameraCount; /**< Total count of constructed cameras */
@@ -75,7 +74,7 @@ private:
   CameraInfo lowerCameraInfo; /**< Information about the lower camera. */
   CameraIntrinsics cameraIntrinsics;
   CameraResolution cameraResolution;
-  UsConfiguration usConfig;
+  SonarConfiguration sonarConfig;
   RobotDimensions robotDimensions;
 
   template <typename T> class JointParameters : public Streamable
@@ -211,10 +210,9 @@ public:
   /**
    * Determines the sensor data of the simulated robot.
    * @param inertialSensorData The determined inertial sensor data.
-   * @param usSensorData The determined usSensorData sensor data.
-   * @param usRequest The request that determines which sonars are read.
+   * @param sonarSensorData The determined sonarSensorData sensor data.
    */
-  void getSensorData(FsrSensorData& fsrSensorData, InertialSensorData& inertialSensorData, UsSensorData& usSensorData, const USRequest& usRequest);
+  void getSensorData(FsrSensorData& fsrSensorData, InertialSensorData& inertialSensorData, SonarSensorData& sonarSensorData);
 
   /**
    * Moves and rotates the robot to an absolute pose
@@ -238,6 +236,12 @@ public:
   static void moveBall(const Vector3f& pos, bool resetDynamics = false);
 
   /**
+   * Sets the velocity of the ball to the given value
+   * @param velocity The velocity of the ball
+   */
+  static void setBallVelocity(const Vector3f& velocity);
+
+  /**
    * Determines the two-dimensional position of a SimRobot object without team color rotation.
    * @param obj The object of which the position will be determined.
    */
@@ -254,7 +258,7 @@ private:
   /**
    * Adds jitter to a sensor value.
    */
-  float addUsJitter(float value);
+  float addSonarJitter(float value);
 
   /**
    * Determines the two-dimensional pose of a SimRobot object without team color rotation.

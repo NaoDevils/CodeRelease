@@ -232,6 +232,23 @@ bool MessageQueueBase::finishMessage(MessageID id)
   return success;
 }
 
+std::tuple<int, int> MessageQueueBase::countFramesAndMessages()
+{
+  int numberOfFrames = 0, numberOfMessagesWithinCompleteFrames = 0;
+  numberOfMessages = 0;
+  for (selectedMessageForReadingPosition = 0; selectedMessageForReadingPosition < usedSize; selectedMessageForReadingPosition += getMessageSize() + headerSize)
+  {
+    ++numberOfMessages;
+    if (getMessageID() == idProcessFinished)
+    {
+      ++numberOfFrames;
+      numberOfMessagesWithinCompleteFrames = numberOfMessages;
+    }
+  }
+
+  return {numberOfFrames, numberOfMessagesWithinCompleteFrames};
+}
+
 void MessageQueueBase::removeRepetitions()
 {
   ASSERT(!messageIndex);

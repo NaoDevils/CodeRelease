@@ -5,13 +5,7 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/CABSL/BehaviorControl.cpp
         BehaviorControl/CABSL/BehaviorControl.h
         BehaviorControl/CABSL/BehaviorParameters.h
-        BehaviorControl/CABSL/Libraries.cpp
-        BehaviorControl/CABSL/Libraries.h
         BehaviorControl/CABSL/Libraries/HelperFunctions.h
-        BehaviorControl/CABSL/Libraries/LibTactic.cpp
-        BehaviorControl/CABSL/Libraries/LibTactic.h
-        BehaviorControl/CABSL/LibraryBase.cpp
-        BehaviorControl/CABSL/LibraryBase.h
         BehaviorControl/CABSL/Options.h
         BehaviorControl/CABSL/Options/AutoCalibration/AutoCalibrate.h
         BehaviorControl/CABSL/Options/BodyControl.h
@@ -35,7 +29,6 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/CABSL/Options/Skills/DecideKick.h
         BehaviorControl/CABSL/Options/Skills/Dive.h
         BehaviorControl/CABSL/Options/Skills/Dribble.h
-        BehaviorControl/CABSL/Options/Skills/GetInPosition.h
         BehaviorControl/CABSL/Options/Skills/GoToFieldCoordinates.h
         BehaviorControl/CABSL/Options/Skills/GoToRelativeCoordinates.h
         BehaviorControl/CABSL/Options/Skills/InterceptBall.h
@@ -47,6 +40,9 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/CABSL/Options/Skills/StandUp.h
         BehaviorControl/CABSL/Options/Skills/Walk.h
         BehaviorControl/CABSL/Options/Skills/WalkKick.h
+        BehaviorControl/CABSL/Options/Skills/RobotSafetyShutdown.h
+        BehaviorControl/CABSL/Options/Testing/Testing.h
+        BehaviorControl/CABSL/Options/Testing/TestingUnstiff.h
         BehaviorControl/CABSL/Options/Start.h
         BehaviorControl/HeadControl/HeadControl.cpp
         BehaviorControl/HeadControl/HeadControl.h
@@ -60,6 +56,11 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/JoystickControl/JoystickState.h
         BehaviorControl/LEDHandler/LEDHandler.cpp
         BehaviorControl/LEDHandler/LEDHandler.h
+        BehaviorControl/TacticControl/HeatMapProvider/HeatMapProvider.cpp
+        BehaviorControl/TacticControl/HeatMapProvider/HeatMapProvider.h
+        BehaviorControl/TacticControl/HeatMapProvider/HeatMapUtils.h
+        BehaviorControl/TacticControl/KickWheelProvider/KickWheelProvider.cpp
+        BehaviorControl/TacticControl/KickWheelProvider/KickWheelProvider.h
         BehaviorControl/TacticControl/BallChaserDecisionProvider.cpp
         BehaviorControl/TacticControl/BallChaserDecisionProvider.h
         BehaviorControl/TacticControl/BallSearchProvider.cpp
@@ -78,82 +79,112 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/PositioningSymbolsProvider.h
         BehaviorControl/TacticControl/RoleDynamicProvider.cpp
         BehaviorControl/TacticControl/RoleDynamicProvider.h
-        BehaviorControl/TacticControl/RoleProvider/BackupBallchaserProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/BackupBallchaserProvider.h
-        BehaviorControl/TacticControl/RoleProvider/BallchaserKeeperProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/BallchaserKeeperProvider.h
-        BehaviorControl/TacticControl/RoleProvider/BallchaserProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/BallchaserProvider.h
-        BehaviorControl/TacticControl/RoleProvider/CenterProvider2022.cpp
-        BehaviorControl/TacticControl/RoleProvider/CenterProvider2022.h
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/BackupBallchaserProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/BackupBallchaserProvider.h
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/BallchaserKeeperProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/BallchaserKeeperProvider.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserProvider.h
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/CenterProviderOld.cpp
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/CenterProviderOld.h
+        BehaviorControl/TacticControl/RoleProvider/BackWingProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/BackWingProvider.h
+        BehaviorControl/TacticControl/RoleProvider/CenterProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/CenterProvider.h
         BehaviorControl/TacticControl/RoleProvider/DefenderLeftProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/DefenderLeftProvider.h
         BehaviorControl/TacticControl/RoleProvider/DefenderRightProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/DefenderRightProvider.h
         BehaviorControl/TacticControl/RoleProvider/DefenderSingleProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/DefenderSingleProvider.h
+        BehaviorControl/TacticControl/RoleProvider/FrontWingProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/FrontWingProvider.h
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.h
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/FastLongKick.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/KickHack.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/KickHackLong.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/Rotate45Kick.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/SideKickOuter45.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/SideKickOuterFoot.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/SlowLongKick.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Models/Danger.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Models/DistanceRequirement.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/ExecutableKicks/ExecutableKick.cpp
-        BehaviorControl/TacticControl/RoleProvider/Kick/ExecutableKicks/ExecutableKick.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/ExecutableKicks/ExecutableKicks.cpp
-        BehaviorControl/TacticControl/RoleProvider/Kick/ExecutableKicks/ExecutableKicks.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/HeatMapProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/Kick/HeatMapProvider.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Kicks/Kick.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/KickManager.cpp
-        BehaviorControl/TacticControl/RoleProvider/Kick/KickManager.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/KickManager_ExecutableKick.cpp
-        BehaviorControl/TacticControl/RoleProvider/Kick/Models/KickRange.h
-        BehaviorControl/TacticControl/RoleProvider/Kick/Models/Optimize.h
+        BehaviorControl/TacticControl/KicksProvider/Types/Dribble.h
+        BehaviorControl/TacticControl/KicksProvider/Kick.cpp
+        BehaviorControl/TacticControl/KicksProvider/KicksProvider.cpp
+        BehaviorControl/TacticControl/KicksProvider/KicksProvider.h
+        BehaviorControl/TacticControl/KicksProvider/Types/KickEngineKick.h
+        BehaviorControl/TacticControl/KicksProvider/KickWithLeftUtils.h
+        BehaviorControl/TacticControl/KicksProvider/Enums/KickWithLeftCondition.h
+        BehaviorControl/TacticControl/KicksProvider/Enums/Side.h
+        BehaviorControl/TacticControl/KicksProvider/Types/WalkingEngineKick.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Enums/DistanceRequirement.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer_Direction.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer_Pose.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer_Target.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer_Kick.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Factors.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/CurrentKick.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/ScoreFunctions.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/ScoreFunctions.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions_.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions_Direction.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions_Pose.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions_Target.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/DrawFunctions.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Selectables/KickPlan.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Selectables/SelectableDirection.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Selectables/SelectableKick.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Selectables/SelectablePose.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Selectables/SelectableTarget.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Ranges/Cone.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Enums/Danger.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Ranges/KickCone.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Ranges/KickLine.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Ranges/KickRange.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Enums/SelectedFoot.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Constants.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/KickManager.cpp
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Models/KickManager.h
+        BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/TargetFunctions.h
         BehaviorControl/TacticControl/RoleProvider/Logs/BehaviorLogger.cpp
         BehaviorControl/TacticControl/RoleProvider/Logs/BehaviorLogger.h
         BehaviorControl/TacticControl/RoleProvider/Logs/KickDrawings.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/TestObjective.cpp
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/TestObjective.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/GoalObjective.cpp
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/GoalObjective.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/NoDeadlockObjective.cpp
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/NoDeadlockObjective.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/OneVsOneObjective.cpp
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/OneVsOneObjective.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/MoveObjective.cpp
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Ballchaser/MoveObjective.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/Objective.h
-        BehaviorControl/TacticControl/RoleProvider/Objectives/ObjectivesManager.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/Test/KickInPositionTestObjective.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/Test/KickInPositionTestObjective.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/Test/KickBallTestObjective.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/Test/KickBallTestObjective.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/Test/KickToCenterTestObjective.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/Test/KickToCenterTestObjective.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/GoalObjective.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/GoalObjective.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/MoveObjective.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/MoveObjective.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/TrickKickObjective.cpp
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/TrickKickObjective.h
+        BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/Objective.h
+        BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/ObjectiveBase.h
+        BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/ObjectivesList.h
+        BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/ObjectivesManager.h
+        BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/ObjectivesSwitch.h
         BehaviorControl/TacticControl/RoleProvider/Utils/AvoidUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/BallchaserUtils.h
+        BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/BlockUtils.cpp
-        BehaviorControl/TacticControl/RoleProvider/Utils/BlockUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/DangerUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/FieldUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/FrontUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/HeatUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/HysterUtils.h
+        BehaviorControl/TacticControl/RoleProvider/Utils/HysteresisUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.cpp
         BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/MathUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/PassUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/PositionUtils.cpp
+        BehaviorControl/TacticControl/RoleProvider/Utils/PathUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/PositionUtils.h
+        BehaviorControl/TacticControl/RoleProvider/Utils/TacticUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/TeamUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/ThresholdUtils.h
-        BehaviorControl/TacticControl/RoleProvider/ReceiverProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/ReceiverProvider.h
-        BehaviorControl/TacticControl/RoleProvider/ReplacementKeeperProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/ReplacementKeeperProvider.h
+        BehaviorControl/TacticControl/RoleProvider/LeftWingProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/LeftWingProvider.h
+        BehaviorControl/TacticControl/RoleProvider/RightWingProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/RightWingProvider.h
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/ReceiverProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/ReceiverProvider.h
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/ReplacementKeeperProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/ReplacementKeeperProvider.h
         BehaviorControl/TacticControl/RoleProvider/RoleProvider.h
         BehaviorControl/TacticControl/RoleSelectionProvider.cpp
         BehaviorControl/TacticControl/RoleSelectionProvider.h
@@ -171,8 +202,12 @@ target_sources(${PROJECT_NAME}
         Configuration/MotionConfigurationDataProvider.h
         Infrastructure/CameraProviderV6.cpp
         Infrastructure/CameraProviderV6.h
+        Infrastructure/JointRequestProvider.cpp
+        Infrastructure/JointRequestProvider.h
         Infrastructure/CognitionLogDataProvider.cpp
         Infrastructure/CognitionLogDataProvider.h
+        Infrastructure/HealthScoreProvider.cpp
+        Infrastructure/HealthScoreProvider.h
         Infrastructure/JPEGImageProvider.cpp
         Infrastructure/JPEGImageProvider.h
         Infrastructure/LiveConfigurationProvider.cpp
@@ -202,6 +237,8 @@ target_sources(${PROJECT_NAME}
         Infrastructure/Network/EventManager.cpp
         Infrastructure/Network/TeamCommDataPacker.cpp
         Infrastructure/Network/TeamCommDataPacker.h
+        Infrastructure/Network/TeamCommLocalSocketProvider.cpp
+        Infrastructure/Network/TeamCommLocalSocketProvider.h
         Infrastructure/Network/TeamCommReceiver.cpp
         Infrastructure/Network/TeamCommReceiver.h
         Infrastructure/Network/TeamCommSender.cpp
@@ -307,6 +344,8 @@ target_sources(${PROJECT_NAME}
         MotionControl/DortmundWalkingEngine/FLIPMObserver.h
         MotionControl/DortmundWalkingEngine/FLIPMParamsProvider.cpp
         MotionControl/DortmundWalkingEngine/FLIPMParamsProvider.h
+        MotionControl/DortmundWalkingEngine/FLIPMStateProvider.cpp
+        MotionControl/DortmundWalkingEngine/FLIPMStateProvider.h
         MotionControl/DortmundWalkingEngine/GyroTiltController.cpp
         MotionControl/DortmundWalkingEngine/GyroTiltController.h
         MotionControl/DortmundWalkingEngine/IMUCoMProvider.cpp
@@ -324,8 +363,11 @@ target_sources(${PROJECT_NAME}
         MotionControl/DortmundWalkingEngine/spline.h
         MotionControl/HeadMotionEngine.cpp
         MotionControl/HeadMotionEngine.h
+        MotionControl/JointErrorCalc.h
+        MotionControl/JointErrorCalc.cpp
         MotionControl/KeyFrameEngine/KeyFrameEngine.cpp
         MotionControl/KeyFrameEngine/KeyFrameEngine.h
+        MotionControl/KickEngine/DynPoint.h
         MotionControl/KickEngine/KickEngine.cpp
         MotionControl/KickEngine/KickEngine.h
         MotionControl/KickEngine/KickEngineData.cpp
@@ -372,8 +414,12 @@ target_sources(${PROJECT_NAME}
         Perception/CoordinateSystemProvider.h
         Perception/ImageWriterPNG.cpp
         Perception/ImageWriterPNG.h
+        Perception/JerseyColorDetector.cpp
+        Perception/JerseyColorDetector.h
         Perception/OracledPerceptsProvider.cpp
         Perception/OracledPerceptsProvider.h
+        Perception/PenaltyCrossClassifier.cpp
+        Perception/PenaltyCrossClassifier.h
         Perception/PNGLogger.cpp
         Perception/PNGLogger.h
         Perception/PNGLoggerSequence.cpp
@@ -382,19 +428,29 @@ target_sources(${PROJECT_NAME}
         Perception/PSKickDetector.h
         Perception/RobotCameraMatrixProvider.cpp
         Perception/RobotCameraMatrixProvider.h
+        Perception/RobotOrientationDetector.cpp
+        Perception/RobotOrientationDetector.h
+        Perception/RobotsPerceptProvider.cpp
+        Perception/RobotsPerceptProvider.h
+        Perception/SonarDetector.cpp
+        Perception/SonarDetector.h
+        Perception/RobotClassifier.cpp
+        Perception/RobotClassifier.h
         Perception/TFlite.h
         Perception/YoloRobotDetector.cpp
         Perception/YoloRobotDetector.h
         Sensing/ArmContactProvider.cpp
         Sensing/ArmContactProvider.h
+        Sensing/BrokenJointDetector.cpp
+        Sensing/BrokenJointDetector.h
         Sensing/CoMRCSProvider.cpp
         Sensing/CoMRCSProvider.h
         Sensing/CoPProvider.cpp
         Sensing/CoPProvider.h
         Sensing/GroundContactDetector.cpp
         Sensing/GroundContactDetector.h
-        Sensing/GyroFallDownStateDetector.cpp
-        Sensing/GyroFallDownStateDetector.h
+        Sensing/SimpleFallDownStateDetector.cpp
+        Sensing/SimpleFallDownStateDetector.h
         Sensing/InertialDataFilter.cpp
         Sensing/InertialDataFilter.h
         Sensing/JoinedIMUDataProvider.cpp

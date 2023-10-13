@@ -52,6 +52,14 @@ STREAMABLE(WalkRequest,
     keeperKick45 /** Quick short kick to 45 degrees without stepping forward */
   );
 
+  static StepRequest getStepRequestFromName(const char* name)
+  {
+    for (int i = 0; i < numOfStepRequests; ++i)
+      if (!strcmp(name, getName(StepRequest(i))))
+        return StepRequest(i);
+    return numOfStepRequests;
+  }
+
   // needed to be able to put std::vector<StepRequest> as parameter into LOADS_PARAMETERS macro
   // see e.g. PatternGenerator2017.h
   typedef std::vector<StepRequest> StepRequestVector;

@@ -29,7 +29,7 @@ void GameSymbolsProvider::update(GameSymbols& gameSymbols)
     ballStartCounter = 0.f;
     ballAtStart = Vector2f(0, 0);
     timeWhenChangedToPlayingState = theFrameInfo.time;
-    if (theFrameInfo.getTimeSince(theGameInfo.timeLastPackageReceived) < 5000 && (lastSecsRemaining - 10 > theGameInfo.secsRemaining))
+    if (theGameInfo.controllerConnected && (lastSecsRemaining - 10 > theGameInfo.secsRemaining))
       timeWhenChangedToPlayingState = theFrameInfo.time - (600 - theGameInfo.secsRemaining) * 1000;
     else
       gameSymbols.kickoffInProgress = true;
@@ -51,7 +51,7 @@ void GameSymbolsProvider::update(GameSymbols& gameSymbols)
   if (gameSymbols.kickoffInProgress)
   {
     const Teammate* teammate = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::kickOffFinished);
-    if (teammate && theFrameInfo.getTimeSince(teammate->timeWhenSent) < 1000)
+    if (teammate && theFrameInfo.getTimeSince(teammate->sendTimestamp) < 1000)
       gameSymbols.kickoffInProgress = false;
     if (gameSymbols.timeSincePlayingState > 2000 && theBallSymbols.ballWasSeen && theBallSymbols.ballWasSeen && ballPositionField.norm() > 400.f)
     {
@@ -98,7 +98,7 @@ void GameSymbolsProvider::update(GameSymbols& gameSymbols)
 
   gameSymbols.timeSinceLastPenalty = theFrameInfo.getTimeSince(lastPenalizedTime);
 
-  gameSymbols.allowedInPenaltyArea = calcAllowedInOwnPenaltyArea();
+  gameSymbols.allowedInGoalArea = calcAllowedInOwnGoalArea();
 
   // update set play state and handle changes
   bool setPlayChanged = lastSetPlay != theGameInfo.setPlay; // set play changed since last frame
@@ -131,30 +131,31 @@ void GameSymbolsProvider::update(GameSymbols& gameSymbols)
 }
 
 /**
-* \brief Calculates whether or not, this robot is allowed in the own teams penalty area.
+* \brief Calculates whether or not, this robot is allowed in the own teams goal area.
 *
-* The robot is allowed in its penalty area, if all of the following conditions are true:
+* The robot is allowed in its goal area, if all of the following conditions are true:
 *   - It is either the keeper, replacementKeeper, defenderSingle or ballchaser.
-*   - Less than three other robots are currently positioned in the penalty area or the robot is 
-*			already in the penalty area.
+*   - Less than three other robots are currently positioned in the goal area or the robot is 
+*			already in the goal area.
 *
-* \return true, if the robot is allowed in the penalty area, false otherwise.
+* \return true, if the robot is allowed in the goal area, false otherwise.
 */
-bool GameSymbolsProvider::calcAllowedInOwnPenaltyArea()
+bool GameSymbolsProvider::calcAllowedInOwnGoalArea()
 {
-  std::unordered_set<BehaviorData::RoleAssignment> privilegedRoles = {BehaviorData::keeper, BehaviorData::replacementKeeper, BehaviorData::defenderSingle, BehaviorData::ballchaser};
-  Vector2f penAreaBottomLeft(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightPenaltyArea);
-  Vector2f penAreaTopRight(theFieldDimensions.xPosOwnPenaltyArea, theFieldDimensions.yPosLeftPenaltyArea);
-  int numOfTeammatesInPenaltyArea = 0;
+  std::unordered_set<BehaviorData::RoleAssignment> privilegedRoles = {
+      BehaviorData::keeper, BehaviorData::replacementKeeper, BehaviorData::defenderSingle, BehaviorData::defenderLeft, BehaviorData::defenderRight};
+  Vector2f goalAreaBottomLeft(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoalArea);
+  Vector2f goalAreaTopRight(theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosLeftGoalArea);
+  int numOfTeammatesInGoalArea = 0;
   for (auto const& teammate : theTeammateData.teammates)
   {
-    if (Geometry::isPointInsideRectangle(penAreaBottomLeft, penAreaTopRight, teammate.pose.translation))
-      numOfTeammatesInPenaltyArea++;
+    if (Geometry::isPointInsideRectangle(goalAreaBottomLeft, goalAreaTopRight, teammate.robotPose.translation))
+      numOfTeammatesInGoalArea++;
   }
   bool hasPrivilegedRole = privilegedRoles.find(theRoleSymbols.role) != privilegedRoles.end();
-  bool penAreaIsOccupied = numOfTeammatesInPenaltyArea >= 3;
-  bool robotIsInPenArea = Geometry::isPointInsideRectangle(penAreaBottomLeft, penAreaTopRight, theRobotPoseAfterPreview.translation);
-  return hasPrivilegedRole && (!penAreaIsOccupied || robotIsInPenArea);
+  bool goalAreaIsOccupied = numOfTeammatesInGoalArea >= 3;
+  bool robotIsInGoalArea = Geometry::isPointInsideRectangle(goalAreaBottomLeft, goalAreaTopRight, theRobotPoseAfterPreview.translation);
+  return hasPrivilegedRole && (!goalAreaIsOccupied || robotIsInGoalArea);
 }
 
 MAKE_MODULE(GameSymbolsProvider, behaviorControl)

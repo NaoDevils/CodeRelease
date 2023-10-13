@@ -6,7 +6,6 @@
 #include <cmath>
 
 STREAMABLE_WITH_BASE(JointRequest, JointAngles,
-
   JointRequest();
 
   /** Initializes this instance with the mirrored data of other. */
@@ -26,6 +25,7 @@ STREAMABLE_WITH_BASE(JointRequest, JointAngles,
 struct StandOutput : public JointRequest
 {
 };
+
 struct NonArmeMotionEngineOutput : public JointRequest
 {
 };
@@ -53,3 +53,5 @@ inline bool JointRequest::isValid() const
       return false;
   return stiffnessData.isValide();
 }
+
+STREAMABLE_WITH_BASE(RawJointRequest, JointRequest, ,);

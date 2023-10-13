@@ -138,9 +138,9 @@ protected:
     {
       // calculate difference between the mean and the sigma points rotation by means of a rotation
       rotational_differences.clear();
-      for (typename std::vector<Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond>>::iterator i = rotations.begin(); i != rotations.end(); ++i)
+      for (typename std::vector<Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond>>::iterator j = rotations.begin(); j != rotations.end(); ++j)
       {
-        Eigen::AngleAxis<double> rotational_difference = Eigen::AngleAxis<double>((*i) * mean.inverse());
+        Eigen::AngleAxis<double> rotational_difference = Eigen::AngleAxis<double>((*j) * mean.inverse());
 
         // store as rotation vector representation
         rotational_differences.push_back(rotational_difference.angle() * rotational_difference.axis());
@@ -148,9 +148,9 @@ protected:
 
       // average difference quaternions in their 3d vectorial representation (length = angle, direction = axis)
       Eigen::Vector3d averaged_rotational_difference = Eigen::Vector3d::Zero();
-      for (typename std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>::iterator i = rotational_differences.begin(); i != rotational_differences.end(); ++i)
+      for (typename std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>::iterator j = rotational_differences.begin(); j != rotational_differences.end(); ++j)
       {
-        averaged_rotational_difference += *i;
+        averaged_rotational_difference += *j;
       }
       averaged_rotational_difference = 1.0 / static_cast<double>(rotational_differences.size()) * averaged_rotational_difference;
 

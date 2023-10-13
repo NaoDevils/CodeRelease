@@ -10,6 +10,7 @@
 #include "CoreModule.h"
 #include "Simulation/PhysicalObject.h"
 #include "Simulation/Scene.h"
+#include <limits>
 
 extern "C" DLL_EXPORT SimRobot::Module* createModule(SimRobot::Application& simRobot)
 {
@@ -58,7 +59,7 @@ bool CoreModule::compile()
   class StepsLabel : public QLabel, public SimRobot::StatusLabel
   {
   public:
-    StepsLabel() : lastStep(-1) {}
+    StepsLabel() : lastStep(std::numeric_limits<unsigned int>::max()) {}
 
   private:
     unsigned int lastStep;

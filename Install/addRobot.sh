@@ -23,6 +23,7 @@ keyFile=/tmp/id_rsa_nao
 sshoptions="-i $keyFile -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=quiet -o ConnectTimeout=5 -o ControlMaster=auto -o ControlPath=~/.ssh/copyfiles-%r@%h:%p -o ControlPersist=60"
 cd "${basePath}"
 cp $keySource $keyFile
+chmod 600 $keyFile
 
 if ssh $sshoptions root@$IP_ADDRESS '[ "$(hostname)" != "Nao" ]'; then
     echo "Already configured!";

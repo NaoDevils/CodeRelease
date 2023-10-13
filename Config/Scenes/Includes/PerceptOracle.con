@@ -23,13 +23,40 @@ mr FrameInfo CognitionLogDataProvider
 mr JointSensorData MotionLogDataProvider
 mr InertialSensorData MotionLogDataProvider
 mr KeyStates MotionLogDataProvider
-mr UsSensorData MotionLogDataProvider
+mr SonarSensorData MotionLogDataProvider
 mr FrameInfo MotionLogDataProvider
 
 # Fast, because we do not compute images
 ci off
 mr Image default
 mr ImageUpper default
+
+# CognitionMindfulness requirement => default
+mr FieldColors default
+mr FieldColorsUpper default
+
+# Enable percepts
+mr RobotsPercept OracledPerceptsProvider
+mr CLIPCenterCirclePercept OracledPerceptsProvider
+mr CLIPGoalPercept OracledPerceptsProvider
+mr CLIPFieldLinesPercept OracledPerceptsProvider
+mr PenaltyCrossPercept OracledPerceptsProvider
+mr BallPercept OracledPerceptsProvider
+mr MultipleBallPercept OracledPerceptsProvider
+
+# Deactivate image processing modules
+mr off RobotsPerceptProvider
+mr off JerseyColorDetector
+mr off RobotOrientationDetector
+mr off RobotClassifier
+mr off CLIPBallPerceptor
+mr off PenaltyCrossClassifier
+mr off YoloRobotDetector
+mr off CLIPLineFinder
+mr off CLIPPreprocessor
+mr off TfliteInterpreterProvider
+mr off FieldColorProvider
+mr off BodyContourProvider
 
 # Deactivate unused modules
 mr RobotHealth default
@@ -38,29 +65,6 @@ mr ThumbnailUpper off
 mr LowFrameRateImage off
 mr LowFrameRateImageUpper off
 
-mr RobotsPercept OracledPerceptsProvider
-mr RobotsPerceptUpper OracledPerceptsProvider
-mr CLIPCenterCirclePercept OracledPerceptsProvider
-mr CLIPGoalPercept OracledPerceptsProvider
-mr CLIPFieldLinesPercept OracledPerceptsProvider
-mr PenaltyCrossPercept OracledPerceptsProvider
-mr BallPercept OracledPerceptsProvider
-mr MultipleBallPercept OracledPerceptsProvider
-
-mr BallHypothesesYolo default
-mr PenaltyCrossHypothesesYolo default
-mr BallPercept default
-mr MultipleBallPercept default
-mr ProcessedBallPatches default
-mr CLIPPointsPercept off
-mr ObstacleBasePoints off
-mr BallSpots off
-mr BodyContour off
-mr BodyContourUpper off
-mr FieldColors default
-mr FieldColorsUpper default
-mr YoloInput off
-mr YoloInputUpper off
 mr PNGImageDummy default
 
 call Includes/DebugResponses

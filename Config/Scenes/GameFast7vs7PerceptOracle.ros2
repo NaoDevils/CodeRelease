@@ -1,0 +1,98 @@
+<Simulation>
+
+  <Include href="Includes/NaoV6H25.rsi2"/>
+  <Include href="Includes/Ball2016SPL.rsi2"/>
+  <Include href="Includes/Field2020SPL.rsi2"/>
+  <Include href="Includes/Boards.rsi2"/>
+
+  <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="35000" Kd="150" contactKp="5300" contactKd="1">
+   <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
+
+    <Compound name="robots">
+      <Body ref="Nao" name="robot01">
+        <Translation x="3.9" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="red"/>
+      </Body>
+      <Body ref="Nao" name="robot02">
+        <Translation x="3.2" y="-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+      <Body ref="Nao" name="robot03">
+        <Translation x="2.85" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+      <Body ref="Nao" name="robot04">
+        <Translation x="2.15" y="-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+      <Body ref="Nao" name="robot05">
+        <Translation x="1.8" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+      <Body ref="Nao" name="robot06">
+        <Translation x="1.1" y="-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+      <Body ref="Nao" name="robot07">
+        <Translation x="0.75" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+      <Body ref="Nao" name="robot08">
+        <Translation x="-3.9" y = "-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="blue"/>
+      </Body>
+      <Body ref="Nao" name="robot09">
+        <Translation x="-3.2" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="black"/>
+      </Body>
+      <Body ref="Nao" name="robot10">
+        <Translation x="-2.85" y="-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="black"/>
+      </Body>
+      <Body ref="Nao" name="robot11">
+        <Translation x="-2.15" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="black"/>
+      </Body>
+      <Body ref="Nao" name="robot12">
+        <Translation x="-1.8" y="-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="black"/>
+      </Body>
+      <Body ref="Nao" name="robot13">
+        <Translation x="-1.1" y="3" z="330mm"/>
+        <Rotation z="-90degree"/>
+        <Set name="NaoColor" value="black"/>
+      </Body>
+      <Body ref="Nao" name="robot14">
+        <Translation x="-0.75" y="-3" z="330mm"/>
+        <Rotation z="90degree"/>
+        <Set name="NaoColor" value="black"/>
+      </Body>
+   </Compound>
+
+    <Compound name="extras">
+    </Compound>
+
+    <Compound name="balls">
+      <Body ref="ball">
+        <Translation z="1m"/>
+      </Body>
+    </Compound>
+
+    <Compound name="field">
+      <Compound ref="field"/>
+    </Compound>
+
+  </Scene>
+</Simulation>

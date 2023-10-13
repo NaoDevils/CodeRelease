@@ -15,9 +15,12 @@
 // Requires
 #include "Representations/Infrastructure/FrameInfo.h" // frame timestamp
 #include "Representations/Configuration/FieldDimensions.h" // field dimensions used for removing hypotheses outside the field
+#include "Representations/Perception/CameraMatrix.h"
+#include "Representations/Perception/SonarPercept.h" // sonar percept
 #include "Representations/Infrastructure/RobotInfo.h" // robot info used for getting player number and penalty info.
 #include "Representations/Infrastructure/TeammateData.h" // team mates information
 #include "Representations/Modeling/RobotPose.h" // robot pose
+#include "Representations/MotionControl/OdometryData.h" // odometry
 
 // - Percepts
 #include "Representations/Perception/RobotsPercept.h"
@@ -26,27 +29,31 @@
 #include "Representations/Modeling/RobotMap.h" // RobotMaps
 
 // ------------- KalmanRobotMapProvider includes --------------
-#include "../Models/LocalMultiKalmanModel.h"
-#include "../Models/RemoteMultiKalmanModel.h"
+#include "../AngleModels/LocalMultiKalmanModelAngle.h"
+#include "../AngleModels/RemoteMultiKalmanModelAngle.h"
 #include "Models/LocalRobotMapHypothesis.h"
 #include "Models/RemoteRobotMapHypothesis.h"
 #include "KalmanMultiRobotMapProviderParameters.h"
 
+#define ROBOTPERCEPT_BUFFER_LENGTH 4 * 30 // percept buffer for 10 seconds
 
 MODULE(KalmanMultiRobotMapProvider,
   REQUIRES(FrameInfo),
   REQUIRES(FieldDimensions),
+  REQUIRES(CameraMatrixUpper),
   REQUIRES(RobotInfo),
   REQUIRES(RobotPose),
+  REQUIRES(SonarPercept),
 
   REQUIRES(RobotsPercept),
-  REQUIRES(RobotsPerceptUpper),
   REQUIRES(TeammateData),
+
+  REQUIRES(OdometryData), // RobotEstimate-Buffer
 
   PROVIDES(LocalRobotMap), // Local RobotMap
   PROVIDES(RemoteRobotMap), // Remote RobotMap
   PROVIDES(RobotMap), // Complete RobotMap (local+remote)
-
+  HAS_PREEXECUTION,
   LOADS_PARAMETERS(,
     /// Parameters used by \c KalmanMultiRobotMapProvider.
     (KalmanMultiRobotMapProviderParameters) parameters,
@@ -59,17 +66,16 @@ MODULE(KalmanMultiRobotMapProvider,
 class KalmanMultiRobotMapProvider : public KalmanMultiRobotMapProviderBase
 {
 private:
-  static constexpr unsigned LOCAL_PERCEPT_DURATION = 1000;
-  static constexpr unsigned REMOTE_PERCEPT_DURATION = 4000;
+  static constexpr unsigned LOCAL_PERCEPT_DURATION = 4000;
+  static constexpr unsigned REMOTE_PERCEPT_DURATION = 10000;
 
 public:
   /**
    * ctor.
    */
-  KalmanMultiRobotMapProvider()
-      : m_lastTimeStamp(0), m_localKalmanRobotMap(LOCAL_PERCEPT_DURATION), m_remoteKalmanRobotMap(REMOTE_PERCEPT_DURATION), m_mergedKalmanRobotMap(REMOTE_PERCEPT_DURATION)
+  KalmanMultiRobotMapProvider() : m_localKalmanRobotMap(LOCAL_PERCEPT_DURATION), m_remoteKalmanRobotMap(REMOTE_PERCEPT_DURATION), m_mergedKalmanRobotMap(REMOTE_PERCEPT_DURATION)
   {
-    initialize();
+    reset();
   };
 
   /**
@@ -97,14 +103,18 @@ public:
 
 private:
   // Local Kalman robot map
-  using LocalKalmanRobotMap = GlobalMultiKalmanModel<LocalRobotMapHypothesis, false>;
+  using LocalKalmanRobotMap = GlobalMultiKalmanModelAngle<LocalRobotMapHypothesis, false>;
   // Remote Kalman robot map
-  using RemoteKalmanRobotMap = RemoteMultiKalmanModel<RemoteRobotMapHypothesis, false>;
+  using RemoteKalmanRobotMap = RemoteMultiKalmanModelAngle<RemoteRobotMapHypothesis, false>;
   // Merged Kalman robot map
-  using MergedKalmanRobotMap = RemoteMultiKalmanModel<RemoteRobotMapHypothesis, false>;
+  using MergedKalmanRobotMap = RemoteMultiKalmanModelAngle<RemoteRobotMapHypothesis, false>;
 
-  // last execution timestamp
-  unsigned m_lastTimeStamp;
+  /**
+ * Save the \c OdometryData at each invocation of the method \c execute().
+ * This is used one iteration later to compute the odometry change since the
+ * last iteration.
+ */
+  OdometryData m_lastOdometryData;
 
   // The robot map (local percepts only)
   LocalRobotMap m_localRobotMap;
@@ -120,12 +130,15 @@ private:
   // The kalman map for merged percepts
   MergedKalmanRobotMap m_mergedKalmanRobotMap;
 
-  // Initialize the provider
-  void initialize();
+  RingBuffer<std::vector<RobotEstimate>, ROBOTPERCEPT_BUFFER_LENGTH> perceptBuffer;
+
+
+  // Reset the provider
+  void reset();
 
   // EXECUTE MODULE
   // Execute the code
-  void execute();
+  void execute(tf::Subflow&) override;
   // Motion update
   void motionUpdate();
   // Sensor update
@@ -148,133 +161,20 @@ private:
   // HELPERS
   // Update validities
   void updateValidities();
+
+  void getAngles(Vector2a& angles, const Vector2f& relativePosition);
+
   // Merge hypotheses
-  template <typename RobotMap> void mergeHypotheses(RobotMap& robotMap)
-  {
-    // Iterate over hypotheses
-    for (unsigned i = 0; i < robotMap.size(); i++)
-    {
-      auto& iRobot = robotMap[i];
-      for (unsigned j = i + 1; j < robotMap.size(); j++)
-      {
-        auto& jRobot = robotMap[j];
+  template <typename RobotMap> void mergeHypotheses(RobotMap& robotMap, const Vector2a& mergeAngleDiff, const float mergeDistance);
 
-        // Get distance between measurements
-        float distance = Geometry::distance(iRobot.kalman.position(), jRobot.kalman.position());
-        // Get differene in robot type
-        float robotTypeDifference = std::abs(iRobot.robotTypeValidity() - jRobot.robotTypeValidity());
-
-        // Check whether hypotheses close enough for merging
-        if (distance < parameters.localMapParameters.maxDistanceToMerge && robotTypeDifference < parameters.localMapParameters.maxRobotTypeDifferenceToMerge)
-        {
-          // Merge
-          iRobot.merge(jRobot);
-          // Set validity of the other to 0 to prune it later
-          jRobot.validity = 0;
-        }
-      }
-    }
-  }
   // Find nearest pose
   template <typename RobotMap>
-  typename RobotMap::HypothesisType* findNearestHypothesis(RobotMap& robotMap, const Vector2f& measuredPosition, float& distance, RobotEstimate::RobotType desiredRobotType)
-  {
-    typename RobotMap::HypothesisType* nearestHypothesis = nullptr;
-    float minDistance = -1;
+  typename RobotMap::HypothesisType* findNearestHypothesis(RobotMap& robotMap, Vector2a& angleDiff, const Vector2f& measuredPosition, float& distance, RobotEstimate::RobotType desiredRobotType);
 
-    for (size_t i = 0; i < robotMap.size(); i++)
-    {
-      // Only consider hypotheses with the correct robot type.
-      if (!robotMap[i].matchRobotType(desiredRobotType))
-        continue;
-
-      // Calculate distance from the perception to the current hypothesis.
-      float currentDistance = Geometry::distance(measuredPosition, robotMap[i].kalman.position());
-
-      // Check whether the current distance is shorter than the minimum of all
-      // previous hypotheses.
-      if (minDistance < 0 || currentDistance < minDistance)
-      {
-        nearestHypothesis = &robotMap[i];
-        minDistance = currentDistance;
-      }
-    }
-
-    distance = minDistance;
-    return nearestHypothesis;
-  }
   // Update sensor
-  template <typename RobotMap>
-  typename RobotMap::HypothesisType* performSensorUpdate(RobotMap& robotMap,
-      const Vector2f& measuredPosition,
-      float measuredDistance,
-      const Vector2f* measuredVelocity,
-      RobotEstimate::RobotType desiredRobotType,
-      unsigned timestamp,
-      float perceptValidity,
-      float minDistanceForNewHypothesis,
-      float initialValidityForNewHypothesis,
-      const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices)
-  {
-    if (perceptValidity <= 0.f)
-      return nullptr; // Check whether percept validity is positive before performing update
+  template <template <typename T> class SensorUpdateArgs, typename RobotMap> typename RobotMap::HypothesisType* performSensorUpdate(const SensorUpdateArgs<RobotMap>& args);
 
-    // Need to re-implement this method as we want to take robot type into account when searching for nearest hypothesis to update
-
-    float distance;
-    typename RobotMap::HypothesisType* nearestHypothesis = findNearestHypothesis(robotMap, measuredPosition, distance, desiredRobotType);
-    if (nearestHypothesis != nullptr && distance < minDistanceForNewHypothesis)
-    {
-      // TODO: make parameter
-      float measurementNoiseFactor = measuredDistance / 1000.f < 1.f ? 1.f : measuredDistance / 1000.f; // convert distance to m
-      // Set measurementNoiseMatrix according to the direction from robot to measurement position.
-      // In this direction (^= distance) the noise is set to a higher value than in the orthogonal direction (^= angle).
-      float max = static_cast<float>(nearestHypothesis->kalman.matrices.noise.maxMeasurementNoise);
-      max *= measurementNoiseFactor;
-      nearestHypothesis->kalman.matrices.noise.measurementNoiseMatrix = Covariance::create((Vector2f() << max, max / 10.f).finished(), measuredPosition.angle()).cast<double>();
-
-      // Correct kalman filter with the perception.
-      if (measuredVelocity == nullptr)
-        nearestHypothesis->sensorUpdate(measuredPosition, timestamp, perceptValidity);
-      else
-        nearestHypothesis->sensorUpdate(measuredPosition, *measuredVelocity, timestamp, perceptValidity);
-    }
-    else
-    {
-      bool isLocalMap = static_cast<void*>(&robotMap) == static_cast<void*>(&m_localKalmanRobotMap);
-      // Add new hypothesis if all existing ones are too far.
-      typename RobotMap::HypothesisType newHypothesis(
-          kalmanNoiseMatrices, initialValidityForNewHypothesis, timestamp, perceptValidity, measuredPosition, isLocalMap ? LOCAL_PERCEPT_DURATION : REMOTE_PERCEPT_DURATION);
-
-      robotMap.addHypothesis(std::move(newHypothesis));
-      nearestHypothesis = &robotMap.back();
-    }
-
-    // Update robot type sensor
-    nearestHypothesis->addPerceptRobotType(desiredRobotType, timestamp);
-
-    return nearestHypothesis;
-  }
   // Update sensor
-  template <typename RobotMap>
-  void performSensorUpdate(RobotMap& robotMap,
-      const Vector2f& measuredPosition,
-      float measuredDistance,
-      const Vector2f* measuredVelocity,
-      RobotEstimate::RobotType desiredRobotType,
-      unsigned timestamp,
-      float perceptValidity,
-      float minDistanceForNewHypothesis,
-      float initialValidityForNewHypothesis,
-      const KalmanPositionTracking2D<double>::KalmanMatrices::Noise& kalmanNoiseMatrices,
-      int playerNumber,
-      const typename RemoteRobotMapHypothesis::TeammateInfo& teammate)
-  {
-    typename RobotMap::HypothesisType* nearestHypothesis = performSensorUpdate(
-        robotMap, measuredPosition, measuredDistance, measuredVelocity, desiredRobotType, timestamp, perceptValidity, minDistanceForNewHypothesis, initialValidityForNewHypothesis, kalmanNoiseMatrices);
-
-    // Add a teammate label to the hypothesis.
-    if (nearestHypothesis) // Check that there is a hypothesis (handle perceptValidity <= 0 case)
-      nearestHypothesis->addTeammateInfo(playerNumber, teammate);
-  }
+  template <template <typename T> class SensorUpdateArgs, typename RobotMap>
+  void performSensorUpdate(const SensorUpdateArgs<RobotMap>& args, int playerNumber, const typename RemoteRobotMapHypothesis::TeammateInfo& teammate);
 };

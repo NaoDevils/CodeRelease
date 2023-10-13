@@ -10,25 +10,32 @@
 
 #pragma once
 
-#include "Tools/Module/Module.h"
-#include "Representations/BehaviorControl/RoleSymbols.h"
-#include "Representations/Modeling/RobotPose.h"
-#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/BehaviorControl/BallSearch.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
-#include "Representations/BehaviorControl/RoleSymbols/DefenderRight.h"
-#include "Representations/BehaviorControl/RoleSymbols/DefenderLeft.h"
-#include "Representations/BehaviorControl/RoleSymbols/Center.h"
-#include "Representations/BehaviorControl/RoleSymbols/Keeper.h"
-#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
-#include "Representations/BehaviorControl/RoleSymbols/DefenderSingle.h"
-#include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
+#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackupBallchaser.h"
+#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
 #include "Representations/BehaviorControl/RoleSymbols/BallchaserKeeper.h"
+#include "Representations/BehaviorControl/RoleSymbols/Center.h"
+#include "Representations/BehaviorControl/RoleSymbols/DefenderLeft.h"
+#include "Representations/BehaviorControl/RoleSymbols/DefenderRight.h"
+#include "Representations/BehaviorControl/RoleSymbols/DefenderSingle.h"
+#include "Representations/BehaviorControl/RoleSymbols/Keeper.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningAndKickSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
+#include "Representations/BehaviorControl/RoleSymbols/LeftWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/FrontWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/BackWing.h"
+#include "Representations/BehaviorControl/TacticSymbols.h"
+#include "Representations/BehaviorControl/BallChaserDecision.h"
+#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/GameInfo.h"
+#include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Modeling/RobotPose.h"
+#include "Tools/Module/Module.h"
 
 MODULE(PositioningSymbolsProvider,
   REQUIRES(RoleSymbols),
@@ -46,9 +53,17 @@ MODULE(PositioningSymbolsProvider,
   REQUIRES(BackupBallchaser),
   REQUIRES(BallchaserKeeper),
   REQUIRES(ReplacementKeeper),
+  REQUIRES(LeftWing),
+  REQUIRES(RightWing),
+  REQUIRES(BackWing),
+  REQUIRES(FrontWing),
   REQUIRES(TacticSymbols),
   REQUIRES(GameInfo),
-  PROVIDES(PositioningSymbols)
+  REQUIRES(BallChaserDecision),
+  REQUIRES(RobotInfo),
+
+  PROVIDES(PositioningSymbols),
+  PROVIDES(PositioningAndKickSymbols)
 );
 
 
@@ -64,7 +79,8 @@ public:
   PositioningSymbolsProvider() {}
 
   /** Updates some of the symbols */
-  void update(PositioningSymbols& positioningSymbols);
+  void update(PositioningSymbols& positioningSymbols) override;
+  void update(PositioningAndKickSymbols& positioningAndKickSymbols) override;
 
 private:
   void selectClosestBallSearchPosition(Pose2f& position);

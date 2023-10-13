@@ -13,13 +13,16 @@ set(CONAN_CMAKE_SILENT_OUTPUT ON)
 # Prefer Conan packages over system packages
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
+if(BUILD_ROBOT)
+    set(CMAKE_BUILD_RPATH "$ORIGIN/lib")
+endif()
+
 if(CONAN_INSTALL)
     if(BUILD_ROBOT)
         list(APPEND
             CONAN_IMPORTS
                 "lib, *.so* -> ./lib"
         )
-        set(CMAKE_BUILD_RPATH "$ORIGIN/lib")
     else()
         list(APPEND
             CONAN_REQUIRES
@@ -53,7 +56,7 @@ if(CONAN_INSTALL)
             snappy/1.1.9
             nlohmann_json/3.11.2
             libjpeg-turbo/2.1.4
-            taskflow/3.5.0
+            taskflow/3.6.0
             protobuf/3.21.4
             eigen/3.4.0
             kissfft/131.1.0

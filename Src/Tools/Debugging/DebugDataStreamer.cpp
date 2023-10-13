@@ -35,7 +35,7 @@ void DebugDataStreamer::serialize(In* in, Out* out)
 
   if (type[type.size() - 1] == ']' || type[type.size() - 1] == '*')
   {
-    unsigned size;
+    unsigned size = 0;
     std::string elementType;
     bool staticSize = type[type.size() - 1] == ']';
     if (staticSize)

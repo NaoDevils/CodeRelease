@@ -56,8 +56,8 @@ bool LocalRobot::main()
           debugOut.out.finishMessage(idFsrSensorData);
           debugOut.out.bin << inertialSensorData;
           debugOut.out.finishMessage(idInertialSensorData);
-          debugOut.out.bin << usSensorData;
-          debugOut.out.finishMessage(idUsSensorData);
+          debugOut.out.bin << sonarSensorData;
+          debugOut.out.finishMessage(idSonarSensorData);
           debugOut.out.bin << odometryData;
           debugOut.out.finishMessage(idGroundTruthOdometryData);
           debugOut.out.bin << ++ping;
@@ -143,6 +143,8 @@ void LocalRobot::update()
           simulatedRobot.moveRobot(movePos, Vector3f::Zero(), false);
         else if (moveOp == moveBallPosition)
           simulatedRobot.moveBall(movePos);
+        else if (moveOp == kickBallVelocity)
+          simulatedRobot.setBallVelocity(Vector3f(kickVelocity * std::cos(kickAngle), kickVelocity * std::sin(kickAngle), 0));
         moveOp = noMove;
       }
     }
@@ -178,7 +180,7 @@ void LocalRobot::update()
         simulatedRobot.getRobotPose(robotPose);
 
       simulatedRobot.getOdometryData(robotPose, odometryData);
-      simulatedRobot.getSensorData(fsrSensorData, inertialSensorData, usSensorData, usRequest);
+      simulatedRobot.getSensorData(fsrSensorData, inertialSensorData, sonarSensorData);
       simulatedRobot.getAndSetJointData(jointRequest, jointSensorData);
     }
 

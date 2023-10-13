@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <string>
+#include <tuple>
 
 #include "MessageIDs.h"
 
@@ -95,6 +96,13 @@ public:
    * The method cancels the current message.
    */
   void cancelMessage() { writePosition = 0; }
+
+  /**
+   * The method counts the number of messages and frames. (E.g., for memory-mapped queues)
+   * @return A tuple containing the the number of frames and the number of messages
+   * within complete frames.
+   */
+  std::tuple<int, int> countFramesAndMessages();
 
   /**
    * The method returns whether the the currently selected message for reading was read completely.

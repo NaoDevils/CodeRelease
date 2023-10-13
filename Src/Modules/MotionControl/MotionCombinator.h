@@ -1,8 +1,8 @@
 /**
 * @file Modules/MotionControl/MotionCombinator.h
 * This file declares a module that combines the motions created by the different modules.
-* @author <A href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</A>
-* @author (arm upgrade) Jesse Richter-Klug
+* @author Dominik Brämer
+* @author Diana Kleingarn
 */
 
 #pragma once
@@ -12,7 +12,6 @@
 #include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/JointRequest.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/HeadJointRequest.h"
@@ -24,14 +23,13 @@
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/StandEngineOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
-#include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/SpeedInfo.h"
+#include "Representations/MotionControl/JointError.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/JoinedIMUData.h"
-#include "Representations/Sensing/RobotModel.h"
-#include "Representations/Configuration/MassCalibration.h"
-#include "Representations/Configuration/RobotDimensions.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/Modeling/IMUModel.h"
 #include "Tools/Module/Module.h"
 
 
@@ -40,26 +38,24 @@ MODULE(MotionCombinator,
   REQUIRES(FallDownState),
   REQUIRES(Footpositions),
   REQUIRES(FrameInfo),
+  REQUIRES(BehaviorData),
   REQUIRES(HeadJointRequest),
   REQUIRES(JoinedIMUData),
+  REQUIRES(IMUModel),
   REQUIRES(JointSensorData),
-  REQUIRES(RobotModel),
   REQUIRES(KickEngineOutput),
   REQUIRES(MotionRequest),
   REQUIRES(MotionSelection),
   REQUIRES(SpecialActionsOutput),
   REQUIRES(StandEngineOutput),
-  REQUIRES(RobotInfo),
   REQUIRES(StiffnessSettings),
   REQUIRES(MotionSettings),
   REQUIRES(JointCalibration),
+  REQUIRES(JointError),
   REQUIRES(WalkingEngineOutput),
-  REQUIRES(WalkingInfo),
   REQUIRES(SpeedInfo),
-  PROVIDES(JointRequest),
-  REQUIRES(JointRequest),
-  REQUIRES(MassCalibration),
-  REQUIRES(RobotDimensions),
+  PROVIDES(RawJointRequest),
+  REQUIRES(RawJointRequest),
   PROVIDES(MotionInfo),
   PROVIDES(OdometryData),
   LOADS_PARAMETERS(,
@@ -70,9 +66,9 @@ MODULE(MotionCombinator,
     (Angle)(180_deg) maxJointAcceleration, // Used to counter the softbank issue with the V6. Angle/(s^2)
     (Angle)(35_deg) JointDiffArmsStuck, // Angle Diff to check if arms are stuck 
     ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
-    (unsigned)(20) durationCenterArmFirstPhase,
-    (unsigned)(20) durationCenterArmSecondPhase,
-    (unsigned)(20) durationCenterArmThirdPhase
+    (bool)(false) useDynamicStiffness,
+    (bool)(false) textOutput, /* True to print if Joint moves faster*/
+    (std::array<Angle, Joints::numOfJoints>) degPerFrame /**< Maximum allowed degree change per frame. */
   )
 );
 
@@ -91,8 +87,6 @@ private:
 
   bool headJawInSavePosition;
   bool headPitchInSavePosition;
-  bool isFallingStarted;
-  unsigned fallingFrame;
 
 #ifndef NDEBUG
   SpecialActionRequest::SpecialActionID lastSpecialAction = SpecialActionRequest::playDead;
@@ -110,22 +104,13 @@ public:
 
 private:
   void update(OdometryData& odometryData);
-  void update(JointRequest& jointRequest);
+  void update(RawJointRequest& rawJointRequest);
   void update(MotionInfo& motionInfo)
   {
     motionInfo = this->motionInfo;
   }
 
-  void saveFall(JointRequest& JointRequest);
-  void centerHead(JointRequest& JointRequest);
-  void sitFront(JointRequest& jointRequest);
-  void sit(JointRequest& jointRequest);
-  void centerArms(JointRequest& jointRequest);
-  void saveArms(JointRequest& jointRequest);
-  void armsFront(JointRequest& jointRequest);
-  void armsBehind(JointRequest& jointRequest);
   void armsStand(JointRequest& jointRequest);
-  void centerArm(JointRequest& jointRequest, bool left);
 
   /**
   * The method copies all joint angles from one joint request to another,

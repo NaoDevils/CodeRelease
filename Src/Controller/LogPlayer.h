@@ -13,6 +13,7 @@
 #include "Representations/Infrastructure/JPEGImage.h"
 #include "Tools/MessageQueue/MessageQueue.h"
 #include "Tools/Streams/StreamHandler.h"
+#include <list>
 
 /**
 * @class LogPlayer
@@ -104,6 +105,26 @@ public:
   * @return if the writing was successful
   */
   bool saveAudioFile(const char* fileName);
+
+  /**
+  * Writes audio data which should contain the whistle in the log player queue to a single wav file.
+  * @param fileName the name of the file to write
+  * @return 0 if the writing was successful, 1 if empty, 2 on error
+  */
+  int saveTrueWhistleAudioFile(const char* fileName, bool split);
+
+  /**
+  * Export all (predefined) representations to a file in json format.
+  * @param fileName the name of the file to write
+  */
+  void export_data(const std::string& file, const std::list<std::string>& ids);
+
+  /**
+  * Writes audio data which should not contain the whistle in the log player queue to a single wav file.
+  * @param fileName the name of the file to write
+  * @return 0 if the writing was successful, 1 if empty, 2 on error
+  */
+  int saveFalseWhistleAudioFile(const char* fileName, bool split);
 
   /**
   * Writes all images in the log player queue to a bunch of image files (.png).
@@ -200,9 +221,12 @@ private:
   StreamHandler* streamHandler; /**< The stream specification of the log file entries. */
 
   /**
-  * The method counts the number of frames.
+   * Writes selected audio data in the log player queue to a single wav file.
+   * @param fileName the name of the file to write
+   * @param audioCandidates indices  of audio messageIDs in queue
+   * @return true if writing was successful
   */
-  void countFramesAndMessages();
+  bool writeAudioFile(const char* fileName, std::vector<int> audioCandidates);
 
   /**
    * Creates the index of the first message numbers of all frames.

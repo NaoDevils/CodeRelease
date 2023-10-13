@@ -25,7 +25,6 @@ option(GoToFieldCoordinates,
       float thresh_x_back_mod = thresh_x_back;
       float thresh_y_mod = thresh_y;
       Angle thresh_rot_mod = thresh_rot;
-
       if (preciseArrival)
       {
         thresh_x_front_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_x_front_mod);
@@ -50,11 +49,19 @@ option(GoToFieldCoordinates,
     gotoFieldCoordinatesFinished = true;
     transition
     {
-      float alpha = std::min(((float)state_time) / theBehaviorConfiguration.gotoThreshMaxTime, 1.f);
-      float thresh_x_front_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_x_front) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThresh, thresh_x_front) * alpha;
-      float thresh_x_back_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_x_back) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThresh, thresh_x_back) * alpha;
-      float thresh_y_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_y) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThresh, thresh_y) * alpha;
-      Angle thresh_rot_mod = std::min(theBehaviorConfiguration.gotoBaseThreshRot, thresh_rot) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThreshRot, thresh_rot) * alpha;
+      float thresh_x_front_mod = thresh_x_front;
+      float thresh_x_back_mod = thresh_x_back;
+      float thresh_y_mod = thresh_y;
+      Angle thresh_rot_mod = thresh_rot;
+      if (preciseArrival)
+      {
+        float alpha = std::min(((float)state_time) / theBehaviorConfiguration.gotoThreshMaxTime, 1.f);
+        thresh_x_front_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_x_front) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThresh, thresh_x_front) * alpha;
+        thresh_x_back_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_x_back) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThresh, thresh_x_back) * alpha;
+        thresh_y_mod = std::min(theBehaviorConfiguration.gotoBaseThresh, thresh_y) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThresh, thresh_y) * alpha;
+        thresh_rot_mod = std::min(theBehaviorConfiguration.gotoBaseThreshRot, thresh_rot) * (1 - alpha) + std::max(theBehaviorConfiguration.gotoBaseThreshRot, thresh_rot) * alpha;
+      }
+
       ELLIPSE("behavior:GoToFieldCoordinates:Thresholds",
           Vector2f(optPosition.translation.x() + (thresh_x_front_mod - thresh_x_back_mod) / 2, optPosition.translation.y()),
           (thresh_x_front_mod + thresh_x_back_mod) / 2,
@@ -78,6 +85,8 @@ option(GoToFieldCoordinates,
         if (state_time > 3000 && ((theRoleSymbols.role != BehaviorData::keeper && theRoleSymbols.role != BehaviorData::replacementKeeper) || theGameInfo.state != STATE_PLAYING)
             && ((theBallSymbols.timeSinceLastSeenByTeam < 8000.f && theBallSymbols.ballPositionRelative.norm() > 1300.f) || theGameInfo.state != STATE_PLAYING))
           Stand();
+        else if ((state_time > 3000) && (theRoleSymbols.role == BehaviorData::keeper) && theBehaviorConfiguration.behaviorParameters.goalieForEvents)
+          SpecialAction(SpecialActionRequest::SpecialActionID::penaltyGoaliePrepareDive);
         else
           Walk(WalkRequest::speed, 0, 0, 0);
       }

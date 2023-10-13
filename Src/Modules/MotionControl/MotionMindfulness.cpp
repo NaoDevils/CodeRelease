@@ -6,6 +6,10 @@ MAKE_MODULE(MotionMindfulness, motionControl)
 
 MotionMindfulness::MotionMindfulness()
 {
+  // Initialize broken joint
+  brokenJointErrors.resize(Joints::numOfJoints);
+  stuckJointErrors.resize(Joints::numOfJoints);
+
   // Initialize fsr
   for (int i = 0; i < FsrSensorData::numOfFsrSensorPositions; i++)
     fsrLeft[i] = theFsrSensorData.left[i];
@@ -79,6 +83,15 @@ MotionMindfulness::MotionMindfulness()
       decraseIncreaseFactorRight = walkingStatus.decreaseIncreaseFactors[3];
       ANNOTATION("MotionState", "Loaded " << File::getPersistentDir() << "decreaseIncreaseFactors.value");
     }
+
+    InTextFile motionMindfulnessStandUpPriorityFile(File::getPersistentDir() + "standUpPriority.value");
+    StandUpStatus standUpStatus;
+    if (motionMindfulnessStandUpPriorityFile.exists())
+    {
+      motionMindfulnessStandUpPriorityFile >> standUpStatus;
+      standUpPriorityList = standUpStatus.standUpPriority;
+      ANNOTATION("MotionState", "Loaded stand-up priority" << File::getPersistentDir() << "standUpPriority.value");
+    }
   }
 
   InMapFile stream("csConverter2019.cfg");
@@ -134,6 +147,11 @@ MotionMindfulness::~MotionMindfulness()
     OutTextFile motionMindfulnessDecreaseIncreaseFactorsFile(File::getPersistentDir() + "decreaseIncreaseFactors.value");
     if (motionMindfulnessDecreaseIncreaseFactorsFile.exists())
       motionMindfulnessDecreaseIncreaseFactorsFile << walkingStatus;
+
+    const StandUpStatus& standUpStatus = localMotionState.standUpStatus;
+    OutTextFile motionMindfulnessStandUpPriorityFile(File::getPersistentDir() + "standUpPriority.value");
+    if (motionMindfulnessStandUpPriorityFile.exists())
+      motionMindfulnessStandUpPriorityFile << standUpStatus;
   }
 }
 
@@ -153,10 +171,9 @@ void MotionMindfulness::update(MotionState& theMotionState)
   DECLARE_PLOT("module:MotionMindfulness:walkingStatus:stumblingRight");
   if (activate)
   {
+    robotName = enableName ? Global::getSettings().robotName + "! " : "";
     // Check for problems and sanity
-    checkForStiffnessProblems(localMotionState);
-    localMotionState.jointStatus.usableLeftLeg = !(hasProblem(localMotionState, MotionState::legLeftStiffness));
-    localMotionState.jointStatus.usableRightLeg = !(hasProblem(localMotionState, MotionState::legRightStiffness));
+    checkForBrokenJoints(localMotionState);
     checkForStandUpProblems(localMotionState);
     checkForFsrSanity(localMotionState);
     // Set the usability of the fsr sensors to false if one of the sensors is not working correctly
@@ -619,152 +636,286 @@ void MotionMindfulness::checkForFsrSanity(MotionState& motionState)
 
 void MotionMindfulness::checkForStandUpProblems(MotionState& motionState)
 {
-  // Filter all non stand up special actions
-  if (theMotionInfo.inStandUpMotion())
+  /***********************************/
+  /* Initialize values               */
+  /***********************************/
+
+  // Initialize successful attempts and on ground counter
+  if (initStandUpChances)
   {
-    /***********************************/
-    /* reset standUpTries              */
-    /***********************************/
-    unsigned currentTime = theFrameInfo.time;
-
-    if (lastStandUpTime == -1)
+    for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
     {
-      lastStandUpTime = currentTime;
-      lastResetTime = currentTime;
+      motionState.standUpStatus.standUpChance[i] = 1.f;
+      successfulAttempts[i] = 1;
+      onGroundCount[i] = 1;
     }
 
-    if (theFallDownState.state == FallDownState::upright)
-    {
-      // Set standUpTries to zero to reset if the robot somehow managed to stand up
-      if (!hasProblem(motionState, MotionState::standUpFailure))
-      {
-        standUpTries[motionId] = 0;
-        standUp[motionId] = false;
-      }
+    initStandUpChances = false;
+  }
 
-      // Set standUpTries to zero to reset the failure after a period of time
-      if (resetStandUpFailureOnUpright && currentTime - lastResetTime > resetStandUpFailureTime)
-      {
-        if (hasProblem(motionState, MotionState::standUpFailure))
+  if (backA != theMotionSettings.standUpMotionBackA || backB != theMotionSettings.standUpMotionBackB || backC != theMotionSettings.standUpMotionBackC
+      || frontA != theMotionSettings.standUpMotionFrontA || frontB != theMotionSettings.standUpMotionFrontB || frontC != theMotionSettings.standUpMotionFrontC)
+  {
+    localMotionSettings = theMotionSettings;
+    backA = theMotionSettings.standUpMotionBackA;
+    backB = theMotionSettings.standUpMotionBackB;
+    backC = theMotionSettings.standUpMotionBackC;
+    frontA = theMotionSettings.standUpMotionFrontA;
+    frontB = theMotionSettings.standUpMotionFrontB;
+    frontC = theMotionSettings.standUpMotionFrontC;
+
+    if (backA == SpecialActionRequest::none && backB == SpecialActionRequest::none && backC == SpecialActionRequest::none)
+      OUTPUT_WARNING("At least one stand-up back motion should be not none (using backup motion now)");
+    if (frontA == SpecialActionRequest::none && frontB == SpecialActionRequest::none && frontC == SpecialActionRequest::none)
+      OUTPUT_WARNING("At least one stand-up back motion should be not none (using backup motion now)");
+
+    auto backIdxA = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), backA);
+    auto backIdxB = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), backB);
+    auto backIdxC = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), backC);
+
+    auto frontIdxA = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), frontA);
+    auto frontIdxB = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), frontB);
+    auto frontIdxC = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), frontC);
+
+    std::vector<std::tuple<int, SpecialActionRequest::SpecialActionID>> priorityMap;
+    priorityMap.reserve(3);
+    priorityMap.push_back(std::make_tuple(backIdxA - standUpPriorityList.begin(), backA));
+    priorityMap.push_back(std::make_tuple(backIdxB - standUpPriorityList.begin(), backB));
+    priorityMap.push_back(std::make_tuple(backIdxC - standUpPriorityList.begin(), backC));
+
+    std::sort(priorityMap.begin(),
+        priorityMap.end(),
+        [](auto const& a, auto const& b)
         {
-          standUpTries[motionId] = 0;
-          standUp[motionId] = false;
-        }
-        lastResetTime = currentTime;
-      }
+          return std::get<0>(a) < std::get<0>(b);
+        });
 
-      unableToStandUp = false;
-      lastStandUpTime = currentTime;
-    }
+    localMotionSettings.standUpMotionBackA = std::get<1>(priorityMap[0]);
+    localMotionSettings.standUpMotionBackB = std::get<1>(priorityMap[1]);
+    localMotionSettings.standUpMotionBackC = std::get<1>(priorityMap[2]);
 
-    /***********************************/
-    /* reset failure                   */
-    /***********************************/
-    auto it = std::find(motionState.motionProblems.begin(), motionState.motionProblems.end(), MotionState::standUpFailure);
-    if (it != motionState.motionProblems.end())
-      motionState.motionProblems.erase(it);
+    priorityMap.clear();
+    priorityMap.reserve(3);
+    priorityMap.push_back(std::make_tuple(frontIdxA - standUpPriorityList.begin(), frontA));
+    priorityMap.push_back(std::make_tuple(frontIdxB - standUpPriorityList.begin(), frontB));
+    priorityMap.push_back(std::make_tuple(frontIdxC - standUpPriorityList.begin(), frontC));
 
-    /***********************************/
-    /* stand up check                  */
-    /***********************************/
-    if (theFallDownState.state == FallDownState::standingUp)
+    std::sort(priorityMap.begin(),
+        priorityMap.end(),
+        [](auto const& a, auto const& b)
+        {
+          return std::get<0>(a) < std::get<0>(b);
+        });
+
+    localMotionSettings.standUpMotionFrontA = std::get<1>(priorityMap[0]);
+    localMotionSettings.standUpMotionFrontB = std::get<1>(priorityMap[1]);
+    localMotionSettings.standUpMotionFrontC = std::get<1>(priorityMap[2]);
+  }
+
+  /***********************************/
+  /* Detect and set states           */
+  /***********************************/
+
+  // Load current stand-up motions suggestion pool
+  SpecialActionRequest::SpecialActionID motionIDsBack[3] = {localMotionSettings.standUpMotionBackA, localMotionSettings.standUpMotionBackB, localMotionSettings.standUpMotionBackC};
+  SpecialActionRequest::SpecialActionID motionIDsFront[3] = {localMotionSettings.standUpMotionFrontA, localMotionSettings.standUpMotionFrontB, localMotionSettings.standUpMotionFrontC};
+
+  // Detect and set current stand-up motion
+  if (theMotionInfo.inStandUpMotion() && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::lying && !theMotionInfo.inFallMotion())
+  {
+    currentMotionID = theMotionInfo.specialActionRequest.specialAction;
+    if (upright)
+      lastMotionID = currentMotionID;
+    upright = false;
+  }
+
+  // Detect and set upright / successful attempts
+  if (!upright && theFallDownState.state == FallDownState::upright)
+  {
+    successfulAttempts[currentMotionID] = successfulAttempts[currentMotionID] + 1;
+    upright = true;
+    lastMotionID = currentMotionID;
+
+    for (int i = 0; i < 3; i++)
     {
-      motionId = theMotionRequest.specialActionRequest.specialAction;
-      onGround = false;
-    }
-
-    if (!onGround && theFallDownState.state == FallDownState::onGround)
-    {
-      if (currentTime - lastStandUpTime < maxPeriodOfTimeBetweenStandUps)
-      {
-        if (standUpTries[motionId] < maxStandUpTries)
-          standUpTries[motionId]++;
-      }
-      else
-      {
-        standUpTries[motionId] = 0;
-      }
-      motionState.standUpStatus.totalOnGround++;
-      lastStandUpTime = currentTime;
-      onGround = true;
-    }
-
-    /*
-    * if the robot laying on the ground for more than maxPeriodOfTimeToStandUp milliseconds or
-    * if the robot has tired maxStandUpTries to getting up without success the standUpFrontFailure/standUpBackFailure kicks in
-    */
-    if (currentTime - lastStandUpTime > maxPeriodOfTimeToStandUp && !hasProblem(motionState, MotionState::standUpFailure))
-    {
-      motionState.motionProblems.push_back(MotionState::standUpFailure);
-      unableToStandUp = true;
-    }
-    if (standUpTries[motionId] >= maxStandUpTries)
-    {
-      motionState.motionProblems.push_back(MotionState::standUpFailure);
-      standUp[motionId] = true;
+      if (successfulAttempts[motionIDsBack[i]] > onGroundCount[motionIDsBack[i]])
+        successfulAttempts[motionIDsBack[i]] = onGroundCount[motionIDsBack[i]];
+      if (successfulAttempts[motionIDsFront[i]] > onGroundCount[motionIDsFront[i]])
+        successfulAttempts[motionIDsFront[i]] = onGroundCount[motionIDsFront[i]];
     }
   }
 
-  /*
-  * Update MotionState
-  */
-  motionState.standUpStatus.standUpTries[motionId] = standUpTries[motionId];
-  motionState.standUpStatus.currentId = motionId;
-  motionState.standUpStatus.standUp[motionId] = standUp[motionId];
-  motionState.standUpStatus.unableToStandUp = unableToStandUp;
-}
-
-void MotionMindfulness::checkForStiffnessProblems(MotionState& motionState)
-{
-  /*
-  * Return if the robot is sitting down or if the robot is playing dead
-  * to avoid some complications with these states
-  */
-  if (theMotionRequest.motion == MotionRequest::specialAction
-      && (theMotionRequest.specialActionRequest.specialAction == theMotionRequest.specialActionRequest.playDead
-          || theMotionRequest.specialActionRequest.specialAction == theMotionRequest.specialActionRequest.sitDown))
-    return;
-
-  /***********************************/
-  /* leg stiffness check             */
-  /***********************************/
-  for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
+  // Detect on ground state
+  if (!onGround && (theFallDownState.state == FallDownState::onGround || theFallDownState.state == FallDownState::onGroundLyingStill) && theMotionInfo.inStandUpMotion()
+      && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::lying)
   {
-    /*
-    * We need to check if the senor angle is greater than the target angle
-    * because otherwise we run into possible false negatives for the cases like
-    * the sensor angle is -5 and the target angle is 5
-    */
-    if (theJointSensorData.angles[i] > theJointRequest.angles[i])
-    {
-      /*
-      * If the target angle plus an epsilon neighbourhood is less than the actual angle and the target stiffness is greater than zero 
-      * and the current Ampere is zero a frame counter is counted up otherwise the frame counter is set to zero.
-      * This allowes a minimal error for all leg joints for a short period of time which sometimes occur but only 50 frames per default.
-      * For more than 50 frames in a row the leg stiffness failure is thrown.
-      * This means if a V6 robot stays for more than 600 milliseconds in this state the failure is thrown.
-      */
-      if (theJointRequest.angles[i] + minJointDiff < theJointSensorData.angles[i] && theJointRequest.stiffnessData.stiffnesses[i] > 0 && theJointSensorData.currents[i] == 0)
-        framesWithoutJointCurrent[i]++;
-      else
-        framesWithoutJointCurrent[i] = 0;
-    }
+    if (lastMotionID == currentMotionID)
+      onGroundCount[currentMotionID] = onGroundCount[currentMotionID] + 1;
     else
     {
-      // The same as above but for the other direction
-      if (theJointRequest.angles[i] - minJointDiff > theJointSensorData.angles[i] && theJointRequest.stiffnessData.stiffnesses[i] > 0 && theJointSensorData.currents[i] == 0)
-        framesWithoutJointCurrent[i]++;
-      else
-        framesWithoutJointCurrent[i] = 0;
+      onGroundCount[currentMotionID] = onGroundCount[currentMotionID] + 1;
+      onGroundCount[lastMotionID] = onGroundCount[lastMotionID] + 1;
     }
+    onGround = true;
+    lastMotionID = currentMotionID;
+  }
+  else if (onGround && ((theFallDownState.state != FallDownState::onGround && theFallDownState.state != FallDownState::onGroundLyingStill) || theSpecialActionsOutput.isFallProtectionNeeded))
+    onGround = false;
 
-    if (framesWithoutJointCurrent[i] > maxFramesWithoutJointActivation)
+
+  /***********************************/
+  /* Update motion state             */
+  /***********************************/
+
+  // Update motion ids and current stand-up chance
+  motionState.standUpStatus.currentStandUpMotion = currentMotionID;
+  motionState.standUpStatus.lastStandUpMotion = lastMotionID;
+  motionState.standUpStatus.fallDownState = theFallDownState.state;
+  int currentOnGroundBackCount = 0;
+  int currentOnGroundFrontCount = 0;
+  int activeMotionsBack = 0;
+  int activeMotionsFront = 0;
+  for (int i = 0; i < 3; i++)
+  {
+    motionState.standUpStatus.standUpChance[motionIDsBack[i]] = (float)successfulAttempts[motionIDsBack[i]] / (float)onGroundCount[motionIDsBack[i]];
+    motionState.standUpStatus.standUpChance[motionIDsFront[i]] = (float)successfulAttempts[motionIDsFront[i]] / (float)onGroundCount[motionIDsFront[i]];
+
+    // Collect info for persistant motion priority
+    if (motionIDsBack[i] != SpecialActionRequest::none)
     {
-      MotionState::MotionStateError problem = (i < Joints::rHipYawPitch) ? MotionState::legLeftStiffness : MotionState::legRightStiffness;
-      if (!hasProblem(motionState, problem))
-        motionState.motionProblems.push_back(problem);
+      currentOnGroundBackCount += onGroundCount[motionIDsBack[i]] - 1;
+      activeMotionsBack++;
+    }
+    if (motionIDsFront[i] != SpecialActionRequest::none)
+    {
+      currentOnGroundFrontCount += onGroundCount[motionIDsFront[i]] - 1;
+      activeMotionsFront++;
     }
   }
+
+  // If all motions are none set active motions to 1 to avoid divide by zero
+  if (activeMotionsBack == 0)
+    activeMotionsBack = 1;
+  if (activeMotionsFront == 0)
+    activeMotionsFront = 1;
+
+  float onGroundBackRatio = (float)currentOnGroundBackCount / (float)activeMotionsBack;
+  float onGroundFrontRatio = (float)currentOnGroundFrontCount / (float)activeMotionsFront;
+
+  // Get best stand up motion
+  float bestMotionChanceBack = -1.f;
+  SpecialActionRequest::SpecialActionID bestMoitionIDBack = SpecialActionRequest::standUpBackNaoFast; // Backup motion back
+  float bestMotionChanceFront = -1.f;
+  SpecialActionRequest::SpecialActionID bestMoitionIDFront = SpecialActionRequest::standUpFrontNaoFast; // Backup motion front
+  for (int i = 0; i < 3; i++)
+  {
+    if (motionIDsBack[i] != SpecialActionRequest::none && motionState.standUpStatus.standUpChance[motionIDsBack[i]] > bestMotionChanceBack)
+    {
+      bestMotionChanceBack = motionState.standUpStatus.standUpChance[motionIDsBack[i]];
+      bestMoitionIDBack = motionIDsBack[i];
+    }
+    if (motionIDsFront[i] != SpecialActionRequest::none && motionState.standUpStatus.standUpChance[motionIDsFront[i]] > bestMotionChanceFront)
+    {
+      bestMotionChanceFront = motionState.standUpStatus.standUpChance[motionIDsFront[i]];
+      bestMoitionIDFront = motionIDsFront[i];
+    }
+  }
+
+  // Prepare stand-up priority list to save stand-up motion order
+  if (onGroundBackRatio > 1 && onGroundFrontRatio > 1)
+  {
+    standUpPriorityMap.clear();
+    standUpPriorityMap.reserve(SpecialActionRequest::numOfSpecialActionIDs);
+    for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
+      standUpPriorityMap.push_back(std::make_tuple(motionState.standUpStatus.standUpChance[i], i));
+    std::sort(standUpPriorityMap.begin(),
+        standUpPriorityMap.end(),
+        [](auto const& a, auto const& b)
+        {
+          return std::get<0>(a) > std::get<0>(b);
+        });
+
+    standUpPriorityList.clear();
+    standUpPriorityList.reserve(SpecialActionRequest::numOfSpecialActionIDs);
+    for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
+      standUpPriorityList.push_back(std::get<1>(standUpPriorityMap[i]));
+
+    motionState.standUpStatus.standUpPriority = standUpPriorityList;
+  }
+
+  // Prepare motion suggestion for the behavior
+  if (bestMotionChanceBack >= minStandUpChance || bestMotionChanceBack == -1.f)
+    motionState.standUpStatus.bestStandUpMotionBack = bestMoitionIDBack;
+  else
+    motionState.standUpStatus.bestStandUpMotionBack = SpecialActionRequest::lying;
+
+  if (bestMotionChanceFront >= minStandUpChance || bestMotionChanceBack == -1.f)
+    motionState.standUpStatus.bestStandUpMotionFront = bestMoitionIDFront;
+  else
+    motionState.standUpStatus.bestStandUpMotionFront = SpecialActionRequest::lying;
+}
+
+void MotionMindfulness::checkForBrokenJoints(MotionState& motionState)
+{
+  motionState.jointStatus.usableArms = true;
+  motionState.jointStatus.usableLegs = true;
+
+  if (theGameInfo.state == STATE_INITIAL || (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::sitDown))
+    return; // only check if the robot is walking or standing up
+
+  if (theBrokenJointState.jointState == BrokenJointState::alright)
+  {
+    for (int i = 0; i < Joints::numOfJoints; i++)
+    {
+      brokenJointErrors[i] = std::max(brokenJointErrors[i] - 1, 0);
+    }
+    for (int i = 0; i < Joints::numOfJoints; i++)
+    {
+      stuckJointErrors[i] = std::max(stuckJointErrors[i] - 1, 0);
+    }
+    return; //no broken or stuck Joint detected
+  }
+
+  // Check for broken arm joints
+  bool armBroken = false;
+  for (int i = Joints::firstArmJoint; i < Joints::firstLegJoint; i++)
+  {
+    if (i == Joints::lWristYaw || i == Joints::lHand || i == Joints::rWristYaw || i == Joints::rHand) //ignore wrist and hand
+      continue;
+    if (theBrokenJointState.brokenJointStatus[i])
+      brokenJointErrors[i] = std::min(brokenJointErrors[i] + 1, 1000);
+    else
+      brokenJointErrors[i] = std::max(brokenJointErrors[i] - 1, 0);
+
+    if (theBrokenJointState.stuckJointStatus[i])
+      stuckJointErrors[i] = std::min(stuckJointErrors[i] + 1, 1000);
+    else
+      stuckJointErrors[i] = std::max(stuckJointErrors[i] - 1, 0);
+
+    if (brokenJointErrors[i] > maxArmErrors || stuckJointErrors[i] > maxArmErrors)
+      armBroken = true;
+  }
+
+  // Check for broken leg joints
+  bool legBroken = false;
+  for (int i = Joints::firstLegJoint; i < Joints::numOfJoints; i++)
+  {
+    if (theBrokenJointState.brokenJointStatus[i])
+      brokenJointErrors[i] = std::min(brokenJointErrors[i] + 1, 1000);
+    else
+      brokenJointErrors[i] = std::max(brokenJointErrors[i] - 1, 0);
+
+    if (theBrokenJointState.stuckJointStatus[i])
+      stuckJointErrors[i] = std::min(stuckJointErrors[i] + 1, 1000);
+    else
+      stuckJointErrors[i] = std::max(stuckJointErrors[i] - 1, 0);
+
+    if (brokenJointErrors[i] > maxLegErrors || stuckJointErrors[i] > maxLegErrors)
+      legBroken = true;
+  }
+
+  motionState.jointStatus.usableArms = !armBroken;
+  motionState.jointStatus.usableLegs = !legBroken;
 }
 
 void MotionMindfulness::checkForHeatProblems(MotionState& motionState)

@@ -13,7 +13,7 @@
 */
 STREAMABLE(GameSymbols,,
   (bool)(false) avoidCenterCircle,
-  (bool)(false) allowedInPenaltyArea,
+  (bool)(false) allowedInGoalArea,
   (bool)(false) kickoffInProgress,
   (bool)(false) ownKickOff,
   (bool)(false) ballKickedOutOfCenterCircle,

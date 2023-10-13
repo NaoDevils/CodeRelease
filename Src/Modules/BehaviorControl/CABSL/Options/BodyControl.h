@@ -68,7 +68,9 @@ option(BodyControl)
     action
     {
       theBehaviorData.soccerState = BehaviorData::positioning;
-      GetInPosition();
+      Positioning(false,
+          theBallChaserDecision.playerNumberToBall == theRobotInfo.number && theRoleSymbols.role != BehaviorData::RoleAssignment::keeper
+              && theRoleSymbols.role != BehaviorData::RoleAssignment::replacementKeeper);
     }
   }
 
@@ -91,11 +93,12 @@ option(BodyControl)
     transition {}
     action
     {
+      if (theBehaviorData.behaviorState == BehaviorData::testingJoints)
+        theBehaviorData.behaviorState = BehaviorData::game;
       // monitor walk kick executions
       if (theMotionInfo.customStepKickInPreview)
       {
         timeStampLastWalkKickExecution = theFrameInfo.time;
-        libTactic.timeStampLastWalkKickExecution = timeStampLastWalkKickExecution;
       }
 
       // Our defense does not move instantly if not alone, to make sure no false whistle was detected (WhistleHandlerDortmund changes state back)
@@ -106,7 +109,7 @@ option(BodyControl)
       {
         Walk(WalkRequest::speed, 0, 0, 0);
       }
-      else if (theGameSymbols.timeSinceLastPenalty < 5000) // Initially theGameSymbols.timeSinceLastPenalty = 100000.
+      else if (theGameSymbols.timeSinceLastPenalty < 10000 && theRobotPose.validity < 0.7f) // Initially theGameSymbols.timeSinceLastPenalty = 100000.
       {
         theHeadControlRequest.controlType = HeadControlRequest::localize;
         Walk(WalkRequest::speed, 0, 0, 0);

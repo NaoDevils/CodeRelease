@@ -6,7 +6,7 @@
   <Include href="Includes/Boards.rsi2"/>
 
   <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="35000" Kd="150" contactKp="5300" contactKd="1">
-   <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
+    <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
 
     <Compound name="robots">
       <Body ref="Nao" name="robot2">
@@ -16,7 +16,7 @@
       </Body>
       <Body ref="Nao" name="robot9">
         <Translation x="-0.9" z="330mm"/>
-        <Set name="NaoColor" value="blue"/>
+        <Set name="NaoColor" value="black"/>
       </Body>
     </Compound>
 
@@ -24,7 +24,7 @@
       <Body ref="NaoDummy" name="robot1">
         <Translation x="2.8" y="0" z="330mm"/>
         <Rotation z="180degree"/>
-        <Set name="NaoColor" value="yellow"/>
+        <Set name="NaoColor" value="red"/>
       </Body>
       <Body ref="NaoDummy" name="robot3">
         <Translation x="0.3" y="-1" z="330mm"/>
@@ -38,19 +38,19 @@
       </Body>
       <Body ref="NaoDummy" name="robot8">
         <Translation x="-4.5" z="330mm"/>
-        <Set name="NaoColor" value="blue"/>
+        <Set name="NaoColor" value="green"/>
       </Body>
       <Body ref="NaoDummy" name="robot10">
         <Translation x="-2" y = "0.4" z="330mm"/>
-        <Set name="NaoColor" value="blue"/>
+        <Set name="NaoColor" value="black"/>
       </Body>
       <Body ref="NaoDummy" name="robot11">
         <Translation x="-1.5" y="-0.9" z="330mm"/>
-        <Set name="NaoColor" value="blue"/>
+        <Set name="NaoColor" value="black"/>
       </Body>
       <Body ref="NaoDummy" name="robot12">
         <Translation x="-1.1" y = "1.3" z="330mm"/>
-        <Set name="NaoColor" value="blue"/>
+        <Set name="NaoColor" value="black"/>
       </Body>
     </Compound>
 

@@ -23,9 +23,9 @@ public:
     {
       for (auto& mate : teammateData.teammates)
       {
-        if (mate.status >= Teammate::ACTIVE)
+        if (mate.status >= TeammateReceived::Status::ACTIVE)
         {
-          const Pose2f& pose = mate.pose;
+          const Pose2f& pose = mate.robotPose;
           if ((pose.translation - pos).norm() < dist)
           {
             return true;
@@ -39,8 +39,8 @@ public:
   static void addActivePlayerPositions(const TeammateData& teammateData, std::vector<Pose2f>& positions)
   {
     for (auto& mate : teammateData.teammates)
-      if (mate.status >= Teammate::ACTIVE)
-        positions.push_back(mate.pose);
+      if (mate.status >= TeammateReceived::Status::ACTIVE)
+        positions.push_back(mate.robotPose);
   }
 
   /* calculates the distance in mm adding penalties for bad approaches (obstacles, from side, ...) */

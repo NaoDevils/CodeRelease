@@ -77,6 +77,7 @@ MODULE(BallModelProvider,
   PROVIDES(MultipleBallModel),
   PROVIDES(RemoteBallModel),
   PROVIDES(TeamBallModel),
+  HAS_PREEXECUTION,
 
   LOADS_PARAMETERS(,
     /// Parameters used by \c BallModelProvider for local and remote ball model.
@@ -114,16 +115,11 @@ public:
    * Constructor.
    */
   BallModelProvider()
-      : m_localMultipleBallModel(LOCAL_PERCEPT_DURATION), m_remoteMultipleBallModel(REMOTE_PERCEPT_DURATION), m_lastTimeStamp(0), m_lastGameState(STATE_INITIAL),
-        m_lastPenaltyState(PENALTY_NONE), m_lastMotionType(MotionRequest::Motion::specialAction), m_kickDetected(false), m_ballDisappeared(true), m_timeWhenBallFirstDisappeared(0)
+      : m_localMultipleBallModel(LOCAL_PERCEPT_DURATION), m_remoteMultipleBallModel(REMOTE_PERCEPT_DURATION), m_lastGameState(STATE_INITIAL), m_lastPenaltyState(PENALTY_NONE),
+        m_lastMotionType(MotionRequest::Motion::specialAction), m_kickDetected(false), m_ballDisappeared(true), m_timeWhenBallFirstDisappeared(0)
   {
     initialize();
   }
-
-  /** 
-   * Destructor.
-   */
-  ~BallModelProvider() {}
 
 
   // MARK: Update methods for provided representations.
@@ -174,7 +170,7 @@ private:
    * timestamp is checked in order to determine whether this method was already
    * executed in the current frame.
    */
-  void execute();
+  void execute(tf::Subflow&);
 
   /**
    * \brief Prediction
@@ -341,12 +337,6 @@ private:
   TeamBallModelProvider m_teamBallModelProvider;
 
   // ----- general variables -----
-  /**
-   * Save timestamp when executing the method \c execute(), to run it only once
-   * per frame.
-   */
-  unsigned m_lastTimeStamp;
-
   /**
    * Save game state at each invocation of the method \c handleGameState(). This
    * is used to handle state transitions.

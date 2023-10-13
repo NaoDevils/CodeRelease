@@ -110,7 +110,7 @@ void PoseHypothesis2017::init(const Pose2f& newPose, const SelfLocator2017Parame
   }
 }
 
-void PoseHypothesis2017::predict(const Pose2f& odometryDelta, const SelfLocator2017Parameters& parameters)
+void PoseHypothesis2017::predict(const Pose2f& odometryDelta, const SelfLocator2017Parameters& parameters, bool isStable)
 {
   Pose2f tempPose;
   getRobotPose(tempPose);
@@ -119,17 +119,19 @@ void PoseHypothesis2017::predict(const Pose2f& odometryDelta, const SelfLocator2
   state[1] = tempPose.translation.y();
   state[2] = Angle::normalize(tempPose.rotation);
 
+  float varianceFactor = (isStable ? 1 / 10.f : 1.f);
+
   // add robot process noise
-  const float minPositionVariance = 100 * parameters.processUpdate.positionVariance;
-  const float minRotationVariance = 100 * parameters.processUpdate.rotationVariance;
+  const float minPositionVariance = 100 * parameters.processUpdate.positionVariance * varianceFactor;
+  const float minRotationVariance = 100 * parameters.processUpdate.rotationVariance * varianceFactor;
   const float& minPositionChange = parameters.processUpdate.minPositionChageForCovarianceUpdate;
   const float& minRotationChange = parameters.processUpdate.minRotationChageForCovarianceUpdate;
   if ((!parameters.processUpdate.odometryBasedVarianceUpdate || std::abs(odometryDelta.translation.x()) < minPositionChange) || covariance(0, 0) < minPositionVariance)
-    covariance(0, 0) += parameters.processUpdate.positionVariance;
+    covariance(0, 0) += parameters.processUpdate.positionVariance * varianceFactor;
   if ((!parameters.processUpdate.odometryBasedVarianceUpdate || std::abs(odometryDelta.translation.y()) < minPositionChange) || covariance(1, 1) < minPositionVariance)
-    covariance(1, 1) += parameters.processUpdate.positionVariance;
+    covariance(1, 1) += parameters.processUpdate.positionVariance * varianceFactor;
   if ((!parameters.processUpdate.odometryBasedVarianceUpdate || std::abs(odometryDelta.rotation) < minRotationChange) || covariance(2, 2) < minRotationVariance)
-    covariance(2, 2) += parameters.processUpdate.rotationVariance;
+    covariance(2, 2) += parameters.processUpdate.rotationVariance * varianceFactor;
 
   sensorUpdated = false;
 }
@@ -557,7 +559,7 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLineAndLandmark(const CLIPF
     const Pose2f& closestPose = getClosestPose(robotPose, pose, symmetricPose);
     weight = perceptWeight * calcWeightForPoseDifference(closestPose - robotPose, parameters);
     update |= (foundMatch = weight > 0.f);
-    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, weight, 0);
+    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossWithLineMeasurementOnPositionConfidence, weight, 0);
     DRAW_ROBOT_POSE("module:SelfLocator2017:poseFromPenaltyCross", closestPose, ColorRGBA(0, 0, 255));
   }
 
@@ -570,7 +572,7 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLineAndLandmark(const CLIPF
     const Pose2f& closestPose = getClosestPose(robotPose, pose, symmetricPose);
     weight = perceptWeight * calcWeightForPoseDifference(closestPose - robotPose, parameters);
     update |= (foundMatch = weight > 0.f);
-    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, weight, 0);
+    updatePositionConfidence(foundMatch, parameters.sensorUpdate.influenceOfNewPenaltyCrossWithLineMeasurementOnPositionConfidence, weight, 0);
     DRAW_ROBOT_POSE("module:SelfLocator2017:poseFromPenaltyCross", closestPose, ColorRGBA(0, 0, 255));
   }
   return update;
@@ -629,7 +631,7 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSphe
   }
 
   // update with penalty cross
-  if (thePenaltyCrossPercept.penaltyCrossWasSeen && thePenaltyCrossPercept.pointOnField.x() > 50)
+  if (thePenaltyCrossPercept.penaltyCrossWasSeen && thePenaltyCrossPercept.pointOnField.cast<float>().norm() > 50) // Not in the center circle
   // dont update with too close percept
   // too much trouble with periodicities and singularities etc.
   {
@@ -679,6 +681,7 @@ bool PoseHypothesis2017::updatePositionConfidenceWithLocalFeaturePerceptionsSphe
   }
   return update;
 }
+
 void PoseHypothesis2017::updateStateWithLocalFeaturePerceptionsSpherical(const SelfLocator2017Parameters& parameters)
 {
   if (containsInvalidValues())
@@ -1024,8 +1027,8 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(const Ball
     int numberOfTeammatesWithSameBall = 0;
     for (const auto& mate : theTeammateData.teammates)
     {
-      if (mate.sideConfidence.confidenceState != SideConfidence::ConfidenceState::CONFUSED && frameInfo.getTimeSince(mate.ball.timeWhenLastSeen) < 1500 && mate.ball.validity > 0.8f
-          && mate.behaviorData.ballPositionField.norm() > minDiffToMatter)
+      if (mate.robotPose.sideConfidenceState != SideConfidence::ConfidenceState::CONFUSED && frameInfo.getTimeSince(mate.ballModel.timeWhenLastSeen) < 1500
+          && mate.ballModel.validity > 0.8f && mate.behaviorData.ballPositionField.norm() > minDiffToMatter)
       {
         float distanceTeammate = (mate.behaviorData.ballPositionField - localModelInGlobalCoords).norm();
         float distanceTeammateMirrored = (mate.behaviorData.ballPositionField - localModelInGlobalCoordsMirrored).norm();

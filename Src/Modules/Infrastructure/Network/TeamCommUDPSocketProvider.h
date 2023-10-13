@@ -12,7 +12,6 @@
 #include "Representations/Infrastructure/TeamCommSocket.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
-#include "Representations/Infrastructure/USBSettings.h"
 #include "Tools/Network/UdpComm.h"
 
 MODULE(TeamCommUDPSocketProvider,
@@ -57,13 +56,7 @@ public:
    * The method receives packages if available.
    * @return The number of bytes received.
    */
-  std::vector<TeamCommData> receive();
-
-  /**
-   * Checks if a received message is a valid SPLStandardMessage.
-   * @return True, if message is valid.
-  */
-  bool checkMessage(const TeamCommData& msg, int realNumOfDataBytes);
+  std::vector<TeamCommDataReceived> receive();
 
   void update(TeamCommSocket& teamCommSocket);
 };

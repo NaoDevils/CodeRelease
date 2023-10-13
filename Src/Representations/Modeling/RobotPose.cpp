@@ -11,12 +11,6 @@
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Module/Blackboard.h"
 
-namespace
-{
-  using compressedFloat_type = unsigned char;
-  static constexpr float uCharMax = static_cast<float>(std::numeric_limits<compressedFloat_type>::max());
-} // namespace
-
 void RobotPose::draw() const
 {
   DECLARE_DEBUG_DRAWING("representation:RobotPose", "drawingOnField");
@@ -27,7 +21,7 @@ void RobotPose::draw() const
   Vector2f dirVec(200, 0);
   dirVec = *this * dirVec;
   static const ColorRGBA colors[] = {ColorRGBA::blue, ColorRGBA::red, ColorRGBA::yellow, ColorRGBA::black};
-  const ColorRGBA ownTeamColorForDrawing = colors[Blackboard::getInstance().exists("OwnTeamInfo") ? Blackboard::get<OwnTeamInfo>().teamColour : TEAM_BLUE];
+  const ColorRGBA ownTeamColorForDrawing = colors[Blackboard::getInstance().exists("OwnTeamInfo") ? Blackboard::get<OwnTeamInfo>().fieldPlayerColour : TEAM_BLUE];
   LINE("representation:RobotPose", translation.x(), translation.y(), dirVec.x(), dirVec.y(), 20, Drawings::solidPen, ColorRGBA::white);
   POLYGON("representation:RobotPose", 4, bodyPoints, 20, Drawings::solidPen, ownTeamColorForDrawing, Drawings::solidBrush, ColorRGBA::white);
   CIRCLE("representation:RobotPose", translation.x(), translation.y(), 42, 0, Drawings::solidPen, ownTeamColorForDrawing, Drawings::solidBrush, ownTeamColorForDrawing);
@@ -92,18 +86,18 @@ void RobotPoseAfterPreview::draw() const
 
 RobotPoseCompressed::RobotPoseCompressed(const RobotPose& robotPose)
 {
-  translation = robotPose.translation.cast<short>();
-  rotation = static_cast<short>(robotPose.rotation.toDegrees());
-  validity = static_cast<compressedFloat_type>(robotPose.validity * uCharMax);
+  translation = robotPose.translation;
+  rotation = robotPose.rotation;
+  validity = robotPose.validity;
   sideConfidenceState = robotPose.sideConfidenceState;
 }
 
 RobotPoseCompressed::operator RobotPose() const
 {
   RobotPose robotPose;
-  robotPose.translation = translation.cast<float>();
-  robotPose.rotation = Angle::fromDegrees(rotation);
-  robotPose.validity = validity / uCharMax;
+  robotPose.translation = translation;
+  robotPose.rotation = rotation;
+  robotPose.validity = validity;
   robotPose.sideConfidenceState = sideConfidenceState;
   return robotPose;
 }

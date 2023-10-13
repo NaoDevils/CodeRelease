@@ -1,7 +1,6 @@
 option(Dribble, (Pose2f) optPosition)
 {
   timeStampLastDribbleExecution = theFrameInfo.time;
-  libTactic.timeStampLastDribbleExecution = timeStampLastDribbleExecution;
   initial_state(dribble)
   {
     transition {}

@@ -36,7 +36,7 @@
       </Body>
       <Body ref="NaoDummy" name="robot8">
         <Translation x="-4.5" z="330mm"/>
-        <Set name="NaoColor" value="black"/>
+        <Set name="NaoColor" value="blue"/>
       </Body>
       <Body ref="NaoDummy" name="robot9">
         <Translation x="-2" y = "0.4" z="330mm"/>

@@ -1,8 +1,8 @@
 /**
-* @file ndevils.h
-* Declaration of shared data provided by ndevils.
-* @author TheCanadianGuy & schwingmar
-*/
+  * @file naodevilsbase.h
+  * Declaration of shared data provided by naodevilsbase.
+  * @author TheCanadianGuy & schwingmar
+  */
 
 #pragma once
 

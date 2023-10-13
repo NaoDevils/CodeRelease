@@ -1,9 +1,11 @@
 //Cheering for a scored goal 
 // old -> needs adjustments
 keyFrameID = cheering1;
-YstabilizationP = 0;
+initialKeyFrame = true;
+nextKeyFrameID = none;
+YstabilizationP = -0.05;
 YstabilizationI = 0;
-YstabilizationD = 0;
+YstabilizationD = -0.6;
 XstabilizationP = 0;
 XstabilizationI = 0;
 XstabilizationD = 0;
@@ -23,12 +25,15 @@ keyFrames = [
     duration = 200;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
     useAngleAtKeyFrameTarget = false;
-    stabilize = false;
-    hipYawErrorCompensation = 0;
+    activateFallDownProtection = false;
+    stabilize = true;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { //frame 2 : Hands up  
     // HeadYaw, HeadPitch
@@ -69,10 +74,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    useAngleAtKeyFrameTarget = true;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     waitForStable = true;
-    hipYawErrorCompensation = 0;
-    waitForTorsoTime = 0;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { //frame 3 : hands up straight 
     // HeadYaw, HeadPitch
@@ -86,8 +94,8 @@ keyFrames = [
         
     // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
      legsAngles = [
-         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
-         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+         0deg,   0deg, -31deg,  55deg, -24deg, 0deg, // left leg
+         0deg,   0deg, -31deg,  55deg, -24deg, 0deg, // right leg
     ];
     
     // Amount of force / torque (%) for each joint
@@ -100,7 +108,7 @@ keyFrames = [
     ];
     
     // key frame duration in milliseconds
-    duration = 200;
+    duration = 400;
     
     // interpolation type between key frames: sine or linear
     intType = linear;
@@ -113,10 +121,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    useAngleAtKeyFrameTarget = true;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     waitForStable = true;
-    hipYawErrorCompensation = 0;
-    waitForTorsoTime = 0;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { //frame 4 : hands down same as frame 2
     // HeadYaw, HeadPitch
@@ -144,7 +155,7 @@ keyFrames = [
     ];
     
     // key frame duration in milliseconds
-    duration = 200;
+    duration = 400;
     
     // interpolation type between key frames: sine or linear
     intType = linear ;
@@ -157,10 +168,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
     useAngleAtKeyFrameTarget = false;
-    waitForStable = true;
-    hipYawErrorCompensation = 0;
-    waitForTorsoTime = 0;
+    activateFallDownProtection = false;
+    waitForStable = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { //frame 5 : hands up straight same as frame3
     // HeadYaw, HeadPitch
@@ -174,8 +188,8 @@ keyFrames = [
         
     // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
     legsAngles = [
-         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // left leg
-         0deg,   0deg, -21deg,  49deg, -27.5deg, 0deg, // right leg
+         0deg,   0deg, -31deg,  55deg, -24deg, 0deg, // left leg
+         0deg,   0deg, -31deg,  55deg, -24deg, 0deg, // right leg
     ];
     
     // Amount of force / torque (%) for each joint
@@ -188,7 +202,7 @@ keyFrames = [
     ];
     
     // key frame duration in milliseconds
-    duration = 200;
+    duration = 400;
     
     // interpolation type between key frames: sine or linear
     intType = linear;
@@ -201,10 +215,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    useAngleAtKeyFrameTarget = true;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     waitForStable = false;
-    hipYawErrorCompensation = 0;
-    waitForTorsoTime = 0;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { //frame 6 : hands down same as frame 2
     // HeadYaw, HeadPitch
@@ -233,7 +250,7 @@ keyFrames = [
     ];
     
     // key frame duration in milliseconds
-    duration = 200;
+    duration = 400;
     
     // interpolation type between key frames: sine or linear
     intType = linear ;
@@ -246,10 +263,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    useAngleAtKeyFrameTarget = true;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     waitForStable = false;
-    hipYawErrorCompensation = 0;
-    waitForTorsoTime = 0;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { //frame 7 : hands down same as frame 2
     // HeadYaw, HeadPitch
@@ -291,10 +311,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    useAngleAtKeyFrameTarget = true;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     waitForStable = false;
-    hipYawErrorCompensation = 0;
-    waitForTorsoTime = 0;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   {//end
     headAngles = [0deg,0deg];
@@ -304,11 +327,14 @@ keyFrames = [
     duration = 200;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront = 30deg;
+    angleAtKeyFrameErrorBack = 30deg;
     useAngleAtKeyFrameTarget = false;
-    stabilize = false;
-    hipYawErrorCompensation = 0;
-    waitForStable = false;
-    waitForTorsoTime = 0;
-    leavingPossible = true;
+    activateFallDownProtection = false;
+    stabilize = true;
+    waitForStable = true;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   }
 ];

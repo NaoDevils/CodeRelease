@@ -7,11 +7,13 @@
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
+#include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/JointRequest.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/ArmMovement.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
@@ -22,7 +24,7 @@
 
 MODULE(ArmContactProvider,
   USES(ArmMovement),
-  USES(JointRequest),
+  USES(RawJointRequest),
   REQUIRES(BallModelAfterPreview),
   REQUIRES(BallSymbols),
   REQUIRES(FallDownState),
@@ -36,6 +38,8 @@ MODULE(ArmContactProvider,
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(RoleSymbols),
+  REQUIRES(BallChaserDecision),
+  REQUIRES(RobotInfo),
   PROVIDES(ArmContact),
   LOADS_PARAMETERS(,
     (bool)(true) enableAvoidArmContact,

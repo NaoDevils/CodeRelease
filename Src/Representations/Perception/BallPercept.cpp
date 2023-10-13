@@ -9,6 +9,32 @@
 #include "BallPercept.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/Debugging/DebugImages.h"
+
+BallPatch::BallPatch(const CheckedBallSpot& ballSpot, const Image& image, const Vector2i& inputPosition, const Vector2i& inputSize, const Vector2i& outputSize, bool rgb)
+{
+  setPatch(image, inputPosition, inputSize, outputSize, rgb);
+  fromBallSpot(ballSpot);
+}
+
+void BallPatch::fromBallSpot(const CheckedBallSpot& ballSpot)
+{
+  ASSERT(!inputSize.isZero());
+  ASSERT(!outputSize.isZero());
+  this->resizeFactor = static_cast<float>(inputSize.maxCoeff()) / outputSize.maxCoeff();
+  this->centerInPatch = (ballSpot.position - inputPosition).cast<float>() / this->resizeFactor;
+  this->radiusInPatch = ballSpot.radiusInImage / this->resizeFactor;
+  this->validity = ballSpot.validity;
+  this->fromUpper = ballSpot.upper;
+  this->source = ballSpot.source;
+  this->verifier = ballSpot.verifier;
+}
+
+BallPercept::BallPercept(const CheckedBallSpot& ballSpot, unsigned timestamp, const Vector2f& posOnField)
+    : status(BallPercept::Status::seen), timestamp(timestamp), positionInImage(ballSpot.position.cast<float>()), radiusInImage(ballSpot.radiusInImage),
+      relativePositionOnField(posOnField), validity(ballSpot.validity), fromUpper(ballSpot.upper), detectionSource(ballSpot.source), detectionVerifier(ballSpot.verifier)
+{
+}
 
 void BallPercept::draw() const
 {
@@ -27,13 +53,13 @@ void BallPercept::draw() const
 
     switch (detectionSource)
     {
-    case BallPatch::DetectionSource::scanlines:
+    case CheckedBallSpot::DetectionSource::scanlines:
       brushColor = ColorRGBA::red;
       break;
-    case BallPatch::DetectionSource::yoloHypothesis:
+    case CheckedBallSpot::DetectionSource::yoloHypothesis:
       brushColor = ColorRGBA::blue;
       break;
-    case BallPatch::DetectionSource::ballModel:
+    case CheckedBallSpot::DetectionSource::ballModel:
       brushColor = ColorRGBA::violet;
       break;
     }
@@ -41,13 +67,13 @@ void BallPercept::draw() const
 
     switch (detectionVerifier)
     {
-    case BallPatch::DetectionVerifier::scanlinesAndCNN:
+    case CheckedBallSpot::DetectionVerifier::scanlinesAndCNN:
       penColor = ColorRGBA::red;
       break;
-    case BallPatch::DetectionVerifier::ballPositionCNN:
+    case CheckedBallSpot::DetectionVerifier::ballPositionCNN:
       penColor = ColorRGBA::green;
       break;
-    case BallPatch::DetectionVerifier::yolo:
+    case CheckedBallSpot::DetectionVerifier::yolo:
       penColor = ColorRGBA::blue;
       break;
     }
@@ -87,30 +113,32 @@ void BallPercept::draw() const
 
   COMPLEX_IMAGE(BallPerceptPatch)
   {
+    DECLARE_LOCAL_DEBUG_IMAGE(BallPerceptPatch);
+
     ColorRGBA color;
     INIT_DEBUG_IMAGE_BLACK(BallPerceptPatch, CNN_POSITION_SIZE, CNN_POSITION_SIZE);
-    if (!ballPatch.patch.empty() && validity > 0.f)
+    if (!ballPatch.getPatch().empty() && validity > 0.f)
     {
-      ASSERT(ballPatch.patch.size() == (CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3));
+      ASSERT(ballPatch.getPatch().size() == (CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3));
       for (int y = 0; y < CNN_POSITION_SIZE; y++)
       {
         for (int x = 0; x < CNN_POSITION_SIZE; x++)
         {
-          float r = ballPatch.patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 0] * 255.f;
-          float g = ballPatch.patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 1] * 255.f;
-          float b = ballPatch.patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 2] * 255.f;
+          const unsigned char r = ballPatch.getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 0];
+          const unsigned char g = ballPatch.getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 1];
+          const unsigned char b = ballPatch.getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 2];
           if (ballPatch.rgb)
           {
-            DEBUG_IMAGE_SET_PIXEL_RGB(BallPerceptPatch, x, y, static_cast<unsigned char>(r), static_cast<unsigned char>(g), static_cast<unsigned char>(b));
+            DEBUG_IMAGE_SET_PIXEL_RGB(BallPerceptPatch, x, y, r, g, b);
           }
           else
           {
-            DEBUG_IMAGE_SET_PIXEL_YUV(BallPerceptPatch, x, y, static_cast<unsigned char>(r), static_cast<unsigned char>(g), static_cast<unsigned char>(b));
+            DEBUG_IMAGE_SET_PIXEL_YUV(BallPerceptPatch, x, y, r, g, b);
           }
         }
       }
 
-      if (detectionVerifier == BallPatch::DetectionVerifier::ballPositionCNN)
+      if (detectionVerifier == CheckedBallSpot::DetectionVerifier::ballPositionCNN)
       {
         color = ColorRGBA::green;
       }
@@ -154,13 +182,13 @@ void MultipleBallPercept::draw() const
 
       switch (balls[i].detectionSource)
       {
-      case BallPatch::DetectionSource::scanlines:
+      case CheckedBallSpot::DetectionSource::scanlines:
         brushColor = ColorRGBA::red;
         break;
-      case BallPatch::DetectionSource::yoloHypothesis:
+      case CheckedBallSpot::DetectionSource::yoloHypothesis:
         brushColor = ColorRGBA::blue;
         break;
-      case BallPatch::DetectionSource::ballModel:
+      case CheckedBallSpot::DetectionSource::ballModel:
         brushColor = ColorRGBA::violet;
         break;
       }
@@ -168,13 +196,13 @@ void MultipleBallPercept::draw() const
 
       switch (balls[i].detectionVerifier)
       {
-      case BallPatch::DetectionVerifier::scanlinesAndCNN:
+      case CheckedBallSpot::DetectionVerifier::scanlinesAndCNN:
         penColor = ColorRGBA::red;
         break;
-      case BallPatch::DetectionVerifier::ballPositionCNN:
+      case CheckedBallSpot::DetectionVerifier::ballPositionCNN:
         penColor = ColorRGBA::green;
         break;
-      case BallPatch::DetectionVerifier::yolo:
+      case CheckedBallSpot::DetectionVerifier::yolo:
         penColor = ColorRGBA::blue;
         break;
       }
@@ -225,6 +253,8 @@ void MultipleBallPercept::draw() const
 
   COMPLEX_IMAGE(MultipleBallPerceptPatch)
   {
+    DECLARE_LOCAL_DEBUG_IMAGE(MultipleBallPerceptPatch);
+
     ColorRGBA color;
     int n = std::max<int>(1, static_cast<int>(std::ceil(std::sqrt(static_cast<float>(balls.size())))));
     INIT_DEBUG_IMAGE_BLACK(MultipleBallPerceptPatch, n * CNN_POSITION_SIZE + n, n * CNN_POSITION_SIZE + n);
@@ -232,38 +262,28 @@ void MultipleBallPercept::draw() const
     {
       int column = m / n;
       int row = m % n;
-      if (!balls[m].ballPatch.patch.empty())
+      if (!balls[m].ballPatch.getPatch().empty())
       {
-        ASSERT(balls[m].ballPatch.patch.size() == (CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3));
+        ASSERT(balls[m].ballPatch.getPatch().size() == (CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3));
         for (int y = 0; y < CNN_POSITION_SIZE; y++)
         {
           for (int x = 0; x < CNN_POSITION_SIZE; x++)
           {
-            float r = balls[m].ballPatch.patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 0] * 255.f;
-            float g = balls[m].ballPatch.patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 1] * 255.f;
-            float b = balls[m].ballPatch.patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 2] * 255.f;
+            const unsigned char r = balls[m].ballPatch.getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 0];
+            const unsigned char g = balls[m].ballPatch.getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 1];
+            const unsigned char b = balls[m].ballPatch.getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 2];
             if (balls[m].ballPatch.rgb)
             {
-              DEBUG_IMAGE_SET_PIXEL_RGB(MultipleBallPerceptPatch,
-                  x + row * CNN_POSITION_SIZE + row,
-                  y + column * CNN_POSITION_SIZE + column,
-                  static_cast<unsigned char>(r),
-                  static_cast<unsigned char>(g),
-                  static_cast<unsigned char>(b));
+              DEBUG_IMAGE_SET_PIXEL_RGB(MultipleBallPerceptPatch, x + row * CNN_POSITION_SIZE + row, y + column * CNN_POSITION_SIZE + column, r, g, b);
             }
             else
             {
-              DEBUG_IMAGE_SET_PIXEL_YUV(MultipleBallPerceptPatch,
-                  x + row * CNN_POSITION_SIZE + row,
-                  y + column * CNN_POSITION_SIZE + column,
-                  static_cast<unsigned char>(r),
-                  static_cast<unsigned char>(g),
-                  static_cast<unsigned char>(b));
+              DEBUG_IMAGE_SET_PIXEL_YUV(MultipleBallPerceptPatch, x + row * CNN_POSITION_SIZE + row, y + column * CNN_POSITION_SIZE + column, r, g, b);
             }
           }
         }
 
-        if (balls[m].detectionVerifier == BallPatch::DetectionVerifier::ballPositionCNN)
+        if (balls[m].detectionVerifier == CheckedBallSpot::DetectionVerifier::ballPositionCNN)
         {
           color = ColorRGBA::green;
         }
@@ -301,7 +321,8 @@ void ProcessedBallPatches::draw() const
 
   COMPLEX_IMAGE(BallPatches)
   {
-    ColorRGBA color;
+    DECLARE_LOCAL_DEBUG_IMAGE(BallPatches);
+
     int offset = 0;
     int n = std::max<int>(1, static_cast<int>(std::ceil(std::sqrt(static_cast<float>(patches.size())))));
     INIT_DEBUG_IMAGE_BLACK(BallPatches, n * CNN_POSITION_SIZE + n, n * CNN_POSITION_SIZE + n);
@@ -309,45 +330,25 @@ void ProcessedBallPatches::draw() const
     {
       int column = m / n;
       int row = m % n;
-      if (!patches[m].patch.empty())
+      if (!patches[m].getPatch().empty())
       {
-        if (patches[m].verifier == BallPatch::DetectionVerifier::ballPositionCNN)
+        const ColorRGBA color = patches[m].verifier == CheckedBallSpot::DetectionVerifier::ballPositionCNN ? ColorRGBA::green : ColorRGBA::red;
+        offset = 0;
+        ASSERT(patches[m].getPatch().size() == (CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3));
+        for (int y = 0; y < CNN_POSITION_SIZE; y++)
         {
-          color = ColorRGBA::green;
-          offset = 0;
-          ASSERT(patches[m].patch.size() == (CNN_POSITION_SIZE * CNN_POSITION_SIZE * 3));
-          for (int y = 0; y < CNN_POSITION_SIZE; y++)
+          for (int x = 0; x < CNN_POSITION_SIZE; x++)
           {
-            for (int x = 0; x < CNN_POSITION_SIZE; x++)
+            const unsigned char r = patches[m].getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 0];
+            const unsigned char g = patches[m].getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 1];
+            const unsigned char b = patches[m].getPatch()[y * CNN_POSITION_SIZE * 3 + x * 3 + 2];
+            if (patches[m].rgb)
             {
-              float r = patches[m].patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 0] * 255.f;
-              float g = patches[m].patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 1] * 255.f;
-              float b = patches[m].patch[y * CNN_POSITION_SIZE * 3 + x * 3 + 2] * 255.f;
-              if (patches[m].rgb)
-              {
-                DEBUG_IMAGE_SET_PIXEL_RGB(
-                    BallPatches, x + row * CNN_POSITION_SIZE + row, y + column * CNN_POSITION_SIZE + column, static_cast<unsigned char>(r), static_cast<unsigned char>(g), static_cast<unsigned char>(b));
-              }
-              else
-              {
-                DEBUG_IMAGE_SET_PIXEL_YUV(
-                    BallPatches, x + row * CNN_POSITION_SIZE + row, y + column * CNN_POSITION_SIZE + column, static_cast<unsigned char>(r), static_cast<unsigned char>(g), static_cast<unsigned char>(b));
-              }
+              DEBUG_IMAGE_SET_PIXEL_RGB(BallPatches, x + row * CNN_POSITION_SIZE + row, y + column * CNN_POSITION_SIZE + column, r, g, b);
             }
-          }
-        }
-        else
-        {
-          color = ColorRGBA::red;
-          offset = static_cast<int>((CNN_POSITION_SIZE - CNN_SCANLINES_SIZE) / 2.f);
-          ASSERT(patches[m].patch.size() == (CNN_SCANLINES_SIZE * CNN_SCANLINES_SIZE));
-          for (int y = 0; y < CNN_SCANLINES_SIZE; y++)
-          {
-            for (int x = 0; x < CNN_SCANLINES_SIZE; x++)
+            else
             {
-              float intensity = patches[m].patch[y * CNN_SCANLINES_SIZE + x] * 255.f;
-              DEBUG_IMAGE_SET_PIXEL_YUV(
-                  BallPatches, x + offset + row * CNN_POSITION_SIZE + row, y + offset + column * CNN_POSITION_SIZE + column, static_cast<unsigned char>(intensity), 127, 127);
+              DEBUG_IMAGE_SET_PIXEL_YUV(BallPatches, x + row * CNN_POSITION_SIZE + row, y + column * CNN_POSITION_SIZE + column, r, g, b);
             }
           }
         }

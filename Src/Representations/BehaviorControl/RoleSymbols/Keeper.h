@@ -5,14 +5,13 @@
 
 #pragma once
 
-#include "Tools/Streams/Streamable.h"
-#include "Tools/Math/Pose2f.h"
-#include "Tools/Debugging/DebugDrawings.h"
-#include "Tools/Debugging/DebugDrawings3D.h"
+#include "PositioningSymbols.h"
 #include "Representations/MotionControl/KickRequest.h"
 #include "Representations/MotionControl/WalkRequest.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
-
+#include "Tools/Debugging/DebugDrawings.h"
+#include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/Math/Pose2f.h"
+#include "Tools/Streams/Streamable.h"
 
 /**
 * \class Keeper

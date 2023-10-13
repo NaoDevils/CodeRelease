@@ -14,6 +14,7 @@
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/Infrastructure/GameInfo.h"
+#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
@@ -23,6 +24,7 @@
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
+#include "Representations/BehaviorControl/TacticSymbols.h"
 
 STREAMABLE(TimeToBallParams,
   ENUM(TimeToBallCalculationType,
@@ -31,7 +33,6 @@ STREAMABLE(TimeToBallParams,
     path,
     distanceAndPosition
   ),
-  (bool)(true) useDistanceBasedDecision,
   (bool)(true) usePredictedBallPosition,
   (TimeToBallCalculationType)(distance) type,
   (float)(5.f) isBallMineHysteresisFactor,
@@ -52,7 +53,8 @@ STREAMABLE(TimeToBallParams,
   (float)(4000.f) distancePenaltyBallBehindRobotFullDistance,
   (float)(1.f) targetDistanceRobotRotFactor,
   (float)(3.f) penaltyBallBehindFactorOwnGroundline,
-  (float)(1.f) penaltyBallBehindFactorOpponentGroundline
+  (float)(1.f) penaltyBallBehindFactorOpponentGroundline,
+  (float)(1000.f) keeperPenaltyDuringOwnGoalKick
 );
 
 MODULE(BallChaserDecisionProvider,
@@ -68,15 +70,16 @@ MODULE(BallChaserDecisionProvider,
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(FallDownState),
   REQUIRES(FrameInfo),
+  REQUIRES(OwnTeamInfo),
   USES(RoleSymbols),
+  REQUIRES(TacticSymbols),
   PROVIDES(BallChaserDecision),
   LOADS_PARAMETERS(,
     (TimeToBallParams) timeToBallParams,
     (bool)(false) useLocalBallModelForDecision,
     (bool)(true) useLocalBallModelWhenNear,
-    (float)(700.f) useLocalBallModelWhenDifferenceGreater,
-    (float)(2000.f) useLocalBallModelBelowDistance,
-    (float)(100.f) maxSpeedToBeBallChaserKeeper //[mm/s]
+    (float)(1000.f) maxBallDistanceForLocalDecision,
+    (float)(750.f) maxBallDistanceForTeammateToBeNear
   )
 );
 
@@ -93,6 +96,8 @@ public:
 private:
   /** Main update funtion, called every frame. */
   void update(BallChaserDecision& ballChaserDecision);
+
+  void decideLocal(BallChaserDecision& ballChaserDecision);
 
   /** Update member variable isBallBehindPosition[]. */
   void updateBallBehindMe();
@@ -115,10 +120,10 @@ private:
   int calcBallChaserNumber(BallChaserDecision& ballChaserDecision, bool useLocalBallModelForDecision);
 
   /** Calculates the distance to the ball for all teammates. */
-  float getDistanceToBallForMate(Teammate mate, bool useLocalBallModelForDecision, Vector2f localBallPosition);
+  float getDistanceToBallForMate(const TeammateReceived& mate, bool useLocalBallModelForDecision, Vector2f localBallPosition);
 
   /** Calculates distance between a player to a position (here the ball position). */
-  float calcDistanceToBall(const Pose2f& fromPose, const Pose2f& targetOnField, int playerNumber, bool wasBallChaser, bool upright, bool notSeen);
+  float calcDistanceToBall(const Pose2f& fromPose, const Pose2f& targetOnField, int playerNumber, bool wasBallChaser, bool upright, bool notSeen, unsigned timeSinceLastUpdate);
 
   /** Calculates a distance penalty based on the rotation difference between two poses. */
   float getRotationPenalty(const Pose2f& fromPose, const Pose2f& targetOnField);
@@ -128,11 +133,6 @@ private:
 
   /** Calculates a distance penalty based on the current situation of the robot. */
   float getStatusPenalty(const Pose2f& fromPose, const Pose2f& targetOnField, int playerNumber, bool wasBallChaser, bool upright, bool notSeen);
-
-  /** Checks if the teams decision should be ignored in favor of the robot's local decision. */
-  bool useLocalDecision(BallChaserDecision& ballChaserDecision, Vector2f remoteDecisionBallPos);
-  /** Checks if any other team member wants to overwrite ball chaser decision. */
-  bool doMatesIgnoreRemoteDecision(BallChaserDecision& ballChaserDecision);
 
   // member variables
   // ----------------

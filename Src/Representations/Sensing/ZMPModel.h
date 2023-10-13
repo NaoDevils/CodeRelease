@@ -19,6 +19,7 @@
  * Contains information about ZMP.
  */
 STREAMABLE(ZMPModel,,
-  (Vector3f)(Vector3f::Zero()) zmp_acc, //ZMP
-  (Vector3f)(Vector3f::Zero()) ZMP_WCS // ZMP in Walking Engine World Coordinate System
+  (Vector2f)(Vector2f::Zero()) ZMP_FCS, // ZMP in Foot Coordinate System
+  (Vector3f)(Vector3f::Zero()) ZMP_RCS, // ZMP in Robot Coordinate System
+  (Vector3f)(Vector3f::Zero()) ZMP_WCS  // ZMP in Walking Engine World Coordinate System
 );

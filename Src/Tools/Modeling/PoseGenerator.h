@@ -94,12 +94,12 @@ public:
         // case: between pc and center circle
         if (distToPC < myDistToLine && distToPC > 0)
         {
-          position.translation.x() = fd.xPosOwnGoalArea + myDistToLine;
+          position.translation.x() = fd.xPosOwnGoalArea - myDistToLine;
         }
         // case: between pc and line
         else
         {
-          position.translation.x() = fd.xPosOwnGoalArea + myDistToLine;
+          position.translation.x() = fd.xPosOwnGoalArea - myDistToLine;
           Vector2f temp = position.translation;
           temp.x() += 2 * myDistToLine;
           if (std::abs((position.translation - pcWC).norm() - myDistToPC) > std::abs((temp - pcWC).norm() - myDistToPC))

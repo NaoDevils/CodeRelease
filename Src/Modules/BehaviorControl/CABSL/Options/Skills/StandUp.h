@@ -1,7 +1,29 @@
 /** This option lets the robot stand up when it has fallen down. */
 option(StandUp)
 {
-  initial_state(lying)
+  initial_state(falling)
+  {
+    transition
+    {
+      if (theFallDownState.state == FallDownState::flying)
+      {
+        goto standing;
+      }
+      else if (theFallDownState.standUpOnlyWhenLyingStill)
+      {
+        if (theFallDownState.state == FallDownState::onGroundLyingStill)
+          goto lying;
+      }
+      else
+      {
+        if (theFallDownState.state == FallDownState::onGround)
+          goto lying;
+      }
+    }
+    action {}
+  }
+
+  state(lying)
   {
     transition
     {
@@ -9,6 +31,8 @@ option(StandUp)
         goto lyingOnBack;
       else if (theFallDownState.direction == FallDownState::front)
         goto lyingOnFront;
+      else if (theMotionRequest.GoalieIsDiving && (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right))
+        goto lyingOnSideGoalie;
       else if (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right)
         goto lyingOnSide;
       else
@@ -28,12 +52,8 @@ option(StandUp)
     }
     action
     {
-      if (!theMotionState.standUpStatus.standUp[theMotionSettings.standUpMotionBack])
-        SpecialAction(theMotionSettings.standUpMotionBack, false);
-      else if (!theMotionState.standUpStatus.standUp[theMotionSettings.standUpMotionBackSafe])
-        SpecialAction(theMotionSettings.standUpMotionBackSafe, false);
-      else
-        SpecialAction(theMotionSettings.standUpMotionBackSafest, false);
+      theMotionRequest.GoalieIsDiving = false;
+      SpecialAction(theMotionState.standUpStatus.bestStandUpMotionBack, false);
     }
   }
 
@@ -48,12 +68,8 @@ option(StandUp)
     }
     action
     {
-      if (!theMotionState.standUpStatus.standUp[theMotionSettings.standUpMotionFront])
-        SpecialAction(theMotionSettings.standUpMotionFront, false);
-      else if (!theMotionState.standUpStatus.standUp[theMotionSettings.standUpMotionFrontSafe])
-        SpecialAction(theMotionSettings.standUpMotionFrontSafe, false);
-      else
-        SpecialAction(theMotionSettings.standUpMotionFrontSafest, false);
+      theMotionRequest.GoalieIsDiving = false;
+      SpecialAction(theMotionState.standUpStatus.bestStandUpMotionFront, false);
     }
   }
 
@@ -81,6 +97,30 @@ option(StandUp)
     }
   }
 
+  state(lyingOnSideGoalie)
+  {
+    transition
+    {
+      if (state_time > 3000) // TODO: check this
+      {
+        goto lying;
+      }
+      if (state_time > 1000)
+      {
+        if (theFallDownState.direction == FallDownState::back)
+          goto lyingOnBack;
+        else if (theFallDownState.direction == FallDownState::front)
+          goto lyingOnFront;
+        else if (theFallDownState.state == FallDownState::upright)
+          goto standing_up;
+      }
+    }
+    action
+    {
+      SpecialAction(SpecialActionRequest::standUpSideNaoGoalie, theFallDownState.direction == FallDownState::right);
+    }
+  }
+
   state(standing_up)
   {
     transition
@@ -94,32 +134,33 @@ option(StandUp)
         else if (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right)
           goto lyingOnSide;
       }
-      else if (theMotionInfo.motion == MotionRequest::walk)
+      else if (theSpecialActionsOutput.isFallProtectionNeeded)
+        goto falling;
+      else
         goto standing;
     }
-    action
-    {
-      Walk(WalkRequest::speed, 0, 0, 0);
-    }
+    action {}
   }
 
   target_state(standing)
   {
     transition
     {
-      if (theMotionInfo.motion != MotionRequest::specialAction && theFallDownState.state == FallDownState::onGround)
+      if (theFallDownState.state != FallDownState::flying)
       {
-        if (theFallDownState.direction == FallDownState::back)
-          goto lyingOnBack;
-        else if (theFallDownState.direction == FallDownState::front)
-          goto lyingOnFront;
-        else if (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right)
-          goto lyingOnSide;
+        if (theMotionInfo.motion != MotionRequest::specialAction && theFallDownState.state == FallDownState::onGround)
+        {
+          if (theFallDownState.direction == FallDownState::back)
+            goto lyingOnBack;
+          else if (theFallDownState.direction == FallDownState::front)
+            goto lyingOnFront;
+          else if (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right)
+            goto lyingOnSide;
+        }
+        else if (theSpecialActionsOutput.isFallProtectionNeeded)
+          goto falling;
       }
     }
-    action
-    {
-      Walk(WalkRequest::speed, 0, 0, 0);
-    }
+    action {}
   }
 }

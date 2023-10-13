@@ -1,5 +1,7 @@
 //copy from stand
 keyFrameID = standHigh;
+initialKeyFrame = true;
+nextKeyFrameID = none;
 YstabilizationP = 0.1;
 YstabilizationI = 0;
 YstabilizationD = -0.02;
@@ -8,19 +10,22 @@ XstabilizationI = 0;
 XstabilizationD = 0;
 keyFrames = [
   {
-    headAngles = [20000,20000];
+    headAngles = [0deg,20000];
     armsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
     legsAngles = [20000,20000,20000,20000,20000,20000, 20000,20000,20000,20000,20000,20000];
     stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 100,100,100,100,100,100, 100,100,100,100,100,100];
     duration = 400;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   {
     headAngles = [20000,20000];
@@ -30,12 +35,15 @@ keyFrames = [
     duration = 1000;
     intType = sine;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   {
     headAngles = [20000,20000];
@@ -45,11 +53,14 @@ keyFrames = [
     duration = 100;
     intType = sine;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = true;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   }
 ];

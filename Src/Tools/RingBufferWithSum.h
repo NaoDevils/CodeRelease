@@ -248,6 +248,7 @@ template <typename T, std::size_t n> float RingBufferWithSum<T, n>::averagef() c
     return sum() / static_cast<float>(RingBuffer<T, n>::size());
 }
 
+
 #ifdef WINDOWS
 #pragma warning(pop)
 #elif defined __clang__

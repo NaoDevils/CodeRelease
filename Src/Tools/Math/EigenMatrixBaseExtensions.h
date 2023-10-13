@@ -1,5 +1,9 @@
 //Do NOT directly include this file, instead include "Tools/Math/Eigen.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 inline PlainObject& normalize(RealScalar l)
 {
   const RealScalar vl = norm();
@@ -75,5 +79,10 @@ RealScalar angleTo(const MatrixBase<Derived>& other) const
   EIGEN_STATIC_ASSERT_VECTOR_ONLY(Derived);
   const RealScalar normProd = derived().norm() * other.norm();
   ASSERT(normProd != 0.f);
-  return normProd == RealScalar(0.f) ? RealScalar(0.f) : std::acos(derived().dot(other) / normProd);
+  float normedDotProduct = derived().dot(other) / normProd;
+  if (normedDotProduct >= 1) // deals with floatingpoint imprecision
+    return RealScalar(0.f);
+  if (normedDotProduct <= -1)
+    return RealScalar(M_PI);
+  return normProd == RealScalar(0.f) ? RealScalar(0.f) : std::acos(normedDotProduct);
 }

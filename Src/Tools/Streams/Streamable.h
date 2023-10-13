@@ -12,6 +12,8 @@
 #include <typeinfo>
 #include <vector>
 #include <array>
+#include <limits>
+#include <cmath>
 #include "InOut.h"
 
 #define STREAM_REGISTER_FINISH Streaming::finishRegistration();
@@ -371,8 +373,8 @@ namespace Streaming
         *in >> size;
         // This is not a very clean solution, but it fixes streaming arrays with different sizes.
         streamStaticArray(*in, s.data(), std::min<size_t>(n, size) * sizeof(E), enumToString);
-        if (n > size)
-          in->skip((n - size) * sizeof(E));
+        if (size > n && in->isBinary())
+          in->skip((size - n) * sizeof(E));
         in->deselect();
       }
       else

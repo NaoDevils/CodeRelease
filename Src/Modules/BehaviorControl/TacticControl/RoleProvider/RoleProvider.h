@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Representations/BehaviorControl/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include <Representations/BehaviorControl/BallSymbols.h>
+#include <Representations/BehaviorControl/GameSymbols.h>
+#include <Representations/Infrastructure/GameInfo.h>
 #include <optional>
 #include <stdexcept>
-#include <Representations/BehaviorControl/BallSymbols.h>
-#include <Representations/Infrastructure/GameInfo.h>
-#include <Representations/BehaviorControl/GameSymbols.h>
 
 template <class PS> class RoleProvider
 {
@@ -17,6 +17,8 @@ protected:
   // START :: COPY THESE TO CREATE A NEW ROLE ==========================================================================
   // Some of these methods return a float: These are the seconds for which the method continues to get executed after
   // the setPlay finishes
+  virtual void stateInitial_kickOff_own(PS& positioningSymbols, const Vector2f& ballPosition) { stateReady_kickOff_own(positioningSymbols, ballPosition); }
+  virtual void stateInitial_kickOff_opponent(PS& positioningSymbols, const Vector2f& ballPosition) { stateReady_kickOff_opponent(positioningSymbols, ballPosition); }
   virtual void stateReady_kickOff_own(PS& positioningSymbols, const Vector2f& ballPosition) = 0;
   virtual void stateReady_kickOff_opponent(PS& positioningSymbols, const Vector2f& ballPosition) = 0;
   virtual void statePlaying_kickOff_own(PS& positioningSymbols, const Vector2f& ballPosition) { stateReady_kickOff_own(positioningSymbols, ballPosition); }
@@ -72,9 +74,26 @@ protected:
       switch (theGameInfo.state)
       {
       case STATE_INITIAL:
-        stateInitial(positioningSymbols);
-        positioningSymbols.log_currState = "STATE_INITIAL";
+      {
+        bool stop = stateInitial(positioningSymbols);
+        if (stop)
+        {
+          positioningSymbols.log_currState = "STATE_INITIAL";
+          return;
+        }
+
+        if (theGameSymbols.ownKickOff)
+        {
+          stateInitial_kickOff_own(positioningSymbols, Vector2f::Zero());
+          positioningSymbols.log_currState = "STATE_INITIAL stateInitial_kickOff_own";
+        }
+        else
+        {
+          stateInitial_kickOff_opponent(positioningSymbols, Vector2f::Zero());
+          positioningSymbols.log_currState = "STATE_INITIAL stateInitial_kickOff_opponent";
+        }
         return;
+      }
       case STATE_READY:
       {
         bool stop = stateReady(positioningSymbols);
@@ -135,7 +154,7 @@ protected:
           return;
         }
 
-        if (theGameSymbols.kickoffInProgress && theGameSymbols.timeSincePlayingState < 10000)
+        if (theGameSymbols.kickoffInProgress && theGameSymbols.timeSincePlayingState < 10000 && theGameInfo.setPlay == SET_PLAY_NONE) // TODO KickOff time constant
         {
           if (theGameSymbols.ownKickOff)
           {
@@ -243,7 +262,7 @@ protected:
   // START :: STATE METHODS ============================================================================================
   // Executed for the specified state. If true is returned no other method for this state will get called (e.g. if
   // statePlaying returns true the regularPlay method won't get called). These methods should not be needed.
-  virtual void stateInitial(PS& positioningSymbols) {}
+  virtual bool stateInitial(PS& positioningSymbols) { return false; }
   virtual bool stateReady(PS& positioningSymbols) { return false; }
   virtual void stateSet(PS& positioningSymbols) {}
   virtual bool statePlaying(PS& positioningSymbols) { return false; }

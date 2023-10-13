@@ -4,11 +4,11 @@
 */
 
 #pragma once
-#include "Tools/Streams/Streamable.h"
-#include "Tools/Math/Pose2f.h"
+#include "PositioningSymbols.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
+#include "Tools/Math/Pose2f.h"
+#include "Tools/Streams/Streamable.h"
 
 /**
 * \class DefenderSingle

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Representations/BehaviorControl/PositioningSymbols.h>
+#include <Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h>
 
 class ThresholdUtils
 {
@@ -29,6 +29,15 @@ public:
     positioningSymbols.thresholdY = 250.f;
   }
 
+  static void setThreshholdsExtremeHeigh(PositioningSymbols& positioningSymbols, const float activity)
+  {
+    positioningSymbols.thresholdRotation = 15_deg + (1 - activity) * 30_deg;
+    const float threshold = 500.f + (1 - activity) * 2000.f;
+    positioningSymbols.thresholdXBack = threshold;
+    positioningSymbols.thresholdXFront = threshold;
+    positioningSymbols.thresholdY = threshold;
+  }
+
   static void setThreshholdsCustom(PositioningSymbols& positioningSymbols, Angle threshRot, float threshXBack, float threshXFront, float threshY)
   {
     positioningSymbols.thresholdRotation = threshRot;
@@ -37,19 +46,27 @@ public:
     positioningSymbols.thresholdY = threshY;
   }
 
-  static void setThresholdsForAnyKick(Ballchaser& ballchaser)
+  static void setThresholdsForAnyKick(PositioningAndKickSymbols& pakSymbols)
   {
-    ballchaser.thresholdXFront = 50.f;
-    ballchaser.thresholdXBack = 200.f;
-    ballchaser.thresholdY = 150.f;
-    ballchaser.thresholdRotation = 30_deg;
+    pakSymbols.thresholdXFront = 100.f; // 50.f; // todo changed for gore2023 in commit "higher any kick thresholds"
+    pakSymbols.thresholdXBack = 300.f; // 200.f;
+    pakSymbols.thresholdY = 200.f; // 150.f;
+    pakSymbols.thresholdRotation = 40_deg; // 30_deg;
   }
 
-  static void setThresholdsForLongKick(Ballchaser& ballchaser)
+  static void setThresholdsForDribble(PositioningAndKickSymbols& pakSymbols)
   {
-    ballchaser.thresholdXFront = 20.f; // TODO Should bespecified somewhere in the kick
-    ballchaser.thresholdXBack = 30.f;
-    ballchaser.thresholdY = 15.f;
-    ballchaser.thresholdRotation = 5_deg;
+    pakSymbols.thresholdXFront = 200.f;
+    pakSymbols.thresholdXBack = 300.f;
+    pakSymbols.thresholdY = 100.f;
+    pakSymbols.thresholdRotation = 10_deg;
+  }
+
+  static void setThresholdsForLongKick(PositioningAndKickSymbols& pakSymbols)
+  {
+    pakSymbols.thresholdXFront = 20.f; // TODO Should bespecified somewhere in the kick
+    pakSymbols.thresholdXBack = 30.f;
+    pakSymbols.thresholdY = 15.f;
+    pakSymbols.thresholdRotation = 5_deg;
   }
 };

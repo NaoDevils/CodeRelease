@@ -1,0 +1,26 @@
+vd representation:WalkCalibration
+vd parameters:AutoCalibrator 
+
+##########################
+# Auto Calibration Plots #
+##########################
+vp CoPError.x 249 -0.071 0.03
+vpd CoPError.x module:AutoCalibrator:coPError.x green
+
+vp CoPError.y 249 -0.03 0.03
+vpd CoPError.y module:AutoCalibrator:coPError.y red
+
+vp bodyGravityError 249 -0.01 0.01
+vpd bodyGravityError module:AutoCalibrator:bodyGravityError.x green
+
+vp gyroVariance 249 -0.01 0.01
+vpd gyroVariance module:AutoCalibrator:gyroVariance green
+vpd gyroVariance module:AutoCalibrator:gyroThreshold red
+
+#########
+# Echos #
+#########
+echo dr module:AutoCalibrator:resetCalibration
+echo dr module:AutoCalibrator:calibrateBodyAngle
+echo dr module:AutoCalibrator:calibrateWalk
+echo dr module:AutoCalibrator:saveCalibration

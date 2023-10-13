@@ -38,7 +38,7 @@ copy()
   REMOTE=$1
   PLAYER=$2
 
-  if [ ! -z $PLAYER ] && ( (( $PLAYER < 1 )) || (( $PLAYER > 6 )) ); then
+  if [ ! -z $PLAYER ] && (( $PLAYER < 1 )); then
     echo "Error: Player number is $PLAYER!"
     exit 1
   fi

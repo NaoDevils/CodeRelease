@@ -4,9 +4,9 @@
 */
 
 #pragma once
-#include "Tools/Streams/Streamable.h"
+#include "PositioningSymbols.h"
 #include "Tools/Math/Pose2f.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
+#include "Tools/Streams/Streamable.h"
 
 /**
 * \class Receiver

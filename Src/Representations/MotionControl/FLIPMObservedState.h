@@ -11,6 +11,6 @@
 
 STREAMABLE(FLIPMObservedState,,
   (Vector3f)(Vector3f::Zero()) actualAcc,
-  (TranslationPoint) actualCoM_IMU,
-  (TranslationPoint) actualCoM_MRE
+  (Vector3f)(Vector3f::Zero()) actualCoM_IMU,
+  (Vector3f)(Vector3f::Zero()) actualCoM_MRE
 );

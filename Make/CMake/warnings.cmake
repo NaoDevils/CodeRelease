@@ -20,6 +20,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_compile_options(
-        /W3     # warnings level 3
+        /W4     # warnings level 4
+        /wd4100 # unreferenced formal parameter
+        /wd4458 # declaration of 'x' hides class member
     )
 endif()

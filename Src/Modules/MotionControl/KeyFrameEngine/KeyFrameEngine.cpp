@@ -2,6 +2,8 @@
  * @file KeyFrameEngine.cpp
  * This file declares a module that handles key frame motions.
  * @author <a href="ingmar.schwarz@tu-dortmund.de">Ingmar Schwarz</a>
+ * @author Diana Kleingarn
+ * @author Dominik Brämer
  */
 
 #include "KeyFrameEngine.h"
@@ -47,8 +49,6 @@ void KeyFrameMotion::KeyFrame::mirror()
     m(rightArm + i);
   }
 
-  m(leftLeg + 0); // hipYawPitch
-  m(rightLeg + 0); // hipYawPitch
   m(leftLeg + 1); // hipRoll
   m(rightLeg + 1); // hipRoll
   m(leftLeg + 5); // ankleRoll
@@ -80,6 +80,7 @@ void KeyFrameEngine::initEngineData(SpecialActionsOutput& specialActionsOutput)
   for (int i = 0; i < Joints::numOfJoints; i++)
     specialActionsOutput.angles[i] = theJointSensorData.angles[i];
   specialActionsOutput.isLeavingPossible = true;
+  specialActionsOutput.isMotionFinished = false;
   specialActionsOutput.stiffnessData.stiffnesses = defaultStiffnesses;
   ASSERT(specialActionsOutput.isValid());
 
@@ -112,6 +113,14 @@ void KeyFrameEngine::initEngineData(SpecialActionsOutput& specialActionsOutput)
 void KeyFrameEngine::update(SpecialActionsOutput& specialActionsOutput)
 {
   DECLARE_PLOT("module:KeyFrameEngine:hipYawPitchError");
+  DECLARE_PLOT("module:KeyFrameEngine:realAngleError");
+  DECLARE_PLOT("module:KeyFrameEngine:setAngleErrorFront");
+  DECLARE_PLOT("module:KeyFrameEngine:setAngleErrorBack");
+  DECLARE_PLOT("module:KeyFrameEngine:targetAngle");
+  DECLARE_PLOT("module:KeyFrameEngine:currentAngle");
+  DECLARE_PLOT("module:KeyFrameEngine:desiredGyroY");
+  DECLARE_PLOT("module:KeyFrameEngine:torsoY");
+  DECLARE_PLOT("module:KeyFrameEngine:error");
 
   MODIFY("module:KeyFrameEngine:debugMode", debugMode);
   bool playNextFrameInDebugMode = false;
@@ -155,107 +164,113 @@ void KeyFrameEngine::update(SpecialActionsOutput& specialActionsOutput)
   hipYawBuffer.push_front(specialActionsOutput.angles[Joints::lHipYawPitch]);
   lAnkleRollBuffer.push_front(specialActionsOutput.angles[Joints::lAnkleRoll]);
   rAnkleRollBuffer.push_front(specialActionsOutput.angles[Joints::rAnkleRoll]);
+
+  handleInitialFallDownProtection();
+
+  if (theFallDownState.state == FallDownState::upright)
+    prevFlying = false;
+
   if (!initialized)
   {
     init(specialActionsOutput);
   }
-  else if (theMotionSelection.ratios[MotionRequest::specialAction] < 1.f)
+  else if (!areMotionsPrioritized() && theMotionSelection.ratios[MotionRequest::specialAction] < 1.f)
   {
     if (!engineDataReset || theMotionSelection.ratios[MotionRequest::specialAction] == 0.f)
       initEngineData(specialActionsOutput);
   }
   else
   {
-    if (theMotionRequest.motion != MotionRequest::specialAction
-        && (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::playDead))
-    {
-      initEngineData(specialActionsOutput);
-      selectActiveMotion(SpecialActionRequest::stand, false, specialActionsOutput);
-      phase = 0.f;
-    }
-    //else
-    {
-      specialActionsOutput.isLeavingPossible = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).leavingPossible;
-      specialActionsOutput.isMotionStable = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID != SpecialActionRequest::playDead
-          && (specialActionsOutput.isLeavingPossible || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown
-              || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::penaltyGoaliePrepareDive)
-          && isStable() && std::abs(angleYBuffer.average()) < 15_deg && std::abs(theJoinedIMUData.imuData[anglesource].angle.x()) < 15_deg;
-      //keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).leavingPossible&& phase == 1.f;
-      specialActionsOutput.executedSpecialAction.specialAction = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID;
-      specialActionsOutput.executedSpecialAction.mirror = currentKeyFrameMirror;
+    // Set the right special actions which are needed to get the right transitions between special action and behavior
+    handleTransitions(specialActionsOutput);
 
-      if (specialActionsOutput.isLeavingPossible && theMotionRequest.motion != MotionRequest::specialAction)
+    if (prevFlying)
+      return;
+
+    // Update specialActionsOutput
+    specialActionsOutput.isLeavingPossible = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).leavingPossible;
+    specialActionsOutput.isMotionStable = isMotionStable(specialActionsOutput);
+    specialActionsOutput.executedSpecialAction.specialAction = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID;
+    specialActionsOutput.executedSpecialAction.mirror = currentKeyFrameMirror;
+
+    // Abort keyframe motion if leaving is possible and the current motion request is not a special action
+    if (specialActionsOutput.isLeavingPossible && theMotionSelection.targetMotion != MotionRequest::specialAction)
+      return;
+
+    // Prevent damage of stucked arms by pause the current keyframe for maxWaitForArms milliseconds
+    if (prevArmsStuck && theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) < maxWaitForArmsTime)
+      return;
+    else if (prevArmsStuck && theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) >= maxWaitForArmsTime)
+      prevArmsStuck = false;
+
+    // interpolate returns true if phase >= 1.f, i.e. single keyFrame was executed
+    if (interpolate(specialActionsOutput) && (!debugMode || playNextFrameInDebugMode))
+    {
+      // check if robots joints and upper body are ok after interpolation, otherwise cancel motion
+      if (!verifyRobotPosition(specialActionsOutput) && !debugModeForWalkingCalibration)
       {
+        // handles the fall down protection between two key frames
+        // TODO implement fall down protection while interpolating
+        KeyFrameMotion::KeyFrame& currentKeyFrame = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex);
+        lastFinishedKeyFrameIndex = currentKeyFrameIndex;
+        lastFinishedKeyFrameMotionIndex = currentKeyFrameMotionIndex;
+
+        specialActionsOutput.isFallProtectionNeeded = true;
+        specialActionsOutput.isMotionFinished = true;
+        chooseFallDownProtection(currentKeyFrame.fallDownProtection, currentKeyFrame.holdFallDownProtection, currentKeyFrame.activateFallDownProtection);
         return;
       }
 
-      // interpolate returns true if phase >= 1.f, i.e. single keyFrame was executed
-      if (interpolate(specialActionsOutput) && (!debugMode || playNextFrameInDebugMode) && waitForTorso())
+      // Update last finished key frame index and las finished key frame motion index
+      if (lastFinishedKeyFrameIndex != currentKeyFrameIndex || lastFinishedKeyFrameMotionIndex != currentKeyFrameMotionIndex)
       {
-        keyFrameFinishedTimestamp = theFrameInfo.time;
+        lastFinishedKeyFrameIndex = currentKeyFrameIndex;
+        lastFinishedKeyFrameMotionIndex = currentKeyFrameMotionIndex;
+      }
 
-        // check if robots joints and upper body are ok after interpolation, otherwise cancel motion
-        // TODO Ingmar 12.10.2019: verify if this actually works
-        // TODO Janine 13.10.2019: it does not work
-        if (!verifyRobotPosition(specialActionsOutput))
+      // Pauses keyframe for stabilization
+      if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).waitForStable
+          && theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) < maxWaitForStableTime && !isStable())
+        return;
+
+      // Pauses keyframe if robot gets disturbed
+      if (armsStuck() && !prevArmsStuck && !debugModeForWalkingCalibration && useStuckArmsDetection)
+      {
+        prevArmsStuck = true;
+        return;
+      }
+
+      // Set current frame as originFrame for possible transition to next motion!
+      originFrame = getKeyFrameFromJointRequest(specialActionsOutput);
+
+      phase = 0.f; // reset phase
+      currentKeyFrameIndex++; // next keyFrame
+      keyFrameFinishedTimestamp = theFrameInfo.time;
+      // check if we are finished with the motion. if yes we can leave or run the next or repeat the last output forever
+      if (currentKeyFrameIndex >= static_cast<int>(keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.size()))
+      {
+        if (!areMotionsPrioritized() && keyFrameMotions.at(currentKeyFrameMotionIndex).nextKeyFrameID != SpecialActionRequest::none)
         {
-          lastFinishedKeyFrameIndex = currentKeyFrameIndex;
-          lastFinishedKeyFrameMotionIndex = currentKeyFrameMotionIndex;
-          selectActiveMotion(SpecialActionRequest::playDead, false, specialActionsOutput);
-          phase = 0.f;
-          return;
+          selectActiveMotion(keyFrameMotions.at(currentKeyFrameMotionIndex).nextKeyFrameID, false, specialActionsOutput);
         }
-        if (lastFinishedKeyFrameIndex != currentKeyFrameIndex || lastFinishedKeyFrameMotionIndex != currentKeyFrameMotionIndex)
+        else if (!areMotionsPrioritized() && initialKeyFrameMotionID != theMotionSelection.specialActionRequest.specialAction && theMotionSelection.targetMotion == MotionRequest::specialAction) // next motion is selected
         {
-          lastFinishedKeyFrameIndex = currentKeyFrameIndex;
-          lastFinishedKeyFrameMotionIndex = currentKeyFrameMotionIndex;
+          selectActiveMotion(theMotionSelection.specialActionRequest.specialAction, theMotionSelection.specialActionRequest.mirror, specialActionsOutput);
         }
-        if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).waitForStable
-            && theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) < maxWaitForStableTime && !isStable())
-          return;
-
-        // Set current frame as originFrame for possible transition to next motion!
-        originFrame = getKeyFrameFromJointRequest(specialActionsOutput);
-
-        phase = 0.f; // reset phase
-        currentKeyFrameIndex++; // next keyFrame
-        // check if we are finished with the motion. if yes we can leave or run the next or repeat the last output forever
-        if (currentKeyFrameIndex >= static_cast<int>(keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.size()))
+        else // same motion, repeat the finished interpolate with phase = 1.f
         {
-          if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID != theMotionSelection.specialActionRequest.specialAction && theMotionSelection.targetMotion == MotionRequest::specialAction) // next motion is selected
-          {
-            selectActiveMotion(theMotionSelection.specialActionRequest.specialAction, theMotionSelection.specialActionRequest.mirror, specialActionsOutput);
-          }
-          else // same motion, repeat the finished interpolate with phase = 1.f
-          {
-            currentKeyFrameIndex = (int)keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.size() - 1;
-            phase = 1.f;
-          }
+          if (!specialActionsOutput.isMotionFinished)
+            keyFrameMotionFinishedTimestamp = theFrameInfo.time;
+          currentKeyFrameIndex = (int)keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.size() - 1;
+          specialActionsOutput.isMotionFinished = true;
+          phase = 1.f;
+          stabilize(specialActionsOutput);
         }
       }
-      stabilize(specialActionsOutput);
-      compensateHipYawPitchError(specialActionsOutput, keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrames.at(currentKeyFrameIndex).hipYawErrorCompensation);
     }
+
     engineDataReset = false;
   }
-
-  currentJointAngleID++;
-  currentJointAngleID = currentJointAngleID % 5;
-  for (int j = 0; j < Joints::numOfJoints; j++)
-    jointAngleBuffer[currentJointAngleID].angles[j] = specialActionsOutput.angles[j];
-}
-
-bool KeyFrameEngine::waitForTorso()
-{
-  KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
-  KeyFrameMotion::KeyFrame& currentKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex);
-  Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.y();
-  if (keyFrameWasFinished)
-  {
-    keyFrameFinishedTimestamp = theFrameInfo.time;
-    keyFrameWasFinished = false;
-  }
-  return currentKeyFrame.waitForTorsoTime <= theFrameInfo.getTimeSince(keyFrameFinishedTimestamp) || std::abs(currentAngle) <= std::abs(currentKeyFrame.angleAtKeyFrameTarget);
 }
 
 bool KeyFrameEngine::interpolate(SpecialActionsOutput& specialActionsOutput)
@@ -266,6 +281,14 @@ bool KeyFrameEngine::interpolate(SpecialActionsOutput& specialActionsOutput)
     return true;
   KeyFrameMotion& currentKeyFrameMotion = keyFrameMotions.at(currentKeyFrameMotionIndex);
   KeyFrameMotion::KeyFrame currentKeyFrame = currentKeyFrameMotion.keyFrames.at(currentKeyFrameIndex);
+
+  if (!areMotionsPrioritized() && theFallDownState.state == FallDownState::falling)
+  {
+    specialActionsOutput.isFallProtectionNeeded = true;
+    specialActionsOutput.isMotionFinished = true;
+    chooseFallDownProtection(currentKeyFrame.fallDownProtection, currentKeyFrame.holdFallDownProtection, currentKeyFrame.activateFallDownProtection);
+  }
+
   if (currentKeyFrameMirror)
     currentKeyFrame.mirror();
 
@@ -313,7 +336,15 @@ bool KeyFrameEngine::interpolate(SpecialActionsOutput& specialActionsOutput)
     else if (currentKeyFrame.legsAngles[i - Joints::lHipYawPitch] == JointAngles::ignore)
       currentRequest.angles[i] = JointAngles::ignore;
     else
+    {
       currentRequest.angles[i] = currentKeyFrame.legsAngles[i - Joints::lHipYawPitch] * ratio + lastKeyFrame.legsAngles[i - Joints::lHipYawPitch] * (1.f - ratio);
+      float angleChange = (lastKeyFrame.legsAngles[i - Joints::lHipYawPitch] - currentKeyFrame.legsAngles[i - Joints::lHipYawPitch])
+          * ((1000.f / currentKeyFrame.duration) * theFrameInfo.cycleTime);
+      if (angleChange > degPerFrame[i])
+        if (textOutput == true)
+          OUTPUT_TEXT("Angle increment for joint"
+              << i << " is greater than allowed in step" << currentKeyFrameIndex << " in KeyFrameMotion " << keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID);
+    }
   }
 
   // do not use playDead stiffnesses when transitioning to another motion
@@ -321,7 +352,7 @@ bool KeyFrameEngine::interpolate(SpecialActionsOutput& specialActionsOutput)
   {
     for (int i = 0; i < Joints::numOfJoints; i++)
     {
-      if (currentKeyFrame.stiffnesses[i] > 0 && currentKeyFrame.stiffnesses[i] <= 100)
+      if (!areMotionsPrioritized() && currentKeyFrame.stiffnesses[i] > 0 && currentKeyFrame.stiffnesses[i] <= 100)
         currentRequest.stiffnessData.stiffnesses[i] =
             std::min(currentRequest.stiffnessData.stiffnesses[i] + 10, std::max(specialActionsOutput.stiffnessData.stiffnesses[i] - 10, currentKeyFrame.stiffnesses[i]));
       else
@@ -331,6 +362,14 @@ bool KeyFrameEngine::interpolate(SpecialActionsOutput& specialActionsOutput)
 
   specialActionsOutput.angles = currentRequest.angles;
   specialActionsOutput.stiffnessData = currentRequest.stiffnessData;
+
+  // Use stabilization to correct interpolated values
+  currentJointAngleID++;
+  currentJointAngleID = currentJointAngleID % 5;
+  for (int j = 0; j < Joints::numOfJoints; j++)
+    jointAngleBuffer[currentJointAngleID].angles[j] = specialActionsOutput.angles[j];
+
+  stabilize(specialActionsOutput);
 
   // check if interpolation is done
   if (phase >= 1.f)
@@ -376,25 +415,30 @@ void KeyFrameEngine::stabilize(SpecialActionsOutput& specialActionsOutput)
   //Y - using body angle and desired gyro for stabilization
   {
     Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.y();
-    Angle error = (1 - gyroToAngleRatio) * (desiredStance.limbs[Limbs::torso].rotation.getYAngle() - currentAngle) + gyroToAngleRatio * (desiredGyroY - gyroYBuffer.average());
+    Angle error = desiredStance.limbs[Limbs::torso].rotation.getYAngle() - currentAngle;
     if (error > maxAngleDifference)
       error = maxAngleDifference;
     if (error < -maxAngleDifference)
       error = -maxAngleDifference;
     Angle controlledCorrection = currentKeyFrameMotion.YstabilizationP * error + currentKeyFrameMotion.YstabilizationI * errorSumY + currentKeyFrameMotion.YstabilizationD * (lastErrorY - error);
-
+    PLOT("module:KeyFrameEngine:error", error.toDegrees());
+    PLOT("module:KeyFrameEngine:desiredGyroY", desiredGyroY.toDegrees());
+    Angle torsoY = desiredStance.limbs[Limbs::torso].rotation.getYAngle();
+    PLOT("module:KeyFrameEngine:torsoY", torsoY.toDegrees());
     // TODO: verify if this makes sense
-    Angle anklePitchCorrected = specialActionsOutput.angles[Joints::lAnklePitch] - ankleInfluence * controlledCorrection;
-    if (anklePitchCorrected > minAnklePitchAngle)
+    if ((error < theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0]) || (error > theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1]))
     {
-      specialActionsOutput.angles[Joints::lHipPitch] -= hipInfluence * controlledCorrection;
-      specialActionsOutput.angles[Joints::rHipPitch] -= hipInfluence * controlledCorrection;
+      if (currentAngle < theWalkingEngineParams.walkTransition.fallDownAngleFront && currentAngle > theWalkingEngineParams.walkTransition.fallDownAngleBack)
+      {
+        specialActionsOutput.angles[Joints::lHipPitch] += hipInfluence * controlledCorrection;
+        specialActionsOutput.angles[Joints::rHipPitch] += hipInfluence * controlledCorrection;
 
-      specialActionsOutput.angles[Joints::lKneePitch] += kneeInfluence * controlledCorrection;
-      specialActionsOutput.angles[Joints::rKneePitch] += kneeInfluence * controlledCorrection;
+        specialActionsOutput.angles[Joints::lKneePitch] += kneeInfluence * controlledCorrection;
+        specialActionsOutput.angles[Joints::rKneePitch] += kneeInfluence * controlledCorrection;
 
-      specialActionsOutput.angles[Joints::lAnklePitch] = anklePitchCorrected;
-      specialActionsOutput.angles[Joints::rAnklePitch] -= ankleInfluence * controlledCorrection;
+        specialActionsOutput.angles[Joints::lAnklePitch] += ankleInfluence * controlledCorrection;
+        specialActionsOutput.angles[Joints::rAnklePitch] += ankleInfluence * controlledCorrection;
+      }
     }
 
     lastErrorY = error;
@@ -408,7 +452,7 @@ void KeyFrameEngine::stabilize(SpecialActionsOutput& specialActionsOutput)
     float footZDiff = theRobotModel.soleLeft.translation.z() - theRobotModel.soleRight.translation.z();
 
     Angle desiredAngle = footZDiff > 0 ? desiredStance.limbs[Limbs::footLeft].rotation.getXAngle() : desiredStance.limbs[Limbs::footRight].rotation.getXAngle();
-    Angle error = (1.f - gyroToAngleRatio) * (currentAngle - desiredAngle) + gyroToAngleRatio * gyroXBuffer.average();
+    Angle error = desiredAngle - currentAngle;
     if (error > maxAngleDifference)
       error = maxAngleDifference;
     if (error < -maxAngleDifference)
@@ -433,25 +477,22 @@ void KeyFrameEngine::stabilize(SpecialActionsOutput& specialActionsOutput)
   }
 }
 
-void KeyFrameEngine::compensateHipYawPitchError(SpecialActionsOutput& specialActionsOutput, const float factor)
-{
-  if (useHipYawCorrection && specialActionsOutput.angles[Joints::lHipYawPitch] <= theJointCalibration.joints[Joints::lHipYawPitch].maxAngle
-      && specialActionsOutput.angles[Joints::lHipYawPitch] >= theJointCalibration.joints[Joints::lHipYawPitch].minAngle)
-  {
-    Angle hipYawError = hipYawBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1] - theJointSensorData.angles[Joints::lHipYawPitch];
-    specialActionsOutput.angles[Joints::lHipPitch] = std::max(
-        std::min<Angle>(theJointCalibration.joints[Joints::lHipPitch].maxAngle, specialActionsOutput.angles[Joints::lHipPitch] + hipYawError * factor),
-        theJointCalibration.joints[Joints::lHipPitch].minAngle);
-    specialActionsOutput.angles[Joints::rHipPitch] = std::max(
-        std::min<Angle>(theJointCalibration.joints[Joints::rHipPitch].maxAngle, specialActionsOutput.angles[Joints::rHipPitch] + hipYawError * factor),
-        theJointCalibration.joints[Joints::rHipPitch].minAngle);
-  }
-  PLOT("module:KeyFrameEngine:hipYawPitchError", hipYawBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1] - theJointSensorData.angles[Joints::lHipYawPitch]);
-}
-
 bool KeyFrameEngine::isStable()
 {
-  return std::abs(gyroYBuffer.average()) < maxAvgGyroForStable;
+  return std::abs(gyroYBuffer.average()) < maxAvgGyroForStable && std::abs(theJoinedIMUData.imuData[anglesource].angle.x()) < maxAngleXForStable;
+}
+
+bool KeyFrameEngine::armsStuck()
+{
+  if (theFallDownState.state == FallDownState::onGround && !areMotionsPrioritized()
+      && (std::abs(theJointError.angles[Joints::lShoulderRoll]) > maxArmError || std::abs(theJointError.angles[Joints::rShoulderRoll]) > maxArmError)
+      && std::abs(theJoinedIMUData.imuData[anglesource].angle.y()) > (bodyAngleOnGround - angleDiffOnGround)
+      && std::abs(theJoinedIMUData.imuData[anglesource].angle.y()) < (bodyAngleOnGround + angleDiffOnGround))
+  {
+    return true;
+  }
+
+  return false;
 }
 
 std::vector<KeyFrameMotion> KeyFrameEngine::loadKeyFrameMotions()
@@ -459,6 +500,8 @@ std::vector<KeyFrameMotion> KeyFrameEngine::loadKeyFrameMotions()
   std::vector<KeyFrameMotion> keyFrameMotions;
   for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
   {
+    if ((SpecialActionRequest::SpecialActionID)i == SpecialActionRequest::none)
+      continue;
     std::string name = SpecialActionRequest::getName((SpecialActionRequest::SpecialActionID)i);
     std::string path = std::string(File::getBHDir()) + "/Config/KeyFrameEngine/" + name + ".kfm";
     InMapFile stream(path);
@@ -495,8 +538,49 @@ void KeyFrameEngine::selectActiveMotion(SpecialActionRequest::SpecialActionID id
   else
     selectActiveMotion(defaultMotion, mirror, specialActionsOutput);
   specialActionsOutput.executedSpecialAction.mirror = mirror;
+  specialActionsOutput.isMotionFinished = false;
   currentKeyFrameIndex = 0;
   currentKeyFrameMirror = mirror;
+  prevArmsStuck = false;
+}
+
+bool KeyFrameEngine::areMotionsPrioritized()
+{
+  return !specialActionIDQueue.empty() && !specialActionMirrorQueue.empty();
+}
+
+void KeyFrameEngine::priorizeMotion(SpecialActionRequest::SpecialActionID id, bool mirror, unsigned timer)
+{
+  specialActionIDQueue.push(id);
+  specialActionMirrorQueue.push(mirror);
+  specialActionTimerQueue.push(timer);
+}
+
+void KeyFrameEngine::clearPrioritizedMotions()
+{
+  while (!specialActionIDQueue.empty())
+    specialActionIDQueue.pop();
+  while (!specialActionMirrorQueue.empty())
+    specialActionMirrorQueue.pop();
+  while (!specialActionTimerQueue.empty())
+    specialActionTimerQueue.pop();
+}
+
+void KeyFrameEngine::selectPrioritizedMotion(SpecialActionsOutput& specialActionsOutput)
+{
+  if (currentKeyFrameMotionIndex != specialActionIDQueue.front())
+  {
+    initEngineData(specialActionsOutput);
+    selectActiveMotion(specialActionIDQueue.front(), specialActionMirrorQueue.front(), specialActionsOutput);
+    phase = 0.f;
+  }
+
+  if (specialActionsOutput.isMotionFinished && theFrameInfo.getTimeSince(keyFrameMotionFinishedTimestamp) >= (int)specialActionTimerQueue.front())
+  {
+    specialActionIDQueue.pop();
+    specialActionMirrorQueue.pop();
+    specialActionTimerQueue.pop();
+  }
 }
 
 KeyFrameMotion::KeyFrame KeyFrameEngine::setKeyFrameAngles(const KeyFrameMotion::KeyFrame& keyFrame)
@@ -528,9 +612,33 @@ bool KeyFrameEngine::verifyRobotPosition(SpecialActionsOutput& specialActionsOut
   Angle currentAngle = theJoinedIMUData.imuData[anglesource].angle.y();
   // check if sensor y angle of upper body is too different from intended angle for this key frame
 
-  if (currentKeyFrame.useAngleAtKeyFrameTarget && std::abs(currentAngle - currentKeyFrame.angleAtKeyFrameTarget) > maxAngleDifference)
+  if (currentKeyFrame.useAngleAtKeyFrameTarget)
   {
-    return false;
+    PLOT("module:KeyFrameEngine:realAngleError", (currentAngle.toDegrees() - currentKeyFrame.angleAtKeyFrameTarget.toDegrees()));
+    PLOT("module:KeyFrameEngine:setAngleErrorFront", currentKeyFrame.angleAtKeyFrameErrorFront.toDegrees());
+    PLOT("module:KeyFrameEngine:setAngleErrorBack", -currentKeyFrame.angleAtKeyFrameErrorBack.toDegrees());
+  }
+  else
+  {
+    PLOT("module:KeyFrameEngine:realAngleError", 0);
+    PLOT("module:KeyFrameEngine:setAngleErrorFront", 0);
+    PLOT("module:KeyFrameEngine:setAngleErrorBack", 0);
+  }
+  PLOT("module:KeyFrameEngine:targetAngle", currentKeyFrame.angleAtKeyFrameTarget.toDegrees());
+  PLOT("module:KeyFrameEngine:currentAngle", currentAngle.toDegrees());
+
+  if (currentKeyFrame.useAngleAtKeyFrameTarget)
+  {
+    if ((currentAngle - currentKeyFrame.angleAtKeyFrameTarget) < 0)
+    {
+      if (std::abs(currentAngle - currentKeyFrame.angleAtKeyFrameTarget) > currentKeyFrame.angleAtKeyFrameErrorBack)
+        return false;
+    }
+    else
+    {
+      if (std::abs(currentAngle - currentKeyFrame.angleAtKeyFrameTarget) > currentKeyFrame.angleAtKeyFrameErrorFront)
+        return false;
+    }
   }
   Angle maxArmAngleDiff = 0_deg;
   Angle maxLegAngleDiff = 0_deg;
@@ -538,9 +646,97 @@ bool KeyFrameEngine::verifyRobotPosition(SpecialActionsOutput& specialActionsOut
     maxArmAngleDiff = std::max<Angle>(maxArmAngleDiff, std::abs(specialActionsOutput.angles[i] - theJointSensorData.angles[i]));
   for (int i = Joints::lHipYawPitch; i < Joints::numOfJoints; i++)
     maxLegAngleDiff = std::max<Angle>(maxLegAngleDiff, std::abs(specialActionsOutput.angles[i] - theJointSensorData.angles[i]));
-  //if (maxArmAngleDiff > 30_deg || maxLegAngleDiff > 30_deg) // arm or leg might have started in wrong/strange position so that key frame was not reachable
-  //  return false;
   return true;
+}
+
+bool KeyFrameEngine::isMotionStable(SpecialActionsOutput& specialActionsOutput)
+{
+  return keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID != SpecialActionRequest::playDead
+      && (specialActionsOutput.isLeavingPossible || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown
+          || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::penaltyGoaliePrepareDive)
+      && isStable();
+  ;
+}
+
+void KeyFrameEngine::handleTransitions(SpecialActionsOutput& specialActionsOutput)
+{
+  if (theMotionRequest.motion != MotionRequest::specialAction
+      && (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown || keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::playDead)
+      && theFallDownState.state == FallDownState::upright)
+  {
+    initEngineData(specialActionsOutput);
+    selectActiveMotion(SpecialActionRequest::stand, false, specialActionsOutput);
+    phase = 0.f;
+  }
+
+  if (!prevFlying && theFallDownState.state == FallDownState::flying)
+  {
+    clearPrioritizedMotions();
+
+    if (initialKeyFrameMotionID != SpecialActionRequest::sitDown)
+    {
+      initEngineData(specialActionsOutput);
+      selectActiveMotion(SpecialActionRequest::stand, false, specialActionsOutput);
+    }
+
+    specialActionsOutput.isFallProtectionNeeded = false;
+    prevFlying = true;
+  }
+  if (resetFallDownProtectionNeeded(specialActionsOutput))
+  {
+    initEngineData(specialActionsOutput);
+    specialActionsOutput.isFallProtectionNeeded = false;
+    selectActiveMotion(SpecialActionRequest::lying, false, specialActionsOutput);
+    phase = 0.f;
+  }
+  if (areMotionsPrioritized())
+    selectPrioritizedMotion(specialActionsOutput);
+
+  if (keyFrameMotions.at(currentKeyFrameMotionIndex).initialKeyFrame && !areMotionsPrioritized())
+    initialKeyFrameMotionID = keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID;
+}
+
+bool KeyFrameEngine::resetFallDownProtectionNeeded(SpecialActionsOutput& specialActionsOutput)
+{
+  return specialActionsOutput.isFallProtectionNeeded && (theFallDownState.state == FallDownState::onGround || theFallDownState.state == FallDownState::onGroundLyingStill);
+}
+
+void KeyFrameEngine::handleInitialFallDownProtection()
+{
+  if (!theMotionRequest.inStandUpMotion() && !initialFallDownProtectionActive && theFallDownState.state == FallDownState::falling)
+  {
+    chooseFallDownProtection(SpecialActionRequest::none, 0, true);
+    initialFallDownProtectionActive = true;
+  }
+  else if (theFallDownState.state == FallDownState::upright || theFallDownState.state == FallDownState::flying)
+  {
+    initialFallDownProtectionActive = false;
+  }
+}
+
+void KeyFrameEngine::chooseFallDownProtection(SpecialActionRequest::SpecialActionID id, unsigned timer, bool advancedProtection)
+{
+  if (keyFrameMotions.at(currentKeyFrameMotionIndex).keyFrameID == SpecialActionRequest::sitDown)
+    return;
+
+  if (advancedProtection)
+  {
+    if (id == SpecialActionRequest::none)
+    {
+      if (theFallDownState.direction == FallDownState::front)
+        priorizeMotion(SpecialActionRequest::saveFallFront, false, saveFallFrontTime);
+      else if (theFallDownState.direction == FallDownState::back)
+        priorizeMotion(SpecialActionRequest::saveFallBack, false, saveFallBackTime);
+      else
+        priorizeMotion(SpecialActionRequest::saveFall, false, saveFallTime);
+
+      priorizeMotion(SpecialActionRequest::lying, false, lyingTime);
+    }
+    else
+    {
+      priorizeMotion(id, false, timer);
+    }
+  }
 }
 
 KeyFrameMotion::KeyFrame KeyFrameEngine::getKeyFrameFromJointRequest(const JointRequest& jointRequest)

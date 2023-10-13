@@ -543,10 +543,10 @@ bool FieldDimensions::LinesTable::getClosestPoint(Vector2f& vMin, const Pose2f& 
     numberOfRotations = 4;
 
   // target angle -> target index
-  float r = p.rotation / pi2 * numberOfRotations + 0.5f;
-  if (r < 0)
-    r += numberOfRotations;
-  int targetRot = int(r);
+  float targetR = p.rotation / pi2 * numberOfRotations + 0.5f;
+  if (targetR < 0)
+    targetR += numberOfRotations;
+  int targetRot = int(targetR);
   ASSERT(targetRot >= 0 && targetRot < numberOfRotations);
   targetRot %= trueNumberOfRotations;
   Vector2f v2;

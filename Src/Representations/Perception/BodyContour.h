@@ -117,7 +117,7 @@ STREAMABLE(BodyContour,
    * Returns the y coordinate of the highest visible point.
    * @return
    */
-  int getMaxY() const;
+  int getMaxY(const CameraInfo& cameraInfo) const;
 
   /**
    * Returns false if the given point is inside the bodycontour, true if not
@@ -128,8 +128,7 @@ STREAMABLE(BodyContour,
   /** Creates drawings of the contour. */
   void draw() const,
 
-  (std::vector<Line>) lines, /**< The clipping lines. */
-  (Vector2i) cameraResolution /**< Only for drawing. */
+  (std::vector<Line>) lines /**< The clipping lines. */
 );
 
 struct BodyContourUpper : public BodyContour

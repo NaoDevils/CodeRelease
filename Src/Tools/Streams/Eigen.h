@@ -72,7 +72,7 @@ Out& operator<<(Out& stream, const Eigen::Matrix<T, ROWS, COLS, OPTIONS, MAX_ROW
   static_assert(ROWS == MAX_ROWS && COLS == MAX_COLS, "Setting _MaxRows or _MaxCols is not supported yet");
 
   STREAM_REGISTER_BEGIN_EXT(matrix);
-  if (OPTIONS & Eigen::RowMajor)
+  if constexpr (OPTIONS & Eigen::RowMajor)
   {
     EigenMatrixRow<T, COLS>(*const rows)[ROWS] = (EigenMatrixRow<T, COLS>(*const)[ROWS])matrix.data();
     STREAM_EXT(stream, rows);
@@ -254,7 +254,7 @@ template <typename T, int ROWS, int COLS, int OPTIONS, int MAX_ROWS, int MAX_COL
   static_assert(ROWS == MAX_ROWS && COLS == MAX_COLS, "Setting _MaxRows or _MaxCols is not supported yet");
 
   STREAM_REGISTER_BEGIN_EXT(matrix);
-  if (OPTIONS & Eigen::RowMajor)
+  if constexpr (OPTIONS & Eigen::RowMajor)
   {
     EigenMatrixRow<T, COLS>(*rows)[ROWS] = (EigenMatrixRow<T, COLS>(*)[ROWS])matrix.data();
     STREAM_EXT(stream, rows);

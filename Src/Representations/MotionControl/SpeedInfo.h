@@ -9,6 +9,7 @@
 #include "Representations/MotionControl/WalkRequest.h"
 #ifndef WALKING_SIMULATOR
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Streams/Compressed.h"
 #else
 #include "bhumanstub.h"
 #endif
@@ -36,24 +37,16 @@ STREAMABLE(SpeedInfo,,
 );
 
 STREAMABLE(SpeedInfoCompressed,
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 0;
+
   SpeedInfoCompressed() = default;
-  SpeedInfoCompressed(const SpeedInfo& other)
+  explicit SpeedInfoCompressed(const SpeedInfo& other)
+   : speed(other.speed)
   {
-    translation = other.speed.translation.cast<short>();
-    rotation = static_cast<unsigned char>((other.speed.rotation + pi) / pi2 * std::numeric_limits<unsigned char>::max());
-    currentCustomStep = other.currentCustomStep;
+    // Convert to mm
+    speed.translation *= 1000.f;
   }
-
-  operator SpeedInfo() const
-  {
-    SpeedInfo info;
-    info.speed.translation = translation.cast<float>();
-    info.speed.rotation = static_cast<float>(rotation) / pi2 - pi;
-    info.currentCustomStep = currentCustomStep;
-    return info;
-  },
-
-  (Vector2s) translation,
-  (unsigned char)(0) rotation,
-  ((WalkRequest) StepRequest)(WalkRequest::none) currentCustomStep
+  ,
+  (Pose2fCompressed) speed
 );

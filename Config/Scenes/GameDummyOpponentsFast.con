@@ -1,6 +1,7 @@
 call Includes/Fast
 
 dr debugDrawing3d:representation:RobotPose
+call Includes/Behavior3D
 
 set threads:cognition:config numWorkers = 1;
 set threads:motion:config numWorkers = 1;

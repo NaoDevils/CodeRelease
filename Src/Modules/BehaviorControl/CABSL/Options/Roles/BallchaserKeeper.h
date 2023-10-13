@@ -31,7 +31,7 @@ option(BallchaserKeeper)
       theBehaviorData.soccerState = BehaviorData::controlBall;
       // walk to the ball and kick it if its in a critical position
       if (gotoFieldCoordinatesFinished && theBallSymbols.ballWasSeen)
-        WalkKick(theKeeper.optKickTarget, WalkRequest::any);
+        WalkKick(theKeeper.optKickTarget, theKeeper.optPosition, WalkRequest::any);
     }
   }
 

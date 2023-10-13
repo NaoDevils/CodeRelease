@@ -1,4 +1,6 @@
 keyFrameID = wideStanceWithStandUp;
+initialKeyFrame = true;
+nextKeyFrameID = none;
 YstabilizationP = 0.1;
 YstabilizationI = 0;
 YstabilizationD = -0.02;
@@ -14,12 +16,15 @@ keyFrames = [
     duration = 200;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // endposition
     headAngles = [0,30deg];
@@ -29,12 +34,15 @@ keyFrames = [
     duration = 150;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // hold endposition for 1 sec; todo: leave this if robot is not stable!
     headAngles = [0,30deg];
@@ -44,12 +52,15 @@ keyFrames = [
     duration = 1000;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // begin stand up
     headAngles = [0,30deg];
@@ -59,12 +70,15 @@ keyFrames = [
     duration = 500;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // pull legs in
     headAngles = [0,30deg];
@@ -74,12 +88,15 @@ keyFrames = [
     duration = 300;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // lean on left leg
     headAngles = [0,30deg];
@@ -89,12 +106,15 @@ keyFrames = [
     duration = 500;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // lean on left leg copy, todo: use waitForStable instead
     headAngles = [0,30deg];
@@ -104,12 +124,15 @@ keyFrames = [
     duration = 100;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // lean on left leg #2, stretch right leg
     headAngles = [0,30deg];
@@ -119,12 +142,15 @@ keyFrames = [
     duration = 500;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // pull right leg in, legs together a little
     headAngles = [0,30deg];
@@ -134,12 +160,15 @@ keyFrames = [
     duration = 500;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // pull right leg in, legs together a little
     headAngles = [0,30deg];
@@ -149,12 +178,15 @@ keyFrames = [
     duration = 550;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // legs together, sitting pose
     headAngles = [0,30deg];
@@ -164,12 +196,15 @@ keyFrames = [
     duration = 350;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // wait for 250 ms, todo: replace with waitForStable
     headAngles = [0,30deg];
@@ -179,12 +214,15 @@ keyFrames = [
     duration = 350;
     intType = linear;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
     stabilize = false;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   },
   { // stand up copy. was different in mof!!
     headAngles = [0,20deg];
@@ -194,11 +232,14 @@ keyFrames = [
     duration = 600;
     intType = sine;
     angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
     useAngleAtKeyFrameTarget = true;
+    activateFallDownProtection = false;
     stabilize = true;
-    hipYawErrorCompensation = 0;
     waitForStable = false;
-    waitForTorsoTime = 0;
     leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
   }
 ];

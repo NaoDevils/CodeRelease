@@ -55,17 +55,12 @@ MODULE(RoleSelectionProvider,
   REQUIRES(TacticSymbols),
   REQUIRES(TeammateData),
   PROVIDES(RoleSelection),
-  LOADS_PARAMETERS(,
+  LOADS_PARAMETERS(
+    ,
     (bool)(true) forceReceiverOnOwnKickoff,
     (bool)(true) enableReplacementKeeper,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionDefensive1,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionOffensive1,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionDefensive2,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionOffensive2,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionDefensive3,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionOffensive3,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionDefensive4,
-    ((BehaviorData) RobotRoleAssignmentVector) selectionOffensive4
+    (std::array<RoleSelection, MAX_NUM_PLAYERS-1>) defensive,
+    (std::array<RoleSelection, MAX_NUM_PLAYERS-1>) offensive
   )
 );
 
@@ -77,14 +72,14 @@ class RoleSelectionProvider : public RoleSelectionProviderBase
 {
 public:
   /** Constructor */
-  RoleSelectionProvider() { inOwnKickoffSituation = false; }
+  RoleSelectionProvider();
 
 private:
   /** Updates some of the symbols */
   void update(RoleSelection& roleSelection);
 
   /** Take the fundamental role selection from the config based on various factors*/
-  BehaviorData::RobotRoleAssignmentVector makeFundamentalSelection(int numberOfFieldPlayers, bool defensiveBehavior);
+  RoleSelection makeFundamentalSelection(int numberOfFieldPlayers, bool defensiveBehavior);
 
   /** Removes a role from the role selection and replaces it with another. */
   bool substituteRoles(BehaviorData::RoleAssignment toReplace, BehaviorData::RoleAssignment substitute, BehaviorData::RobotRoleAssignmentVector& roleSelection);
@@ -111,5 +106,5 @@ private:
   void deployReceiverInKickoff(RoleSelection& roleSelection);
 
   // vvv--- Attributes used to keep track of calculation results over several frames. ---vvv
-  bool inOwnKickoffSituation;
+  bool inOwnKickoffSituation = false;
 };

@@ -14,7 +14,7 @@
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "SimulatedRobot.h"
 
@@ -35,7 +35,7 @@ private:
   FsrSensorData fsrSensorData; /**< The simulated inertia sensor data sent to the robot code. */
   JointSensorData jointSensorData; /**< The simulated joint measurements sent to the robot code. */
   InertialSensorData inertialSensorData; /**< The simulated inertia sensor data sent to the robot code. */
-  UsSensorData usSensorData; /**< The simulated sonar sensor data sent to the robot code. */
+  SonarSensorData sonarSensorData; /**< The simulated sonar sensor data sent to the robot code. */
   Pose2f robotPose = Pose2f(); /**< The robot's pose, used for some internal computations. */
   GroundTruthWorldState worldState; /**< The current world state of the simulation scene, sent to the robot code. */
   GroundTruthOdometryData odometryData; /**< The simulated odometry data sent to the robot code. */

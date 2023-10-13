@@ -22,13 +22,16 @@ namespace Joints
     rElbowRoll,
     rWristYaw,
     rHand, ///< not an Angle, instead %
-    lHipYawPitch,
+    firstLegJoint,
+    firstLeftLegJoint = firstLegJoint,
+    lHipYawPitch=firstLeftLegJoint,
     lHipRoll,
     lHipPitch,
     lKneePitch,
     lAnklePitch,
     lAnkleRoll,
-    rHipYawPitch, ///< not a joint in the real nao
+    firstRightLegJoint,
+    rHipYawPitch=firstRightLegJoint, ///< not a joint in the real nao
     rHipRoll,
     rHipPitch,
     rKneePitch,

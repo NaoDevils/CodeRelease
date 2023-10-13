@@ -7,7 +7,6 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
-#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Perception/CameraMatrix.h"
@@ -57,23 +56,19 @@ MODULE(YoloRobotDetector,
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
-  REQUIRES(FieldColors),
-  REQUIRES(FieldColorsUpper),
   REQUIRES(FallDownState),
   REQUIRES(KeySymbols),
   REQUIRES(FrameInfo),
   REQUIRES(FieldDimensions),
-  REQUIRES(OwnTeamInfo),
-  REQUIRES(OpponentTeamInfo),
   //USES(RobotPose),
 
   PROVIDES_CONCURRENT_WITHOUT_MODIFY(YoloInputUpper),
   PROVIDES_CONCURRENT_WITHOUT_MODIFY(YoloInput),
 
-  PROVIDES_CONCURRENT(RobotsPerceptUpper),
-  PROVIDES_CONCURRENT(RobotsPercept),
+  PROVIDES_CONCURRENT(RobotsHypothesesYolo),
+  PROVIDES_CONCURRENT(RobotsHypothesesYoloUpper),
   PROVIDES_CONCURRENT(BallHypothesesYolo),
-  PROVIDES_CONCURRENT(PenaltyCrossHypothesesYolo),
+  PROVIDES_CONCURRENT(PrePenaltyCrossHypothesesYolo),
   HAS_PREEXECUTION,
 
   LOADS_PARAMETERS(,
@@ -81,7 +76,10 @@ MODULE(YoloRobotDetector,
     (float)(0.01f) lowerBallThreshold,
     (float)(0.5f) lowerPenaltyCrossThreshold,
     (float)(0.3f) lowerNMSThreshold,
+    (bool)(true) skipRobotNMS,
     (bool)(false) useLowerYoloHeight,
+    (float)(20.f) xOffset,
+    (bool)(true) useXOffset,
 
     (float)(0.3f) upperRobotThreshold,
     (float)(0.01f) upperBallThreshold,
@@ -89,24 +87,7 @@ MODULE(YoloRobotDetector,
     (float)(0.3f) upperNMSThreshold,
     (bool)(false) useUpperYoloHeight,
 
-    (float)(0.3f) robotClassifierThreshold,
-    (int)(2) robotClassifierMargin,
-    (bool)(true) robotClassifierProject,
-
-    (bool)(true) useTFlite,
-
-    (float)(2.5f) upperFractionOfEstimate,
-    (int)(20) gridSampleSize,
-    (float)(350.f) maxColorDistance,
-    (float)(0.1f) minColorConfidence,
-    (float)(.1f) greySaturationMax,
-    (float)(.25f) blackLightnessMax,
-    (float)(.75f) whiteLightnessMin,
-    (float)(0.1f) minAssignedPixelsPercentage,
-    (float)(.05f) randRadiusPercentage,
-    (bool)(true) showAmplifiedColor,
-    (bool)(true) showAssignmentInfo,
-    (bool)(false) acceptBlackOpponent
+    (bool)(true) useTFlite
   )
 );
 
@@ -166,21 +147,19 @@ public:
   YoloRobotDetector();
 
   void execute(tf::Subflow& subflow);
-  void update(RobotsPerceptUpper& theRobotsPerceptUpper);
-  void update(RobotsPercept& theRobotsPercept);
+  void update(RobotsHypothesesYolo& theRobotsHypothesesYolo);
+  void update(RobotsHypothesesYoloUpper& theRobotsHypothesesYoloUpper);
   void update(YoloInputUpper& theYoloInputUpper);
   void update(YoloInput& theYoloInput);
   void update(BallHypothesesYolo& theBallHypothesesYolo);
-  void update(PenaltyCrossHypothesesYolo& thePenaltyCrossHypothesesYolo);
+  void update(PrePenaltyCrossHypothesesYolo& thePrePenaltyCrossHypothesesYolo);
   void execute(const bool& upper);
   void reset(const bool& upper);
 
   std::unique_ptr<tflite::Interpreter> interpreter;
-  std::unique_ptr<tflite::Interpreter> class_interpreter;
 
 private:
   std::unique_ptr<tflite::FlatBufferModel> model;
-  std::unique_ptr<tflite::FlatBufferModel> class_model;
   tflite::ops::builtin::BuiltinOpResolver resolver;
   int input_tensor, output_tensor;
 
@@ -189,11 +168,11 @@ private:
   YoloParameter yoloParameter;
   YoloParameter yoloParameterUpper;
 
-  RobotsPercept localRobotsPercept;
-  RobotsPerceptUpper localRobotsPerceptUpper;
+  RobotsHypothesesYolo localRobotsPerceptYolo;
+  RobotsHypothesesYoloUpper localRobotsPerceptYoloUpper;
 
   BallHypothesesYolo localBallHypotheses;
-  PenaltyCrossHypothesesYolo localPenaltyCrossHypotheses;
+  PrePenaltyCrossHypothesesYolo localPenaltyCrossHypotheses;
 
   std::vector<YoloDetection> detectionVectorUpper;
   std::vector<YoloDetection> detectionVector;
@@ -203,27 +182,6 @@ private:
 #ifdef NO_HORIZON
   std::vector<int> yIdxs;
 #endif
-
-  void class_init();
-
-  /* Run the classifier net on an estimate and return true, if classified as correct detection.
-   * Update the estimates confidence
-   */
-  bool class_checkEstimate(const Image&, RobotEstimate&);
-
-  ColorRGBA ownColor, oppColor;
-  std::map<int, ColorRGBA> teamColorMap{
-      {0, ColorRGBA::cyan},
-      {1, ColorRGBA::red},
-      {2, ColorRGBA::yellow},
-      {3, ColorRGBA::black},
-      {4, ColorRGBA::white},
-      {5, ColorRGBA::darkgreen},
-      {6, ColorRGBA::orange},
-      {7, ColorRGBA::purple},
-      {8, ColorRGBA::brown},
-      {9, ColorRGBA::gray},
-  };
 
   float iou(YoloRegionBox& box1, YoloRegionBox& box2, int heigth, int width);
 
@@ -236,37 +194,7 @@ private:
   /* Collect all boxes that have high enough confidence score */
   void generateNetworkBoxes(int relative, std::vector<YoloDetection>& localDetectionVector, YoloResult& yoloResult, const bool& upper);
 
-  float colorDistance(unsigned char& r1, unsigned char& r2, unsigned char& g1, unsigned char& g2, unsigned char& b1, unsigned char& b2);
-
-  float colorDistanceHsl(short int& h1, float& s1, float& l1, short int& h2, float& s2, float& l2);
-
-  Vector2f getInitialCheckpoint(int upperLeftX, int upperLeftY, int lowerRightX, int lowerRightY, int& gridSampleSize, float& xInterval, float& yInterval);
-
-  void transferEstimateToUpper(RobotEstimate& re, int& upperLeftX, int& upperLeftY, int& lowerRightX, int& lowerRightY);
-  /*
-   Scans the upper part of the given RobotEstimate in a randomly shifted grid and determines, given some threshholds, to which team most sampled pixels belong.
-   If not enough pixels can be assigned confidently, the RobotType is unknown.
-   The meaning of the debug colors is as follows:
-     white: not sampled
-     darkgreen: sampled but seen as fieldcolor
-     black: sampled but not assigned
-     green: sampled, own team pixel
-     red: sampled, opponent team pixel
-     magenta: sampled, color but not assigned tue to low confidence
-   The meaning of the amplified colors is as follows:
-     white: not amplified
-     gray: white color
-     else: the amplified color from that pixel
-  */
-  void updateRobotColor(RobotEstimate& re);
-  bool isGray(short int& pH, float& pS, float& pL);
-  bool isWhite(short int& pH, float& pS, float& pL);
-  bool isBlack(short int& pH, float& pS, float& pL);
-
-  void assignPixel(const RobotEstimate& re, Vector2f& checkPoint, short& ownH, float& ownS, float& ownL, short& oppH, float& oppS, float& oppL, int& numOwnColor, int& numOppColor, int& debugPixelSize);
-
   void addObstacleFromBumpers();
 
-  void setRobotColorFromGC();
   void calcImageCoords(RobotEstimate& robot, bool upper);
 };

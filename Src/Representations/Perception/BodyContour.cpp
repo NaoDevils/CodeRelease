@@ -8,6 +8,8 @@
 #include "BodyContour.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/Module/Blackboard.h"
+#include "Representations/Infrastructure/CameraInfo.h"
 
 BodyContour::Line::Line(const Vector2i& p1, const Vector2i& p2) : p1(p1.x() < p2.x() ? p1 : p2), p2(p1.x() < p2.x() ? p2 : p1) {}
 
@@ -65,15 +67,20 @@ void BodyContour::draw() const
     for (std::vector<Line>::const_iterator i = lines.begin(); i != lines.end(); ++i)
       LINE("representation:BodyContour", i->p1.x(), i->p1.y(), i->p2.x(), i->p2.y(), 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
 
-    for (int x = 0; x < cameraResolution.x(); x += 10)
+    const CameraInfo& cameraInfo = Blackboard::get<CameraInfo>();
+    for (int x = 0; x < cameraInfo.width; x += 10)
     {
-      int y = cameraResolution.y();
+      int y = cameraInfo.height;
       clipBottom(x, y);
-      LINE("representation:BodyContour", x, y, x, cameraResolution.y(), 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+      LINE("representation:BodyContour", x, y, x, cameraInfo.height, 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
     }
   }
-  int maxY = getMaxY();
-  LINE("representation:BodyContour:maxY", 0, maxY, cameraResolution.x() - 1, maxY, 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+  COMPLEX_DRAWING("representation:BodyContour:maxY")
+  {
+    const CameraInfo& cameraInfo = Blackboard::get<CameraInfo>();
+    int maxY = getMaxY(cameraInfo);
+    LINE("representation:BodyContour:maxY", 0, maxY, cameraInfo.width - 1, maxY, 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+  }
 }
 
 void BodyContourUpper::draw() const
@@ -85,23 +92,28 @@ void BodyContourUpper::draw() const
     for (std::vector<Line>::const_iterator i = lines.begin(); i != lines.end(); ++i)
       LINE("representation:BodyContourUpper", i->p1.x(), i->p1.y(), i->p2.x(), i->p2.y(), 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
 
-    for (int x = 0; x < cameraResolution.x(); x += 10)
+    const CameraInfo& cameraInfo = Blackboard::get<CameraInfoUpper>();
+    for (int x = 0; x < cameraInfo.width; x += 10)
     {
-      int y = cameraResolution.y();
+      int y = cameraInfo.height;
       clipBottom(x, y);
-      LINE("representation:BodyContourUpper", x, y, x, cameraResolution.y(), 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+      LINE("representation:BodyContourUpper", x, y, x, cameraInfo.height, 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
     }
   }
-  int maxY = getMaxY();
-  LINE("representation:BodyContourUpper:maxY", 0, maxY, cameraResolution.x() - 1, maxY, 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+  COMPLEX_DRAWING("representation:BodyContourUpper:maxY")
+  {
+    const CameraInfo& cameraInfo = Blackboard::get<CameraInfoUpper>();
+    int maxY = getMaxY(cameraInfo);
+    LINE("representation:BodyContourUpper:maxY", 0, maxY, cameraInfo.width - 1, maxY, 1, Drawings::solidPen, ColorRGBA(255, 0, 255));
+  }
 }
 
 
-int BodyContour::getMaxY() const
+int BodyContour::getMaxY(const CameraInfo& cameraInfo) const
 {
-  int y = cameraResolution.y() - 1;
+  int y = cameraInfo.height - 1;
   clipBottom(0, y);
-  clipBottom(cameraResolution.x() - 1, y);
+  clipBottom(cameraInfo.width - 1, y);
 
   if (y < 0)
   {
@@ -111,9 +123,9 @@ int BodyContour::getMaxY() const
 
   for (const Line& line : lines)
   {
-    if (line.p1.y() >= 0 && line.p1.x() >= 0 && line.p1.x() < cameraResolution.x() && line.p1.y() < y)
+    if (line.p1.y() >= 0 && line.p1.x() >= 0 && line.p1.x() < cameraInfo.width && line.p1.y() < y)
       y = line.p1.y();
-    if (line.p2.y() >= 0 && line.p2.x() >= 0 && line.p2.x() < cameraResolution.x() && line.p2.y() < y)
+    if (line.p2.y() >= 0 && line.p2.x() >= 0 && line.p2.x() < cameraInfo.width && line.p2.y() < y)
       y = line.p2.y();
   }
   return y;

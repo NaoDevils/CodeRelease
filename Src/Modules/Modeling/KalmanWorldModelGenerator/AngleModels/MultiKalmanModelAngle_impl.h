@@ -181,9 +181,12 @@ void MultiKalmanModelAngle<hypothesis_t, towardsOneModel>::updateValidity(float 
 {
   // If there is at least one real good hypothesis, reduce validity of other hypotheses faster.
   bool goodHypothesisExists = false;
-  if (bestHypothesis() && bestHypothesis()->validity >= goodValidityThreshold)
+  if constexpr (towardsOneModel)
   {
-    goodHypothesisExists = true;
+    if (bestHypothesis() && bestHypothesis()->validity >= goodValidityThreshold)
+    {
+      goodHypothesisExists = true;
+    }
   }
 
   // Update validity of all hypotheses.
@@ -191,7 +194,7 @@ void MultiKalmanModelAngle<hypothesis_t, towardsOneModel>::updateValidity(float 
   {
     if (m_hypotheses[i].validity >= goodValidityThreshold)
       m_hypotheses[i].updateValidity(maxPerceptsPerSecond, weightOfPreviousValidity_goodHypotheses);
-    else if (towardsOneModel && goodHypothesisExists)
+    else if (goodHypothesisExists)
       m_hypotheses[i].updateValidity(maxPerceptsPerSecond, weightOfPreviousValidity / 2);
     else
       m_hypotheses[i].updateValidity(maxPerceptsPerSecond, weightOfPreviousValidity);
@@ -218,6 +221,15 @@ template <typename hypothesis_t, bool towardsOneModel> std::size_t MultiKalmanMo
   return m_bestHypothesisIndex;
 }
 
+template <typename hypothesis_t, bool towardsOneModel> void MultiKalmanModelAngle<hypothesis_t, towardsOneModel>::removeHypothesis(size_t index)
+{
+  m_hypotheses.erase(m_hypotheses.begin() + index);
+  if (m_bestHypothesisIndex == index)
+    m_bestHypothesisIndex = std::numeric_limits<size_t>::max();
+  else if (index < m_bestHypothesisIndex && m_bestHypothesisIndex != std::numeric_limits<size_t>::max())
+    m_bestHypothesisIndex--;
+}
+
 template <typename hypothesis_t, bool towardsOneModel> void MultiKalmanModelAngle<hypothesis_t, towardsOneModel>::updateBestHypothesis()
 {
   // If there is no hypothesis, there cannot be a best one.
@@ -237,7 +249,7 @@ template <typename hypothesis_t, bool towardsOneModel> void MultiKalmanModelAngl
   }
 
   // Search for the best hypothesis.
-  size_t bestIndex = -1;
+  size_t bestIndex = std::numeric_limits<size_t>::max();
   float bestValidity = -1.f;
   float bestDistance = std::numeric_limits<float>::infinity();
   for (size_t i = 0; i < m_hypotheses.size(); i++)
@@ -266,16 +278,12 @@ template <typename hypothesis_t, bool towardsOneModel> void MultiKalmanModelAngl
       { // For changing the best hypothesis, the validity must be truly greater than the old one.
         // Hysteresis: Reduce validity of last best hypothesis.
         m_hypotheses[m_lastBestHypothesisIndex].validity -= decreaseValidityOnChangingBestHypothesis;
-        // Set new best hypothesis
-        m_bestHypothesisIndex = bestIndex;
       }
     }
-    else
-    {
-      // Set best hypothesis.
-      m_bestHypothesisIndex = bestIndex;
-    }
   }
+
+  // Set best hypothesis.
+  m_bestHypothesisIndex = bestIndex;
 }
 
 //MARK: Kalman filter related methods
@@ -404,14 +412,15 @@ void MultiKalmanModelAngle<hypothesis_t, towardsOneModel>::cleanUpHypothesesOuts
       // Check if hypothesis is inside field border + threshold to allow a bit clearance for inaccuracy.
       if (distance > fieldBorderThreshold)
       {
-        // Do nothing if current hypothesis is the best one.
-        if (i != m_bestHypothesisIndex && m_bestHypothesisIndex < m_hypotheses.size() && m_hypotheses.size() > 1)
+        if constexpr (!towardsOneModel)
         {
-          m_hypotheses.erase(m_hypotheses.begin() + i);
-          if (m_bestHypothesisIndex == i)
-            m_bestHypothesisIndex = static_cast<size_t>(-1); // Maximum size_t number
-          else if (i < m_bestHypothesisIndex && m_bestHypothesisIndex != static_cast<size_t>(-1))
-            m_bestHypothesisIndex--;
+          removeHypothesis(i);
+          i--;
+        }
+        // Do nothing if current hypothesis is the best one.
+        else if (i != m_bestHypothesisIndex && m_bestHypothesisIndex < m_hypotheses.size() && m_hypotheses.size() > 1)
+        {
+          removeHypothesis(i);
           i--;
         }
         else
@@ -460,12 +469,17 @@ void MultiKalmanModelAngle<hypothesis_t, towardsOneModel>::cleanUpHypothesesLowV
   {
     if (m_hypotheses[i].validity < validityThreshold && m_hypotheses[i].validity < bestValidity && m_hypotheses.size() > 1)
     {
-      m_hypotheses.erase(m_hypotheses.begin() + i);
-      if (m_bestHypothesisIndex == i)
-        m_bestHypothesisIndex = static_cast<size_t>(-1); // Maximum size_t number
-      else if (i < m_bestHypothesisIndex && m_bestHypothesisIndex != static_cast<size_t>(-1))
-        m_bestHypothesisIndex--;
-      i--;
+      if constexpr (!towardsOneModel)
+      {
+        removeHypothesis(i);
+        i--;
+      }
+      // Do nothing if current hypothesis is the best one.
+      else if (i != m_bestHypothesisIndex && m_bestHypothesisIndex < m_hypotheses.size() && m_hypotheses.size() > 1)
+      {
+        removeHypothesis(i);
+        i--;
+      }
     }
   }
 }
@@ -498,10 +512,7 @@ template <typename hypothesis_t, bool towardsOneModel> void MultiKalmanModelAngl
       if (yDiff < mergeAngleDiff.y() && xDiff < mergeAngleDiff.x())
       {
         m_hypotheses[m_bestHypothesisIndex].merge(actualHypothesis);
-        // Remove hypothesis i
-        m_hypotheses.erase(m_hypotheses.begin() + i);
-        if (i < m_bestHypothesisIndex && m_bestHypothesisIndex != static_cast<size_t>(-1))
-          m_bestHypothesisIndex--;
+        removeHypothesis(i);
         i--;
       }
 

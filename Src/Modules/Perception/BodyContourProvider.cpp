@@ -12,8 +12,6 @@ void BodyContourProvider::update(BodyContour& bodyContour)
 {
   DECLARE_DEBUG_DRAWING3D("module:BodyContourProvider:contour", "robot");
 
-  bodyContour.cameraResolution.x() = theCameraInfo.width;
-  bodyContour.cameraResolution.y() = theCameraInfo.height;
   bodyContour.lines.clear();
 
   robotCameraMatrixInverted = theRobotCameraMatrix.inverse();
@@ -38,8 +36,6 @@ void BodyContourProvider::update(BodyContourUpper& bodyContour)
 {
   DECLARE_DEBUG_DRAWING3D("module:BodyContourProvider:contourUpper", "robot");
 
-  bodyContour.cameraResolution.x() = theCameraInfoUpper.width;
-  bodyContour.cameraResolution.y() = theCameraInfoUpper.height;
   bodyContour.lines.clear();
 
   robotCameraMatrixInvertedUpper = theRobotCameraMatrixUpper.inverse();

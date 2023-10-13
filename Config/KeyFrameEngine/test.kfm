@@ -1,0 +1,29 @@
+keyFrameID = test;
+initialKeyFrame = true;
+nextKeyFrameID = none;
+YstabilizationP = -0.05;
+YstabilizationI = 0;
+YstabilizationD = -0.6;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [0,0];
+    armsAngles = [90deg,11deg,0,0deg,-90deg,0, 90deg,-11deg,0,0deg,90deg,0];
+    legsAngles = [0,0,-21deg,49deg,-27.5deg,0, 0,0,-21deg,49deg,-27.5deg,0];
+    stiffnesses = [40,40, 40,40,40,40,40,40, 40,40,40,40,40,40, 30,30,30,30,30,30, 30,30,30,30,30,30];
+    duration = 2000;
+    intType = sine;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = true;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];

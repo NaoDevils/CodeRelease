@@ -54,7 +54,7 @@ void LowFrameRateImageProvider::updateImage(LowFrameRateImage& lfrImage, bool up
 {
   const Image& image = upper ? (Image&)theImageUpper : theImage;
   lfrImage.image.setImage(const_cast<Image::Pixel*>(image[0]));
-  lfrImage.image.setResolution(image.width, image.height, image.isFullSize);
+  lfrImage.image.setResolution(image.width, image.height);
   lfrImage.image.timeStamp = image.timeStamp;
   lfrImage.imageUpdated = true;
 }

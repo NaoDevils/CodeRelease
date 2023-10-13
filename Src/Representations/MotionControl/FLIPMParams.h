@@ -5,12 +5,26 @@
 
 #define PREVIEW_LENGTH 100 /**< Length of the preview phase */
 
-STREAMABLE(FLIPMValues,,
+STREAMABLE(FLIPMValues,
+  bool equal(const FLIPMValues& flipmValues)
+  {
+    if (m == flipmValues.m &&
+      M == flipmValues.M &&
+      z_h == flipmValues.z_h &&
+      D == flipmValues.D &&
+      E == flipmValues.E &&
+      Qe == flipmValues.Qe &&
+      Qx == flipmValues.Qx &&
+      R == flipmValues.R &&
+      Ql.isApprox(flipmValues.Ql) &&
+      RO.isApprox(flipmValues.RO))
+      return true;
+    return false;
+  }
+  ,
   (float)(0.f) m,
   (float)(0.f) M,
-  (float)(0.f) g,
   (float)(0.f) z_h,
-  (float)(0.f) dt,
   (float)(0.f) D,
   (float)(0.f) E,
   (float)(0.f) Qe,

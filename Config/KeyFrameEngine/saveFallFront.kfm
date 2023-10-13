@@ -1,0 +1,65 @@
+keyFrameID = saveFallFront;
+initialKeyFrame = true;
+nextKeyFrameID = none;
+YstabilizationP = 0;
+YstabilizationI = 0;
+YstabilizationD = 0;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+keyFrames = [
+  {
+    headAngles = [0deg,-38deg];
+    armsAngles = [90deg,10deg,100deg,0deg,-90deg,0, 90deg,-10deg,-100deg,0deg,90deg,0];
+    legsAngles = [0deg,0deg,-24deg,105deg,-75deg,0deg,  0deg,0deg,-24deg,105deg,-75deg,0deg];
+    stiffnesses = [100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 20,20,20,20,20,20, 20,20,20,20,20,20];
+    duration = 0;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  {
+    headAngles = [0deg,-38deg];
+    armsAngles = [5deg,10deg,100deg,-60deg,-90deg,0, 5deg,-10deg,-100deg,60deg,90deg,0];
+    legsAngles = [0deg,0deg,-24deg,105deg,-75deg,0deg,  0deg,0deg,-24deg,105deg,-75deg,0deg];
+    stiffnesses = [30,30, 15,15,15,15,15,15, 15,15,15,15,15,15, 20,20,20,20,20,20, 20,20,20,20,20,20];
+    duration = 0;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  {
+    headAngles = [0deg,-38deg];
+    armsAngles = [5deg,10deg,100deg,-60deg,-90deg,0, 5deg,-10deg,-100deg,60deg,90deg,0];
+    legsAngles = [0deg,0deg,-24deg,105deg,-75deg,0deg,  0deg,0deg,-24deg,105deg,-75deg,0deg];
+    stiffnesses = [30,30, 15,15,15,15,15,15, 15,15,15,15,15,15, 20,20,20,20,20,20, 20,20,20,20,20,20];
+    duration = 0;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameErrorFront =30deg;
+    angleAtKeyFrameErrorBack=30deg;
+    useAngleAtKeyFrameTarget = false;
+    activateFallDownProtection = false;
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];

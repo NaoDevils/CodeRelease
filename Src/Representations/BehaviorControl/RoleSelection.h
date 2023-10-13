@@ -8,5 +8,7 @@
 */
 STREAMABLE(RoleSelection,
   ,
+  ((BehaviorData) RoleAssignment)(BehaviorData::RoleAssignment::noRole) ballchaserDuringOwnKickoff,
+  ((BehaviorData) RoleAssignment)(BehaviorData::RoleAssignment::noRole) ballchaserDuringOppKickoff,
   ((BehaviorData) RobotRoleAssignmentVector) selectedRoles
 );

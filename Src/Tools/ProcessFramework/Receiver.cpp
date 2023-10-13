@@ -18,10 +18,10 @@ ReceiverList::ReceiverList(PlatformProcess* p, const std::string& receiverName)
   {
     if (getFirst())
     {
-      ReceiverList* p = getFirst();
-      while (p->next)
-        p = p->next;
-      p->next = this;
+      ReceiverList* r = getFirst();
+      while (r->next)
+        r = r->next;
+      r->next = this;
     }
     else
       getFirst() = this;

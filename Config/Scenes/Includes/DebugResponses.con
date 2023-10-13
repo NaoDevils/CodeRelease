@@ -5,10 +5,9 @@ dr representation:FsrSensorData
 dr representation:InertialSensorData
 dr representation:KeyStates
 dr representation:SystemSensorData
-dr representation:UsSensorData
+dr representation:SonarSensorData
 dr representation:JointSensorData
 
 # JointView and SensorView need
 dr representation:JointRequest
-#dr representation:USRequest
 dr representation:TeamCommSenderOutput

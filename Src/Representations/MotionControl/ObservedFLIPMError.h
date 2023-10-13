@@ -17,9 +17,9 @@
 STREAMABLE(ObservedFLIPMError,
 	/** Constructor */
 	ObservedFLIPMError(){
-    ObservedError[0].setZero();
-    ObservedError[1].setZero();
+      observedError.x().setZero();
+      observedError.y().setZero();
 	};
   ,
-  (Eigen::Matrix< Vector6d, 2, 1>) ObservedError
+  (Eigen::Matrix<Vector6d, 2, 1>) observedError
 );

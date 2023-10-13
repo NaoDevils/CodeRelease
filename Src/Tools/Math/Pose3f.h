@@ -7,10 +7,10 @@
 STREAMABLE(Pose3f,
   Pose3f() = default;
   Pose3f(const Pose3f& other) = default;
-  Pose3f(const RotationMatrix& rotation, const Vector3f& translation);
-  Pose3f(const RotationMatrix& rotation);
-  Pose3f(const Vector3f& translation);
-  Pose3f(const float x, const float y, const float z);
+  explicit Pose3f(const RotationMatrix& rotation, const Vector3f& translation);
+  explicit Pose3f(const RotationMatrix& rotation);
+  explicit Pose3f(const Vector3f& translation);
+  explicit Pose3f(const float x, const float y, const float z);
   explicit Pose3f(const Pose2f& pose);
 
   Pose3f& operator=(const Pose3f& other) = default;

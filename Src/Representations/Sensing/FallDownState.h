@@ -21,9 +21,14 @@ STREAMABLE(FallDownState,
     undefined,
     upright,
     onGround,
+    onGroundLyingStill,
     staggering,
     falling,
-    standingUp
+    tryStandingUp,
+    standingUp,
+    heldOnOneShoulder,
+    flying,
+    diving
   );
 
   ENUM(Direction,
@@ -34,18 +39,10 @@ STREAMABLE(FallDownState,
     right
   );
 
-  ENUM(Sidestate,
-    noot, // since "not" is already a keyword...
-    leftwards,
-    rightwards,
-    fallen // robot did not get up since last sideward fall
-  );
-
   /** Debug drawing. */
   void draw() const,
 
   (State)(undefined) state, /**< Current state of the robot's body. */
   (Direction)(none) direction, /**< The robot is falling / fell into this direction. */
-  (Sidestate)(noot) sidewards, /**< Did the robot fell sidewards before? */
-  (float)(0) odometryRotationOffset
+  (bool)(true) standUpOnlyWhenLyingStill 
 );

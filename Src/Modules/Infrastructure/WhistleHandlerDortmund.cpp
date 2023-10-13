@@ -64,7 +64,7 @@ void WhistleHandlerDortmund::update(GameInfo& gameInfo)
     const bool localGoalDetected = theWhistleDortmund.lastDetectionTime > 0 && theFrameInfo.getTimeSince(theWhistleDortmund.lastDetectionTime) < 3000
         && ((std::abs(localTimeDiffGoalToWhistle) < maxTimediffWhistleToGoal && theBallModel.validity > 0.7)
             || (std::abs(remoteTimeDiffGoalToWhistle) < maxTimediffWhistleToGoal && theRemoteBallModel.validity > 0.7));
-    const bool remoteGoalDetected = goalDetectedMate && theWhistleDortmund.lastDetectionTime > 0 && goalDetectedMate->whistle.lastDetectionTime > 0
+    const bool remoteGoalDetected = goalDetectedMate && theWhistleDortmund.lastDetectionTime > 0 && goalDetectedMate->whistle.lastDetectionTime > 1
         && theFrameInfo.getTimeSince(theWhistleDortmund.lastDetectionTime) < timeWindow && theFrameInfo.getTimeSince(goalDetectedMate->whistle.lastDetectionTime) < timeWindow;
     if (theRawGameInfo.state == STATE_PLAYING && !inSetPlay && (localGoalDetected || remoteGoalDetected))
     {

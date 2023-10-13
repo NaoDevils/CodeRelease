@@ -5,7 +5,7 @@ LineMatcher::AbstractLine::AbstractLine() {}
 
 LineMatcher::AbstractLine::AbstractLine(double _offset, double _min, double _max) : offset(_offset), min(_min), max(_max), numberOfContributingLines(1) {}
 
-LineMatcher::LineMatcher() : preInitDone(false), lastUpdateTime(0) {}
+LineMatcher::LineMatcher() : preInitDone(false) {}
 LineMatcher::~LineMatcher() {}
 
 void LineMatcher::update(LineMatchingResult& theLineMatchingResult)
@@ -241,12 +241,6 @@ inline void LineMatcher::preExecuteInit(LineMatchingResult& theLineMatchingResul
 
 void LineMatcher::execute(LineMatchingResult& theLineMatchingResult)
 {
-  if (theFrameInfo.time == lastUpdateTime)
-  {
-    return;
-  }
-  lastUpdateTime = theFrameInfo.time;
-
   // reset theLineMatchingResult
   theLineMatchingResult.reset();
   for (const auto& i : theCLIPFieldLinesPercept.lines)

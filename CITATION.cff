@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+title: Nao Devils Code Release
+message: If you use this software, please cite it using these metadata.
+type: software
+authors:
+  - family-names: B
+    given-names: Leon
+  - family-names: Brämer
+    given-names: Dominik
+  - family-names: Dasmann
+    given-names: Lisa
+  - family-names: Gayda
+    given-names: Alicia
+  - family-names: Hatwar
+    given-names: Mrunal
+  - family-names: Kleingarn
+    given-names: Diana
+  - family-names: Klute
+    given-names: Thomas
+  - family-names: Larisch
+    given-names: Aaron
+  - family-names: Mohammadi
+    given-names: Mahdokht
+  - family-names: Moos
+    given-names: Arne
+  - family-names: Pieper
+    given-names: Steven
+  - family-names: Schwarz
+    given-names: Ingmar
+  - family-names: Voß
+    given-names: Alexander
+repository-code: "https://github.com/NaoDevils/CodeRelease/tree/CodeRelease2023"
+license-url: "https://github.com/NaoDevils/CodeRelease/blob/CodeRelease2023/License.txt"
+url: "https://naodevils.de"
+version: "2023"
+date-released: "2023-10-15"

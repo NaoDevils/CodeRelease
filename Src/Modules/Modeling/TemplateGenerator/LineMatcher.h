@@ -84,8 +84,6 @@ private:
 
   void doGlobalDebugging();
 
-  unsigned lastUpdateTime;
-
   void execute(LineMatchingResult& theLineMatchingResult);
 
   double determineMainDirection();

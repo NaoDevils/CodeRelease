@@ -21,9 +21,25 @@
 */
 void BallChaserDecisionProvider::update(BallChaserDecision& ballChaserDecision)
 {
+  ballChaserDecision.dynamic = false;
+
+  if (theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
+  {
+    ballChaserDecision.playerNumberToBall = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber ? theRobotInfo.number : 0;
+    return;
+  }
+
   // do not update decision when ball is lost
   if (theGameInfo.state == STATE_PLAYING && theBallSymbols.timeSinceLastSeenByTeam > 3000)
     return;
+
+  if (!theTeammateData.wlanOK)
+  {
+    decideLocal(ballChaserDecision);
+    return;
+  }
+  ballChaserDecision.dynamic = true;
+
   // Update member variables
   updateBallBehindMe();
 
@@ -34,8 +50,8 @@ void BallChaserDecisionProvider::update(BallChaserDecision& ballChaserDecision)
   if (ballChaserDecision.playerNumberToBall == 0)
     ballChaserDecision.playerNumberToBall = theRobotInfo.number;
 
-  if ( //theTeammateData.messageBudgetFactor < 1.f ||
-      (theGameInfo.state == STATE_READY && theGameSymbols.timeSinceGameState > 10000))
+  // Keep ballchaser decision during ready
+  if (theTacticSymbols.keepRoleAssignment)
     return;
 
   int localBallChaserNumber = calcBallChaserNumber(ballChaserDecision, true);
@@ -43,9 +59,10 @@ void BallChaserDecisionProvider::update(BallChaserDecision& ballChaserDecision)
   * Ignore team decision if local decision is better. This is the case when:
   * 1. we are the local decision
   * 2. the goalie is currently not the team decision
+  *    (removed, otherwise nobody will go to the ball if the goalie is penalized or cannot stand up)
   * 3. our ball percept is newer than the team's OR we are goalie
   */
-  if (teamBallChaserNumber != localBallChaserNumber && localBallChaserNumber == theRobotInfo.number && teamBallChaserNumber != 1
+  if (teamBallChaserNumber != localBallChaserNumber && localBallChaserNumber == theRobotInfo.number
       && (theBallSymbols.timeSinceLastSeen < theFrameInfo.getTimeSince(teamBallLastSeen) || theRobotInfo.number == 1))
   {
     ballChaserDecision.playerNumberToBall = localBallChaserNumber;
@@ -58,6 +75,59 @@ void BallChaserDecisionProvider::update(BallChaserDecision& ballChaserDecision)
   if (teamBallChaserNumber == theRobotInfo.number && teamBallChaserNumber != localBallChaserNumber)
   {
     ballChaserDecision.playerNumberToBall = localBallChaserNumber;
+  }
+}
+
+void BallChaserDecisionProvider::decideLocal(BallChaserDecision& ballChaserDecision)
+{
+  if (theGameInfo.controllerConnected)
+  {
+    const auto isActive = [](const RoboCup::RobotInfo& robotInfo)
+    {
+      return robotInfo.penalty == PENALTY_NONE;
+    };
+
+    // Highest player number will be playerNumberToBall during initial/ready/set
+    if (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY || theGameInfo.state == STATE_SET)
+    {
+      for (unsigned char player = MAX_NUM_PLAYERS; player > 0; --player)
+      {
+        if (isActive(theOwnTeamInfo.players[player - 1]))
+        {
+          ballChaserDecision.playerNumberToBall = player;
+          return;
+        }
+      }
+    }
+    // I will be playerNumberToBall if I am the only one
+    else if (std::count_if(theOwnTeamInfo.players, theOwnTeamInfo.players + MAX_NUM_PLAYERS - 1, isActive) == 1)
+    {
+      ballChaserDecision.playerNumberToBall = theRobotInfo.number;
+      return;
+    }
+  }
+  // If no game controller is connected in initial/ready/set, assume 7 robots are active and the highest number will be playerNumberToBall.
+  else if (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY || theGameInfo.state == STATE_SET)
+  {
+    ballChaserDecision.playerNumberToBall = MAX_NUM_PLAYERS;
+    return;
+  }
+
+  // Go to ball if no teammate is near and close enough
+  float ballDistance = theBallSymbols.ballPositionRelative.norm();
+  const auto friendNearBall = [&](const RobotMapEntry& entry)
+  {
+    return entry.robotType == RobotEstimate::RobotType::teammateRobot && (entry.pose.translation - theBallSymbols.ballPositionField).norm() < maxBallDistanceForTeammateToBeNear;
+  };
+  const bool teammateNearBall = std::find_if(theRobotMap.robots.begin(), theRobotMap.robots.end(), friendNearBall) != theRobotMap.robots.end();
+
+  if (!teammateNearBall && ballDistance < (ballChaserDecision.playerNumberToBall == theRobotInfo.number ? maxBallDistanceForLocalDecision + 500.f : maxBallDistanceForLocalDecision))
+  {
+    ballChaserDecision.playerNumberToBall = theRobotInfo.number;
+  }
+  else
+  {
+    ballChaserDecision.playerNumberToBall = 0;
   }
 }
 
@@ -94,15 +164,15 @@ void BallChaserDecisionProvider::updateIsBallBehindPositionForMates(Vector2f loc
     if (mate.behaviorData.role != BehaviorData::keeper)
     {
       // Calculation of isBallBehindPosition analog to own calculation.
-      Vector2f mateCurrentBallPos = mate.behaviorData.ballPositionField.cast<float>();
-      Vector2f matePredictedBallPos = mate.behaviorData.ballPositionFieldPredicted.cast<float>();
-      Vector2f mateBallPosition = getBallPosForDecision(mateCurrentBallPos, matePredictedBallPos);
+      Vector2f mateCurrentBallPos = mate.behaviorData.ballPositionField;
+      // Passing mateCurrentBallPos twice here, if current or predicted position is used depends on sender
+      Vector2f mateBallPosition = getBallPosForDecision(mateCurrentBallPos, mateCurrentBallPos);
       // useLocalBallModelForDecision == true => use my own ball model
       if (useLocalBallModelForDecision || (theGameInfo.state == STATE_READY && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK))
         mateBallPosition = localBallModelsPos;
       // calculate isBallBehind for mate using selected ball position as reference
-      bool isBallBehindMate = isBallBehindRobot(mate.number, mate.pose.translation, mateBallPosition);
-      isBallBehindPosition[mate.number] = isBallBehindMate;
+      bool isBallBehindMate = isBallBehindRobot(mate.playerNumber, mate.robotPose.translation, mateBallPosition);
+      isBallBehindPosition[mate.playerNumber] = isBallBehindMate;
     }
   }
   // the keeper never gets penalized if the ball is behind him
@@ -150,11 +220,11 @@ bool BallChaserDecisionProvider::isBallBehindRobot(int robotNumber, Vector2f rob
 {
   // isBehindMeDistance acts as hysteresis for the switch of the isBallBehindMe boolean.
   // It is at minimum -250, since we dont want to think the ball is behind us while dribbling.
-  float isBehindDistance = (isBallBehindPosition[robotNumber] ? timeToBallParams.ballBehindRobotHysteresis : 0.f);
+  float isBehindDistance = (isBallBehindPosition[robotNumber] ? 0.f : timeToBallParams.ballBehindRobotHysteresis);
   // We want to know if the robot would have to go around the ball, this is why we use ball to goal center as intended direction
-  Pose2f ballPose((Vector2f(theFieldDimensions.xPosOpponentGroundline, 0.f) - ballPosition).angle(), ballPosition.x(), ballPosition.y());
-  Vector2f ballInBallPoseCoordinates = Transformation::fieldToRobot(ballPose, ballPosition);
-  bool isBallBehind = ballInBallPoseCoordinates.x() < (robotPosition.x() + isBehindDistance);
+  Pose2f ballPose((Vector2f(theFieldDimensions.xPosOpponentGroundline, 0.f) - ballPosition).angle(), ballPosition);
+  Vector2f robotInBallPoseCoordinates = Transformation::fieldToRobot(ballPose, robotPosition);
+  bool isBallBehind = robotInBallPoseCoordinates.x() > isBehindDistance;
   return isBallBehind;
 }
 
@@ -183,19 +253,11 @@ bool BallChaserDecisionProvider::posInOwnPenaltyArea(Vector2f position, float bo
 
 std::tuple<int, int> BallChaserDecisionProvider::getNewestTeamBallChaserNumber()
 {
-  const Teammate* newestEventMessage = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::newRolesAssigned);
+  const Teammate* newestEventMessage = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::newBallchaser);
   if (!newestEventMessage)
     return {0, 0};
 
-  const auto& suggestions = newestEventMessage->behaviorData.roleSuggestions;
-  for (int playerNum = 0; playerNum < static_cast<int>(suggestions.size()); ++playerNum)
-  {
-    if (suggestions[playerNum] == BehaviorData::RoleAssignment::ballchaser
-        || (newestEventMessage->behaviorData.role == BehaviorData::keeper && newestEventMessage->behaviorData.soccerState == BehaviorData::SoccerState::controlBall))
-      return {playerNum, newestEventMessage->ball.timeWhenLastSeen};
-  }
-
-  return {0, 0};
+  return {newestEventMessage->behaviorData.playerNumberToBall, newestEventMessage->ballModel.timeWhenLastSeen};
 }
 
 /**
@@ -215,7 +277,7 @@ int BallChaserDecisionProvider::calcBallChaserNumber(BallChaserDecision& ballCha
   // If the robots role is ballchaser, it had the ball last.
   bool wasBallMine = theRobotInfo.number == ballChaserDecision.playerNumberToBall;
   // Time to reach ball for each robot number.
-  std::vector<float> timesToReachBall(MAX_NUM_PLAYERS + 1, std::numeric_limits<float>::max());
+  std::vector<float> timesToReachBall(MAX_NUM_PLAYERS + 1, std::numeric_limits<float>::infinity());
   float penaltyAreaModifier = (ballWasInPenaltyArea ? 350.f : 150.f);
   ballWasInPenaltyArea = posInOwnPenaltyArea(ballPositionField, penaltyAreaModifier);
 
@@ -224,14 +286,16 @@ int BallChaserDecisionProvider::calcBallChaserNumber(BallChaserDecision& ballCha
       theRobotInfo.number,
       wasBallMine,
       theFallDownState.state == FallDownState::upright,
-      theBallSymbols.timeSinceLastSeen > timeToBallParams.notSeenTime);
+      theBallSymbols.timeSinceLastSeen > timeToBallParams.notSeenTime,
+      0);
 
+  // The keeper is not allowed to chase the ball outside of the penalty area
   if (theRobotInfo.penalty == PENALTY_NONE && (theRobotInfo.number != 1 || ballWasInPenaltyArea))
     timesToReachBall[theRobotInfo.number] = ballChaserDecision.ownTimeToBall;
 
   for (auto& mate : theTeammateData.teammates)
   {
-    timesToReachBall[mate.number] = getDistanceToBallForMate(mate, useLocalBall, ballPositionField);
+    timesToReachBall[mate.playerNumber] = getDistanceToBallForMate(mate, useLocalBall, ballPositionField);
   }
   int closestPlayerNumber = int(std::min_element(timesToReachBall.begin(), timesToReachBall.end()) - timesToReachBall.begin());
 
@@ -252,11 +316,12 @@ int BallChaserDecisionProvider::calcBallChaserNumber(BallChaserDecision& ballCha
  * correspond to the player number of the team mates. This means the distance for the teammate 
  * with the player number n will be stored in the n-th element.
  */
-float BallChaserDecisionProvider::getDistanceToBallForMate(Teammate mate, bool useLocalBall, Vector2f localBallPosition)
+float BallChaserDecisionProvider::getDistanceToBallForMate(const TeammateReceived& mate, bool useLocalBall, Vector2f localBallPosition)
 {
-  bool wasMateBallChaser = std::get<0>(getNewestTeamBallChaserNumber()) == mate.number;
+  bool wasMateBallChaser = std::get<0>(getNewestTeamBallChaserNumber()) == mate.playerNumber;
   // Choose the ball position on which the decision for the team mate is based.
-  Vector2f mateBallPosition = getBallPosForDecision(mate.behaviorData.ballPositionField.cast<float>(), mate.behaviorData.ballPositionFieldPredicted.cast<float>());
+  // Passing ballPositionField twice here, if current or predicted position is used depends on sender
+  Vector2f mateBallPosition = getBallPosForDecision(mate.behaviorData.ballPositionField, mate.behaviorData.ballPositionField);
   if (useLocalBall)
     mateBallPosition = localBallPosition;
 
@@ -264,10 +329,11 @@ float BallChaserDecisionProvider::getDistanceToBallForMate(Teammate mate, bool u
   float matePenaltyAreaModifier = (wasMateBallChaser ? 350.f : 150.f);
   bool mateBallInPenaltyArea = posInOwnPenaltyArea(mateBallPosition, matePenaltyAreaModifier);
 
-  float mateDistance =
-      calcDistanceToBall(mate.pose, Pose2f(mateBallPosition), mate.number, wasMateBallChaser, mate.isUpright, mate.behaviorData.timeSinceBallWasSeen > timeToBallParams.notSeenTime);
+  const int timeSinceBallSeen = static_cast<int>(mate.sendTimestamp - mate.ballModel.timeWhenLastSeen);
+  const bool ballNotSeen = theFrameInfo.getTimeSince(mate.sendTimestamp) < timeToBallParams.notSeenTime && timeSinceBallSeen > timeToBallParams.notSeenTime;
+  float mateDistance = calcDistanceToBall(mate.robotPose, Pose2f(mateBallPosition), mate.playerNumber, wasMateBallChaser, !mate.fallen, ballNotSeen, theFrameInfo.getTimeSince(mate.sendTimestamp));
 
-  bool mateIsValid = mate.status >= Teammate::ACTIVE && (mate.number != 1 || mateBallInPenaltyArea);
+  bool mateIsValid = mate.status >= TeammateReceived::ACTIVE && (mate.playerNumber != 1 || mateBallInPenaltyArea);
   return mateIsValid ? mateDistance : std::numeric_limits<float>::max();
 }
 
@@ -286,10 +352,28 @@ float BallChaserDecisionProvider::getDistanceToBallForMate(Teammate mate, bool u
  * 
  * \return The distance between the from pose and the target pose.
 */
-float BallChaserDecisionProvider::calcDistanceToBall(const Pose2f& fromPose, const Pose2f& targetOnField, int playerNumber, bool wasBallChaser, bool upright, bool notSeen)
+float BallChaserDecisionProvider::calcDistanceToBall(const Pose2f& fromPose, const Pose2f& targetOnField, int playerNumber, bool wasBallChaser, bool upright, bool notSeen, unsigned timeSinceLastUpdate)
 {
+  // The keeper should never be the ballchaser in ready when other options are available.
+  // Otherwise, we cannot replace a specific role by the ballchaser in RoleDynamicProvider.
+  if ((theGameInfo.state == STATE_READY || theGameInfo.state == STATE_INITIAL) && playerNumber == 1)
+    return std::numeric_limits<float>::max(); // We cannot use infinity here. Otherwise, the robot will not be considered as a last choice.
+
   const Vector2f targetRelative = Transformation::fieldToRobot(fromPose, targetOnField.translation);
   float timeToBall = targetRelative.norm();
+
+  // Assume the ballchaser goes to the ball and updates its position only every eventConfig.playerMovedEventDistanceForBallchaser (currently 500mm)
+  if (wasBallChaser && upright && !notSeen)
+  {
+    // Assume the robot walks at about 80% speed on average
+    float walkDistanceSinceUpdate = 0.8f * theWalkingEngineParams.speedLimits.xForward * timeSinceLastUpdate / 1000.f;
+
+    // The robot cannot move more than 500mm without sending a message
+    walkDistanceSinceUpdate = std::min(500.f, walkDistanceSinceUpdate);
+
+    // The robot cannot come closer than 200mm to the ball
+    timeToBall = std::max(200.f, timeToBall - walkDistanceSinceUpdate);
+  }
 
   switch (timeToBallParams.type)
   {
@@ -309,6 +393,10 @@ float BallChaserDecisionProvider::calcDistanceToBall(const Pose2f& fromPose, con
 
   // add penalties based on the robots current situation.
   timeToBall += getStatusPenalty(fromPose, targetOnField, playerNumber, wasBallChaser, upright, notSeen);
+
+  // Keeper should stay in the goal if other players are near
+  if (playerNumber == 1 && theGameInfo.setPlay == SET_PLAY_GOAL_KICK && theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber)
+    timeToBall += timeToBallParams.keeperPenaltyDuringOwnGoalKick;
 
   return timeToBall;
 }
@@ -401,10 +489,6 @@ float BallChaserDecisionProvider::getStatusPenalty(const Pose2f& fromPose, const
       + (timeToBallParams.penaltyBallBehindFactorOpponentGroundline - timeToBallParams.penaltyBallBehindFactorOwnGroundline) * xPosFactor;
   ;
 
-  if (playerNumber == 3)
-  {
-    isBallBehindPosition[playerNumber] = true;
-  }
   penalty += (isBallBehindPosition[playerNumber] ? specificBehindPenalty * behindBallPenaltyFactor : 0.f) - (wasBallChaser ? distanceHysteresis : 0.f);
 
   if (!upright && notSeen)
@@ -415,62 +499,6 @@ float BallChaserDecisionProvider::getStatusPenalty(const Pose2f& fromPose, const
     penalty += notSeen ? timeToBallParams.notSeenPenalty : 0.f;
   }
   return penalty;
-}
-
-/**
- * \brief Checks if the remote ballchaser decision should be overwritten with the local decision.
- *
- * The local decision should be used if the ball position that was used to make the remote decision
- * differs too much from the local ball model's predicted position. This means the ball is moving
- * fast and the remote decision might already or soon be outdated. In this case the robot may
- * overwrite the remote decision with the local decision which uses much more recent information.
- *
- * \param remoteDecisionBallPos The ball position that was used to make the remote decision.
- * \param ballChaserDecision The local copy of the BallChaserDecision representation.
- * 
- * \return True if the local decision should be used, false if the remote decision is ok.
-*/
-bool BallChaserDecisionProvider::useLocalDecision(BallChaserDecision& ballChaserDecision, Vector2f remoteDecisionBallPos)
-{
-  //float ballPositionDiff = (theBallSymbols.ballPositionFieldPredicted - remoteDecisionBallPos).norm();
-  //bool remoteBallIsOutdated = ballPositionDiff > useLocalBallModelWhenDifferenceGreater;
-
-  bool ballIsClose = theBallSymbols.ballPositionRelative.norm() < useLocalBallModelBelowDistance;
-
-  for (const auto& mate : theTeammateData.teammates)
-    if (mate.status < Teammate::Status::ACTIVE && ballChaserDecision.playerNumberToBall == mate.number)
-      return true;
-
-  bool shouldUseLocalDecision = (theGameInfo.state == STATE_PLAYING
-      && useLocalBallModelWhenNear
-      /*&& remoteBallIsOutdated*/
-      && ballIsClose && !doMatesIgnoreRemoteDecision(ballChaserDecision));
-  return shouldUseLocalDecision;
-}
-
-/**
- * \brief Check if a team mate with lower number made a decision that differs from the team decision. 
- * 
- * This is done by checking if the mate assigned itself the ballchaser role even though the remote
- * decision selected another robot.
- * 
- * \param ballChaserDecision The local copy of the BallChaserDecision representation
- * 
- * \returns True if a mate with different decision was found, false otherwise.
-*/
-bool BallChaserDecisionProvider::doMatesIgnoreRemoteDecision(BallChaserDecision& ballChaserDecision)
-{
-  for (auto& mate : theTeammateData.teammates)
-  {
-    bool mateHasLowerNumberThanMe = mate.number < theRobotInfo.number;
-    bool mateWantsToChaseTheBall = (mate.behaviorData.role == BehaviorData::ballchaser || mate.behaviorData.role == BehaviorData::ballchaserKeeper);
-    bool mateIsNotOfficialBallchaser = ballChaserDecision.playerNumberToBall != mate.number;
-
-    if (mateHasLowerNumberThanMe && mateWantsToChaseTheBall && mateIsNotOfficialBallchaser)
-      return true;
-  }
-  // there was no mate that satisfied the conditions
-  return false;
 }
 
 MAKE_MODULE(BallChaserDecisionProvider, behaviorControl)

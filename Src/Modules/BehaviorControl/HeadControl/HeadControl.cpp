@@ -55,6 +55,8 @@ void HeadControl::handleLocalizeBall()
 
 void HeadControl::update(HeadAngleRequest& headAngleRequest)
 {
+  if (theFallDownState.state != FallDownState::upright)
+    return;
   isLookingDown = false;
   timeForHeadMovement = 2000;
 
@@ -153,7 +155,7 @@ void HeadControl::update(HeadAngleRequest& headAngleRequest)
           ColorRGBA::black);
       DRAWTEXT("module:HeadControl:targetQueue", targetQueue.at(i).pointOnField.x(), targetQueue.at(i).pointOnField.y() + 10, 60, ColorRGBA::red, targetQueue.size() - i);
       if (i > 0)
-        LINE("module:HeadControl:targetQueue",
+        ARROW("module:HeadControl:targetQueue",
             targetQueue.at(i - 1).pointOnField.x(),
             targetQueue.at(i - 1).pointOnField.y(),
             targetQueue.at(i).pointOnField.x(),
@@ -167,6 +169,8 @@ void HeadControl::update(HeadAngleRequest& headAngleRequest)
 
 void HeadControl::lookAtPointOnField(const Vector2f& point, Angle speed, bool waitForReached, int timeAtTarget)
 {
+  if (theFallDownState.state == FallDownState::onGround)
+    return;
   Angle angleToPointRelative = Transformation::fieldToRobot(theRobotPose, point).angle();
   resetQueue();
   PointOfInterest newPOI;
@@ -211,7 +215,7 @@ void HeadControl::lookAtBall(bool lookAtPercepts)
   {
     Angle angle = 75_deg;
     headControlState = ballSweepWide;
-    sweepField(-angle, angle, 1000, true, headSpeedOpt);
+    sweepField(angle, -angle, 1000, true, headSpeedOpt);
     return;
   }
 
@@ -240,7 +244,7 @@ void HeadControl::lookAtBall(bool lookAtPercepts)
   if (std::abs(angleToBall) < 0.4f && ballDistance < 2500 && ballDistance > 400 && timeSinceBallWasSeen > 500 && theBallSymbols.ballVelocityRelative.norm() < 100)
   {
     headControlState = ballSweep;
-    sweepField(angleToBall - 0.3f, angleToBall + 0.3f, ballLostSweepFieldDistance, true, headSpeedOpt);
+    sweepField(angleToBall + 20_deg, angleToBall - 20_deg, ballLostSweepFieldDistance, true, headSpeedOpt);
     return;
   }
 
@@ -249,13 +253,13 @@ void HeadControl::lookAtBall(bool lookAtPercepts)
     if (ballDistance < 1000)
     {
       headControlState = ballSweepWide;
-      sweepField(-60_deg, 60_deg, ballLostSweepFieldDistance, false, headSpeedOpt, false);
+      sweepField(60_deg, -60_deg, ballLostSweepFieldDistance, false, headSpeedOpt, false);
       return;
     }
     else
     {
       headControlState = ballSweep;
-      sweepField(-0.3f, 0.3f, ballLostSweepFieldDistance, true, headSpeedOpt);
+      sweepField(20_deg, -20_deg, ballLostSweepFieldDistance, true, headSpeedOpt);
       return;
     }
   }
@@ -299,7 +303,7 @@ void HeadControl::handleBallLost()
   else*/
   {
     headControlState = ballLost;
-    sweepField(1.f, -1.f, ballLostSweepFieldDistance, false, 0.5f * (headSpeedOpt + headSpeedMax), true, true);
+    sweepField(60_deg, -60_deg, ballLostSweepFieldDistance, false, 0.5f * (headSpeedOpt + headSpeedMax), true, true);
   }
 }
 
@@ -391,12 +395,20 @@ void HeadControl::calculatePointsOfInterest()
     handleReadyState();
     break;
   case STATE_SET:
-    if (theRobotPose.validity > 0.5f && theRobotPose.translation.x() > -1500 && theBallSymbols.ballWasSeen)
-      lookAtBall(false);
-    else
+    if (theGameInfo.setPlay == SET_PLAY_NONE && (theGameInfo.gamePhase == GAME_PHASE_NORMAL || theGameInfo.gamePhase == GAME_PHASE_OVERTIME))
     {
       headControlState = set;
-      sweepField(-pi_4, pi_4, theRobotPose.translation.norm(), true, headSpeedOpt, false);
+      sweepField(45_deg, -45_deg, theRobotPose.translation.norm(), true, headSpeedOpt, false);
+    }
+    else
+    {
+      if (theRobotPose.validity > 0.5f && theRobotPose.translation.x() > -1500 && theBallSymbols.ballWasSeen)
+        lookAtBall(false);
+      else
+      {
+        headControlState = set;
+        sweepField(45_deg, -45_deg, theRobotPose.translation.norm(), true, headSpeedOpt, false);
+      }
     }
     break;
   case STATE_PLAYING:
@@ -432,7 +444,7 @@ void HeadControl::handleReadyState()
   else
   {
     headControlState = ready;
-    sweepField(-45_deg, 45_deg, 3000, true, headSpeedOpt, false, false);
+    sweepField(45_deg, -45_deg, 3000, true, headSpeedOpt, false, false);
     return;
   }
 
@@ -496,16 +508,12 @@ void HeadControl::fillTargetQueue(const bool waitForReached, std::vector<Vector2
 
 void HeadControl::handlePlayingState()
 {
-  // these conditions are taken from BallchaserProvider::waitInOwnSetPlay
-  const int WINNING_WAIT_TIME = 8; // TODO Constant
-  const int LOOSING_WAIT_TIME = 15; // TODO Constant
-  bool winning = theOwnTeamInfo.score > theOpponentTeamInfo.score;
-  int timeRemaining = 30 /* TODO Constant */ - theGameSymbols.timeSinceSetPlayStarted;
+  // TODO HeadControl doesnt line up with body control!!! In BallchaserProvider waitInOwnSetPlay
+
   // if we are ballchaser, have reached our position, we are in our own set play and we have still time remaining
   // -> look around
-  if (theBehaviorData.role == BehaviorData::ballchaser && theSpeedInfo.speed == Pose2f(0, Vector2f::Zero()) && theGameSymbols.ownKickOff
-      && (theGameInfo.setPlay == SET_PLAY_KICK_IN || theGameInfo.setPlay == SET_PLAY_CORNER_KICK || theGameInfo.setPlay == SET_PLAY_GOAL_KICK || theGameInfo.setPlay == SET_PLAY_PUSHING_FREE_KICK)
-      && timeRemaining > (winning ? WINNING_WAIT_TIME : LOOSING_WAIT_TIME))
+  if (theBehaviorData.playerNumberToBall == theRobotInfo.number && theSpeedInfo.speed == Pose2f(0, Vector2f::Zero()) && theGameSymbols.ownKickOff
+      && (theGameInfo.setPlay == SET_PLAY_KICK_IN || theGameInfo.setPlay == SET_PLAY_CORNER_KICK || theGameInfo.setPlay == SET_PLAY_GOAL_KICK || theGameInfo.setPlay == SET_PLAY_PUSHING_FREE_KICK))
   {
     sweepField(45_deg, -45_deg, 3000, false, headSpeedOpt);
     return;
@@ -617,7 +625,7 @@ void HeadControl::handlePlayingState()
     }
     break;
   default:
-    sweepField(-60_deg, 60_deg, 1000, true, headSpeedOpt);
+    sweepField(60_deg, -60_deg, 1000, true, headSpeedOpt);
     break;
   }
 
@@ -701,7 +709,7 @@ void HeadControl::handleGoalie()
     //OUTPUT_TEXT("Keeper sweep wide");
     int timeSinceState = theFrameInfo.getTimeSince(timeStampSwitchedToNewState);
     if (timeSinceState < 3000)
-      sweepField(-60_deg, 60_deg, 250, false, headSpeedOpt, false, false);
+      sweepField(80_deg, -80_deg, 250, false, headSpeedOpt, false, false); //
     else
     {
       int secondsInState = (timeSinceState - 3000) / 1000;
@@ -724,7 +732,7 @@ void HeadControl::handleGoalie()
 
   if (inGoto && ballBehindMe && theBallSymbols.ballPositionRelative.norm() < 1500)
   {
-    sweepField(0.8f, -0.8f, 3000, false, headSpeedOpt);
+    sweepField(45_deg, -45_deg, 3000, false, headSpeedOpt); //
   }
   // if ball is not moving fast and far away, try to stabilize localization, TO TEST!
   else if (ballSpeed < 100 && theBallSymbols.timeSinceLastSeenByTeam < 3000)
@@ -829,12 +837,12 @@ void HeadControl::lookAtRobots()
     }
     if (poses.empty())
     {
-      poses.push_back(Pose2f(0, Transformation::robotToField(theRobotPose, Vector2f(3000, 3000))));
-      poses.push_back(Pose2f(0, Transformation::robotToField(theRobotPose, Vector2f(1000, -1000))));
+      poses.emplace_back(0, Transformation::robotToField(theRobotPose, Vector2f(3000, 3000)));
+      poses.emplace_back(0, Transformation::robotToField(theRobotPose, Vector2f(1000, -1000)));
     }
     else if (poses.size() == 1)
     {
-      poses.push_back(Transformation::robotToField(theRobotPose, Vector2f(1000.f, sgn(Transformation::fieldToRobot(theRobotPose, poses[0].translation).y()) * -1000.f)));
+      poses.emplace_back(0, Transformation::robotToField(theRobotPose, Vector2f(1000.f, sgn(Transformation::fieldToRobot(theRobotPose, poses[0].translation).y()) * -1000.f)));
     }
     resetQueue();
     std::sort(poses.begin(), poses.end(), sortRobots(this));
@@ -864,7 +872,8 @@ void HeadControl::lookDown()
 void HeadControl::moveHead()
 {
   const bool direct = (theHeadControlRequest.controlType == HeadControlRequest::direct || targetQueue.empty());
-
+  if (theFallDownState.state == FallDownState::onGround)
+    return;
   // from headmotionengine
   Angle lastPan = theJointSensorData.angles[Joints::headYaw];
   if (lastPan == JointAngles::off)
@@ -912,6 +921,8 @@ void HeadControl::moveHead()
 
 void HeadControl::sweepField(const Angle leftAngle, const Angle rightAngle, const float distance, const bool forceSweepType, const Angle speed, bool sweepNearestFirst, bool waitForReached)
 {
+  if (theFallDownState.state == FallDownState::onGround)
+    return;
   if (targetQueue.empty() || (lastControlType != theHeadControlRequest.controlType && !forceSweepType) || headControlState != lastHeadControlState)
   //|| robotState != lastRobotState) TODO: check this
   {

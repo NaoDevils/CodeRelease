@@ -5,7 +5,7 @@
 
 #pragma once
 #include "BehaviorData.h"
-#include "PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 

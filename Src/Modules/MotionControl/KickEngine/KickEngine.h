@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <optional>
+#include <filesystem>
 #include "KickEngineData.h"
 #include "KickEngineParameters.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
@@ -20,7 +22,7 @@
 #include "Tools/Streams/InStreams.h"
 
 MODULE(KickEngine,
-  USES(JointRequest),
+  USES(RawJointRequest),
   REQUIRES(FrameInfo),
   REQUIRES(HeadJointRequest),
   REQUIRES(JointSensorData),

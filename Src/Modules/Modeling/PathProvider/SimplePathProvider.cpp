@@ -15,10 +15,10 @@ SimplePathProvider::SimplePathProvider()
 
 void SimplePathProvider::initialize()
 {
-  penaltyAreaDownLeft = Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftPenaltyArea + 150);
-  penaltyAreaDownRight = Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightPenaltyArea - 150);
-  penaltyAreaUpRight = Vector2f(theFieldDimensions.xPosOwnPenaltyArea + 150, theFieldDimensions.yPosRightPenaltyArea - 150);
-  penaltyAreaUpLeft = Vector2f(theFieldDimensions.xPosOwnPenaltyArea + 150, theFieldDimensions.yPosLeftPenaltyArea + 150);
+  goalAreaDownLeft = Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftGoalArea + 150);
+  goalAreaDownRight = Vector2f(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoalArea - 150);
+  goalAreaUpRight = Vector2f(theFieldDimensions.xPosOwnGoalArea + 150, theFieldDimensions.yPosRightGoalArea - 150);
+  goalAreaUpLeft = Vector2f(theFieldDimensions.xPosOwnGoalArea + 150, theFieldDimensions.yPosLeftGoalArea + 150);
   initialized = true;
 }
 
@@ -122,10 +122,7 @@ void SimplePathProvider::handleBall()
     float alpha = std::abs(Angle::normalize(destWorldCoordinates.translation.angle() - (destWorldCoordinates.translation - theBallSymbols.ballPositionField).angle())) / pi;
     float influenceRadius = ballInfluenceRadius + ballInfluenceRadius * alpha;
     // if free kick, use wide circle around ball
-    isGoalieInOwnPenaltyArea = theBehaviorData.role == BehaviorData::keeper
-        && std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.yPosLeftPenaltyArea + (isGoalieInOwnPenaltyArea ? 100.f : 0.f)
-        && theRobotPoseAfterPreview.translation.x() < theFieldDimensions.xPosOwnPenaltyArea + (isGoalieInOwnPenaltyArea ? 100.f : 0.f);
-    if (theGameInfo.setPlay != SET_PLAY_NONE && !theGameSymbols.ownKickOff && !isGoalieInOwnPenaltyArea)
+    if (theGameInfo.setPlay != SET_PLAY_NONE && !theGameSymbols.ownKickOff)
       influenceRadius = 150.f;
     obstacles.push_back(Obstacle(trans.x(), trans.y(), influenceRadius, Path::ball));
   }
@@ -187,15 +184,10 @@ void SimplePathProvider::buildPath()
 
   wayPoints.push_back(theRobotPoseAfterPreview);
 
-  bool notAllowedInPenaltyArea = false;
-  // handle penalty area
-  // only defender roles or ball chaser are allowed in penalty area
-  //bool ballChaserInPenaltyArea = theBallchaser.optPosition.translation.x() < theFieldDimensions.xPosOwnPenaltyArea + 200.f;
-  if (!theGameSymbols.allowedInPenaltyArea)
-  {
-    notAllowedInPenaltyArea = true;
-    avoidRectangularArea(penaltyAreaDownLeft, penaltyAreaUpLeft, penaltyAreaUpRight, penaltyAreaDownRight);
-  }
+  // handle goal area
+  // only defender roles or ball chaser are allowed in goal area
+  if (!theGameSymbols.allowedInGoalArea)
+    avoidRectangularArea(goalAreaDownLeft, goalAreaUpLeft, goalAreaUpRight, goalAreaDownRight);
 
   if (wayPoints.size() > 1
       && ((wayPoints[1].translation - theRobotPoseAfterPreview.translation).norm() < 150
@@ -238,20 +230,20 @@ void SimplePathProvider::buildPath()
     if (theRobotPoseAfterPreview.translation.y() > 0.f)
     {
       if (insertLeftGoalPost)
-        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
+        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
       if (insertRightGoalPost)
-        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
+        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
     }
     else
     {
       if (insertRightGoalPost)
-        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
+        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
       if (insertLeftGoalPost)
-        wayPoints.push_back(Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
+        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
     }
   }
 
-  avoidObstacles(notAllowedInPenaltyArea);
+  avoidObstacles(!theGameSymbols.allowedInGoalArea);
 
   // needed bc of own goal area waypoints (not anymore?)
   //   std::sort(wayPoints.begin(),wayPoints.end(),sortPoses(this));
@@ -357,7 +349,7 @@ void SimplePathProvider::avoidRectangularArea(const Vector2f& bottomLeft, const 
   }
 }
 
-void SimplePathProvider::avoidObstacles(bool notAllowedInPenaltyArea)
+void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
 {
   // TODO: create wall were player may shoot ball and avoid that..??!!
   std::sort(obstacles.begin(), obstacles.end(), sortObstacles(this));
@@ -452,7 +444,7 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInPenaltyArea)
       Vector2f avoidancePoint = obstacle->position + normalToObstacle;
 
       const Vector2f goalCenter(theFieldDimensions.xPosOwnGroundline, 0.f);
-      if ((notAllowedInPenaltyArea && Geometry::isPointInsideRectangle(penaltyAreaDownLeft, penaltyAreaUpRight, avoidancePoint)
+      if ((notAllowedInGoalArea && Geometry::isPointInsideRectangle(goalAreaDownLeft, goalAreaUpRight, avoidancePoint)
               && (goalCenter - (obstacle->position + normalToObstacle)).norm() < (goalCenter - (obstacle->position - normalToObstacle)).norm())
           || (obstacle->type == Path::goalPost && std::abs(obstacle->position.x() + normalToObstacle.x()) > theFieldDimensions.xPosOpponentGroundline))
       {
@@ -531,10 +523,10 @@ bool SimplePathProvider::isOldPathFine(Path& path)
           return false;
       }
     }*/
-    for (unsigned int i = 1; i < path.wayPoints.size() - 1; i++)
+    for (unsigned int j = 1; j < path.wayPoints.size() - 1; j++)
     {
-      if ((path.wayPoints[i].translation - wayPoints[i].translation).norm() < 100)
-        path.wayPoints[i] = wayPoints[i];
+      if ((path.wayPoints[j].translation - wayPoints[j].translation).norm() < 100)
+        path.wayPoints[j] = wayPoints[j];
     }
     oldLength += vToNextWayPoint.norm();
   }

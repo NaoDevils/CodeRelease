@@ -12,16 +12,35 @@ void FieldColorProvider::update(FieldColors& theFieldColor)
 {
   MODIFY("module:FieldColorProvider:fieldColorLower", localFieldColorLower);
   MODIFY("module:FieldColorProvider:fieldColorUpper", localFieldColorUpper);
+  DECLARE_DEBUG_DRAWING("module:FieldColorProvider:Image:Lower", "drawingOnImage");
+  DECLARE_DEBUG_RESPONSE("module:FieldColorProvider:noFieldColorFromImage:Lower");
+  INIT_DEBUG_IMAGE_BLACK(FieldColor, theCameraInfo.width, theCameraInfo.height);
+
 
   execute(false);
   theFieldColor = localFieldColorLower;
-}
 
+  COMPLEX_IMAGE(FieldColor)
+  {
+    draw(false);
+    SEND_DEBUG_IMAGE(FieldColor);
+  }
+}
 
 void FieldColorProvider::update(FieldColorsUpper& theFieldColorUpper)
 {
+  DECLARE_DEBUG_DRAWING("module:FieldColorProvider:Image:Upper", "drawingOnImage");
+  DECLARE_DEBUG_RESPONSE("module:FieldColorProvider:noFieldColorFromImage:Upper");
+  INIT_DEBUG_IMAGE_BLACK(FieldColorUpper, theCameraInfoUpper.width, theCameraInfoUpper.height);
+
   execute(true);
   theFieldColorUpper = localFieldColorUpper;
+
+  COMPLEX_IMAGE(FieldColorUpper)
+  {
+    draw(true);
+    SEND_DEBUG_IMAGE(FieldColorUpper);
+  }
 }
 
 void FieldColorProvider::execute(const bool& upper)
@@ -234,9 +253,11 @@ void FieldColorProvider::calcFieldColorFromSamples(const bool& upper, FieldColor
   else
     fieldColor.maxFieldColorY += fieldColor.maxFieldColorY / 5;
 
-  //tk: temp. removed this as it does not allow for minLineToFieldColorThreshold values < 40
-  //fieldColor.lineToFieldColorYThreshold = std::max((std::min(std::min(fieldColor.fieldColorOptY + fieldColor.fieldColorOptY / 3, fieldColor.fieldColorOptY + 40), 255) - fieldColor.fieldColorOptY), minLineToFieldColorThreshold);
-  fieldColor.lineToFieldColorYThreshold = minLineToFieldColorThreshold;
+  //int threshold = std::min(fieldColor.fieldColorOptY + fieldColor.fieldColorOptY / 3, 255) - fieldColor.fieldColorOptY;
+  //int threshold = std::min(fieldColor.fieldColorOptY + 40, 255) - fieldColor.fieldColorOptY;
+  int threshold = std::min(static_cast<int>(fieldColor.fieldColorMaxYDiff / 2.f), 255);
+  fieldColor.lineToFieldColorYThreshold = std::max(threshold, upper ? minLineToFieldColorThresholdUpper : minLineToFieldColorThresholdLower);
+  //fieldColor.lineToFieldColorYThreshold = upper ? minLineToFieldColorThresholdUpper : minLineToFieldColorThresholdLower;
 }
 
 void FieldColorProvider::smoothFieldColors(const bool& upper)
@@ -257,6 +278,56 @@ void FieldColorProvider::smoothFieldColors(const bool& upper)
 int FieldColorProvider::fieldColorWeighted(const Image::Pixel& p, const int& optCr, const int& fieldColorMaxY)
 {
   return (p.y > fieldColorMaxY || p.cr > (std::max(optCr + 10, 150))) ? 0 : std::max(128 - p.cr, 0) + std::abs(optCr - p.cr) / 4;
+}
+
+void FieldColorProvider::draw(const bool& upper)
+{
+  if (upper)
+  {
+    const CameraInfo& cameraInfo = theCameraInfoUpper;
+    for (int i = 0; i < cameraInfo.height; i++)
+    {
+      for (int j = 0; j < cameraInfo.width; j++)
+      {
+        Image::Pixel p = theImageUpper[i][j];
+        if (localFieldColorUpper.isPixelFieldColor(p.y, p.cb, p.cr))
+        {
+          //DOT("module:FieldColorProvider:Image:Upper", j, i, ColorRGBA::green, ColorRGBA::green);
+          DEBUG_IMAGE_SET_PIXEL_YUV(FieldColorUpper, j, i, 150, 50, 50);
+        }
+        else
+        {
+          DEBUG_RESPONSE("module:FieldColorProvider:noFieldColorFromImage:Upper")
+          {
+            DEBUG_IMAGE_SET_PIXEL_YUV(FieldColorUpper, j, i, p.y, p.cb, p.cr);
+          }
+        }
+      }
+    }
+  }
+  else
+  {
+    const CameraInfo& cameraInfo = theCameraInfo;
+    for (int i = 0; i < cameraInfo.height; i++)
+    {
+      for (int j = 0; j < cameraInfo.width; j++)
+      {
+        Image::Pixel p = theImage[i][j];
+        if (localFieldColorLower.isPixelFieldColor(p.y, p.cb, p.cr))
+        {
+          //DOT("module:FieldColorProvider:Image:Lower", j, i, ColorRGBA::green, ColorRGBA::green);
+          DEBUG_IMAGE_SET_PIXEL_YUV(FieldColor, j, i, 150, 50, 50);
+        }
+        else
+        {
+          DEBUG_RESPONSE("module:FieldColorProvider:noFieldColorFromImage:Lower")
+          {
+            DEBUG_IMAGE_SET_PIXEL_YUV(FieldColor, j, i, p.y, p.cb, p.cr);
+          }
+        }
+      }
+    }
+  }
 }
 
 MAKE_MODULE(FieldColorProvider, perception)

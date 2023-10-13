@@ -1,5 +1,5 @@
 /**
- * @file ndevils.cpp
+ * @file naodevilsbase.cpp
  * Implementation of a process that provides basic LoLA socket access and shares its data via semaphore and shared memory with the framework.
  */
 
@@ -122,12 +122,8 @@ private:
 
   bool lastChargingStatus = false;
 
-  int triplePressStartTime = 0; /**< After first chest button press within 2 secs, this timestamp is set. */
-  int triplePressCount = 0; /**< Counter for transition between framework and base. On count 3, control changes */
-  bool triplePressLastButtonState = false; /**< Remember last chest button state. */
-  bool triplePressed = false; /**< After 3 presses, this is set and state transition to/from sitting starts */
+  bool chestButtonLastState = false; /**< Remember last chest button state. */
   int tripleHeadPressStartTime = 0; /**< After all three head buttons are pressed, this timestamp is set. */
-  bool tripleHeadPressed = false; /**< Remember if the all head buttons were pressed. */
   bool transitionTriggered = false; /**< Trigger transition to/from framework. */
 };
 
@@ -465,42 +461,20 @@ void NDevils::processSensorData(const NDData::SensorData& sensordata)
   }
 
   // detect triple press of chestbutton for transition from framework
-  chestButtonPressedAndReleased = triplePressLastButtonState != chestButtonPressed && !chestButtonPressed;
-  if (chestButtonPressedAndReleased)
-  {
-    // detect triple button press for sitdown
-    if (state != sitting)
-    {
-      if (triplePressCount == 0)
-        triplePressStartTime = sensordata.timestamp;
-      triplePressCount++;
-    }
-    else
-      triplePressCount = 0;
-    std::cout << "chest button pressed" << std::endl;
-  }
-  triplePressLastButtonState = chestButtonPressed;
-
-  if ((sensordata.timestamp - triplePressStartTime) > 2000 || triplePressed)
-    triplePressCount = 0;
-  triplePressed = triplePressCount == 3 && !chestButtonPressed;
+  chestButtonPressedAndReleased = chestButtonLastState != chestButtonPressed && !chestButtonPressed;
+  chestButtonLastState = chestButtonPressed;
 
   bool isTripleHeadPressed = sensordata.touch[NDData::Touch::headFront] == 1.f && sensordata.touch[NDData::Touch::headMiddle] == 1.f && sensordata.touch[NDData::Touch::headFront] == 1.f;
 
   // detect triple head button press (all three head buttons pressed at the same time)
   // if we hold those buttons for > 1 sec, tripleHeadPressed is set to true
-  if (!isTripleHeadPressed || tripleHeadPressed)
+  if (!isTripleHeadPressed || transitionTriggered)
     tripleHeadPressStartTime = sensordata.timestamp;
 
-  bool headPressTriggered = false;
+  transitionTriggered = false;
   if (sensordata.timestamp - tripleHeadPressStartTime > 1000)
   {
-    tripleHeadPressed = true;
-    headPressTriggered = true;
-  }
-  if (!isTripleHeadPressed)
-  {
-    tripleHeadPressed = false;
+    transitionTriggered = true;
   }
 
 
@@ -510,8 +484,6 @@ void NDevils::processSensorData(const NDData::SensorData& sensordata)
   disableFrameworkWhenCharging();
 
   handleState(sensordata);
-
-  transitionTriggered = triplePressed || headPressTriggered;
 }
 
 void NDevils::postFramework()
@@ -834,7 +806,6 @@ void NDevils::modifyJoints(std::array<float, NDData::numOfJoints>& positions, st
   }
   case standingUp:
   {
-    triplePressCount = 0;
     phase = std::min(phase + 0.005f, 1.f);
     data->transitionToFramework.store(phase, std::memory_order_relaxed);
     if (playDeadRequested())
@@ -885,7 +856,7 @@ void NDevils::modifyJoints(std::array<float, NDData::numOfJoints>& positions, st
 void NDevils::disableFrameworkWhenCharging()
 {
   if (state == standing && playDeadRequested() && chargingStatus && !lastChargingStatus)
-    triplePressed = true;
+    transitionTriggered = true;
 
   lastChargingStatus = chargingStatus;
 }

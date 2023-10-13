@@ -81,7 +81,7 @@ void TimingManager::startTiming(const char* identifier, bool threadTime)
   const long long startTime = (prvt->threadTime && threadTime)
       ? static_cast<long long>(SystemCall::getCurrentThreadTime())
       : std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()).time_since_epoch().count();
-  prvt->timing[identifier] = startTime;
+  prvt->timing[identifier] -= startTime;
   prvt->dataPrepared = false;
 }
 
@@ -90,7 +90,7 @@ unsigned TimingManager::stopTiming(const char* identifier, bool threadTime)
   const long long stopTime = (prvt->threadTime && threadTime)
       ? static_cast<long long>(SystemCall::getCurrentThreadTime())
       : std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()).time_since_epoch().count();
-  prvt->timing[identifier] = stopTime - prvt->timing[identifier];
+  prvt->timing[identifier] += stopTime;
   return static_cast<unsigned>(prvt->timing[identifier]);
 }
 

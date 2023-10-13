@@ -83,7 +83,6 @@ void CameraProviderV6::update(Image& image)
   }
   ASSERT(image.timeStamp >= lastImageTimeStamp);
   lastImageTimeStamp = image.timeStamp;
-  MODIFY("module:CameraProviderV6:fullSize", image.isFullSize);
 
   // Update current time only if update method is called.
   // This prevents camera reset in case another module provides the images (e.g. ImageLogDataProvider).
@@ -137,7 +136,6 @@ void CameraProviderV6::update(ImageUpper& imageUpper)
 
   ASSERT(imageUpper.timeStamp >= lastImageUpperTimeStamp);
   lastImageUpperTimeStamp = imageUpper.timeStamp;
-  MODIFY("module:CameraProviderV6:fullSize", imageUpper.isFullSize);
 
   // Update current time only if update method is called.
   // This prevents camera reset in case another module provides the images (e.g. ImageLogDataProvider).
@@ -404,6 +402,13 @@ void CameraProviderV6::waitForFrameData2()
     {
       printf("Reset!\n");
       VERIFY(++resetCounter <= 3);
+      /*if (++resetCounter > 3)
+      {
+        if (resetUpper)
+          upperCameraInfo.usable = false;
+        if (resetLower)
+          lowerCameraInfo.usable = false;
+      }*/
       SystemCall::execute("/bin/bash -c '[ -f /usr/libexec/reset-cameras.sh ] && /usr/libexec/reset-cameras.sh toggle; [ -f /opt/aldebaran/libexec/reset-cameras.sh ] && /opt/aldebaran/libexec/reset-cameras.sh toggle; '");
       std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }

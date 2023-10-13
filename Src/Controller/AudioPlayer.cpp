@@ -90,9 +90,11 @@ void AudioPlayer::play(const AudioData& audioData)
 
 void AudioPlayer::Pimpl::init(int sampleRate, int channelCount)
 {
+  [[maybe_unused]] PaError paerr;
   if (!initialized)
   {
-    VERIFY(Pa_Initialize() == paNoError);
+    paerr = Pa_Initialize();
+    assert(paerr == paNoError);
   }
 
   outputParameters.device = Pa_GetDefaultOutputDevice();
@@ -106,5 +108,6 @@ void AudioPlayer::Pimpl::init(int sampleRate, int channelCount)
 
   this->sampleRate = sampleRate;
 
-  VERIFY(Pa_OpenStream(&stream, nullptr, &outputParameters, this->sampleRate, paFramesPerBufferUnspecified, 0, nullptr, nullptr) == paNoError);
+  paerr = Pa_OpenStream(&stream, nullptr, &outputParameters, this->sampleRate, paFramesPerBufferUnspecified, 0, nullptr, nullptr);
+  assert(paerr == paNoError);
 }

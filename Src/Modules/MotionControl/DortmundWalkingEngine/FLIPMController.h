@@ -30,8 +30,6 @@
 #include "Representations/MotionControl/FLIPMParams.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/FLIPMObserver.h"
 
-//const int static_N = 50; /**< Length of the preview phase */
-
 MODULE(FLIPMController,
   REQUIRES(WalkingEngineParams),
   REQUIRES(FLIPMParameter),
@@ -93,6 +91,7 @@ private:
 
   void reset(); /**< Resets the controller. */
   Point controllerStep(); /** Calculate one step of the system. */
+
   void executeController(Dimension d, const Eigen::Matrix<double, 1, PREVIEW_LENGTH>& refZMP);
   void executeRCSController(Dimension d, const Eigen::Matrix<double, 1, PREVIEW_LENGTH>& refZMP);
 };

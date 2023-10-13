@@ -54,6 +54,7 @@ STREAMABLE(BehaviorParameters,
   (float)(80.f)  relativeYminBallPosition,
   (float)(350.f) relativeYmaxBallPosition,
   (bool)(true) useDive, // use dive motion?
+  (bool)(false) goalieForEvents,
   (bool)(true) goalieUseIntercept,
   (bool)(false) goalieInterceptOnly,
   (bool)(true) useBallInterception, // if true and the ball moves towards robot's y axis he will attempt an interception

@@ -300,25 +300,9 @@ void OracledPerceptsProvider::update(RobotsPercept& playersPercept)
 
   const bool isBlue = Global::getSettings().teamNumber == 1;
   for (unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, playersPercept, false);
+    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, playersPercept);
   for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, playersPercept, false);
-}
-
-void OracledPerceptsProvider::update(RobotsPerceptUpper& playersPercept)
-{
-  playersPercept.robots.clear();
-  if (!theCameraMatrixUpper.isValid || !Global::settingsExist())
-    return;
-
-  // Simulation scene should only use blue and red for now
-  //ASSERT(Global::getSettings().teamColor == Settings::blue || Global::getSettings().teamColor == Settings::red);
-
-  const bool isBlue = Global::getSettings().teamNumber == 1;
-  for (unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, (RobotsPercept&)playersPercept, true);
-  for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, (RobotsPercept&)playersPercept, true);
+    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, playersPercept);
 }
 
 void OracledPerceptsProvider::update(CLIPCenterCirclePercept& centerCirclePercept)
@@ -379,7 +363,7 @@ void OracledPerceptsProvider::update(CLIPCenterCirclePercept& centerCirclePercep
   }
 }
 
-void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::GroundTruthPlayer& player, bool isOpponent, RobotsPercept& playersPercept, const bool& upper)
+void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::GroundTruthPlayer& player, bool isOpponent, RobotsPercept& playersPercept)
 {
   const Pose2f robotPoseInv = theGroundTruthWorldState.ownPose.inverse();
   Vector2f relativePlayerPos = robotPoseInv * player.pose.translation;
@@ -390,8 +374,8 @@ void OracledPerceptsProvider::createPlayerBox(const GroundTruthWorldState::Groun
   if (randomFloat() > recognitionRate)
     return;
   Vector2f playerInImage;
-  bool localUpper = upper;
-  if (pointIsInImage(relativePlayerPos, playerInImage, localUpper) && upper == localUpper)
+  bool upper;
+  if (pointIsInImage(relativePlayerPos, playerInImage, upper))
   {
     const CameraInfo& cameraInfo = upper ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
     const CameraMatrix& cameraMatrix = upper ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
@@ -470,7 +454,7 @@ void OracledPerceptsProvider::updateViewPolygon(bool upper)
   if (f > 0.f)
     vP[0] = theGroundTruthWorldState.ownPose.translation;
   else
-    vP[0] = (theGroundTruthWorldState.ownPose + pof).translation;
+    vP[0] = theGroundTruthWorldState.ownPose * pof;
 
   r = cameraMatrix.rotation;
   r.rotateY(cameraInfo.openingAngleHeight / 2);
@@ -486,7 +470,7 @@ void OracledPerceptsProvider::updateViewPolygon(bool upper)
   if (f > 0.f)
     vP[1] = theGroundTruthWorldState.ownPose.translation;
   else
-    vP[1] = (theGroundTruthWorldState.ownPose + pof).translation;
+    vP[1] = theGroundTruthWorldState.ownPose * pof;
 
   r = cameraMatrix.rotation;
   r.rotateY(-(cameraInfo.openingAngleHeight / 2));
@@ -505,7 +489,7 @@ void OracledPerceptsProvider::updateViewPolygon(bool upper)
     vP[2] = theGroundTruthWorldState.ownPose.translation
         + Vector2f(maxDist, 0).rotate(theGroundTruthWorldState.ownPose.rotation + (-cameraInfo.openingAngleWidth / 2) + cameraMatrix.rotation.getZAngle());
   else
-    vP[2] = (theGroundTruthWorldState.ownPose + pof).translation;
+    vP[2] = theGroundTruthWorldState.ownPose * pof;
 
   r = cameraMatrix.rotation;
   r.rotateY(-(cameraInfo.openingAngleHeight / 2));
@@ -522,7 +506,7 @@ void OracledPerceptsProvider::updateViewPolygon(bool upper)
     vP[3] = theGroundTruthWorldState.ownPose.translation
         + Vector2f(maxDist, 0).rotate(theGroundTruthWorldState.ownPose.rotation + (cameraInfo.openingAngleWidth / 2) + cameraMatrix.rotation.getZAngle());
   else
-    vP[3] = (theGroundTruthWorldState.ownPose + pof).translation;
+    vP[3] = theGroundTruthWorldState.ownPose * pof;
 }
 
 bool OracledPerceptsProvider::partOfLineIsVisible(const std::pair<Vector2f, Vector2f>& line, Vector2f& start, Vector2f& end, bool upper) const

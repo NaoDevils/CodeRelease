@@ -66,104 +66,7 @@ bool RoboCupCtrl::compile()
       ballGeom->registerCollisionCallback(*this);
   }
 
-  std::map<int, int> ownColorCounter;
-  std::map<int, int> oppColorCounter;
-
-  std::map<std::string, int> teamColorToEnumMap{
-      {"nao-blue", 0},
-      {"nao-red", 1},
-      {"nao-yellow", 2},
-      {"nao-black", 3},
-      {"nao-white", 4},
-      {"nao-green", 5},
-      {"nao-orange", 6},
-      {"nao-purple", 7},
-      {"nao-brown", 8},
-      {"nao-gray", 9},
-  };
-
-  for (int i = 0; i < 2; i++)
-  {
-    SimRobot::Object* group;
-    if (i == 0) // Iterate "robots" group:
-      group = RoboCupCtrl::application->resolveObject("RoboCup.robots", SimRobotCore2::compound);
-    else // Iterate "extras" group:
-      group = RoboCupCtrl::application->resolveObject("RoboCup.extras", SimRobotCore2::compound);
-
-    for (unsigned currentRobot = 0, count = RoboCupCtrl::application->getObjectChildCount(*group); currentRobot < count; ++currentRobot)
-    {
-      SimRobot::Object* robot = (SimRobot::Object*)RoboCupCtrl::application->getObjectChild(*group, currentRobot);
-
-      QVector<QString> parts;
-      parts.resize(1);
-      parts[0] = "naoTorsoV6";
-      SimRobotCore2::Appearance* torsoAppearance = dynamic_cast<SimRobotCore2::Appearance*>(RoboCupCtrl::application->resolveObject(parts, robot, SimRobotCore2::appearance));
-      if (torsoAppearance != nullptr)
-      {
-        const QString& fullNameTeamColor = RoboCupCtrl::application->getObjectChild(*torsoAppearance, 0u)->getFullName();
-        const std::string baseNameTeamColor = fullNameTeamColor.mid(fullNameTeamColor.lastIndexOf('.') + 1).toUtf8().constData();
-
-        int robotColorEnum = -1;
-        if (teamColorToEnumMap.find(baseNameTeamColor) != teamColorToEnumMap.end())
-        {
-          robotColorEnum = teamColorToEnumMap[baseNameTeamColor];
-        }
-        else
-          ASSERT(false);
-
-        QString robotNumberString(robot->getFullName());
-        int pos = robotNumberString.lastIndexOf('.');
-        robotNumberString.remove(0, pos + 6);
-        int robotNumber = robotNumberString.toInt() - 1;
-
-        std::map<int, int>& enumColorMap = robotNumber < MAX_NUM_PLAYERS ? ownColorCounter : oppColorCounter;
-        if (enumColorMap.find(robotColorEnum) == enumColorMap.end())
-        {
-          if (i == 0)
-            enumColorMap[robotColorEnum] = 2; // Active robots count double compared to dummys
-          else
-            enumColorMap[robotColorEnum] = 1;
-        }
-        else
-        {
-          if (i == 0)
-            enumColorMap[robotColorEnum] += 2; // Active robots count double compared to dummys
-          else
-            enumColorMap[robotColorEnum] += 1;
-        }
-      }
-    }
-  }
-  uint8_t ownTeamColor, oppTeamColour;
-  if (!ownColorCounter.empty())
-  {
-    std::map<int, int>::iterator majorOwnColorIt = std::max_element(ownColorCounter.begin(),
-        ownColorCounter.end(),
-        [](const auto& x, const auto& y)
-        {
-          return x.second < y.second;
-        });
-    int majorOwnColor = majorOwnColorIt->first;
-    ownTeamColor = majorOwnColor;
-  }
-  else
-    ownTeamColor = 2; // Fallback to yellow
-
-  if (!oppColorCounter.empty())
-  {
-    std::map<int, int>::iterator majorOppColorIt = std::max_element(oppColorCounter.begin(),
-        oppColorCounter.end(),
-        [](const auto& x, const auto& y)
-        {
-          return x.second < y.second;
-        });
-    int majorOppColor = majorOppColorIt->first;
-    oppTeamColour = majorOppColor;
-  }
-  else
-    oppTeamColour = 3; // Fallback to black
-
-  gameController.setTeamColors(ownTeamColor, oppTeamColour);
+  updateColors();
 
   return true;
 }
@@ -225,8 +128,8 @@ SimRobot::Object* RoboCupCtrl::addCategory(const QString& name, const QString& p
   {
     int lio = parentName.lastIndexOf('.');
     QString subParentName = parentName.mid(0, lio);
-    QString name = parentName.mid(lio + 1);
-    parent = addCategory(name, subParentName);
+    QString category = parentName.mid(lio + 1);
+    parent = addCategory(category, subParentName);
   }
   return addCategory(name, parent);
 }
@@ -301,6 +204,83 @@ std::string RoboCupCtrl::getRobotName() const
     return "Robot1";
   std::string robotName(this->robotName);
   return robotName.substr(robotName.rfind('.') + 1);
+}
+
+void RoboCupCtrl::updateColors()
+{
+  std::map<int, int> ownFieldPlayerCounter, oppFieldPlayerCounter;
+  uint8_t ownFieldPlayerColor = TEAM_YELLOW, ownGoalkeeperColor = TEAM_RED, oppFieldPlayerColor = TEAM_BLACK, oppGoalkeeperColor = TEAM_BLUE;
+
+  const std::map<std::string, int> teamColorToEnumMap{
+      {"nao-blue", 0},
+      {"nao-red", 1},
+      {"nao-yellow", 2},
+      {"nao-black", 3},
+      {"nao-white", 4},
+      {"nao-green", 5},
+      {"nao-orange", 6},
+      {"nao-purple", 7},
+      {"nao-brown", 8},
+      {"nao-gray", 9},
+  };
+
+  for (int i = 0; i < 2; i++)
+  {
+    SimRobot::Object* group;
+    if (i == 0) // Iterate "robots" group:
+      group = RoboCupCtrl::application->resolveObject("RoboCup.robots", SimRobotCore2::compound);
+    else // Iterate "extras" group:
+      group = RoboCupCtrl::application->resolveObject("RoboCup.extras", SimRobotCore2::compound);
+
+    for (unsigned currentRobot = 0, count = RoboCupCtrl::application->getObjectChildCount(*group); currentRobot < count; ++currentRobot)
+    {
+      SimRobot::Object* robot = (SimRobot::Object*)RoboCupCtrl::application->getObjectChild(*group, currentRobot);
+
+      SimRobotCore2::Appearance* torsoAppearance = dynamic_cast<SimRobotCore2::Appearance*>(RoboCupCtrl::application->resolveObject({"naoTorsoV6"}, robot, SimRobotCore2::appearance));
+      if (torsoAppearance)
+      {
+        const QString& fullNameTeamColor = RoboCupCtrl::application->getObjectChild(*torsoAppearance, 0u)->getFullName();
+        const std::string baseNameTeamColor = fullNameTeamColor.mid(fullNameTeamColor.lastIndexOf('.') + 1).toUtf8().constData();
+        const int robotColorEnum = teamColorToEnumMap.at(baseNameTeamColor);
+
+        QString robotNumberString(robot->getFullName());
+        const int pos = robotNumberString.lastIndexOf('.');
+        robotNumberString.remove(0, pos + 6);
+        const int robotNumber = robotNumberString.toInt() - 1;
+
+        if (robotNumber == 0) // is own goalie
+          ownGoalkeeperColor = robotColorEnum;
+        else if (robotNumber == MAX_NUM_PLAYERS) // is opp goalie
+          oppGoalkeeperColor = robotColorEnum;
+        else
+        {
+          std::map<int, int>& enumColorMap = robotNumber < MAX_NUM_PLAYERS ? ownFieldPlayerCounter : oppFieldPlayerCounter;
+
+          if (enumColorMap.find(robotColorEnum) == enumColorMap.end())
+            enumColorMap[robotColorEnum] = 0;
+
+          enumColorMap[robotColorEnum] += (i == 0) ? 2 : 1; // Active robots count double compared to dummys
+        }
+      }
+    }
+  }
+
+  const auto valueLessThan = [](const auto& x, const auto& y)
+  {
+    return x.second < y.second;
+  };
+  if (!ownFieldPlayerCounter.empty())
+  {
+    const auto majorOwnColorIt = std::max_element(ownFieldPlayerCounter.begin(), ownFieldPlayerCounter.end(), valueLessThan);
+    ownFieldPlayerColor = majorOwnColorIt->first;
+  }
+  if (!oppFieldPlayerCounter.empty())
+  {
+    const auto majorOppColorIt = std::max_element(oppFieldPlayerCounter.begin(), oppFieldPlayerCounter.end(), valueLessThan);
+    oppFieldPlayerColor = majorOppColorIt->first;
+  }
+
+  gameController.setTeamColors(ownFieldPlayerColor, ownGoalkeeperColor, oppFieldPlayerColor, oppGoalkeeperColor);
 }
 
 unsigned RoboCupCtrl::getTime() const

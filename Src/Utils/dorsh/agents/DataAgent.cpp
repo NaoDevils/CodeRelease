@@ -23,7 +23,7 @@ DataAgent::DataAgent()
   connect(&dataSocket, SIGNAL(readyRead()), this, SLOT(updateData()));
   tcSocket.bind(QHostAddress::AnyIPv4, 10000 + teamNumber, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
   connect(&tcSocket, SIGNAL(readyRead()), this, SLOT(updateTC()));
-  gcSocket.bind(QHostAddress::AnyIPv4, 3838, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+  gcSocket.bind(QHostAddress::Any, 3838, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
   connect(&gcSocket, SIGNAL(readyRead()), this, SLOT(updateGC()));
 
   // start timer to send keep-alives
@@ -70,7 +70,7 @@ void DataAgent::sendKeepAlive()
   {
     tcSocket.flush();
     tcSocket.close();
-    if (tcSocket.bind(QHostAddress::AnyIPv4, 10000 + teamNumber))
+    if (tcSocket.bind(QHostAddress::AnyIPv4, 10000 + teamNumber, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint))
       teamNumber = newTeamNumber;
   }
 

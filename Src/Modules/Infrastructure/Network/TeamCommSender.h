@@ -15,7 +15,6 @@
 #include "Representations/Infrastructure/TeamCommSenderOutput.h"
 
 MODULE(TeamCommSender,
-  REQUIRES(RobotInfo),
   REQUIRES(TeamCommOutput),
   REQUIRES(TeamCommSocket),
   REQUIRES(FrameInfo),

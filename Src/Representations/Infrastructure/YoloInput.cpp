@@ -30,17 +30,17 @@ void YoloInput::toImage(Image& dest) const
           g = static_cast<unsigned char>(image[i * width * channel + j * channel + 1] * 255.f);
           b = static_cast<unsigned char>(image[i * width * channel + j * channel + 2] * 255.f);
           ColorModelConversions::fromRGBToYCbCr(r, g, b, y, cb, cr);
-          pixel.channels[0] = y;
-          pixel.channels[1] = cb;
-          pixel.channels[2] = y;
-          pixel.channels[3] = cr;
+          pixel.yCbCrPadding = y;
+          pixel.cb = cb;
+          pixel.y = y;
+          pixel.cr = cr;
         }
         else
         {
-          pixel.channels[0] = static_cast<unsigned char>(image[i * width + j] * 255.f);
-          pixel.channels[1] = 127;
-          pixel.channels[2] = static_cast<unsigned char>(image[i * width + j] * 255.f);
-          pixel.channels[3] = 127;
+          pixel.yCbCrPadding = static_cast<unsigned char>(image[i * width + j] * 255.f);
+          pixel.cb = 127;
+          pixel.y = static_cast<unsigned char>(image[i * width + j] * 255.f);
+          pixel.cr = 127;
         }
         for (int w = 0; w < scale; w++)
         {

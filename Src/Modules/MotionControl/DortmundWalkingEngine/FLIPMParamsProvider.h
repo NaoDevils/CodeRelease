@@ -1,24 +1,28 @@
 #pragma once
 
+#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Tools/Streams/RobotParameters.h"
 #include "Tools/Module/Module.h"
 
 #include <future>
 
+constexpr unsigned MODEL_STATE_DIM = 6;
+constexpr unsigned MODEL_CONTROL_DIM = 3;
+
 MODULE(FLIPMParamsProvider,
+  REQUIRES(FrameInfo),
+  REQUIRES(WalkCalibration),
   PROVIDES_WITHOUT_MODIFY(FLIPMParameter),
   PROVIDES(FLIPMControllerParameter),
   PROVIDES(FLIPMObserverParameter),
 
   LOADS_PARAMETERS(,
     (bool)(false) useRCS,
+    (bool)(false) autoRecalculate,
     (bool)(true) duplicateXParams,
-    (unsigned)(800000) DARE_maxIterations,
-    (float)(0.000001) DARE_threshold,
-    (int)(0) threadPriority,
-    (bool) useRobustIterationMethod,
     (FLIPMValues) paramsX,
     (FLIPMValues) paramsY
   )
@@ -26,16 +30,6 @@ MODULE(FLIPMParamsProvider,
 
 class FLIPMParamsProvider : public FLIPMParamsProviderBase
 {
-  // Params for Sanity Check
-  ROBOT_PARAMETER_CLASS(FLIPMContY, FLIPMParamsProvider)
-  //PARAM(Matrix6d, A)
-  //PARAM(Vector6d, b)
-  //PARAM(Matrix1x6d, c)
-  //PARAM(double, Gi)
-  //PARAM(Matrix1x6d, Gx)
-  //PARAM(Vector50d, Gd)
-  PARAM(Matrix6x3d, L)
-  END_ROBOT_PARAMETER_CLASS(FLIPMContY)
 
 public:
   FLIPMParamsProvider();
@@ -45,28 +39,27 @@ public:
   public:
     LQRParams() { clear(); }
 
-    Matrix6d A;
-    Vector6d b;
-    Matrix1x6d c;
+    Eigen::MatrixXd A;
+    Eigen::MatrixXd b;
+    Eigen::MatrixXd c;
     double Gi;
-    Matrix1x6d Gx;
-    Eigen::Matrix<double, PREVIEW_LENGTH, 1> Gd;
-    Matrix6x3d L;
+    Eigen::MatrixXd Gx;
+    Eigen::MatrixXd Gd;
+    Eigen::MatrixXd L;
     bool valid;
     bool controllable;
     bool observable;
     double calculationTime;
 
-
     void clear()
     {
-      A = Matrix6d::Zero();
-      b = Vector6d::Zero();
-      c = Matrix1x6d::Zero();
+      A = Eigen::MatrixXd::Zero(MODEL_STATE_DIM, MODEL_STATE_DIM);
+      b = Eigen::MatrixXd::Zero(MODEL_STATE_DIM, 1);
+      c = Eigen::MatrixXd::Zero(1, MODEL_STATE_DIM);
       Gi = 0.0;
-      Gx = Matrix1x6d::Zero();
-      Gd = Eigen::Matrix<double, PREVIEW_LENGTH, 1>::Zero();
-      L = Matrix6x3d::Zero();
+      Gx = Eigen::MatrixXd::Zero(1, MODEL_STATE_DIM);
+      Gd = Eigen::MatrixXd::Zero(PREVIEW_LENGTH, 1);
+      L = Eigen::MatrixXd::Zero(MODEL_STATE_DIM, MODEL_CONTROL_DIM);
       valid = true;
       controllable = true;
       observable = true;
@@ -80,13 +73,13 @@ protected:
     Y
   );
 
+  FLIPMValues lastParamsX, lastParamsY;
+
   LQRParams xLQRParams;
   LQRParams yLQRParams;
 
   std::future<LQRParams> xLQRParamsFuture;
   std::future<LQRParams> yLQRParamsFuture;
-
-  Matrix6d last_S[2];
 
   bool initializedFLIPMParams = false;
   FLIPMParameter lastFLIPMParams;
@@ -98,43 +91,34 @@ protected:
   }
   void update(FLIPMControllerParameter& flipmControllerParameter);
   void update(FLIPMObserverParameter& flipmObserverParameter);
+  void recalculate(Dimension dim);
+
   LQRParams execute(Dimension dim);
   LQRParams executeX() { return execute(X); }
   LQRParams executeY() { return execute(Y); }
-  bool checkObservability(const Matrix6d& A, const Matrix3x6d& c) const;
-  bool checkControllability(const Matrix7d& A, const Vector7d& b) const;
 
-  template <size_t STATE_DIM, size_t CONTROL_DIM>
-  Eigen::Matrix<double, STATE_DIM, STATE_DIM> solveDARE(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
-      const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
-      const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
-      const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R,
-      const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& initialP,
-      unsigned int maxIterations,
-      float threshold);
+  /// Returns absolute elementwise @p tolerance.
+  /// Special values (infinities, NaN, etc.) do not compare as equal elements.
+  double abstol(const Eigen::Ref<const Eigen::MatrixXd>& X, const Eigen::Ref<const Eigen::MatrixXd>& Y)
+  {
+    ASSERT((X.rows() == Y.rows() && X.cols() == Y.cols()) && "X & Y have not the same dimensions");
+    return (X - Y).lpNorm<Eigen::Infinity>();
+  }
 
-  template <size_t STATE_DIM, size_t CONTROL_DIM>
-  void iterateNaive(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
-      const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
-      const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
-      const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R,
-      Eigen::Matrix<double, STATE_DIM, STATE_DIM>& P,
-      Eigen::Matrix<double, CONTROL_DIM, STATE_DIM>& K);
+  bool checkObservability(const Eigen::Ref<const Eigen::MatrixXd>& A, const Eigen::Ref<const Eigen::MatrixXd>& c) const;
+  bool checkControllability(const Eigen::Ref<const Eigen::MatrixXd>& A, const Eigen::Ref<const Eigen::MatrixXd>& b) const;
 
-  template <size_t STATE_DIM, size_t CONTROL_DIM>
-  void iterateRobust(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
-      const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
-      const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
-      const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R,
-      Eigen::Matrix<double, STATE_DIM, STATE_DIM>& P,
-      Eigen::Matrix<double, CONTROL_DIM, STATE_DIM>& K,
-      Eigen::EigenSolver<Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>>& eigenvalueSolver);
+  void Givens_rotation(double a, double b, Eigen::Ref<Eigen::Matrix2d> R, double eps);
+  void swap_block_11(Eigen::Ref<Eigen::MatrixXd> S, Eigen::Ref<Eigen::MatrixXd> T, Eigen::Ref<Eigen::MatrixXd> Z, int p);
+  void swap_block_21(Eigen::Ref<Eigen::MatrixXd> S, Eigen::Ref<Eigen::MatrixXd> T, Eigen::Ref<Eigen::MatrixXd> Z, int p);
+  void swap_block_12(Eigen::Ref<Eigen::MatrixXd> S, Eigen::Ref<Eigen::MatrixXd> T, Eigen::Ref<Eigen::MatrixXd> Z, int p);
+  void swap_block_22(Eigen::Ref<Eigen::MatrixXd> S, Eigen::Ref<Eigen::MatrixXd> T, Eigen::Ref<Eigen::MatrixXd> Z, int p);
+  void swap_block(Eigen::Ref<Eigen::MatrixXd> S, Eigen::Ref<Eigen::MatrixXd> T, Eigen::Ref<Eigen::MatrixXd> Z, int p, int q, int q_block_size, double eps);
+  void reorder_eigen(Eigen::Ref<Eigen::MatrixXd> S, Eigen::Ref<Eigen::MatrixXd> T, Eigen::Ref<Eigen::MatrixXd> Z, double eps);
 
-  template <size_t STATE_DIM, size_t CONTROL_DIM>
-  Eigen::Matrix<double, STATE_DIM, STATE_DIM> solveDARE_scipy(const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& A,
-      const Eigen::Matrix<double, STATE_DIM, CONTROL_DIM>& b,
-      const Eigen::Matrix<double, STATE_DIM, STATE_DIM>& Q,
-      const Eigen::Matrix<double, CONTROL_DIM, CONTROL_DIM>& R);
+  Eigen::MatrixXd solveDARE_analytic(
+      const Eigen::Ref<const Eigen::MatrixXd>& A, const Eigen::Ref<const Eigen::MatrixXd>& b, const Eigen::Ref<const Eigen::MatrixXd>& Q, const Eigen::Ref<const Eigen::MatrixXd>& R);
 
-  Matrix6x3d dlqr(const Matrix6d& A, const Matrix6x3d& b, const Matrix6d& Q, const Matrix3d& R, const Dimension& dim);
+  Eigen::MatrixXd dlqr(
+      const Eigen::Ref<const Eigen::MatrixXd>& A, const Eigen::Ref<const Eigen::MatrixXd>& b, const Eigen::Ref<const Eigen::MatrixXd>& Q, const Eigen::Ref<const Eigen::MatrixXd>& R);
 };

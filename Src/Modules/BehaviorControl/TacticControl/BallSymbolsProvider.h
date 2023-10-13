@@ -31,6 +31,7 @@
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Sensing/FallDownState.h"
+#include "Representations/Sensing/RobotModel.h"
 
 MODULE(BallSymbolsProvider,
   REQUIRES(BehaviorConfiguration),
@@ -48,6 +49,7 @@ MODULE(BallSymbolsProvider,
   REQUIRES(RemoteBallModel),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotMap),
+  REQUIRES(RobotModel),
   REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(TeammateData),
@@ -85,15 +87,10 @@ private:
 
   bool ballWasSeenRecently = false;
   bool ballIsRolling = false;
-  bool ballIsMovingTowardsTheRobot = false;
 
   unsigned timeWhenBallHitTriggered = 0;
   unsigned timeWhenBallBlockableTriggered = 0;
   unsigned timeWhenLastKickTriggered = 0;
-  unsigned timeOfLastStandUp = 0;
-
-  FallDownState::State fallDownStateLastFrame = FallDownState::undefined;
-  FallDownState::State fallDownStateThisFrame = FallDownState::undefined;
 
   void chooseBallModel(BallSymbols& ballSymbols, BallModel& currentlyUsedBallModel);
   void setPredictedBallPosition(BallSymbols& ballSymbols);

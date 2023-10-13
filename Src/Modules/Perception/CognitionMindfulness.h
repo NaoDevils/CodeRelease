@@ -21,6 +21,7 @@
 #include "Representations/BehaviorControl/KeySymbols.h"
 #include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/SensorData/SystemSensorData.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Configuration/FieldDimensions.h"
 
@@ -50,6 +51,7 @@ MODULE(CognitionMindfulness,
 
   REQUIRES(RobotModel),
   REQUIRES(RobotHealth),
+  REQUIRES(SystemSensorData),
   REQUIRES(KeySymbols),
 
   PROVIDES(CognitionState),
@@ -77,6 +79,7 @@ private:
   void checkForPenaltyProblem(CognitionState& cognitionState);
   void checkForBallLostAfterKick(CognitionState& cognitionState);
   void checkImageBrightness(CognitionState& cognitionState);
+  void checkBattery(CognitionState& cognitionState);
 
   void kickDistanceDetection(CognitionState& cognitionState);
   void kickPathAndTimeDetection(CognitionState& cognitionState);
@@ -104,6 +107,12 @@ private:
   bool ballLost = false;
   int ballLostCounter = 0;
   bool ballLostChange = false;
+
+  // Battery Check
+  unsigned int startTimestamp = 0;
+  //bool charging = false;
+  float firstPercentage = 1.0f;
+  float lastPercentage = 1.0f;
 
   // Kick Distance
   bool kicked = false;

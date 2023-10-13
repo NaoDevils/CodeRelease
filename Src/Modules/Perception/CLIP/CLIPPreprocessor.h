@@ -39,7 +39,7 @@ MODULE(CLIPPreprocessor,
   REQUIRES(CameraMatrixUpper),
   USES(RobotPose),
   PROVIDES(CLIPPointsPercept),
-  PROVIDES(BallSpots),
+  PROVIDES(ScanlinesBallSpots),
   PROVIDES(ObstacleBasePoints),
   LOADS_PARAMETERS(,
     // TODO: initialized has to be changed when changing parameters!!
@@ -69,9 +69,6 @@ public:
   * Default constructor.
   */
   CLIPPreprocessor();
-
-  DECLARE_DEBUG_IMAGE(SIPField);
-  DECLARE_DEBUG_IMAGE(SIPFieldUpper);
 
   /** Destructor */
   ~CLIPPreprocessor();
@@ -165,7 +162,7 @@ public:
 
 private:
   void update(CLIPPointsPercept& theCLIPPointsPercept);
-  void update(BallSpots& ballSpots);
+  void update(ScanlinesBallSpots& ballSpots);
   void update(ObstacleBasePoints& obstacleBasePoints);
 
   /*
@@ -273,13 +270,11 @@ private:
 
   // local percepts
   CLIPPointsPercept localCLIPPointsPercept;
-  BallSpots localBallSpots;
+  ScanlinesBallSpots localBallSpots;
   ObstacleBasePoints localObstacleBasePoints;
 
   // debugging stuff
 
-  void drawFieldLower();
-  void drawFieldUpper();
   void drawFieldHull(const bool& upper);
   void drawScanLineSegments(const bool& upper);
   void drawSegment(std::vector<ScanLineSegment>::const_iterator seg, const bool& upper);

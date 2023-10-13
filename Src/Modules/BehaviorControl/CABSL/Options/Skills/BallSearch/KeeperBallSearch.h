@@ -13,7 +13,10 @@ option(KeeperBallSearch)
         }
         if (theKeeper.ballSearchState == Keeper::KeeperBallSearchState::movingBall)
         {
-          goto search_for_ball_moving;
+          if (theBallSymbols.ballPositionRelative.y() > 0.f)
+            goto search_for_ball_moving_left;
+          else
+            goto search_for_ball_moving_right;
         }
         if (theKeeper.ballSearchState == Keeper::KeeperBallSearchState::locate)
         {
@@ -32,28 +35,6 @@ option(KeeperBallSearch)
     }
   }
 
-  state(search_for_ball_moving)
-  {
-    transition
-    {
-      if (theKeeper.ballSearchState != Keeper::KeeperBallSearchState::movingBall)
-      {
-        goto search_for_ball;
-      }
-      if (action_done)
-      {
-        goto search_for_ball_moving_right;
-      }
-    }
-    action
-    {
-      GoToFieldCoordinates(Pose2f(theKeeper.optPosition.rotation - 45, theKeeper.optPosition.translation), 100, 100, 100, 10_deg, false, true);
-      theHeadControlRequest.controlType = HeadControlRequest::direct;
-      theHeadControlRequest.pan = 0_deg;
-      theHeadControlRequest.tilt = 30_deg;
-    }
-  }
-
   state(search_for_ball_moving_left)
   {
     transition
@@ -69,9 +50,9 @@ option(KeeperBallSearch)
     }
     action
     {
-      GoToFieldCoordinates(Pose2f(theKeeper.optPosition.rotation - 45, theKeeper.optPosition.translation), 100, 100, 100, 10_deg, false, true);
+      GoToFieldCoordinates(Pose2f(theKeeper.optPosition.rotation + 45_deg, theKeeper.optPosition.translation), 100, 100, 100, 10_deg, false, true);
       theHeadControlRequest.controlType = HeadControlRequest::direct;
-      theHeadControlRequest.pan = 0_deg;
+      theHeadControlRequest.pan = 45_deg;
       theHeadControlRequest.tilt = 30_deg;
     }
   }
@@ -91,7 +72,7 @@ option(KeeperBallSearch)
     }
     action
     {
-      GoToFieldCoordinates(Pose2f(theKeeper.optPosition.rotation + 45, theKeeper.optPosition.translation), 100, 100, 100, 10_deg, false, true);
+      GoToFieldCoordinates(Pose2f(theKeeper.optPosition.rotation - 45_deg, theKeeper.optPosition.translation), 100, 100, 100, 10_deg, false, true);
       theHeadControlRequest.controlType = HeadControlRequest::direct;
       theHeadControlRequest.pan = -45_deg;
       theHeadControlRequest.tilt = 30_deg;

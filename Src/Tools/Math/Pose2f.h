@@ -8,12 +8,12 @@
 STREAMABLE(Pose2f,
   Pose2f() = default;
   Pose2f(const Pose2f& other) = default;
-  Pose2f(const float x, const float y);
-  Pose2f(const Vector2f& translation);
-  Pose2f(const Angle rotation);
-  Pose2f(const Angle rotation, const Vector2f& translation);
-  Pose2f(const Angle rotation, const float x, const float y);
-  Pose2f(const float rot, const float x, const float y);
+  explicit Pose2f(const float x, const float y);
+  explicit Pose2f(const Vector2f& translation);
+  explicit Pose2f(const Angle rotation);
+  explicit Pose2f(const Angle rotation, const Vector2f& translation);
+  explicit Pose2f(const Angle rotation, const float x, const float y);
+  explicit Pose2f(const float rot, const float x, const float y);
 
   Pose2f& operator=(const Pose2f& other) = default;
 

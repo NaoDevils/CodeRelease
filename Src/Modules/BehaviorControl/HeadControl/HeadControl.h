@@ -16,7 +16,7 @@
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 #include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Configuration/JointCalibration.h"
@@ -40,6 +40,7 @@
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
+#include "Representations/Sensing/FallDownState.h"
 
 
 MODULE(HeadControl,
@@ -51,12 +52,12 @@ MODULE(HeadControl,
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
   REQUIRES(FieldDimensions),
+  REQUIRES(FallDownState),
   REQUIRES(JointSensorData),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(HeadControlRequest),
   REQUIRES(JointCalibration),
-  REQUIRES(TeamBallModel),
   REQUIRES(MotionInfo),
   REQUIRES(MotionRequest),
   REQUIRES(RobotDimensions),

@@ -23,7 +23,8 @@ MODULE(Predictor,
   REQUIRES(MultipleBallModel),
   PROVIDES(RobotPoseAfterPreview),
   PROVIDES(BallModelAfterPreview),
-  PROVIDES(MultipleBallModelAfterPreview)
+  PROVIDES(MultipleBallModelAfterPreview),
+  HAS_PREEXECUTION
 );
 
 
@@ -33,17 +34,6 @@ MODULE(Predictor,
 class Predictor : public PredictorBase
 {
 public:
-  /** Default constructor. */
-  Predictor()
-  {
-    correctedOdometryOffset = Pose2f();
-    robotPoseAfterPreview = Pose2f();
-    lastExecutionTimeStamp = 0;
-  }
-
-  /** Destructor */
-  ~Predictor() {}
-
   /** 
   * The method provides the robot pose after preview.
   * @param robotPoseAfterPreview The robot pose representation that is updated by this module.
@@ -65,11 +55,10 @@ public:
   /*
   * calculate the corrected odometry offset for preview only once
   */
-  void execute();
+  void execute(tf::Subflow&);
 
   Pose2f correctedOdometryOffset;
-  Pose2f robotPoseAfterPreview;
-  unsigned lastExecutionTimeStamp;
+  RobotPoseAfterPreview robotPoseAfterPreview;
 };
 
 #endif

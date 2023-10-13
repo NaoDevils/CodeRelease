@@ -72,31 +72,48 @@ STREAMABLE(RobotPoseHypotheses,
 );
 
 STREAMABLE(RobotPoseHypothesesCompressed,
+  STREAMABLE(RobotPoseHypothesisCompressed,
+    RobotPoseHypothesisCompressed() = default;
+    explicit RobotPoseHypothesisCompressed(const RobotPoseHypothesis& robotPoseHypothesis)
+    {
+      translation = robotPoseHypothesis.translation.cast<short>();
+      rotation = static_cast<short>(robotPoseHypothesis.rotation.toDegrees());
+      validity = static_cast<unsigned char>(robotPoseHypothesis.validity * std::numeric_limits<unsigned char>::max());
+      sideConfidenceState = robotPoseHypothesis.sideConfidenceState;
+    }
+    explicit operator RobotPoseHypothesis() const
+    {
+      RobotPoseHypothesis robotPoseHypothesis;
+      robotPoseHypothesis.translation = translation.cast<float>();
+      robotPoseHypothesis.rotation = Angle::fromDegrees(rotation);
+      robotPoseHypothesis.validity = validity / static_cast<float>(std::numeric_limits<unsigned char>::max());
+      robotPoseHypothesis.sideConfidenceState = sideConfidenceState;
+      return robotPoseHypothesis;
+    }
+    ,
+    (Vector2s) translation,
+    (short) rotation,
+    (unsigned char) validity,
+    ((SideConfidence) ConfidenceState)(CONFUSED) sideConfidenceState
+  );
 
   RobotPoseHypothesesCompressed() = default;
-  RobotPoseHypothesesCompressed(const RobotPoseHypotheses &other)
+  explicit RobotPoseHypothesesCompressed(const RobotPoseHypotheses &other)
   {
     for (const auto &item : other.hypotheses)
-    {
-      hypotheses.push_back(RobotPoseCompressed(item));
-    }
+      hypotheses.emplace_back(item);
   }
 
-  operator RobotPoseHypotheses() const
+  explicit operator RobotPoseHypotheses() const
   {
     RobotPoseHypotheses robotPoseHypotheses;
-    robotPoseHypotheses.hypotheses.clear();
 
-    for (auto &item : hypotheses)
-    {
-      RobotPoseHypothesis rph;
-      static_cast<RobotPose&>(rph) = static_cast<RobotPose>(item);
-      robotPoseHypotheses.hypotheses.push_back(rph);
-    }
+    for (const auto &item : hypotheses)
+      robotPoseHypotheses.hypotheses.emplace_back(static_cast<RobotPoseHypothesis>(item));
 
     return robotPoseHypotheses;
   },
 
-  (std::vector<RobotPoseCompressed>) hypotheses
+  (std::vector<RobotPoseHypothesisCompressed>) hypotheses
 
 );

@@ -1,4 +1,24 @@
 vp whistle 1000 0 1
 vpd whistle representation:Whistle:confidence blue
 vpd whistle representation:Whistle:detected red
+vpd whistle representation:Whistle:threshold black
 vi FFT
+
+vp nnConfidence 1000 0 1
+vpd nnConfidence representation:Whistle:nnConfidence red
+vpd nnConfidence representation:Whistle:nnConfidenceWeighted blue
+
+vp pmConfidence 1000 0 1
+vpd pmConfidence representation:Whistle:pmConfidence green
+vpd pmConfidence representation:Whistle:pmConfidenceWeighted blue
+
+vp relLimitCount 1000 0 1
+vpd relLimitCount representation:Whistle:relLimitCount black
+vpd relLimitCount representation:Whistle:relLimitCountWeighted blue
+
+vp debugAmp 1000 0 10
+vpd debugAmp representation:Whistle:meanAmp blue
+vpd debugAmp representation:Whistle:minAmp green
+vpd debugAmp representation:Whistle:maxAmp red
+
+vd representation:WhistleDortmund

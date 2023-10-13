@@ -8,15 +8,13 @@ option(Playing)
 {
   common_transition
   {
-    if (libTactic.interceptBallPossible && theRoleSymbols.role != BehaviorData::RoleAssignment::keeper && theRoleSymbols.role == BehaviorData::RoleAssignment::replacementKeeper)
-      goto interceptBall;
+    /*if (libTactic.interceptBallPossible && theRoleSymbols.role != BehaviorData::RoleAssignment::keeper && theRoleSymbols.role == BehaviorData::RoleAssignment::replacementKeeper)
+      goto interceptBall;*/
+
+
     // some roles have special behavior handled in their own options
     switch (theRoleSymbols.role)
     {
-    case BehaviorData::ballchaser:
-      // chase the ball and try to score a goal
-      goto ballchaser;
-      break;
     case BehaviorData::keeper:
       // defend the own goal
       goto keeper;
@@ -26,8 +24,10 @@ option(Playing)
       goto replacementKeeper;
       break;
     default:
-      // no special role behavior needed => walk to position given in PositioningSymbols
-      goto positioning;
+      if (theBallChaserDecision.playerNumberToBall == theRobotInfo.number)
+        goto ballchaser;
+      else
+        goto positioning;
     }
   }
 
@@ -42,6 +42,7 @@ option(Playing)
     }
   }
 
+  /*
   state(interceptBall)
   {
     transition {}
@@ -52,6 +53,7 @@ option(Playing)
         SystemCall::playSound("doh.wav");
     }
   }
+  */
 
   /**
   * Walk to the position provided by the PositioningSymbols.

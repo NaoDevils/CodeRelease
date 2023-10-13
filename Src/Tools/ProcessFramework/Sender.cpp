@@ -18,10 +18,10 @@ SenderList::SenderList(PlatformProcess* p, const std::string& senderName)
   {
     if (getFirst())
     {
-      SenderList* p = getFirst();
-      while (p->next)
-        p = p->next;
-      p->next = this;
+      SenderList* s = getFirst();
+      while (s->next)
+        s = s->next;
+      s->next = this;
     }
     else
       getFirst() = this;

@@ -17,8 +17,8 @@
 
 bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& positionRight, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
 {
-  static const Pose3f rotPi_4 = RotationMatrix::aroundX(pi_4);
-  static const Pose3f rotMinusPi_4 = RotationMatrix::aroundX(-pi_4);
+  static const Pose3f rotPi_4(RotationMatrix::aroundX(pi_4));
+  static const Pose3f rotMinusPi_4(RotationMatrix::aroundX(-pi_4));
   const Rangef& cosClipping = Rangef::OneRange();
 
   ratio = Rangef::ZeroOneRange().limit(ratio);
@@ -90,8 +90,8 @@ bool InverseKinematic::calcLegJoints(const Pose3f& positionLeft, const Pose3f& p
 bool InverseKinematic::calcLegJoints(
     const Pose3f& positionLeft, const Pose3f& positionRight, const Quaternionf& bodyRotation, JointAngles& jointAngles, const RobotDimensions& robotDimensions, float ratio)
 {
-  static const Pose3f rotPi_4 = RotationMatrix::aroundX(pi_4);
-  static const Pose3f rotMinusPi_4 = RotationMatrix::aroundX(-pi_4);
+  static const Pose3f rotPi_4(RotationMatrix::aroundX(pi_4));
+  static const Pose3f rotMinusPi_4(RotationMatrix::aroundX(-pi_4));
   const Rangef& cosClipping = Rangef::OneRange();
 
   ratio = Rangef::ZeroOneRange().limit(ratio);

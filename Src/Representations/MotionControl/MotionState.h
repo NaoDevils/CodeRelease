@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Math/Angle.h"
@@ -8,8 +10,9 @@
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
-#include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 #include "Representations/MotionControl/SpecialActionRequest.h"
+#include "Representations/Sensing/FallDownState.h"
 
 #include "Tools/RingBufferWithSum.h"
 
@@ -27,8 +30,8 @@ STREAMABLE(IMUStatus,,
 );
 
 STREAMABLE(JointStatus,,
-  (bool)(true) usableLeftLeg,
-  (bool)(true) usableRightLeg
+  (bool)(true) usableLegs,
+  (bool)(true) usableArms
 );
 
 STREAMABLE(FrameRateStatus,,
@@ -64,11 +67,13 @@ STREAMABLE(WalkingStatus,,
 );
 
 STREAMABLE(StandUpStatus,,
-  (std::array<int,SpecialActionRequest::lastStandUpMotion + 1>) standUpTries,
-  (std::array<bool,SpecialActionRequest::lastStandUpMotion + 1>) standUp,
-  (bool)(false) unableToStandUp,
-  (unsigned)(0) currentId,
-  (unsigned)(0) totalOnGround
+  (std::array<float,SpecialActionRequest::numOfSpecialActionIDs>) standUpChance,
+  (std::vector<int>) standUpPriority,
+  ((FallDownState) State) fallDownState,
+  ((SpecialActionRequest) SpecialActionID) currentStandUpMotion,
+  ((SpecialActionRequest) SpecialActionID) lastStandUpMotion,
+  ((SpecialActionRequest) SpecialActionID) bestStandUpMotionBack,
+  ((SpecialActionRequest) SpecialActionID) bestStandUpMotionFront
 );
 
 STREAMABLE(HeatStatus,,
@@ -81,7 +86,6 @@ STREAMABLE(HeatStatus,,
 STREAMABLE(MotionState,
   void draw() const;
   ENUM(MotionStateError,
-    standUpFailure,
     engineKickFailure,
     customKickFailure,
     walkingForwardFailure,

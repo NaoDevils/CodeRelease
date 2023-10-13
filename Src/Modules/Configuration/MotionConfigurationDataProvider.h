@@ -12,7 +12,7 @@
 #include "Representations/Configuration/MassCalibration.h"
 #include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/Configuration/UsConfiguration.h"
+#include "Representations/Configuration/SonarConfiguration.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/Infrastructure/StiffnessData.h"
@@ -28,7 +28,7 @@ MODULE(MotionConfigurationDataProvider,
   PROVIDES(MotionSettings),
   PROVIDES(OdometryCorrectionTables),
   PROVIDES(RobotDimensions),
-  PROVIDES(UsConfiguration),
+  PROVIDES(SonarConfiguration),
   PROVIDES_WITHOUT_MODIFY(FieldDimensions)
 );
 
@@ -41,7 +41,7 @@ private:
   std::unique_ptr<MassCalibration> theMassCalibration = nullptr;
   std::unique_ptr<MotionSettings> theMotionSettings = nullptr;
   std::unique_ptr<RobotDimensions> theRobotDimensions = nullptr;
-  std::unique_ptr<UsConfiguration> theUsConfiguration = nullptr;
+  std::unique_ptr<SonarConfiguration> theSonarConfiguration = nullptr;
   std::unique_ptr<FieldDimensions> theFieldDimensions = nullptr;
   std::unique_ptr<OdometryCorrectionTables> theOdometryCorrectionTables = nullptr;
 
@@ -55,7 +55,7 @@ private:
   void update(OdometryCorrectionTables& odometryCorrectionTables);
   void update(RobotDimensions& robotDimensions);
   void update(StiffnessSettings& stiffnessSettings);
-  void update(UsConfiguration& usConfiguration);
+  void update(SonarConfiguration& sonarConfiguration);
 
   void readFieldDimensions();
   void readJointCalibration();
@@ -65,7 +65,7 @@ private:
   void readOdometryCorrectionTables();
   void readRobotDimensions();
   void readStiffnessSettings();
-  void readUsConfiguration();
+  void readSonarConfiguration();
 
 public:
   MotionConfigurationDataProvider();

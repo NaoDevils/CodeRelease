@@ -10,6 +10,7 @@ void Phase::serialize(In* in, Out* out)
   STREAM_REGISTER_BEGIN;
 
   STREAM(duration);
+  STREAM(kick);
 
   Vector3f& leftFootTra1(controlPoints[leftFootTra][1]);
   Vector3f& leftFootTra2(controlPoints[leftFootTra][2]);
@@ -217,18 +218,24 @@ void KickEngineParameters::initFirstPhase()
 
 void KickEngineParameters::initFirstPhase(const Vector3f* origins, const Vector2f& head)
 {
-  for (int i = 0; i < Phase::numOfLimbs; ++i)
-    phaseParameters[0].originPos[i] = origins[i];
-  phaseParameters[0].comOriginPos = Vector2f::Zero();
-  phaseParameters[0].comOriginOffset = Vector2f::Zero();
-  phaseParameters[0].headOrigin = head;
+  if (numberOfPhases > 0)
+  {
+    for (int i = 0; i < Phase::numOfLimbs; ++i)
+      phaseParameters[0].originPos[i] = origins[i];
+    phaseParameters[0].comOriginPos = Vector2f::Zero();
+    phaseParameters[0].comOriginOffset = Vector2f::Zero();
+    phaseParameters[0].headOrigin = head;
+  }
 }
 
 void KickEngineParameters::initFirstPhaseLoop(const Vector3f* origins, const Vector2f& lastCom, const Vector2f& head)
 {
-  for (int i = 0; i < Phase::numOfLimbs; ++i)
-    phaseParameters[0].originPos[i] = origins[i];
-  phaseParameters[0].comOriginPos = lastCom;
-  phaseParameters[0].comOriginOffset = Vector2f::Zero();
-  phaseParameters[0].headOrigin = head;
+  if (numberOfPhases > 0)
+  {
+    for (int i = 0; i < Phase::numOfLimbs; ++i)
+      phaseParameters[0].originPos[i] = origins[i];
+    phaseParameters[0].comOriginPos = lastCom;
+    phaseParameters[0].comOriginOffset = Vector2f::Zero();
+    phaseParameters[0].headOrigin = head;
+  }
 }

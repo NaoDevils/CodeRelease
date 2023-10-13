@@ -1,0 +1,20 @@
+vd representation:SonarSensorData
+vd representation:SonarPercept
+vd representation:SonarConfiguration
+vfd worldState origin:Reset
+vfd worldState representation:SonarPercept:Field on
+vd parameters:SonarDetector
+
+vp SonarLeft 200 0 1000
+vpd SonarLeft perception:SonarPercept:left:raw orange
+vpd SonarLeft perception:SonarPercept:left:movingAverage red
+vpd SonarLeft perception:SonarPercept:left:exponential blue
+vpd SonarLeft perception:SonarPercept:left:minMaxExponential green
+vpd SonarLeft perception:SonarPercept:left:kalman purple
+
+vp SonarRight 200 0 1000
+vpd SonarRight perception:SonarPercept:right:raw orange
+vpd SonarRight perception:SonarPercept:right:movingAverage red
+vpd SonarRight perception:SonarPercept:right:exponential blue
+vpd SonarRight perception:SonarPercept:right:minMaxExponential green
+vpd SonarRight perception:SonarPercept:right:kalman purple

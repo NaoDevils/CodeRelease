@@ -22,7 +22,7 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
   }
 
   for (int i = 0; i < 12; i++)
-    walkingEngineParams.jointCalibration.jointCalibration[i] = originalParams.jointCalibration.jointCalibration[i] + theWalkCalibration.legJointCalibration[i];
+    walkingEngineParams.jointCalibration.jointCalibration[i] = originalParams.jointCalibration.jointCalibration[i];
 
   if (theMotionState.walkingStatus.speedFactorForward != 1.f)
   {
@@ -96,23 +96,11 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
     lastYUpdated = false;
   }
 
-  //if (theMotionState.walkingStatus.speedFactorLeft < 1.f || theMotionState.walkingStatus.speedFactorRight < 1.f)
-  //{
-  //  walkingEngineParams.speedLimits.y = std::max<float>(minY, std::min<float>(maxY,
-  //    walkingEngineParams.speedLimits.y * std::min<float>(theMotionState.walkingStatus.speedFactorLeft, theMotionState.walkingStatus.speedFactorRight)));
-  //  walkingEngineParams.speedLimits.yArmContact = std::max<float>(minY, std::min<float>(maxY,
-  //    walkingEngineParams.speedLimits.yArmContact * std::min<float>(theMotionState.walkingStatus.speedFactorLeft, theMotionState.walkingStatus.speedFactorRight)));
-  //  if (!lastYUpdated)
-  //  {
-  //    ANNOTATION("MotionState", "y updated to " << walkingEngineParams.speedLimits.y);
-  //    OUTPUT_TEXT("[MotionState] y updated to " << walkingEngineParams.speedLimits.y);
-  //  }
-  //  lastYUpdated = true;
-  //}
-  //else
-  //{
-  //  lastYUpdated = false;
-  //}
+  MODIFY("annotation:motion:text", annotation);
+  DEBUG_RESPONSE_ONCE("annotation:motion")
+  {
+    ANNOTATION("Console", annotation);
+  }
 }
 
 void WalkParamsProvider::update(FLIPMObserverGains& flipmObserverGains)

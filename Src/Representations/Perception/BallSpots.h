@@ -22,9 +22,9 @@ STREAMABLE(BallSpots,
     ballSpotsUpper.reserve(50);
   }
 
-  void addBallSpot(int x, int y)
+  void addBallSpot(int x, int y, bool upper)
   {
-    ballSpots.emplace_back(x, y);
+    (upper ? ballSpotsUpper : ballSpots).emplace_back(x, y, upper);
   }
 
   /** The method draws all ball spots. */
@@ -52,6 +52,46 @@ STREAMABLE(BallSpots,
 
   (std::vector<BallSpot>) ballSpots,
   (std::vector<BallSpot>) ballSpotsUpper
+);
+
+
+STREAMABLE(ScanlinesBallSpots,
+  ScanlinesBallSpots()
+  {
+    ballSpots.reserve(50);
+    ballSpotsUpper.reserve(50);
+  }
+
+  void addBallSpot(int x, int y, bool upper)
+  {
+    (upper ? ballSpotsUpper : ballSpots).emplace_back(x, y, upper);
+  }
+  
+  /** The method draws all ball spots. */
+  void draw() const
+  {
+    DECLARE_DEBUG_DRAWING("representation:ScanlinesBallSpots:Image:Lower", "drawingOnImage"); // Draws the ballspots to the image
+    DECLARE_DEBUG_DRAWING("representation:ScanlinesBallSpots:Image:Upper", "drawingOnImage"); // Draws the ballspots to the image
+    COMPLEX_DRAWING("representation:ScanlinesBallSpots:Image:Lower")
+    {
+      for (std::vector<ScanlinesBallSpot>::const_iterator i = ballSpots.begin(); i != ballSpots.end(); ++i)
+      {
+        CROSS("representation:ScanlinesBallSpots:Image:Lower", i->position.x(), i->position.y(), 2, 3, Drawings::solidPen, ColorRGBA::orange);
+        CROSS("representation:ScanlinesBallSpots:Image:Lower", i->position.x(), i->position.y(), 2, 0, Drawings::solidPen, ColorRGBA::black);
+      }
+    }
+    COMPLEX_DRAWING("representation:ScanlinesBallSpots:Image:Upper")
+    {
+      for (std::vector<ScanlinesBallSpot>::const_iterator i = ballSpotsUpper.begin(); i != ballSpotsUpper.end(); ++i)
+      {
+        CROSS("representation:ScanlinesBallSpots:Image:Upper", i->position.x(), i->position.y(), 2, 3, Drawings::solidPen, ColorRGBA::orange);
+        CROSS("representation:ScanlinesBallSpots:Image:Upper", i->position.x(), i->position.y(), 2, 0, Drawings::solidPen, ColorRGBA::black);
+      }
+    }
+  },
+
+  (std::vector<ScanlinesBallSpot>) ballSpots,
+  (std::vector<ScanlinesBallSpot>) ballSpotsUpper
 );
 
 struct BallHypothesesYolo : public BallSpots

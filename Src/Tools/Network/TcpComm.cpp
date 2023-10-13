@@ -81,10 +81,39 @@ TcpComm::TcpComm(const char* ip, int port, int maxPackageSendSize, int maxPackag
 
 TcpComm::~TcpComm()
 {
+  this->close();
+}
+
+void TcpComm::close()
+{
   if (connected())
     closeTransferSocket();
   if (createSocket > 0)
     CLOSE(createSocket);
+}
+
+TcpComm::TcpComm(TcpComm&& other) noexcept
+    : createSocket(other.createSocket), transferSocket(other.transferSocket), address(other.address), overallBytesSent(other.overallBytesSent),
+      overallBytesReceived(other.overallBytesReceived), maxPackageSendSize(other.maxPackageSendSize), maxPackageReceiveSize(other.maxPackageReceiveSize), wasConnected(other.wasConnected)
+{
+  other.createSocket = 0;
+  other.transferSocket = 0;
+}
+
+TcpComm& TcpComm::operator=(TcpComm&& other) noexcept
+{
+  this->close();
+  this->createSocket = other.createSocket;
+  this->transferSocket = other.transferSocket;
+  this->address = other.address;
+  this->overallBytesSent = other.overallBytesSent;
+  this->overallBytesReceived = other.overallBytesReceived;
+  this->maxPackageSendSize = other.maxPackageSendSize;
+  this->maxPackageReceiveSize = other.maxPackageReceiveSize;
+  this->wasConnected = other.wasConnected;
+  other.createSocket = 0;
+  other.transferSocket = 0;
+  return *this;
 }
 
 bool TcpComm::checkConnection()

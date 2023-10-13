@@ -1,16 +1,16 @@
-# Nao Devils Code Release 2022
+# Nao Devils Code Release 2023
 
-This is the Nao Devils Code Release 2022, originally based on [B-Human Code Release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
+This is the Nao Devils Code Release 2023, originally based on [B-Human Code Release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
 
 ## Installation
 
 [Windows 10/11](#windows-1011), Linux (e.g., [Ubuntu 22.04](#ubuntu-2204)) and [macOS](#mac) (experimental) are supported natively.
 
 Build dependencies:
-* Microsoft Visual C++ >= 14.34 (Visual Studio 2022 17.4)
+* Microsoft Visual C++ >= 14.37 (Visual Studio 2022 17.7)
 * Clang >= 14
 * CMake >= 3.20
-* [Conan](https://conan.io/) >= 1.52
+* [Conan](https://conan.io/) >= 1.58 **< 2.0**
 
 ### Windows 10/11
 
@@ -29,7 +29,7 @@ You can choose between
 
 * Install [Python](https://www.python.org/downloads/) and **make sure to check "Add Python to PATH" during setup**.
 
-* Install [Conan](https://conan.io/downloads.html) package manager using `pip install conan` on the command line.
+* Install [Conan](https://conan.io/downloads.html) package manager using `pip install "conan==1.*"` (**version 2 is not supported yet!**) on the command line.
 
 * Install Microsoft Visual Studio:
   * Download [Visual Studio Community 2022 from Microsoft](https://visualstudio.microsoft.com/de/vs/).
@@ -47,32 +47,57 @@ You can choose between
 * Complete the basic installation steps above.
 
 * Install Windows Subsystem for Linux (**WSL 1**) running Ubuntu 22.04:
-  * The exact steps vary depending on your system version and its previous state.
-  * Open a command prompt and execute:
-    ```
-    wsl --set-default-version 1
-    wsl --install -d Ubuntu-22.04
-    ```
-  * **Notes**:
-    * For the first installation, it may not be possible to set the default WSL version to 1 beforehand. In this case, execute the install command first to enable the Windows feature and try it again afterwards.
-    * The first WSL installation may require a system reboot. After rebooting, execute the install command again to continue the installation.
-    * WSL1 and WSL2 both work, however WSL1 is highly recommended due to frequent Windows file system acccess.
-    * You can check the currently used WSL version using `wsl --list --verbose`.
-    * You can also convert an existing distribution from WSL 2 to WSL 1 afterwards using `wsl --set-version Ubuntu-22.04 1`.
-* Open Ubuntu bash if not opened automatically (type `bash` in command line).
-* Update system and install packages:
 
-  ```
-  sudo apt update
-  sudo apt dist-upgrade
-    
-  sudo apt install --no-install-recommends clang clang-14 ccache cmake make git ninja-build python3-pip pkg-config clang-format dos2unix
-  pip3 install conan
-  ```
+  * First, enable the required Windows feature if you haven't done that already. Therefore, **open a command prompt as administrator** and run:
+    ```
+    wsl --install --no-distribution
+    ```
+    (If you just get an overview about the available options, then the feature is probably already enabled.)
+
+    You have to reboot your system afterwards to finish the installation.
+
+  * Afterwards, you can either download the Ubuntu system and install the dependencies manually (not recommended) or import our pre-generated WSL archive (**recommended**):
+
+  * <details open>
+      <summary>System archive (recommended)</summary>
+
+      * Download [the system archive](https://tu-dortmund.sciebo.de/s/hbHlz2syCDtfCjS).
+      * Open a (non-admin) command prompt and import the downloaded .tgz file (adjust path to your needs):
+      ```
+      cd %HOMEPATH%
+      wsl --import Ubuntu-22.04 ubuntu-2204 Downloads\WSL-Ubuntu-22.04-NaoDevils.tgz --version 1
+      ```
+      * Done!
+    </details>
+
+  * <details>
+      <summary>Manual installation (not recommended)</summary>
+
+      * Open a (non-admin) command prompt and execute:
+        ```
+        wsl --set-default-version 1
+        wsl --install -d Ubuntu-22.04
+        ```
+      * **Notes**:
+        * WSL1 and WSL2 both work, however WSL1 is highly recommended due to frequent Windows file system acccess.
+        * You can check the currently used WSL version using `wsl --list --verbose`.
+        * You can also convert an existing distribution from WSL 2 to WSL 1 afterwards using `wsl --set-version Ubuntu-22.04 1`.
+      * Open Ubuntu bash if not opened automatically (type `bash` in command line).
+      * Update system and install packages:
+
+      ```
+      sudo apt update
+      sudo apt dist-upgrade
+      
+      sudo apt install --no-install-recommends clang clang-14 ccache cmake make git ninja-build python3-pip pkg-config clang-format dos2unix
+      pip3 install "conan==1.*"
+      ```
+    </details>
+
 * In Visual Studio, select **Dorsh.exe** as startup item and run the application.
 * Select the checkbox of any robot and click "deploy" in the lower toolbar.
 * Check the console output and make sure everything compiles correctly.
-* If you are not connected to a robot yet, the command will fail at the end with an error message "Antman is not reachable".
+* If you are not connected to a robot yet, the command will fail at the end with an error message "\<RobotName> is not reachable".
 
 ### Ubuntu 22.04
 
@@ -86,7 +111,7 @@ You can choose between
 
   ```
   sudo apt install --no-install-recommends clang clang-14 ccache cmake make git ninja-build python3-pip pkg-config clang-format dos2unix libgl-dev libglu1-mesa-dev libopengl-dev libegl-dev libasound-dev
-  pip3 install conan
+  pip3 install "conan==1.*"
   
   # make conan available in path (login again should also work)
   source ~/.profile
@@ -119,7 +144,7 @@ Mac support (Intel and Apple M1/M2) is in an experimental state and has been tes
 * Then, installed some basic requirements for development:
 
 ```
-brew install cmake conan ninja
+brew install cmake conan@1.60 ninja
 ```
 
 * You are now ready to build SimRobot as described for Linux using CMake.
@@ -136,7 +161,7 @@ brew install cmake conan ninja
 
 Create a [Nao Devils system image](https://github.com/NaoDevils/NaoImage) using the `generate_naodevils.sh` script. You can either
   * generate a ready-to-run version of our robot software (pass this framework directory using the `-f` parameter) or
-  * generate a base version that only contain the Ubuntu base image and has to be deployed using Dorsh later (omit the `-f` parameter).
+  * generate a base version that only contains the Ubuntu base image and has to be deployed using Dorsh later (omit the `-f` parameter).
 
 ## Deploy a robot
 

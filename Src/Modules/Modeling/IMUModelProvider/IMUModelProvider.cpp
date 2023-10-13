@@ -72,18 +72,14 @@ void IMUModelProvider::update(IMUModel& imuModel)
 
   ukf_rot.generateSigmaPoints();
 
-  Eigen::Vector3d u_rot(0, 0, 0); // TODO: use generated angular acceleration as control vector?
-  ukf_rot.predict(u_rot, theFrameInfo.cycleTime);
+  // TODO: use generated angular acceleration as control vector?
+  ukf_rot.predict(Vector3d::Zero(), theFrameInfo.cycleTime);
 
   // don't generate sigma points again because the process noise would be applied a second time
   // ukf.generateSigmaPoints();
 
-  Eigen::Vector3d gyro;
-  gyro << theInertialSensorData.gyro.x(), theInertialSensorData.gyro.y(), theInertialSensorData.gyro.z();
-  Eigen::Vector3d acceleration = Eigen::Vector3d(theInertialSensorData.acc.x(), theInertialSensorData.acc.y(), theInertialSensorData.acc.z());
-
   IMU_RotationMeasurement z;
-  z << acceleration.normalized(), gyro;
+  z << theInertialSensorData.acc.cast<double>().normalized(), theInertialSensorData.gyro.cast<double>();
 
   if (isWalking)
   {
@@ -103,7 +99,7 @@ void IMUModelProvider::update(IMUModel& imuModel)
   // TODO: Odometry as location measurement?
   // TODO: velocity of trunk in supfoot / local robot frame as velocity measurement
   // TODO: really needs bias removal or "calibration" of g
-  IMU_AccMeasurementGlobal z_acc = ukf_rot.state.getRotationAsQuaternion()._transformVector(acceleration);
+  const IMUAccMeasurementGlobal z_acc = ukf_rot.state.getRotationAsQuaternion()._transformVector(theInertialSensorData.acc.cast<double>());
 
   if (isWalking)
     ukf_acc_global.Q = Q_acc_walk;
@@ -112,8 +108,8 @@ void IMUModelProvider::update(IMUModel& imuModel)
 
   ukf_acc_global.generateSigmaPoints();
 
-  Eigen::Vector3d u_acc(0, 0, 0); // TODO: use generated jerk as control vector?
-  ukf_acc_global.predict(u_acc, theFrameInfo.cycleTime);
+  // TODO: use generated jerk as control vector?
+  ukf_acc_global.predict(Vector3d::Zero(), theFrameInfo.cycleTime);
 
   if (isWalking)
   {
@@ -138,9 +134,8 @@ void IMUModelProvider::writeIMUData(IMUModel& imuModel)
   // global position data
   // TODO: check for correct integration
   // TODO: prediction or state?
-  imuModel.acceleration.x() = static_cast<float>(ukf_acc_global.state.acceleration()(0, 0));
-  imuModel.acceleration.y() = static_cast<float>(ukf_acc_global.state.acceleration()(1, 0));
-  imuModel.acceleration.z() = static_cast<float>(ukf_acc_global.state.acceleration()(2, 0)) - theWalkCalibration.gravity;
+  imuModel.acceleration = ukf_acc_global.state.acceleration().col(0).cast<float>();
+  imuModel.acceleration.z() -= theWalkCalibration.gravity;
 
   imuModel.location += imuModel.velocity * theFrameInfo.cycleTime + imuModel.acceleration * theFrameInfo.cycleTime * theFrameInfo.cycleTime * 0.5f;
   imuModel.velocity += imuModel.acceleration * theFrameInfo.cycleTime;
@@ -148,12 +143,11 @@ void IMUModelProvider::writeIMUData(IMUModel& imuModel)
   // the state we are estimating in ukf_rot is (X * cycleTime) ms in the past. so predict (X * cycleTime) ms as estimate for the real current state
   UKF<RotationState<Measurement<6>, 6>> sensor_delay_corrected_rot = ukf_rot;
   sensor_delay_corrected_rot.generateSigmaPoints();
-  Eigen::Vector3d u_rot(0, 0, 0);
-  sensor_delay_corrected_rot.predict(u_rot, theWalkingEngineParams.imuSensorDelayFrames * theFrameInfo.cycleTime);
+  sensor_delay_corrected_rot.predict(Vector3d::Zero(), theWalkingEngineParams.imuSensorDelayFrames * theFrameInfo.cycleTime);
 
   // store rotation in IMUData as a rotation vector
-  imuModel.rotation = eigenVectorToVector3D(sensor_delay_corrected_rot.state.rotation()).cast<float>();
-  RotationMatrix bodyIntoGlobalMapping(sensor_delay_corrected_rot.state.getRotationAsAngleAxisd().cast<float>());
+  imuModel.rotation = sensor_delay_corrected_rot.state.rotation().cast<float>();
+  const RotationMatrix bodyIntoGlobalMapping(sensor_delay_corrected_rot.state.getRotationAsAngleAxisd().cast<float>());
 
   /*
     * Note: the following code lines use the inverse mapping, i.e. globalIntoBodyMapping, by using the third row of bodyIntoGlobalMapping's matrix representation
@@ -168,16 +162,15 @@ void IMUModelProvider::writeIMUData(IMUModel& imuModel)
     * this results in huge devation of the angles determined by atan2 because the projected y axis might end up in the second or third quadrant of the YZ plane
     */
 
-  Eigen::Vector3d global_Z_in_body(bodyIntoGlobalMapping(2, 0), bodyIntoGlobalMapping(2, 1), bodyIntoGlobalMapping(2, 2));
-  imuModel.orientation_rotvec = quaternionToVector3D(Eigen::Quaterniond::FromTwoVectors(global_Z_in_body, Eigen::Vector3d(0, 0, 1))).cast<float>();
-  RotationMatrix bodyIntoGlobalMappingWithoutZ(Eigen::Quaterniond::FromTwoVectors(global_Z_in_body, Eigen::Vector3d(0, 0, 1)).cast<float>());
+  const Vector3f global_Z_in_body = bodyIntoGlobalMapping.row(2);
+  const Quaternionf orientation_quaternion = Eigen::Quaternionf::FromTwoVectors(global_Z_in_body, Vector3f::UnitZ());
+  imuModel.orientation_rotvec = quaternionToRotationVector(orientation_quaternion);
+  const RotationMatrix bodyIntoGlobalMappingWithoutZ(orientation_quaternion);
 
-  imuModel.orientation = Vector2a(static_cast<Angle>(-atan2f(bodyIntoGlobalMappingWithoutZ(1, 2), bodyIntoGlobalMappingWithoutZ(1, 1))),
-      static_cast<Angle>(-atan2f(-bodyIntoGlobalMappingWithoutZ(0, 2), bodyIntoGlobalMappingWithoutZ(0, 0))));
+  imuModel.orientation << static_cast<Angle>(-atan2f(bodyIntoGlobalMappingWithoutZ(1, 2), bodyIntoGlobalMappingWithoutZ(1, 1))),
+      static_cast<Angle>(-atan2f(-bodyIntoGlobalMappingWithoutZ(0, 2), bodyIntoGlobalMappingWithoutZ(0, 0)));
 
-  imuModel.rotational_velocity.x() = static_cast<float>(ukf_rot.state.rotational_velocity()(0, 0));
-  imuModel.rotational_velocity.y() = static_cast<float>(ukf_rot.state.rotational_velocity()(1, 0));
-  imuModel.rotational_velocity.z() = static_cast<float>(ukf_rot.state.rotational_velocity()(2, 0));
+  imuModel.rotational_velocity = ukf_rot.state.rotational_velocity().col(0).cast<float>();
 
   PLOT("module:IMUModelProvider:State:location:x", imuModel.location.x());
   PLOT("module:IMUModelProvider:State:location:y", imuModel.location.y());

@@ -85,6 +85,7 @@ MainWindow::MainWindow()
   shortcutBar->addShortcut("naodevils stop", "ssh systemctl --user stop naodevils");
   shortcutBar->addShortcut("base start", "ssh systemctl --user start naodevilsbase");
   shortcutBar->addShortcut("base stop", "ssh systemctl --user stop naodevilsbase");
+  shortcutBar->addShortcut("clear speedLimits", "ssh \"systemctl --user stop naodevils && rm -r /home/nao/Persistent/*/speedLimits.value && systemctl --user start naodevils\"");
   shortcutBar->addShortcut("clear persistent", "ssh \"systemctl --user stop naodevils && rm -r /home/nao/Persistent/ && systemctl --user start naodevils\"");
   shortcutBar->setContextMenuPolicy(Qt::PreventContextMenu);
 
@@ -126,8 +127,10 @@ MainWindow::MainWindow()
   splitter->setMinimumWidth(200);
   QWidget::setMinimumHeight(widgetHeight);
   QWidget::setMinimumWidth(widgetWidth);
-  QWidget::resize(widgetWidth + 200, widgetHeight);
+  QWidget::resize(widgetWidth + 400, widgetHeight);
   QRect geometry = QGuiApplication::screens().first()->geometry();
+  if (frameGeometry().width() > geometry.width())
+    this->resize(geometry.width(), frameGeometry().height());
   QPoint position((geometry.width() - frameGeometry().width()) / 2, (geometry.height() - frameGeometry().height()) / 2);
   QWidget::move(position);
 }

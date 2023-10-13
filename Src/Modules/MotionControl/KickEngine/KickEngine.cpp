@@ -8,58 +8,19 @@
 #include "KickEngineParameters.h"
 #include "Platform/File.h"
 #include "Representations/MotionControl/KickRequest.h"
+#include <Modules/BehaviorControl/TacticControl/KicksProvider/KicksProvider.h>
 
 #include <cstdio>
 #include <cstring>
-#include <cerrno>
-#include <filesystem>
 
 MAKE_MODULE(KickEngine, motionControl)
 
 KickEngine::KickEngine()
 {
   params.reserve(10);
-
-  const std::string dirname = std::string(File::getBHDir()) + "/Config/KickEngine/";
-  for (const auto& file : std::filesystem::directory_iterator(dirname))
+  for (const auto& kickEngineParameters : KicksProvider::loadKickEngineParameters())
   {
-    const std::string filename = file.path().filename().string();
-    if (file.is_regular_file() && filename.substr(filename.size() - 4) == ".kmc")
-    {
-      InMapFile stream(file.path().string());
-      ASSERT(stream.exists());
-
-      KickEngineParameters parameters;
-      stream >> parameters;
-
-      strcpy(parameters.name, filename.substr(0, filename.size() - 4).c_str());
-
-      if (KickRequest::getKickMotionFromName(parameters.name) < KickRequest::none)
-        params.push_back(parameters);
-      else
-      {
-        OUTPUT_TEXT("Warning: KickRequest is missing the id for " << parameters.name);
-        fprintf(stderr, "Warning: KickRequest is missing the id for %s \n", parameters.name);
-      }
-    }
-  }
-
-  for (int i = 0; i < KickRequest::numOfKickMotionIDs - 2; ++i)
-  {
-    int id = -1;
-    for (unsigned int p = 0; p < params.size(); ++p)
-    {
-      if (KickRequest::getKickMotionFromName(&params[p].name[0]) == i)
-      {
-        id = i;
-        break;
-      }
-    }
-    if (id == -1)
-    {
-      OUTPUT_TEXT("Warning: The kick motion file for id " << KickRequest::getName((KickRequest::KickMotionID)i) << " is missing.");
-      fprintf(stderr, "Warning: The kick motion file for id %s is missing. \n", KickRequest::getName((KickRequest::KickMotionID)i));
-    }
+    params.push_back(kickEngineParameters);
   }
 
   //This is needed for adding new kicks

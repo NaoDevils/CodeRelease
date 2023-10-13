@@ -86,8 +86,7 @@ std::vector<std::string> Commands::complete(const std::string& cmdLine)
   if (commandWithArgs.size() > 1 || (!cmdLine.empty() && *(--cmdLine.end()) == ' '))
   {
     // parameter completion (this is the job of the individual Command instaces)
-    std::map<std::string, Command*>::const_iterator i = commands.find(commandWithArgs[0]);
-    if (i != commands.end())
+    if (auto i = commands.find(commandWithArgs[0]); i != commands.end())
     {
       std::vector<std::string> completionResult = i->second->complete(cmdLine);
       result.insert(result.begin(), completionResult.begin(), completionResult.end());

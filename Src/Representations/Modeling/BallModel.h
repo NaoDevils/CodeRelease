@@ -14,6 +14,7 @@
 #include "Tools/Math/Transformation.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/TeamBallModel.h"
+#include "Tools/Streams/Compressed.h"
 
 /**
  * \struct BallState
@@ -81,8 +82,6 @@ STREAMABLE(BallModel,
   (unsigned)(0) timeWhenLastSeen, /**< The time of \c lastPerception. */
   (unsigned)(0) timeWhenLastSeenByTeamMate, /**< The time of the last ball percept of any team mate. */
   (unsigned)(0) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there. */
-  // Unused by Dortmund:
-  (unsigned char)(0) seenPercentage, /**< How often was the ball seen in the recent past (0%...100%). */
   
   //BEGIN Added by Dortmund
   (float)(0.f) validity, /**< Validity of the current ball estimate in range [0,1]. */
@@ -111,19 +110,21 @@ struct BallModelAfterPreview : public BallModel
  * A compressed version of BallModel used in team communication
  */
 STREAMABLE(BallModelCompressed,
-  BallModelCompressed() = default;
-  BallModelCompressed(const BallModel & ballModel);
-  operator BallModel() const,
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 0;
 
+  BallModelCompressed() = default;
+  explicit BallModelCompressed(const BallModel& ballModel);
+  ,
   // last percept is equal to position for sending since 1 packet per second is not enough for difference
   //(Vector2s) lastPerception, /**< The last seen position of the ball */
-  (Vector2s) position,
-  (Vector2s) velocity,
+  (Vector2fCompressed) position,
+  (Vector2fCompressed) velocity,
   (unsigned)(0) timeWhenLastSeen, /**< Time stamp, indicating what its name says */
   //timeWhenDisappeared not sent, see above
   //(unsigned) timeWhenDisappeared, /**< The time when the ball was not seen in the image altough it should have been there */
   
-  (std::uint8_t)(0) validity /**< Validity of the current ball estimate in range [0,255]. */
+  (ValidityCompressed)(0.f) validity /**< Validity of the current ball estimate in range [0,255]. */
 );
 
 STREAMABLE(MultipleBallModel,

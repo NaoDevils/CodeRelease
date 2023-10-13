@@ -19,6 +19,8 @@ STREAMABLE(SpecialActionRequest,
     playDead,
     sitDown,
     stand,
+    test,
+    testUnstiff,
     standHigh,
     cheering1,
     cheering2,
@@ -26,34 +28,40 @@ STREAMABLE(SpecialActionRequest,
     cheering4,
     cheering5,
     wave_left,
-    wave_right,
     kickLeftFast,
     kickLeftSlow,
     penaltyGoaliePrepareDive,
     // add new non-standup and non-block motions here
     numOfUprightMotions,
-
-    // -------- from here on, gyro fall down detection is off for all motions               ---------
     
     // stand up motions
     firstStandUpMotion = numOfUprightMotions,
-    standUpBackNao = firstStandUpMotion,
-    standUpBackNaoFast,
-    standUpBackNaoMed,
-    standUpBackNaoSlow,
-    standUpFrontNao,
+    standUpBackNaoFast = firstStandUpMotion,
+    lying,
     standUpFrontNaoFast,
-    standUpFrontNaoMed,
-    standUpFrontNaoSlow,
+    standUpBackNaoFastOld,
+    standUpFrontNaoFastOld,
+    standUpFrontNaoSlowOld,
+    standUpSideNaoGoalie,
     lastStandUpMotion,
     standUpSideNao = lastStandUpMotion,
+
+    // falldown protection
+    firstFallMotion,
+    saveFallFront = firstFallMotion,
+    saveFall,
+    lastFallMotion,
+    saveFallBack = lastFallMotion,
 
     // block motions
     firstBlockMotion,
     wideStanceWithStandUp = firstBlockMotion,
     goalkeeperDefendLeft,
     lastBlockMotion,
-    penaltyGoalieDiveLeft = lastBlockMotion
+    penaltyGoalieDiveLeft = lastBlockMotion,
+
+    // do not use any motion at all
+    none
   );
 
 /**

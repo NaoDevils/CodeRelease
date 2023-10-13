@@ -2,24 +2,25 @@
 
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/Path.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/Path.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionState.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/Infrastructure/TeammateData.h"
-#include "Tools/Module/Module.h"
 #include "SimplePathProvider.h" // for parameters
+#include "Tools/Module/Module.h"
 
 MODULE(PathToSpeedStable,
   REQUIRES(BallSymbols),
@@ -39,22 +40,25 @@ MODULE(PathToSpeedStable,
   REQUIRES(Path),
   PROVIDES(SpeedRequest),
   REQUIRES(WalkingEngineParams),
+  REQUIRES(JoinedIMUData),
   REQUIRES(BehaviorConfiguration),
   REQUIRES(GameSymbols),
   REQUIRES(TeammateData),
   LOADS_PARAMETERS(,
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
     (float)(0.75f) speedPercentageWhenNotChasingBall, /** fixed percentage of speed for all robots who are not going to the ball except goalie */
     (float)(0.5f) speedPercentageCameraCalibration, /** fixed percentage of speed for camera calibration goto */
     (bool)(false) useDistanceBasedSpeedPercentageInReady, /** dynamic speed percentage, depending on distance to walk in ready state; TODO: any timed state? */
     (float)(0.6f) minSpeedPercentageInReady,
-    (float) targetStateSwitchDistance,
+    (float) targetStateSwitchDistanceFieldplayer,
+    (float) targetStateSwitchDistanceKeeper,
     (float) targetStateSwitchDistanceHysteresis,
     (float) omniStateSwitchDistance,
     (float) omniStateSwitchDistanceHysteresis,
     (float) omniStateSwitchAngle,
     (float) walkBackWardsDistance,
     (float) walkBackWardsRotation,
-    (bool) keeperInGoalAreaOmniOnly,
+    (bool)(true) keeperInPenaltyAreaTargetOnly,
     (float)(200.f) walkAroundBallMinDistance,
     (float)(300.f) walkAroundBallMaxDistance,
     (float)(300.f) influenceRadiusOfObstacleOnTranslation,
@@ -63,7 +67,8 @@ MODULE(PathToSpeedStable,
     (float)(0.8f) influenceOfObstacleOnTranslationBallchaser,
     (float)(0.7f) influenceOfObstacleOnTranslationCenterCircle,
     (float)(0.7f) influenceOfObstacleOnTranslationSetPlay,
-    (float)(2.0f) emergencyStopFallDownReductionFactorThreshold
+    (float)(2.0f) emergencyStopFallDownReductionFactorThreshold,
+    (float)(6.0f) emergencyStopGyroVariance
   )
 );
 
@@ -79,6 +84,8 @@ public:
   PathToSpeedStable();
 
 private:
+  std::array<RingBufferWithSum<Angle, 12>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersX;
+  std::array<RingBufferWithSum<Angle, 12>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersY;
   PathFollowState state = far;
   bool inDribbling = false;
   bool atBall = false;

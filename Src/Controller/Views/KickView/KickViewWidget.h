@@ -104,9 +104,7 @@ private:
 
   KickView& kickView;
 
-  std::string floatToStr(const float& f);
-  std::string boolToStr(const bool& b);
-  std::string intToStr(const int& i);
+  std::string serializeStreamable(const Streamable& streamable);
 
   //Editor
   TabWidget* tabber;
@@ -132,8 +130,7 @@ private:
   Vector3f dragPlane = Vector3f::Zero(); //plane for the 3D View where a selected point is moved
   Selected selectedPoint; //Infos about the actual selected Point
 
-  int getString,
-      ghost; //set the opacitiy of the robot model
+  int ghost; //set the opacitiy of the robot model
 
   std::vector<std::string> commands;
 

@@ -368,9 +368,9 @@ bool RobotConsole::handleMessage(InMessage& message)
     message.bin >> systemSensorData;
     return true;
   }
-  case idUsSensorData:
+  case idSonarSensorData:
   {
-    message.bin >> usSensorData;
+    message.bin >> sonarSensorData;
     return true;
   }
   case idAudioData:
@@ -631,24 +631,6 @@ bool RobotConsole::handleMessage(InMessage& message)
   case idLogResponse:
     logAcknowledged = true;
     return true;
-  case idRobotPose:
-  {
-    RobotPoseCompressed robotPoseCompressed;
-    message.bin >> robotPoseCompressed;
-    robotPose = robotPoseCompressed;
-    robotPoseReceived = SystemCall::getCurrentSystemTime();
-    return true;
-  }
-  case idBallModel:
-  {
-    BallModelCompressed ballModelCompressed;
-    message.bin >> ballModelCompressed;
-    ballModel = ballModelCompressed;
-    if (ballModel.timeWhenLastSeen)
-      // ballModel.timeWhenLastSeen = ctrl->ntp.getRemoteTimeInLocalTime(ballModel.timeWhenLastSeen);
-      ballModelReceived = SystemCall::getCurrentSystemTime();
-    return true;
-  }
   case idTeamBallModel:
     message.bin >> teamBallModel;
     teamBallModelReceived = SystemCall::getCurrentSystemTime();
@@ -756,8 +738,16 @@ void RobotConsole::update()
     lines.clear();
     if (handleConsoleLine(temp.front()))
     {
-      temp.pop_front();
-      lines.splice(lines.end(), temp);
+      if (sleepTimer == 0)
+      {
+        temp.pop_front();
+        lines.splice(lines.end(), temp);
+      }
+      else
+      {
+        lines = temp;
+        break;
+      }
     }
     else
     {
@@ -1020,6 +1010,14 @@ bool RobotConsole::handleConsoleLine(const std::string& line, bool fromCall)
     if (moveOp != noMove)
       return false;
     result = moveBall(stream);
+  }
+  else if (command == "kiba")
+  {
+    result = kickBall(stream);
+  }
+  else if (command == "sleep")
+  {
+    result = sleepConsole(stream);
   }
   else if (command == "poll")
     result = repoll(stream);
@@ -1289,6 +1287,50 @@ bool RobotConsole::log(In& stream, bool first)
       return logPlayer.saveAudioFile(name.c_str());
     }
   }
+  else if (command == "saveTrueWhistleAudio")
+  {
+    SYNC;
+    bool split = false;
+    std::string name;
+    stream >> name >> split;
+    if (name.size() == 0)
+      return false;
+    else
+    {
+      if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
+        name = name + ".wav";
+      if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+        name = std::string("Sounds\\Whistle\\") + name;
+      int ret = logPlayer.saveTrueWhistleAudioFile(name.c_str(), split);
+      if (ret == 1)
+        ctrl->printLn("Potentially no true whistles in log");
+      if (ret == 2)
+        ctrl->printLn("Unable to create file");
+      return true;
+    }
+  }
+  else if (command == "saveFalseWhistleAudio")
+  {
+    SYNC;
+    bool split = false;
+    std::string name;
+    stream >> name >> split;
+    if (name.size() == 0)
+      return false;
+    else
+    {
+      if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
+        name = name + ".wav";
+      if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+        name = std::string("Sounds\\Whistle\\") + name;
+      int ret = logPlayer.saveFalseWhistleAudioFile(name.c_str(), split);
+      if (ret == 1)
+        ctrl->printLn("Potentially no false whistles in log");
+      if (ret == 2)
+        ctrl->printLn("Unable to create file");
+      return true;
+    }
+  }
   else if (command == "saveImages")
   {
     SYNC;
@@ -1521,11 +1563,16 @@ bool RobotConsole::log(In& stream, bool first)
     }
     else if (command == "fast_forward")
     {
+      std::string opt;
+      stream >> opt;
+
       //backup state, gotoFrame will change the state.
       LogPlayer::LogPlayerState state = logPlayer.state;
       int frame = logPlayer.currentFrameNumber + 100;
 
       logPlayer.gotoFrame(std::max<>(std::min<>(frame, logPlayer.numberOfFrames - 1), 0));
+      if (opt == "image")
+        logPlayer.stepImageForward();
       if (state == LogPlayer::playing)
       {
         //if the state was playing before, continue playing
@@ -1535,17 +1582,43 @@ bool RobotConsole::log(In& stream, bool first)
     }
     else if (command == "fast_rewind")
     {
+      std::string opt;
+      stream >> opt;
+
       //backup state, gotoFrame will change the state.
       LogPlayer::LogPlayerState state = logPlayer.state;
       int frame = logPlayer.currentFrameNumber - 100;
 
       logPlayer.gotoFrame(std::max<>(std::min<>(frame, logPlayer.numberOfFrames - 1), 0));
+      if (opt == "image")
+        logPlayer.stepImageBackward();
       if (state == LogPlayer::playing)
       {
         //if the state was playing before, continue playing
         logPlayer.play();
       }
       return true;
+    }
+    else if (command == "export")
+    {
+      std::string name, par;
+      std::list<std::string> ids;
+      stream >> name;
+
+      while (!stream.eof())
+      {
+        stream >> par;
+        ids.push_back(par);
+      }
+
+
+      if (name.size() == 0)
+        return false;
+      else
+      {
+        logPlayer.export_data(name, ids);
+        return true;
+      }
     }
   }
   return false;
@@ -1703,12 +1776,12 @@ bool RobotConsole::set(In& stream)
                 line = "value = " + line + ";";
               MessageQueue errors;
               Global::theDebugOut = &errors.out;
-              InMapMemory stream(line.c_str(), line.size());
-              if (!stream.eof())
+              InMapMemory lineStream(line.c_str(), line.size());
+              if (!lineStream.eof())
               {
                 debugOut.out.bin << debugRequestTable.debugRequests[i].description.substr(11) << char(1);
                 DebugDataStreamer streamer(streamHandler, debugOut.out.bin, j->second.first, singleValue ? "value" : 0);
-                stream >> streamer;
+                lineStream >> streamer;
                 if (errors.isEmpty())
                 {
                   debugOut.out.finishMessage(idDebugDataChangeRequest);
@@ -1926,8 +1999,36 @@ bool RobotConsole::moduleRequest(In& stream)
   }
   else if (representation == "save")
   {
-    OutMapFile stream("modules.cfg");
-    moduleInfo.sendRequest(stream, true);
+    OutMapFile modulesStream("modules.cfg");
+    moduleInfo.sendRequest(modulesStream, true);
+    return true;
+  }
+  else if (representation == "off" || representation == "default")
+  {
+    if (std::find(moduleInfo.modules.begin(), moduleInfo.modules.end(), module) == moduleInfo.modules.end())
+      return false;
+
+    for (auto i = moduleInfo.config.representationProviders.begin(); i != moduleInfo.config.representationProviders.end();)
+    {
+      if (i->provider == module)
+      {
+        if (representation == "off")
+        {
+          i = moduleInfo.config.representationProviders.erase(i);
+          continue;
+        }
+        else
+          i->provider = representation;
+      }
+      ++i;
+    }
+
+    moduleInfo.timeStamp = SystemCall::getCurrentSystemTime() + ++mrCounter;
+    debugOut.out.bin << moduleInfo.timeStamp;
+    moduleInfo.sendRequest(debugOut.out.bin);
+    debugOut.out.finishMessage(idModuleRequest);
+    polled[idDebugResponse] = polled[idDrawingManager] = polled[idDrawingManager3D] = false;
+    logPlayer.streamSpecificationReplayed = false;
     return true;
   }
   else
@@ -2013,6 +2114,32 @@ bool RobotConsole::moveBall(In& stream)
   SYNC;
   stream >> movePos.x() >> movePos.y() >> movePos.z();
   moveOp = moveBallPosition;
+  return true;
+}
+
+bool RobotConsole::kickBall(In& stream)
+{
+  SYNC;
+  float kickAngleDeg;
+  stream >> kickAngleDeg >> kickVelocity;
+  kickAngle = Angle::fromDegrees(kickAngleDeg);
+  moveOp = kickBallVelocity;
+  return true;
+}
+
+bool RobotConsole::sleepConsole(In& stream)
+{
+  SYNC;
+  unsigned sleepFrames;
+  stream >> sleepFrames;
+  if (sleepTimer == 0)
+  {
+    sleepTimer = sleepFrames;
+  }
+  else
+  {
+    sleepTimer--;
+  }
   return true;
 }
 
@@ -2344,7 +2471,7 @@ bool RobotConsole::kickView()
     {
       kickViewSet = true;
       ctrl->addView(
-          new KickView(robotName + ".KikeView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, printBuffer, (SimRobotCore2::Body*)ctrl->application->resolveObject(robotFullName, SimRobotCore2::body)),
+          new KickView(robotName + ".KickView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, (SimRobotCore2::Body*)ctrl->application->resolveObject(robotFullName, SimRobotCore2::body)),
           robotName);
       return true;
     }
@@ -2354,7 +2481,7 @@ bool RobotConsole::kickView()
       QString puppetName("RoboCup.puppets." + robotName);
 
       ctrl->addView(
-          new KickView(robotName + ".KikeView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, printBuffer, (SimRobotCore2::Body*)ctrl->application->resolveObject(puppetName, SimRobotCore2::body)),
+          new KickView(robotName + ".KickView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, (SimRobotCore2::Body*)ctrl->application->resolveObject(puppetName, SimRobotCore2::body)),
           robotName);
       return true;
     }

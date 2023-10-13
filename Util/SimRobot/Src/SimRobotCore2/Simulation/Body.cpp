@@ -138,9 +138,9 @@ void Body::addGeometry(const Pose3f& parentOffset, Geometry& geometry)
   // handle nested geometries
   for (std::list<::PhysicalObject*>::const_iterator iter = geometry.physicalDrawings.begin(), end = geometry.physicalDrawings.end(); iter != end; ++iter)
   {
-    Geometry* geometry = dynamic_cast<Geometry*>(*iter);
-    ASSERT(geometry);
-    addGeometry(offset, *geometry);
+    Geometry* drawingsGeometry = dynamic_cast<Geometry*>(*iter);
+    ASSERT(drawingsGeometry);
+    addGeometry(offset, *drawingsGeometry);
   }
 }
 
@@ -296,6 +296,11 @@ void Body::resetDynamics()
   dBodySetAngularVel(body, 0, 0, 0);
   for (std::list<Body*>::const_iterator iter = bodyChildren.begin(), end = bodyChildren.end(); iter != end; ++iter)
     (*iter)->resetDynamics();
+}
+
+void Body::setVelocity(dReal x, dReal y, dReal z)
+{
+  dBodySetLinearVel(body, x, y, z);
 }
 
 const Pose3f& Body::getPose()

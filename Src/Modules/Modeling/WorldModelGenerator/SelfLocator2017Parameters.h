@@ -39,10 +39,11 @@ STREAMABLE(SelfLocator2017Parameters,
 
     (float)(0.5f) correlationFactorBetweenMeasurements, // [0..1]
     (float)(0.007f) influenceOfNewCenterCircleMeasurementOnPositionConfidence, // [0..1]
-    (float)(0.004f) influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, // [0..1]
+    (float)(0.007f) influenceOfNewPenaltyCrossMeasurementOnPositionConfidence, // [0..1]
     (float)(0.003f) influenceOfNewGoalMeasurementOnPositionConfidence, // [0..1]
     (float)(0.005f) influenceOfNewLineMeasurementOnPositionConfidence, // [0..1]
     (float)(0.003f) influenceOfNewInfiniteLineMeasurementOnPositionConfidence, // [0..1]
+    (float)(0.05f) influenceOfNewPenaltyCrossWithLineMeasurementOnPositionConfidence, // [0..1]
     (float)(0.2f) maxInfluenceOnPositionConfidencePenaltyCrossOnly, // [0..1]
     (bool)(true) use1stLevelUpdate,
     (bool)(true) use2ndLevelUpdate,
@@ -90,6 +91,7 @@ STREAMABLE(SelfLocator2017Parameters,
     (LandmarkBasedHypothesesSpawn)(spawnIfPositionLost) landmarkBasedHypothesesSpawn,
 
     (float)(0.6f) spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold, // [0..1]
+    (float)(0.75f) spawnUniqueWhilePositionTrackingWhenBestConfidenceBelowThisThreshold, // [0..1]
 
     // Nearest pose (symmetric vs. own side) is determined by best hypothesis.
     // This threshold allows other hypothesis with a confidence lower than the best hypothesis

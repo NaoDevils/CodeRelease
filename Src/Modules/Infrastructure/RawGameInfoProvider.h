@@ -7,6 +7,7 @@
 #pragma once
 
 #include <memory>
+#include <array>
 
 #if defined(MACOS) || defined(LINUX)
 #include "arpa/inet.h"
@@ -48,9 +49,12 @@ MODULE(RawGameInfoProvider,
     ((RobotInfo) NaoType) naoBodyType, ///< H21, H25 ...
     ((RobotInfo) NaoType) naoHeadType,
     (std::string)("") robotConfig,
-    (unsigned)(TEAM_YELLOW) ownColor,
-    (unsigned)(TEAM_BLACK) oppColor,
-    (int)(2000) gameControllerTimeout,
+    (unsigned char)(TEAM_YELLOW) ownColor,
+    (unsigned char)(TEAM_RED) ownKeeperColor,
+    (unsigned char)(TEAM_BLACK) oppColor,
+    (unsigned char)(TEAM_BLUE) oppKeeperColor,
+    (unsigned char)(1) keeper,
+    (int)(5000) gameControllerTimeout,
     (int)(1000) aliveDelay
   )
 );
@@ -88,10 +92,12 @@ private:
 
   bool initialized = false;
   RoboCup::RoboCupGameControlData gameCtrlData; // local copy of all game control data
+  std::array<uint8_t, 4> gameCtrlDataSender{0};
   uint8_t ownPenalty = PENALTY_NONE;
   unsigned timeStampGameStateChanged = 0;
   unsigned timeStampPenaltyChanged = 0;
-  bool chestButtonPressed = false;
+  bool lastChestButtonPressed = false;
+  bool firstChestButtonPressed = false;
   float transitionToFramework = 0.f;
   unsigned lastReceivedTimeStamp = 0;
   std::unique_ptr<UdpComm> udp = nullptr; /**< The socket used to communicate. */

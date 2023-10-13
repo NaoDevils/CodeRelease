@@ -33,7 +33,6 @@ MODULE(LimbCombinator,
   REQUIRES(WalkingEngineParams),
   PROVIDES(WalkingEngineOutput),
   LOADS_PARAMETERS(,
-    (bool)(false) useKickHack,
     (float)(0.2f) hipPitchKneeCompensation
   )
 );
@@ -46,22 +45,16 @@ public:
 
   void applyKickHackHip(WalkingEngineOutput& walkingEngineOutput);
   void applyKickHackKnee(WalkingEngineOutput& walkingEngineOutput);
-
-  static int walkingEngineTime;
+  void applyAnkleCompensation(WalkingEngineOutput& walkingEngineOutput);
 
 private:
   AngleError angerr;
-  float getOffset(int j, float targetAngle);
   float angleoffset[Joints::numOfJoints][200];
   RingBuffer<float, 100> delayBuffer[Joints::numOfJoints];
   void update(WalkingEngineOutput& walkingEngineOutput);
   bool init;
-  bool lastInKick;
   int lastOutFilterOrder;
   FastFilter<float> filter[Joints::numOfJoints];
 
   RingBuffer<Angle, MAX_DELAY_FRAMES> lHipPitchTargetAngle, rHipPitchTargetAngle;
-
-  // kick hack -> fixed joints while kicking
-  unsigned int timeStampKickStarted = 0;
 };

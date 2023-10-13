@@ -1,9 +1,0 @@
-echo === CSVLogs are saved to /Config/Logs/CSVLogger/ ===
-echo
-echo dr representation:JointSensorData:CSVLog 
-echo dr representation:InertialSensorData:CSVLog 
-echo dr representation:FsrSensorData:CSVLog 
-echo 
-echo dr representation:JointSensorData:CSVLog off
-echo dr representation:InertialSensorData:CSVLog off
-echo dr representation:FsrSensorData:CSVLog off

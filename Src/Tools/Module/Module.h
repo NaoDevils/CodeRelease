@@ -560,7 +560,7 @@ std::string getConfigName(const char* moduleName);
   static void execute(Streamable& module, tf::Subflow& subflow) \
   { \
     BH_TRACE_MSG(moduleName); \
-    STOPWATCH(moduleName) ((BaseType&)module).execute(subflow); \
+    ((BaseType&)module).execute(subflow); \
   }
 
 /**
@@ -585,7 +585,7 @@ std::string getConfigName(const char* moduleName);
     typedef name##Base BaseType; \
     void modifyParameters() \
     { \
-      if(sizeof(NoParameters) < sizeof(name##Module::Parameters)) \
+      if constexpr (sizeof(NoParameters) < sizeof(name##Module::Parameters)) \
         MODIFY("parameters:" #name, *this); \
     } \
                                                                                    \

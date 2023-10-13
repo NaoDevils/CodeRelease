@@ -47,9 +47,9 @@ bool DeployCmd::DeployTask::execute()
   args.push_back(QString("-o"));
   args.push_back(QString::number(team->port));
   args.push_back(QString("-own"));
-  args.push_back(mapColorToConf(context(), team->colorOwn).c_str());
+  args.push_back(QString::number(mapColorToConf(team->colorOwn)));
   args.push_back(QString("-opp"));
-  args.push_back(mapColorToConf(context(), team->colorOpp).c_str());
+  args.push_back(QString::number(mapColorToConf(team->colorOpp)));
   args.push_back(QString("-p"));
   args.push_back(QString::number(team->getPlayerNumber(*robot)));
   for (const std::string& overlay : team->overlays)
@@ -58,9 +58,9 @@ bool DeployCmd::DeployTask::execute()
     args.push_back(overlay.c_str());
   }
   args.push_back(QString("-g"));
-  args.push_back(team->gameMode.c_str());
+  args.push_back(QString::fromStdString(team->gameMode));
   args.push_back(QString("-w"));
-  args.push_back(team->wlanConfig.c_str());
+  args.push_back(QString::fromStdString(team->wlanConfig));
   args.push_back(QString("-v"));
   args.push_back(QString::number(team->volume));
   args.push_back(QString("-mv"));
@@ -82,13 +82,13 @@ bool DeployCmd::DeployTask::execute()
   }
 }
 
-std::string DeployCmd::mapColorToConf(Context& context, int color)
+int DeployCmd::DeployTask::mapColorToConf(int color)
 {
   std::map<int, int> teamColorMap{
-      {65535, 0}, //yellow
-      {16711680, 1}, //black
-      {16776960, 2}, //cyan
-      {0, 3}, //red
+      {65535, 0}, //cyan
+      {16711680, 1}, //red
+      {16776960, 2}, //yellow
+      {0, 3}, //black
       {16777215, 4}, //white
       {891904, 5}, //darkgreen
       {16744960, 6}, //orange
@@ -100,17 +100,14 @@ std::string DeployCmd::mapColorToConf(Context& context, int color)
   int gcColor;
   if (teamColorMap.find(color) == teamColorMap.end())
   {
-    context.errorLine("Selected Color is unknown! Please use only the custom colors!");
+    context().errorLine("Selected Color is unknown! Please use only the custom colors!");
     gcColor = 2; //yellow
   }
   else
   {
     gcColor = teamColorMap[color];
   }
-
-  std::stringstream config;
-  config << static_cast<int>(gcColor);
-  return config.str();
+  return gcColor;
 }
 
 DeployCmd::DeployCmd()

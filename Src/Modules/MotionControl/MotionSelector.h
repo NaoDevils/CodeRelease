@@ -10,6 +10,7 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/Configuration/MotionSettings.h"
+#include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
@@ -26,6 +27,7 @@ MODULE(MotionSelector,
   USES(KickEngineOutput),
   USES(StandEngineOutput),
   REQUIRES(FrameInfo),
+  REQUIRES(FallDownState),
   REQUIRES(MotionRequest),
   REQUIRES(MotionSettings),
   REQUIRES(GroundContactState),

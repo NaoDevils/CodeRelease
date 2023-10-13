@@ -1,6 +1,7 @@
 target_sources(${PROJECT_NAME}
     PRIVATE
         BehaviorControl/ActivationGraph.h
+        BehaviorControl/BallChaserDecision.cpp
         BehaviorControl/BallChaserDecision.h
         BehaviorControl/BallSearch.h
         BehaviorControl/BallSymbols.cpp
@@ -13,18 +14,20 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/HeadControlRequest.h
         BehaviorControl/KeySymbols.h
         BehaviorControl/PSGoalieTrigger.h
-        BehaviorControl/PositioningSymbols.cpp
-        BehaviorControl/PositioningSymbols.h
+        BehaviorControl/RoleSymbols/PositioningSymbols.cpp
+        BehaviorControl/RoleSymbols/PositioningSymbols.h
         BehaviorControl/RoleSelection.h
         BehaviorControl/RoleSymbols.cpp
         BehaviorControl/RoleSymbols.h
         BehaviorControl/RoleSymbols/BackupBallchaser.h
+        BehaviorControl/RoleSymbols/BackWing.h
         BehaviorControl/RoleSymbols/Ballchaser.h
         BehaviorControl/RoleSymbols/BallchaserKeeper.h
         BehaviorControl/RoleSymbols/Center.h
         BehaviorControl/RoleSymbols/DefenderLeft.h
         BehaviorControl/RoleSymbols/DefenderRight.h
         BehaviorControl/RoleSymbols/DefenderSingle.h
+        BehaviorControl/RoleSymbols/FrontWing.h
         BehaviorControl/RoleSymbols/Keeper.h
         BehaviorControl/RoleSymbols/Receiver.h
         BehaviorControl/RoleSymbols/ReplacementKeeper.h
@@ -41,7 +44,7 @@ target_sources(${PROJECT_NAME}
         Configuration/MotionSettings.h
         Configuration/OdometryCorrectionTable.h
         Configuration/RobotDimensions.h
-        Configuration/UsConfiguration.h
+        Configuration/SonarConfiguration.h
         Infrastructure/AudioData.h
         Infrastructure/CMCorrectorStatus.h
         Infrastructure/CameraInfo.cpp
@@ -57,6 +60,7 @@ target_sources(${PROJECT_NAME}
         Infrastructure/GameInfo.cpp
         Infrastructure/GameInfo.h
         Infrastructure/GroundTruthWorldState.h
+        Infrastructure/HealthScore.h
         Infrastructure/Image.cpp
         Infrastructure/Image.h
         Infrastructure/JPEGImage.cpp
@@ -82,12 +86,11 @@ target_sources(${PROJECT_NAME}
         Infrastructure/SensorData/KeyStates.h
         Infrastructure/SensorData/SystemSensorData.cpp
         Infrastructure/SensorData/SystemSensorData.h
-        Infrastructure/SensorData/UsSensorData.h
+        Infrastructure/SensorData/SonarSensorData.h
         Infrastructure/SequenceImage.h
         Infrastructure/StiffnessData.h
         Infrastructure/TeamInfo.cpp
         Infrastructure/TeamInfo.h
-        Infrastructure/TeamCommData.cpp
         Infrastructure/TeamCommData.h
         Infrastructure/TeamCommEvents.h
         Infrastructure/TeamCommSenderOutput.h
@@ -100,7 +103,6 @@ target_sources(${PROJECT_NAME}
         Infrastructure/Time.h
         Infrastructure/USBSettings.h
         Infrastructure/USBStatus.h
-        Infrastructure/USRequest.h
         Infrastructure/YoloInput.cpp
         Infrastructure/YoloInput.h
         Modeling/BallModel.cpp
@@ -109,6 +111,9 @@ target_sources(${PROJECT_NAME}
         Modeling/HeatMapCollection.h
         Modeling/HeatMap.h
         Modeling/IMUModel.h
+        Modeling/Kicks.h
+        Modeling/KickWheel.cpp
+        Modeling/KickWheel.h
         Modeling/LineMatchingResult.cpp
         Modeling/LineMatchingResult.h
         Modeling/Path.h
@@ -136,6 +141,8 @@ target_sources(${PROJECT_NAME}
         MotionControl/Footpositions.h
         MotionControl/HeadAngleRequest.h
         MotionControl/HeadJointRequest.h
+        MotionControl/JointError.h
+        MotionControl/JointError.cpp
         MotionControl/KeyFrameEngineOutput.h
         MotionControl/KickEngineOutput.h
         MotionControl/KickRequest.cpp
@@ -183,13 +190,20 @@ target_sources(${PROJECT_NAME}
         Perception/GoalPercept.h
         Perception/ImageCoordinateSystem.cpp
         Perception/ImageCoordinateSystem.h
+        Perception/ImagePatch.cpp
+        Perception/ImagePatch.h
         Perception/PNGImage.h
+        Perception/PenaltyCrossHypotheses.cpp
         Perception/PenaltyCrossHypotheses.h
         Perception/PenaltyCrossPercept.h
         Perception/RobotsPercept.cpp
         Perception/RobotsPercept.h
+        Perception/SonarPercept.cpp
+        Perception/SonarPercept.h
+        Perception/TfliteInterpreter.cpp
         Perception/TfliteInterpreter.h
         Sensing/ArmContact.h
+        Sensing/BrokenJointState.h
         Sensing/FallDownState.cpp
         Sensing/FallDownState.h
         Sensing/GroundContactState.h

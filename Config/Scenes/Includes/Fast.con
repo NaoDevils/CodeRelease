@@ -19,17 +19,53 @@ mr RobotMap OracledWorldModelProvider
 mr GroundTruthRobotPose OracledWorldModelProvider
 mr GroundTruthBallModel OracledWorldModelProvider
 mr GroundTruthMultipleBallModel OracledWorldModelProvider
+mr BallPercept OracledPerceptsProvider
+mr MultipleBallPercept OracledPerceptsProvider
 mr FrameInfo CognitionLogDataProvider
 mr JointSensorData MotionLogDataProvider
 mr InertialSensorData MotionLogDataProvider
 mr KeyStates MotionLogDataProvider
-mr UsSensorData MotionLogDataProvider
+mr SonarSensorData MotionLogDataProvider
 mr FrameInfo MotionLogDataProvider
 
 # Fast, because we do not compute images
 ci off
 mr Image default
 mr ImageUpper default
+
+# CMCorrector requirement => default
+mr CLIPFieldLinesPercept default
+
+# BehaviorControl requirement => default
+mr SideConfidence default
+mr RemoteBallModel default
+
+# TeamCommDataPacker requirement => default
+mr LocalRobotMap default
+
+# CognitionMindfulness requirement => default
+mr FieldColors default
+mr FieldColorsUpper default
+
+# Deactivate modeling modules
+mr off SelfLocator2017
+mr off KalmanMultiRobotMapProvider
+mr off LineMatcher
+mr off BallModelProvider
+
+# Deactivate image processing modules
+mr off RobotsPerceptProvider
+mr off JerseyColorDetector
+mr off RobotOrientationDetector
+mr off RobotClassifier
+mr off CLIPBallPerceptor
+mr off PenaltyCrossClassifier
+mr off YoloRobotDetector
+mr off CLIPLineFinder
+mr off CLIPPreprocessor
+mr off TfliteInterpreterProvider
+mr off FieldColorProvider
+mr off BodyContourProvider
 
 # Deactivate unused modules
 mr RobotHealth default
@@ -38,28 +74,6 @@ mr ThumbnailUpper off
 mr LowFrameRateImage off
 mr LowFrameRateImageUpper off
 
-# Deactivate modules depending on images
-mr RobotsPercept default
-mr RobotsPerceptUpper default
-mr CLIPCenterCirclePercept default
-mr CLIPGoalPercept default
-mr CLIPFieldLinesPercept default
-mr PenaltyCrossPercept default
-mr SideConfidence default
-mr BallHypothesesYolo default
-mr PenaltyCrossHypothesesYolo default
-mr BallPercept default
-mr MultipleBallPercept default
-mr ProcessedBallPatches default
-mr BallPercept OracledPerceptsProvider
-mr MultipleBallPercept OracledPerceptsProvider
-mr CLIPPointsPercept off
-mr ObstacleBasePoints off
-mr BallSpots off
-mr BodyContour off
-mr BodyContourUpper off
-mr YoloInput off
-mr YoloInputUpper off
 mr PNGImageDummy default
 
 call Includes/DebugResponses

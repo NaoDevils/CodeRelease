@@ -15,6 +15,17 @@ using namespace DWE;
 
 void CoPProvider::update(ZMPModel& zmpModel)
 {
+  DECLARE_DEBUG_DRAWING("module:CoPProvider:ZMP", "drawingOnField");
+  DECLARE_DEBUG_DRAWING("module:CoPProvider:ZMP:single", "drawingOnField");
+
+  float robotMass = theFsrSensorData.leftTotal + theFsrSensorData.rightTotal;
+  float lfac = 0.5f, rfac = 0.5f;
+  if (robotMass > 0.001)
+  {
+    lfac = theFsrSensorData.leftTotal / robotMass;
+    rfac = theFsrSensorData.rightTotal / robotMass;
+  }
+
 #if 0
 	Vector3_D<> lCoP_FCS(theFilteredSensorData.data[SensorData::lCoPX], theFilteredSensorData.data[SensorData::lCoPY], 0);
 	Vector3_D<> rCoP_FCS(theFilteredSensorData.data[SensorData::rCoPX], theFilteredSensorData.data[SensorData::rCoPY], 0);
@@ -26,25 +37,36 @@ void CoPProvider::update(ZMPModel& zmpModel)
 
   if (leftSum > 0)
   {
-    lCoP_FCS.x() = (theFsrSensorData.left[FsrSensorData::fl] * 0.07025f + theFsrSensorData.left[FsrSensorData::fr] * 0.07025f + theFsrSensorData.left[FsrSensorData::bl] * -0.03025f
-                       + theFsrSensorData.left[FsrSensorData::br] * -0.02965f)
-        / leftSum;
-    lCoP_FCS.y() = (theFsrSensorData.left[FsrSensorData::fl] * 0.0299f + theFsrSensorData.left[FsrSensorData::fr] * -0.0231f + theFsrSensorData.left[FsrSensorData::bl] * 0.0299f
-                       + theFsrSensorData.left[FsrSensorData::br] * -0.0191f)
-        / leftSum;
+    // clang-format off
+    lCoP_FCS.x() = (theFsrSensorData.left[FsrSensorData::fl] * 0.07025f +
+                    theFsrSensorData.left[FsrSensorData::fr] * 0.07025f +
+                    theFsrSensorData.left[FsrSensorData::bl] * -0.03025f +
+                    theFsrSensorData.left[FsrSensorData::br] * -0.02965f) / leftSum;
+    lCoP_FCS.y() = (theFsrSensorData.left[FsrSensorData::fl] * 0.0299f +
+                    theFsrSensorData.left[FsrSensorData::fr] * -0.0231f +
+                    theFsrSensorData.left[FsrSensorData::bl] * 0.0299f +
+                    theFsrSensorData.left[FsrSensorData::br] * -0.0191f) / leftSum;
+    // clang-format on
   }
 
   float rightSum = theFsrSensorData.right[FsrSensorData::fl] + theFsrSensorData.right[FsrSensorData::fr] + theFsrSensorData.right[FsrSensorData::bl] + theFsrSensorData.right[FsrSensorData::br];
 
   if (rightSum > 0)
   {
-    rCoP_FCS.x() = (theFsrSensorData.right[FsrSensorData::fl] * 0.07025f + theFsrSensorData.right[FsrSensorData::fr] * 0.07025f
-                       + theFsrSensorData.right[FsrSensorData::bl] * -0.03025f + theFsrSensorData.right[FsrSensorData::br] * -0.02965f)
-        / rightSum;
-    rCoP_FCS.y() = (theFsrSensorData.right[FsrSensorData::fl] * 0.0231f + theFsrSensorData.right[FsrSensorData::fr] * -0.0299f + theFsrSensorData.right[FsrSensorData::bl] * 0.0191f
-                       + theFsrSensorData.right[FsrSensorData::br] * -0.0299f)
-        / rightSum;
+    // clang-format off
+    rCoP_FCS.x() = (theFsrSensorData.right[FsrSensorData::fr] * 0.07025f +
+                    theFsrSensorData.right[FsrSensorData::fl] * 0.07025f +
+                    theFsrSensorData.right[FsrSensorData::br] * -0.03025f +
+                    theFsrSensorData.right[FsrSensorData::bl] * -0.02965f) / rightSum;
+    rCoP_FCS.y() = (theFsrSensorData.right[FsrSensorData::fr] * -0.0299f +
+                    theFsrSensorData.right[FsrSensorData::fl] * 0.0231f +
+                    theFsrSensorData.right[FsrSensorData::br] * -0.0299f +
+                    theFsrSensorData.right[FsrSensorData::bl] * 0.0191f) / rightSum;
+    // clang-format on
   }
+  Vector3f CoP_FCS = lCoP_FCS * lfac - lCoP_FCS * rfac;
+  zmpModel.ZMP_FCS = CoP_FCS.head<2>();
+
 #endif
   // convert to robot coordinate system
 #if 1
@@ -70,17 +92,7 @@ void CoPProvider::update(ZMPModel& zmpModel)
   Vector3f lCoP_RCS = footLeft * lCoP_FCS;
   Vector3f rCoP_RCS = footRight * rCoP_FCS;
 
-  float robotMass = theFsrSensorData.leftTotal + theFsrSensorData.rightTotal;
-
-  float lfac = 0.5f, rfac = 0.5f;
-
-  if (robotMass > 0.001)
-  {
-    lfac = theFsrSensorData.leftTotal / robotMass;
-    rfac = theFsrSensorData.rightTotal / robotMass;
-  }
-
-  zmpModel.zmp_acc = lCoP_RCS * lfac + rCoP_RCS * rfac;
+  zmpModel.ZMP_RCS = lCoP_RCS * lfac + rCoP_RCS * rfac;
 
   Pose3f footLeft_WCS(
       theWalkingInfo.lastUsedFootPositions.footPos[LEFT_FOOT].x, theWalkingInfo.lastUsedFootPositions.footPos[LEFT_FOOT].y, theWalkingInfo.lastUsedFootPositions.footPos[LEFT_FOOT].z);
@@ -95,8 +107,8 @@ void CoPProvider::update(ZMPModel& zmpModel)
 
   zmpModel.ZMP_WCS = lCoP_WCS * lfac + rCoP_WCS * rfac;
 
-  PLOT("module:CoPProvider:CoPx", zmpModel.zmp_acc.x());
-  PLOT("module:CoPProvider:CoPy", zmpModel.zmp_acc.y());
+  PLOT("module:CoPProvider:CoPx", zmpModel.ZMP_RCS.x());
+  PLOT("module:CoPProvider:CoPy", zmpModel.ZMP_RCS.y());
 
   PLOT("module:CoPProvider:CoPxWCS", zmpModel.ZMP_WCS.x());
   PLOT("module:CoPProvider:CoPyWCS", zmpModel.ZMP_WCS.y());
@@ -109,6 +121,42 @@ void CoPProvider::update(ZMPModel& zmpModel)
 
   //PLOT("module:CoPProvider:lWeight", theFsrSensorData.leftTotal);
   //PLOT("module:CoPProvider:rWeight", theFsrSensorData.rightTotal);
+
+  drawFoot(true, Pose2f(0_deg, footLeft.translation.head<2>() * 1000.f));
+  drawFoot(false, Pose2f(0_deg, footRight.translation.head<2>() * 1000.f));
+
+  DOT("module:CoPProvider:ZMP:single", lCoP_WCS.x() * 1000.f, lCoP_WCS.y() * 1000.f, ColorRGBA::blue, ColorRGBA::blue);
+  DOT("module:CoPProvider:ZMP:single", rCoP_RCS.x() * 1000.f, rCoP_RCS.y() * 1000.f, ColorRGBA::green, ColorRGBA::green);
+
+  DOT("module:CoPProvider:ZMP", zmpModel.ZMP_RCS.x() * 1000.f, zmpModel.ZMP_RCS.y() * 1000.f, ColorRGBA::red, ColorRGBA::red);
+}
+
+void CoPProvider::drawFoot(bool left, const Pose2f& baseInImage)
+{
+  COMPLEX_DRAWING("module:CoPProvider:ZMP")
+  {
+    ColorRGBA drawColor = left ? ColorRGBA::blue : ColorRGBA::green;
+    for (unsigned int i = 0; i < FootShape::polygon.size(); i++)
+    {
+      Vector2f p1 = FootShape::polygon[i];
+      Vector2f p2 = FootShape::polygon[(i + 1) % FootShape::polygon.size()];
+      if (left)
+      {
+        p1.y() = -p1.y();
+        p2.y() = -p2.y();
+      }
+      p1.rotate(baseInImage.rotation);
+      p2.rotate(baseInImage.rotation);
+      LINE("module:CoPProvider:ZMP",
+          p1.x() + baseInImage.translation.x(),
+          -p1.y() + baseInImage.translation.y(),
+          p2.x() + baseInImage.translation.x(),
+          -p2.y() + baseInImage.translation.y(),
+          2,
+          Drawings::solidPen,
+          drawColor);
+    }
+  }
 }
 
 MAKE_MODULE(CoPProvider, sensing)

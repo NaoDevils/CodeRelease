@@ -14,6 +14,9 @@ class DeployCmd : public RobotCommand
   public:
     DeployTask(Context& context, const QString& buildConfig, Team* team, RobotConfigDorsh* robot);
     virtual bool execute();
+
+  private:
+    int mapColorToConf(int color);
   };
 
   Team* team;
@@ -30,8 +33,4 @@ class DeployCmd : public RobotCommand
 
 public:
   static DeployCmd theDeployCmd;
-
-private:
-  //static std::string mapColorToConf(std::string color);
-  static std::string mapColorToConf(Context& context, int color);
 };

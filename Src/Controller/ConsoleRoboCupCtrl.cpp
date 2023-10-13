@@ -439,21 +439,26 @@ void ConsoleRoboCupCtrl::help(In& stream)
   list("  kfm : Send local key frame motions to the robot. ", pattern, true);
   list("  log start | stop | clear | save <file> | full | jpeg : Record log file and (de)activate image compression.", pattern, true);
   list("  log saveAudio <file> : Save audio data from log.", pattern, true);
+  list("  log saveTrueWhistleAudio <file> (<split>): Save true whistle audio data from log.", pattern, true);
+  list("  log saveFalseWhistleAudio <file> (<split>): Save false positive whistle audio data from log.", pattern, true);
+  list("  log export <file> {<representation ID>}: Export the data in the log to json file, optionally limited to the given representation IDs.", pattern, true);
   list("  log saveImages [raw] <file> : Save images from log.", pattern, true);
   list("  log saveTiming <file> : Save timing data from log to csv.", pattern, true);
   list("  log ? [<pattern>] | load <file> | ( keep | remove ) <message> {<message>} | ( keepFrames | removeFrames ) <startFrameId> <endFrameId> : Load, filter, and display information about log file.",
       pattern,
       true);
-  list("  log start | pause | stop | forward [image] | backward [image] | repeat | goto <number> | cycle | once | fast_forward | fast_rewind : Replay log file.", pattern, true);
+  list("  log start | pause | stop | forward [image] | backward [image] | repeat | goto <number> | cycle | once | fast_forward [image] | fast_rewind [image] : Replay log file.", pattern, true);
   list("  msg off | on | log <file> | enable | disable : Switch output of text messages on or off. Log text messages to a file. Switch message handling on or off.", pattern, true);
   list("  mr ? [<pattern>] | modules [<pattern>] | save | <representation> ( ? [<pattern>] | <module> | off ) : Send module request.", pattern, true);
   list("  mv <x> <y> <z> [<rotx> <roty> <rotz>] : Move the selected simulated robot to the given position.", pattern, true);
   list("  mvb <x> <y> <z> : Move the ball to the given position.", pattern, true);
+  list("  kiba <angle> <velocity>: Kicks the ball in the direction given by angle having the given velocity. ", pattern, true);
   list("  poll : Poll for all available debug requests and drawings. ", pattern, true);
   list("  pr none | ballHolding | playerPushing | inactivePlayer | illegalDefender | leavingTheField | playingWithHands | requestForPickup : Penalize robot.", pattern, true);
   list("  qfr queue | replace | reject | collect <seconds> | save [<seconds>] : Send queue fill request.", pattern, true);
   list("  set ? [<pattern>] | <key> ( ? | unchanged | <data> ) : Change debug data or show its specification.", pattern, true);
   list("  save ? [<pattern>] | <key> [<path>] : Save debug data to a configuration file.", pattern, true);
+  list("  sleep <frames> : Sleeps for the given number of frames and delays the following commands. ", pattern, true);
   list("  si reset | (upper | lower) [number] <file> : Save the upper/lower cams image.", pattern, true);
   list("  v3 ? [<pattern>] | <image> [jpeg] [upper] [<name>] : Add a set of 3-D views for a certain image.", pattern, true);
   list("  vd <debug data> on | off : Show debug data in a window or switch sending it off.", pattern, true);
@@ -618,11 +623,14 @@ void ConsoleRoboCupCtrl::createCompletion()
       "jc press",
       "jc release",
       "js",
+      "kiba",
       "kfm",
       "log start",
       "log stop",
       "log save",
       "log saveAudio",
+      "log saveTrueWhistleAudio",
+      "log saveFalseWhistleAudio",
       "log saveImages",
       "log saveImages raw",
       "log saveTiming",
@@ -644,6 +652,7 @@ void ConsoleRoboCupCtrl::createCompletion()
       "log fast_rewind",
       "log keepFrames",
       "log removeFrames",
+      "log export",
       "mr modules",
       "mr save",
       "msg off",
@@ -707,6 +716,12 @@ void ConsoleRoboCupCtrl::createCompletion()
       for (const auto& m : moduleInfo->modules)
         if (std::find(m.representations.begin(), m.representations.end(), r) != m.representations.end())
           completion.insert(std::string("mr ") + r + " " + m.name);
+    }
+
+    for (const auto& m : moduleInfo->modules)
+    {
+      completion.insert(std::string("mr off ") + m.name);
+      completion.insert(std::string("mr default ") + m.name);
     }
   }
 

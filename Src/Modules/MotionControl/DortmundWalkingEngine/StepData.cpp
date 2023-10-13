@@ -79,23 +79,3 @@ void CustomStep::serialize(In* in, Out* out)
         spline[i] = Point();
   }
 }
-
-void CustomStepsFile::serialize(In* in, Out* out)
-{
-  STREAM_REGISTER_BEGIN;
-  STREAM(ballOffset);
-  STREAM(kickAngle);
-  STREAM(kickDistance);
-  STREAM(translationThresholdXFront);
-  STREAM(translationThresholdXBack);
-  STREAM(translationThresholdY);
-  STREAM(rotationThreshold);
-  STREAM(timeUntilKickHackHip);
-  STREAM(kickHackDurationHip);
-  STREAM(kickHackHipAngle);
-  STREAM(timeUntilKickHackKnee);
-  STREAM(kickHackDurationKnee);
-  STREAM(kickHackKneeAngle);
-  STREAM(steps);
-  STREAM_REGISTER_FINISH;
-}

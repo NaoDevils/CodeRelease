@@ -8,18 +8,28 @@
 
 #include <QImage>
 #include "LogPlayer.h"
+#include "Representations/AnnotationInfo.h"
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/LowFrameRateImage.h"
 #include "Representations/Infrastructure/SequenceImage.h"
+#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
+#include "Representations/Sensing/JoinedIMUData.h"
 #include "Platform/SystemCall.h"
 #include "Platform/BHAssert.h"
 #include "Platform/File.h"
 #include "Tools/MessageQueue/LogFileFormat.h"
+#include "Tools/Module/Blackboard.h"
+#include "Tools/Streams/Streamable.h"
+#include "Tools/Debugging/DebugDataStreamer.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
 #include <snappy-c.h>
 #include <vector>
 #include <list>
 #include <map>
+
 using namespace std;
+using json = nlohmann::json;
 
 LogPlayer::LogPlayer(MessageQueue& targetQueue) : targetQueue(targetQueue), streamHandler(nullptr)
 {
@@ -99,7 +109,7 @@ bool LogPlayer::open(const char* fileName)
     }
 
     stop();
-    countFramesAndMessages();
+    std::tie(numberOfFrames, numberOfMessagesWithinCompleteFrames) = queue.countFramesAndMessages();
     createFrameIndex();
     return true;
   }
@@ -427,7 +437,8 @@ void LogPlayer::keep(MessageID* messageIDs)
       ++m;
     }
   }
-  countFramesAndMessages();
+  std::tie(numberOfFrames, numberOfMessagesWithinCompleteFrames) = queue.countFramesAndMessages();
+
   if (!frameIndex.empty())
     createFrameIndex();
 }
@@ -451,7 +462,7 @@ void LogPlayer::keep(int startFrame, int endFrame)
   for (temp.currentMessageNumber = begin; temp.currentMessageNumber < end; ++temp.currentMessageNumber)
     temp.copyMessage(temp.currentMessageNumber, *this);
 
-  countFramesAndMessages();
+  std::tie(numberOfFrames, numberOfMessagesWithinCompleteFrames) = queue.countFramesAndMessages();
   if (!frameIndex.empty())
     createFrameIndex();
 }
@@ -475,7 +486,7 @@ void LogPlayer::remove(MessageID* messageIDs)
     if (!*m)
       temp.copyMessage(temp.currentMessageNumber, *this);
   }
-  countFramesAndMessages();
+  std::tie(numberOfFrames, numberOfMessagesWithinCompleteFrames) = queue.countFramesAndMessages();
   if (!frameIndex.empty())
     createFrameIndex();
 }
@@ -502,7 +513,7 @@ void LogPlayer::remove(int startFrame, int endFrame)
   for (temp.currentMessageNumber = end; temp.currentMessageNumber < temp.getNumberOfMessages(); ++temp.currentMessageNumber)
     temp.copyMessage(temp.currentMessageNumber, *this);
 
-  countFramesAndMessages();
+  std::tie(numberOfFrames, numberOfMessagesWithinCompleteFrames) = queue.countFramesAndMessages();
   if (!frameIndex.empty())
     createFrameIndex();
 }
@@ -546,22 +557,6 @@ void LogPlayer::createFrameIndex()
     queue.setSelectedMessageForReading(i);
     if (queue.getMessageID() == idProcessBegin)
       frameIndex.push_back(i);
-  }
-}
-
-void LogPlayer::countFramesAndMessages()
-{
-  queue.numberOfMessages = 0;
-  numberOfFrames = 0;
-  for (queue.selectedMessageForReadingPosition = 0; queue.selectedMessageForReadingPosition < queue.usedSize;
-       queue.selectedMessageForReadingPosition += queue.getMessageSize() + queue.headerSize)
-  {
-    ++queue.numberOfMessages;
-    if (queue.getMessageID() == idProcessFinished)
-    {
-      ++numberOfFrames;
-      numberOfMessagesWithinCompleteFrames = queue.numberOfMessages + 1;
-    }
   }
 }
 
@@ -729,7 +724,7 @@ bool LogPlayer::writeTimingData(const std::string& fileName)
   return true;
 }
 
-bool LogPlayer::saveAudioFile(const char* fileName)
+bool LogPlayer::writeAudioFile(const char* fileName, std::vector<int> audioCandidates)
 {
   OutBinaryFile stream(fileName);
   if (!stream.exists())
@@ -737,9 +732,9 @@ bool LogPlayer::saveAudioFile(const char* fileName)
 
   int frames = 0;
   AudioData audioData;
-  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  for (size_t i = 0; i < audioCandidates.size(); i++)
   {
-    queue.setSelectedMessageForReading(currentMessageNumber);
+    queue.setSelectedMessageForReading(audioCandidates[i]);
     if (queue.getMessageID() == idAudioData)
     {
       in.bin >> audioData;
@@ -784,9 +779,9 @@ bool LogPlayer::saveAudioFile(const char* fileName)
   header->subchunk2Size = frames * audioData.channels * sizeof(float);
 
   char* p = (char*)(header + 1);
-  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  for (size_t i = 0; i < audioCandidates.size(); i++)
   {
-    queue.setSelectedMessageForReading(currentMessageNumber);
+    queue.setSelectedMessageForReading(audioCandidates[i]);
     if (queue.getMessageID() == idAudioData)
     {
       in.bin >> audioData;
@@ -803,6 +798,360 @@ bool LogPlayer::saveAudioFile(const char* fileName)
   return true;
 }
 
+bool LogPlayer::saveAudioFile(const char* fileName)
+{
+  AudioData audioData;
+  std::vector<int> audioCandidates;
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  {
+    queue.setSelectedMessageForReading(currentMessageNumber);
+    if (queue.getMessageID() == idAudioData)
+    {
+      audioCandidates.push_back(currentMessageNumber);
+    }
+  }
+
+  return writeAudioFile(fileName, audioCandidates);
+}
+
+int LogPlayer::saveTrueWhistleAudioFile(const char* fileName, bool split)
+{
+  int part = 0;
+  AudioData audioData;
+  RawGameInfo rawGameInfo;
+  OwnTeamInfo ownTeamInfo;
+  OpponentTeamInfo oppenentTeamInfo;
+  int lastRawGameInfo = 0;
+  int lastOwnTeamInfoScore = 0;
+  int lastOppenentTeamInfoScore = 0;
+  std::vector<int> messageNumberPlay;
+  std::vector<int> messageNumberGoal;
+  std::vector<int> messageNumberAudio;
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  {
+    queue.setSelectedMessageForReading(currentMessageNumber);
+    if (queue.getMessageID() == idRawGameInfo)
+    {
+      in.bin >> rawGameInfo;
+      if (rawGameInfo.state == STATE_PLAYING && lastRawGameInfo == STATE_SET)
+        messageNumberPlay.push_back(currentMessageNumber);
+      lastRawGameInfo = rawGameInfo.state;
+    }
+
+    if (queue.getMessageID() == idOwnTeamInfo)
+    {
+      in.bin >> ownTeamInfo;
+      if (ownTeamInfo.score > lastOwnTeamInfoScore)
+        messageNumberGoal.push_back(currentMessageNumber);
+      lastOwnTeamInfoScore = ownTeamInfo.score;
+    }
+
+    if (queue.getMessageID() == idOpponentTeamInfo)
+    {
+      in.bin >> oppenentTeamInfo;
+      if (oppenentTeamInfo.score > lastOppenentTeamInfoScore)
+        messageNumberGoal.push_back(currentMessageNumber);
+      lastOppenentTeamInfoScore = oppenentTeamInfo.score;
+    }
+
+    if (queue.getMessageID() == idAudioData)
+    {
+      messageNumberAudio.push_back(currentMessageNumber);
+    }
+  }
+
+  std::vector<int> audioCandidates;
+  RingBuffer<int, 590> windowLeft;
+  for (size_t i = 0; i < messageNumberPlay.size(); i++)
+  {
+    int id = messageNumberPlay[i];
+    int after = 10;
+    std::vector<int> windowRight;
+    for (size_t j = 0; j < messageNumberAudio.size(); j++)
+    {
+      if (messageNumberAudio[j] > id)
+      {
+        if (after > 0)
+        {
+          windowRight.push_back(messageNumberAudio[j]);
+          after--;
+        }
+        else
+        {
+          break;
+        }
+      }
+      else
+      {
+        windowLeft.push_front(messageNumberAudio[j]);
+      }
+    }
+
+    for (ptrdiff_t j = windowLeft.size() - 1; j >= 0; j--)
+    {
+      audioCandidates.push_back(windowLeft[j]);
+    }
+    windowLeft.clear();
+
+    for (size_t j = 0; j < windowRight.size(); j++)
+    {
+      audioCandidates.push_back(windowRight[j]);
+    }
+
+    if (split)
+    {
+      if (audioCandidates.size() > 0)
+      {
+        std::string partName = fileName;
+        partName.insert(partName.size() - 4, "_part_" + std::to_string(part));
+        part++;
+        bool ret = writeAudioFile(partName.c_str(), audioCandidates);
+
+        if (!ret)
+          return 2;
+
+        audioCandidates.clear();
+      }
+    }
+  }
+
+  RingBuffer<int, 590> goalWindowLeft;
+  for (size_t i = 0; i < messageNumberGoal.size(); i++)
+  {
+    int id = messageNumberGoal[i];
+    int after = 10;
+    std::vector<int> goalWindowRight;
+    for (size_t j = 0; j < messageNumberAudio.size(); j++)
+    {
+      if (messageNumberAudio[j] > id)
+      {
+        if (after > 0)
+        {
+          goalWindowRight.push_back(messageNumberAudio[j]);
+          after--;
+        }
+        else
+        {
+          break;
+        }
+      }
+      else
+      {
+        goalWindowLeft.push_front(messageNumberAudio[j]);
+      }
+    }
+
+    for (ptrdiff_t j = goalWindowLeft.size() - 1; j >= 0; j--)
+    {
+      audioCandidates.push_back(goalWindowLeft[j]);
+    }
+    goalWindowLeft.clear();
+
+    for (size_t j = 0; j < goalWindowRight.size(); j++)
+    {
+      audioCandidates.push_back(goalWindowRight[j]);
+    }
+
+    if (split)
+    {
+      if (audioCandidates.size() > 0)
+      {
+        std::string partName = fileName;
+        partName.insert(partName.size() - 4, "_part_" + std::to_string(part));
+        part++;
+        bool ret = writeAudioFile(partName.c_str(), audioCandidates);
+
+        if (!ret)
+          return 2;
+
+        audioCandidates.clear();
+      }
+    }
+  }
+
+  if (messageNumberGoal.size() + messageNumberPlay.size() == 0)
+    return 1;
+
+  if (!split)
+  {
+    bool ret = writeAudioFile(fileName, audioCandidates);
+
+    if (ret)
+      return 0;
+    else
+      return 2;
+  }
+
+  return 0;
+}
+
+int LogPlayer::saveFalseWhistleAudioFile(const char* fileName, bool split)
+{
+  int part = 0;
+  AudioData audioData;
+  RawGameInfo rawGameInfo;
+  OwnTeamInfo ownTeamInfo;
+  OpponentTeamInfo oppenentTeamInfo;
+  std::vector<char> annotation;
+  int lastRawGameInfo = 0;
+  int lastOwnTeamInfoScore = 0;
+  int lastOppenentTeamInfoScore = 0;
+  std::vector<int> messageNumberDetection;
+  std::vector<int> messageNumberFalsePositive;
+  std::vector<int> messageNumberPlay;
+  std::vector<int> messageNumberGoal;
+  std::vector<int> messageNumberAudio;
+  std::vector<int> annotationCount;
+  annotationCount.push_back(0);
+  int annotationIdx = 0;
+  int lastMessageID = 0;
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  {
+    queue.setSelectedMessageForReading(currentMessageNumber);
+    if (queue.getMessageID() == idAnnotation) // find detected whistle
+    {
+      annotation.resize(queue.getMessageSize());
+      in.bin.read(&annotation[0], queue.getMessageSize());
+      std::string anno(annotation.begin(), annotation.end());
+      if (anno.find("Whistle was detected.") != std::string::npos)
+      {
+        messageNumberDetection.push_back(currentMessageNumber);
+      }
+      annotationCount[annotationIdx]++;
+    }
+    else
+    {
+      if (lastMessageID == idAnnotation)
+      {
+        annotationCount.push_back(0);
+        annotationIdx++;
+      }
+    }
+
+    // find true whistle
+    if (queue.getMessageID() == idRawGameInfo)
+    {
+      in.bin >> rawGameInfo;
+      if (rawGameInfo.state == STATE_PLAYING && lastRawGameInfo == STATE_SET)
+        messageNumberPlay.push_back(currentMessageNumber);
+      lastRawGameInfo = rawGameInfo.state;
+    }
+
+    if (queue.getMessageID() == idOwnTeamInfo)
+    {
+      in.bin >> ownTeamInfo;
+      if (ownTeamInfo.score > lastOwnTeamInfoScore)
+        messageNumberGoal.push_back(currentMessageNumber);
+      lastOwnTeamInfoScore = ownTeamInfo.score;
+    }
+
+    if (queue.getMessageID() == idOpponentTeamInfo)
+    {
+      in.bin >> oppenentTeamInfo;
+      if (oppenentTeamInfo.score > lastOppenentTeamInfoScore)
+        messageNumberGoal.push_back(currentMessageNumber);
+      lastOppenentTeamInfoScore = oppenentTeamInfo.score;
+    }
+
+    if (queue.getMessageID() == idAudioData)
+    {
+      messageNumberAudio.push_back(currentMessageNumber);
+    }
+
+    lastMessageID = queue.getMessageID();
+  }
+  // save only false positives
+  for (size_t detectedWhistleID = 0; detectedWhistleID < messageNumberDetection.size(); detectedWhistleID++)
+  {
+    for (size_t currentMessageNumberPlay = 0; currentMessageNumberPlay < messageNumberPlay.size(); currentMessageNumberPlay++)
+    {
+      if (currentMessageNumberPlay < detectedWhistleID - (MessageID::numOfDataMessageIDs + annotationCount[detectedWhistleID])
+          || currentMessageNumberPlay > detectedWhistleID + MessageID::numOfDataMessageIDs + annotationCount[detectedWhistleID])
+      {
+        messageNumberFalsePositive.push_back(static_cast<int>(detectedWhistleID));
+      }
+    }
+    for (size_t currentMessageNumberGoal = 0; currentMessageNumberGoal < messageNumberGoal.size(); currentMessageNumberGoal++)
+    {
+      if (currentMessageNumberGoal < detectedWhistleID - (MessageID::numOfDataMessageIDs + annotationCount[detectedWhistleID])
+          || currentMessageNumberGoal > detectedWhistleID + MessageID::numOfDataMessageIDs + annotationCount[detectedWhistleID])
+      {
+        messageNumberFalsePositive.push_back(static_cast<int>(detectedWhistleID));
+      }
+    }
+  }
+
+  std::vector<int> audioCandidates;
+  RingBuffer<int, 590> windowLeft;
+  for (size_t i = 0; i < messageNumberFalsePositive.size(); i++)
+  {
+    int id = messageNumberFalsePositive[i];
+    int after = 10;
+    std::vector<int> windowRight;
+    for (size_t j = 0; j < messageNumberAudio.size(); j++)
+    {
+      if (messageNumberAudio[j] > id)
+      {
+        if (after > 0)
+        {
+          windowRight.push_back(messageNumberAudio[j]);
+          after--;
+        }
+        else
+        {
+          break;
+        }
+      }
+      else
+      {
+        windowLeft.push_front(messageNumberAudio[j]);
+      }
+    }
+
+    for (ptrdiff_t j = windowLeft.size() - 1; j >= 0; j--)
+    {
+      audioCandidates.push_back(windowLeft[j]);
+    }
+    windowLeft.clear();
+
+    for (size_t j = 0; j < windowRight.size(); j++)
+    {
+      audioCandidates.push_back(windowRight[j]);
+    }
+
+    if (split)
+    {
+      if (audioCandidates.size() > 0)
+      {
+        std::string partName = fileName;
+        partName.insert(partName.size() - 4, "_part_" + std::to_string(part));
+        part++;
+        bool ret = writeAudioFile(partName.c_str(), audioCandidates);
+
+        if (!ret)
+          return 2;
+
+        audioCandidates.clear();
+      }
+    }
+  }
+
+  if (messageNumberFalsePositive.size() == 0)
+    return 1;
+
+  if (!split)
+  {
+    bool ret = writeAudioFile(fileName, audioCandidates);
+
+    if (ret)
+      return 0;
+    else
+      return 2;
+  }
+
+  return 0;
+}
+
 void LogPlayer::replayStreamSpecification()
 {
   if (streamHandler && !streamSpecificationReplayed)
@@ -811,4 +1160,43 @@ void LogPlayer::replayStreamSpecification()
     targetQueue.out.finishMessage(idStreamSpecification);
     streamSpecificationReplayed = true;
   }
+}
+
+void LogPlayer::export_data(const std::string& file, const std::list<std::string>& ids)
+{
+  std::ofstream f(File::getBHDir() + std::string("/Config/Logs/" + file));
+  json jOut;
+  for (currentMessageNumber = 0; currentMessageNumber < getNumberOfMessages(); ++currentMessageNumber)
+  {
+    queue.setSelectedMessageForReading(currentMessageNumber);
+    if (ids.size() == 0 || std::find(ids.begin(), ids.end(), ::getName(queue.getMessageID())) != ids.end())
+    {
+      StreamHandler currentStreamHandler;
+
+      const char* type = ::getName(in.getMessageID()) + 2;
+      const char* t = streamHandler->getString(type);
+      if (streamHandler->specification.find(t) != streamHandler->specification.end())
+      {
+        OutJSONSize outJSONSize(true);
+        {
+          DebugDataStreamer streamer(*streamHandler, in.bin, type);
+          outJSONSize << streamer;
+          // outJSONSize.finish();
+          in.resetReadPosition();
+        }
+
+        std::vector<char> jsonBuffer(outJSONSize.getSize() + 1, 0);
+        {
+          OutJSONMemory outJSON(jsonBuffer.data(), true);
+          DebugDataStreamer streamer(*streamHandler, in.bin, type);
+          outJSON << streamer;
+          // outJSON.finish();
+        }
+
+        jsonBuffer[outJSONSize.getSize()] = 0;
+        jOut.push_back({{"id", ::getName(queue.getMessageID())}, {"data", json::parse(jsonBuffer.data())}});
+      }
+    }
+  }
+  f << std::setw(4) << jOut;
 }

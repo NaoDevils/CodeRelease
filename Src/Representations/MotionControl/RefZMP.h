@@ -14,16 +14,17 @@
 #include "Watch.h"
 #endif
 
+/** Maximum number of possible foot positions in buffer */
+#define MAX_ZMP 300
+
 STREAMABLE(RefZMP2018,
-  RefZMP2018() { zmpWCS.reserve(101); zmpRCS.reserve(101); },
+  RefZMP2018() { zmpWCS.reserve(MAX_ZMP + 1); zmpRCS.reserve(MAX_ZMP + 1); },
   (bool)(false) running,
 	(bool)(false) reset,
+  (bool)(false) inWalkingPhaseExtension,
   (std::vector<Vector2f>) zmpWCS,
   (std::vector<Vector2f>) zmpRCS
 );
-
-/** Maximum number of possible foot positions in buffer */
-#define MAX_ZMP 300
 
 /**
  * @class RefZMP

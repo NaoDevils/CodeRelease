@@ -43,14 +43,14 @@ STREAMABLE(PenaltyCrossPercept,
     {
       if (fromUpper)
         if (detectionType == PenaltyCrossPercept::yolo)
-          CROSS("representation:PenaltyCrossPercept:Image:Upper", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::red);
-        else
           CROSS("representation:PenaltyCrossPercept:Image:Upper", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::blue);
+        else
+          CROSS("representation:PenaltyCrossPercept:Image:Upper", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::red);
       else
         if (detectionType == PenaltyCrossPercept::yolo)
-          CROSS("representation:PenaltyCrossPercept:Image:Lower", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::red);
-        else
           CROSS("representation:PenaltyCrossPercept:Image:Lower", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::blue);
+        else
+          CROSS("representation:PenaltyCrossPercept:Image:Lower", pointInImage.x(), pointInImage.y(), 15, 3, Drawings::solidPen, ColorRGBA::red);
         
       CROSS("representation:PenaltyCrossPercept:Field", 
         pointOnField.x(), pointOnField.y(), 50, 10, Drawings::solidPen, ColorRGBA::blue);

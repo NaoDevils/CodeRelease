@@ -113,7 +113,7 @@ void CognitionConfigurationDataProvider::update(FieldDimensions& fieldDimensions
     fieldDimensions.loadFromJsonFile(theUSBStatus.path + "/field_dimensions.json");
   }
 
-  fieldDimensions.drawPolygons(theOwnTeamInfo.teamColour);
+  fieldDimensions.drawPolygons(theOwnTeamInfo.fieldPlayerColour);
 }
 
 void CognitionConfigurationDataProvider::update(CameraCalibration& cameraCalibration)

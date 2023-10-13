@@ -7,6 +7,7 @@
 #pragma once
 #include "Representations/Perception/RobotsPercept.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Streams/Compressed.h"
 #include "Tools/Math/Pose2f.h"
 #include "Tools/Math/Pose3f.h"
 #include <vector>
@@ -60,88 +61,28 @@ struct RemoteRobotMap : public RobotMap
 
 STREAMABLE(RobotMapCompressedEntry,
   RobotMapCompressedEntry() = default;
-  RobotMapCompressedEntry(const Pose2f& pose, RobotEstimate::RobotType type, float validity)
-  {
-    position = pose.translation.cast<short>();
-    rotation = static_cast<std::uint8_t>((toDegrees(pose.rotation) + 180.f) / 360.f * std::numeric_limits<std::uint8_t>::max());
-    robotType = type;
-    this->validity = static_cast<std::uint8_t>(validity * 255.f);
+  explicit RobotMapCompressedEntry(const RobotMapEntry& robotMapEntry) {
+    pose = robotMapEntry.pose;
+    robotType = robotMapEntry.robotType;
+    validity = robotMapEntry.validity;
   },
 
-  (Vector2s) position,
-  (std::uint8_t)(0) rotation,
+  (Pose2fCompressed) pose,
   ((RobotEstimate) RobotType)(RobotEstimate::unknownRobot) robotType,
-  (std::uint8_t)(0) validity
+  (ValidityCompressed)(0.f) validity
 );
 
 STREAMABLE(RobotMapCompressed,
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 0;
 
   RobotMapCompressed() = default;
-  RobotMapCompressed(const RobotMap& other)
+  explicit RobotMapCompressed(const RobotMap& other)
   {
     robots.clear();
-    for (unsigned int i = 0; i < other.robots.size(); i++)
-    {
-      robots.push_back(RobotMapCompressedEntry(
-        other.robots[i].pose,
-        other.robots[i].robotType,
-        other.robots[i].validity));
-    }
-  }
-
-  operator RobotMap() const
-  {
-    RobotMap robotMap;
-    robotMap.robots.clear();
-    for (unsigned int i = 0; i < robots.size(); i++)
-    {
-      RobotMapEntry re;
-      re.pose.translation = robots[i].position.cast<float>();
-      re.pose.rotation = robots[i].rotation / std::numeric_limits<std::uint8_t>::max() * 360.f - 180.f;
-      re.robotType = robots[i].robotType;
-      re.velocity = Vector2f::Zero();
-      re.validity = static_cast<float>(robots[i].validity) / 255.f;
-      robotMap.robots.push_back(re);
-    }
-    return robotMap;
+    for (const auto& robot : other.robots)
+      robots.emplace_back(robot);
   },
 
-  (std::vector<RobotMapCompressedEntry>) robots
-
-);
-
-STREAMABLE(LocalRobotMapCompressed,
-
-  LocalRobotMapCompressed() = default;
-  LocalRobotMapCompressed(const LocalRobotMap& other)
-  {
-    robots.clear();
-    for (unsigned int i = 0; i < other.robots.size(); i++)
-    {
-      robots.push_back(RobotMapCompressedEntry(
-        other.robots[i].pose,
-        other.robots[i].robotType,
-        other.robots[i].validity));
-    }
-  }
-
-  operator LocalRobotMap() const
-  {
-    LocalRobotMap robotMap;
-    robotMap.robots.clear();
-    for (unsigned int i = 0; i < robots.size(); i++)
-    {
-      RobotMapEntry re;
-      re.pose.translation = robots[i].position.cast<float>();
-      re.pose.rotation = robots[i].rotation / std::numeric_limits<std::uint8_t>::max() * 360.f - 180.f;
-      re.robotType = robots[i].robotType;
-      re.velocity = Vector2f::Zero();
-      re.validity = static_cast<float>(robots[i].validity) / 255.f;
-      robotMap.robots.push_back(re);
-    }
-    return robotMap;
-  },
-
-  (std::vector<RobotMapCompressedEntry>) robots
-
+  (VectorCompressed<RobotMapCompressedEntry>) robots
 );

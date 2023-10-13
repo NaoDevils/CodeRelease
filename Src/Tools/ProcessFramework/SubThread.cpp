@@ -7,6 +7,10 @@
 
 #include "SubThread.h"
 #include "Tools/Debugging/Modify.h"
+#include <taskflow/taskflow.hpp>
+#include <taskflow/algorithm/for_each.hpp>
+#include <mutex>
+#include <condition_variable>
 
 SubThread::SubThread(SuperThread& superThread) : timingManager(&superThread.timingManager), superThread(&superThread)
 {
@@ -89,33 +93,60 @@ SuperThread::SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, std::str
   stream >> config;
 }
 
-SuperThread::~SuperThread()
-{
-  each(
-      [](std::unique_ptr<SubThread>& subthread)
-      {
-        subthread.reset();
-      });
-}
-
 void SuperThread::setNumOfSubthreads(unsigned n)
 {
-  // destroy SubThread
-  each(
-      [](std::unique_ptr<SubThread>& subthread)
-      {
-        subthread.reset();
-      });
-
-  executor = std::make_unique<tf::Executor>(n);
+  executor.reset();
   subthreads.resize(n);
 
-  // create SubThread, init globals
-  each(
-      [this](std::unique_ptr<SubThread>& subthread)
+  // Construct and destruct subthreads in their worker instances
+  class SubThreadWorkerInterface : public tf::WorkerInterface
+  {
+  public:
+    SubThreadWorkerInterface(SuperThread* superThread) : superThread(superThread) {}
+
+    virtual void scheduler_prologue(tf::Worker& worker) override
+    {
+      ASSERT(!superThread->subthreads.at(worker.id()));
+      superThread->subthreads.at(worker.id()) = std::make_unique<SubThread>(*superThread);
+
+      std::unique_lock<std::mutex> l(mutex);
+      if (++n == superThread->subthreads.size())
+        cond.notify_one();
+    }
+    virtual void scheduler_epilogue(tf::Worker& worker, std::exception_ptr ptr) override
+    {
+      ASSERT(superThread->subthreads.at(worker.id()));
+      superThread->subthreads.at(worker.id()).reset();
+
       {
-        subthread = std::make_unique<SubThread>(*this);
-      });
+        std::unique_lock<std::mutex> l(mutex);
+        --n;
+      }
+      if (ptr)
+        std::rethrow_exception(ptr);
+    }
+
+    void wait()
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      cond.wait(lock,
+          [&]()
+          {
+            return n == superThread->subthreads.size();
+          });
+    }
+
+  private:
+    SuperThread* superThread;
+
+    std::mutex mutex;
+    std::condition_variable cond;
+    size_t n = 0;
+  };
+
+  std::shared_ptr<SubThreadWorkerInterface> workerInterface = std::make_shared<SubThreadWorkerInterface>(this);
+  executor = std::make_unique<tf::Executor>(n, workerInterface);
+  workerInterface->wait();
 }
 
 void SuperThread::run(tf::Taskflow& tf)
@@ -230,35 +261,4 @@ void SuperThread::afterRun()
       {
         blackboard.copyUsedRepresentations();
       });
-}
-
-void SuperThread::each(std::function<void(std::unique_ptr<SubThread>&)> f)
-{
-  if (!executor)
-    return;
-
-  tf::Taskflow tf;
-  char counter = static_cast<char>(executor->num_workers());
-  std::mutex m;
-  std::condition_variable cv;
-
-  tf.for_each(subthreads.begin(),
-      subthreads.end(),
-      [&](std::unique_ptr<SubThread>& subthread)
-      {
-        f(subthread);
-
-        // ensure function gets called in separate threads
-        std::unique_lock<std::mutex> lock(m);
-        if (--counter == 0)
-          cv.notify_all();
-        else
-          cv.wait(lock,
-              [&counter]()
-              {
-                return counter == 0;
-              });
-      });
-
-  executor->run(tf).wait();
 }

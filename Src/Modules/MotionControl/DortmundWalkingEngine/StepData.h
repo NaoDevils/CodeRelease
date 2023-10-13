@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Modules/BehaviorControl/TacticControl/KicksProvider/Enums/KickWithLeftCondition.h"
 #include "Point.h"
-#include "WalkingInformations.h"
+#include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/WalkRequest.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "WalkingInformations.h"
 
 /** Maximum number of possible foot positions in buffer */
 #define PREVIEW_MAX 300
@@ -41,13 +43,16 @@ STREAMABLE_WITH_BASE(Footposition, StepData,
   int stepsSinceCustomStep = 0; // remember for reset of preview
 
   // kick hack, set specific angles in LimbCombinator
-  int timeUntilKickHackHip = 0;
+  float timeUntilKickHackHip = 0;
   int kickHackDurationHip = 0;
   Angle kickHackKneeAngle = 0_deg;
 
   Angle kickHackHipAngle = 0_deg;
-  int timeUntilKickHackKnee = 0;
+  float timeUntilKickHackKnee = 0;
   int kickHackDurationKnee = 0;
+  float kickHackKneeIntensity = 1.0;
+
+  float ankleCompensationMultiplier = 1.0;
 
   Pose2f speed;
   Pose2f leftFootPose2f;
@@ -160,26 +165,36 @@ struct CustomStep : public Streamable
   void mirror();
 };
 
-struct CustomStepsFile : Streamable
-{
-  Vector2f ballOffset;
-  Angle kickAngle;
-  float kickDistance[2];
-  float translationThresholdXFront = 0.015f;
-  float translationThresholdXBack = 0.015f;
-  float translationThresholdY = 0.015f;
-  Angle rotationThreshold = 4_deg;
+STREAMABLE(CustomStepsFile,
+  char name[260];
+  WalkRequest::StepRequest stepRequest = WalkRequest::StepRequest::kickHack;
 
-  int timeUntilKickHackHip = 120; // time (ms) until kickhack is triggered in the hip
-  int kickHackDurationHip = 100; // duration (ms) of the kickhack in the hip
-  Angle kickHackHipAngle = -2;
-
-  int timeUntilKickHackKnee = 96; // time (ms) until kickhack is triggered in the knee
-  int kickHackDurationKnee = 108; // duration (ms) of the kickhack in the knee
-  Angle kickHackKneeAngle = -10_deg;
-
-  std::vector<CustomStep> steps;
-  virtual void serialize(In* in, Out* out);
   void mirror();
   bool isApplicable(float distance);
-};
+,
+  (float)(0.f) horizontalInaccuracy,
+  (bool)(false) distanceAdjustable,
+  (bool)(false) kickBlind,
+  ((KickInfos) KickWithLeftCondition)(KickWithLeftCondition::onLeftSide) kickWithLeftCondition,
+  (bool)(false) switchKickFoot,
+
+  (Vector2f)(Vector2f::Zero()) ballOffset,
+  (Angle)(0_deg) kickAngle,
+  (float[2]) kickDistance,
+  (float)(0.015f) translationThresholdXFront,
+  (float)(0.015f) translationThresholdXBack,
+  (float)(0.015f) translationThresholdY,
+  (Angle)(4_deg) rotationThreshold,
+
+  (float)(0) timeUntilKickHackHip, // percentage of the time in the kick phase until kickhack is triggered in the hip
+  (int)(100) kickHackDurationHip, // duration in frames of the kickhack in the hip
+  (Angle)(-2_deg) kickHackHipAngle,
+  (float)(1.0f) ankleCompensationMultiplier,
+
+  (float)(0.5) timeUntilKickHackKnee, // percentage of the time in the kick phase until kickhack is triggered in the knee
+  (int)(108) kickHackDurationKnee, // duration in frames of the kickhack in the knee
+  (Angle)(-10_deg) kickHackKneeAngle,
+  (float)(1.0) kickHackKneeIntensity,
+
+  (std::vector<CustomStep>) steps
+);

@@ -6,7 +6,7 @@ find_package(Threads REQUIRED)
 find_package(Eigen3 3.4 REQUIRED)
 find_package(libjpeg-turbo 2.1 REQUIRED)
 find_package(nlohmann_json 3.11 REQUIRED)
-find_package(Taskflow 3.5 REQUIRED)
+find_package(Taskflow 3.6 REQUIRED)
 find_package(Snappy 1.1 REQUIRED)
 find_package(protobuf 3.21 REQUIRED)
 find_package(kissfft 131.1 REQUIRED)
@@ -15,7 +15,6 @@ find_package(portaudio 19.7 REQUIRED)
 find_package(flite 2.2 REQUIRED)
 
 if(BUILD_ROBOT)
-    find_package(ALSA REQUIRED)
     find_library(LIBRT rt REQUIRED)
 
     add_executable(${PROJECT_NAME} "")
@@ -78,7 +77,6 @@ target_link_libraries(${PROJECT_NAME}
 if(BUILD_ROBOT)
     target_link_libraries(${PROJECT_NAME}
         PRIVATE
-            ALSA::ALSA
             ${LIBRT}
     )
     

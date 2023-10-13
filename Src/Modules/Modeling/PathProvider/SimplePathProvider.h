@@ -2,19 +2,19 @@
 
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
-#include "Representations/BehaviorControl/PositioningSymbols.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/Path.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/Path.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Tools/Math/Geometry.h"
 #include "Tools/Module/Module.h"
@@ -108,8 +108,6 @@ private:
   bool initialized = false;
   PathFollowState state = PathFollowState::far;
   bool wasBlockingWayToGoal = false;
-  ;
-  bool isGoalieInOwnPenaltyArea = false;
 
   float distanceToClosestObstacle;
   Vector2f nearestObstaclePosition;
@@ -119,10 +117,10 @@ private:
   bool ballIsObstacle = false;
   bool avoidBallLeft = false;
   bool inBallApproach = false;
-  Vector2f penaltyAreaDownLeft;
-  Vector2f penaltyAreaDownRight;
-  Vector2f penaltyAreaUpRight;
-  Vector2f penaltyAreaUpLeft;
+  Vector2f goalAreaDownLeft;
+  Vector2f goalAreaDownRight;
+  Vector2f goalAreaUpRight;
+  Vector2f goalAreaUpLeft;
 
   void initialize();
   void update(Path& path);

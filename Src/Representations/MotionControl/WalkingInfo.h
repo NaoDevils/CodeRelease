@@ -39,8 +39,7 @@ STREAMABLE(WalkingInfo,
     bodyPoints[3] = Vector2f(-45, 25);
 
     //Point s = f.footPos[ZMP::phaseToZMPFootMap[f.phase]];
-    Pose2f p(s);
-    p.translation *= 1000;
+    Pose2f p(static_cast<Pose2f>(s));
     p = walkingCStoSelfLocRCS(p);
     for (int i = 0; i < 4; i++)
       bodyPoints[i] = p * bodyPoints[i];
@@ -90,7 +89,7 @@ STREAMABLE(WalkingInfo,
 
   Pose2f toWorldCoords(Pose2f &rcs) const
   {
-    Pose2f wcs(rcs.translation);
+    Pose2f wcs(0, rcs.translation);
     wcs.rotate(robotPosition.rotation);
     wcs.translation = toWorldCoords(wcs.translation);
     return wcs;
@@ -124,7 +123,7 @@ STREAMABLE(WalkingInfo,
 
   Pose2f toRobotCoords(Pose2f &wcs) const
   {
-    Pose2f rcs = toRobotCoords(wcs.translation);
+    Pose2f rcs = Pose2f(0, toRobotCoords(wcs.translation));
     rcs.rotate(-robotPosition.rotation);
     return rcs;
   }

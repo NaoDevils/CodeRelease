@@ -42,7 +42,7 @@ int res alignas(16) [4];
 	x0[xi][14][0] = x_in[xi * 16 * 1 + 14 * 1 + 0] - 0.5836217875631101f;
 	x0[xi][15][0] = x_in[xi * 16 * 1 + 15 * 1 + 0] - 0.5836217875631101f;
 	}
-	static float x1 alignas(16) [16][16][8] = {0};
+	float x1 alignas(16) [16][16][8] = {0};
 	for (int i = 0; i < 16; i += 1)
 	{
 		for (int j = 0; j < 16; j += 1)
@@ -255,7 +255,7 @@ int res alignas(16) [4];
 			_mm_store_ps((float*)&x1[i][j][4], x);
 		}
 	}
-	static float x2[8][8][8] = {0};
+	float x2[8][8][8] = {0};
 	for (int ix = 0; ix < 15; ix += 2)
 	{
 		int x_1, x_out_1;
@@ -288,7 +288,7 @@ int res alignas(16) [4];
 		_mm_store_ps((float*)&x2[x_out_1][x_out_2][4], x);
 		}
 	}
-	static float x3 alignas(16) [8][8][16] = {0};
+	float x3 alignas(16) [8][8][16] = {0};
 	for (int i = 0; i < 8; i += 1)
 	{
 		for (int j = 0; j < 8; j += 1)
@@ -2407,7 +2407,7 @@ int res alignas(16) [4];
 			_mm_store_ps((float*)&x3[i][j][12], x);
 		}
 	}
-	static float x4[4][4][16] = {0};
+	float x4[4][4][16] = {0};
 	for (int ix = 0; ix < 7; ix += 2)
 	{
 		int x_1, x_out_1;
@@ -2462,9 +2462,9 @@ int res alignas(16) [4];
 		_mm_store_ps((float*)&x4[x_out_1][x_out_2][12], x);
 		}
 	}
-	static float x5 alignas(16) [4][4][32] = {0};
-	static __m128i cx5 alignas(16) [4][4][32];
-	static unsigned char cx_in5 alignas(16) [4][4][16];
+	float x5 alignas(16) [4][4][32] = {0};
+	__m128i cx5 alignas(16) [4][4][32];
+	unsigned char cx_in5 alignas(16) [4][4][16];
 
 	for (int i = 0; i < 4; i++)
 	    for (int j = 0; j < 4; j++)
@@ -4089,7 +4089,7 @@ int res alignas(16) [4];
 			_mm_store_ps((float*)&x5[i][j][28], x);
 		}
 	}
-	static float x6[2][2][32] = {0};
+	float x6[2][2][32] = {0};
 	for (int ix = 0; ix < 3; ix += 2)
 	{
 		int x_1, x_out_1;
@@ -4188,9 +4188,9 @@ int res alignas(16) [4];
 		_mm_store_ps((float*)&x6[x_out_1][x_out_2][28], x);
 		}
 	}
-	static float x7 alignas(16) [1][1][2] = {0};
-	static __m128i cx7 alignas(16) [1][1][2];
-	static unsigned char cx_in7 alignas(16) [2][2][32];
+	float x7 alignas(16) [1][1][2] = {0};
+	__m128i cx7 alignas(16) [1][1][2];
+	unsigned char cx_in7 alignas(16) [2][2][32];
 
 	for (int i = 0; i < 2; i++)
 	    for (int j = 0; j < 2; j++)
@@ -4315,7 +4315,7 @@ int res alignas(16) [4];
 		        _mm_store_si128((__m128i*)res, sum2);
 	            x7[i][j][k] += (res[0] + res[1]) * 0.011132516260222188f * 0.022600408643484116f;
 	        }
-	static float x8[1][1][2] = {0};
+	float x8[1][1][2] = {0};
 	x8[0][0][0] = x7[0][0][0] / 9.642840;
 	x8[0][0][1] = x7[0][0][1] / 9.642840;
 	scores[0] = x8[0][0][0];

@@ -19,5 +19,6 @@ STREAMABLE(RoleSymbols,
   void draw() const,
   ((BehaviorData) RobotRoleAssignmentVector) roleSuggestions, /**< Suggested roles for everyone. */
   ((BehaviorData) RoleAssignment)(noRole) role, /**< Selected role for myself. */
-  ((BehaviorData) RoleAssignment)(noRole) lastRole /**< Last selected role for myself. */
+  ((BehaviorData) RoleAssignment)(noRole) lastRole, /**< Last selected role for myself. */
+  (bool)(true) dynamic
 );

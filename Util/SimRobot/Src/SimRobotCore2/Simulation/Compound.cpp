@@ -60,9 +60,9 @@ void Compound::addGeometry(const Pose3f& parentPose, Geometry& geometry, SimRobo
   // handle nested geometries
   for (std::list<::PhysicalObject*>::const_iterator iter = geometry.physicalDrawings.begin(), end = geometry.physicalDrawings.end(); iter != end; ++iter)
   {
-    Geometry* geometry = dynamic_cast<Geometry*>(*iter);
-    if (geometry)
-      addGeometry(geomPose, *geometry, callback);
+    Geometry* drawingsGeometry = dynamic_cast<Geometry*>(*iter);
+    if (drawingsGeometry)
+      addGeometry(geomPose, *drawingsGeometry, callback);
   }
 }
 

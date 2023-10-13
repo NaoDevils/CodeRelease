@@ -27,9 +27,9 @@ void BallSearchProvider::update(BallSearch& ballsearch)
     lastBallPositionField = Vector2f::Zero();
 
   for (auto& mate : theTeammateData.teammates)
-    if (mate.behaviorData.timeSinceBallWasSeen < timeSinceBallLastSeen)
+    if (theFrameInfo.getTimeSince(mate.ballModel.timeWhenLastSeen) < timeSinceBallLastSeen)
     {
-      timeSinceBallLastSeen = mate.behaviorData.timeSinceBallWasSeen;
+      timeSinceBallLastSeen = theFrameInfo.getTimeSince(mate.ballModel.timeWhenLastSeen);
       lastBallPositionField = mate.behaviorData.ballPositionField.cast<float>();
     }
 
@@ -66,7 +66,7 @@ void BallSearchProvider::update(BallSearch& ballsearch)
         || lastBallPositionField.x() >= theFieldDimensions.xPosOwnGroundline + centerSearchStart * 2 * theFieldDimensions.xPosOpponentGroundline)
     {
       for (auto& role : theRoleSelection.selectedRoles)
-        if (role == BehaviorData::ballchaser || role == BehaviorData::receiver)
+        if (role == BehaviorData::leftWing || role == BehaviorData::rightWing || role == BehaviorData::receiver)
         {
           ballsearch.rolesInBallSearch.push_back(BehaviorData::RoleAssignment(role));
           offenseInBallSearch++;
@@ -181,26 +181,8 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
     // no one
     break;
   }
+
   // offensive positions
-  if (timeSinceBallSearchStarted < 30000)
-  {
-    for (size_t i = 0; i < ballsearch.rolesInBallSearch.size(); i++)
-    {
-      const BehaviorData::RoleAssignment& role = ballsearch.rolesInBallSearch[i];
-      if (role == BehaviorData::ballchaser)
-      {
-        ballsearch.ballSearchPositions[i].poses.push_back(Pose2f(45_deg,
-            std::max(theFieldDimensions.xPosOwnGroundline, std::min(lastBallPositionField.x() + 500.f, theFieldDimensions.xPosOpponentGroundline)),
-            std::max(theFieldDimensions.yPosRightSideline, std::min(lastBallPositionField.y() + 1000.f, theFieldDimensions.yPosLeftSideline))));
-        ballsearch.ballSearchPositions[i].poses.push_back(Pose2f(-45_deg,
-            std::max(theFieldDimensions.xPosOwnGroundline, std::min(lastBallPositionField.x() + 500.f, theFieldDimensions.xPosOpponentGroundline)),
-            std::min(theFieldDimensions.yPosLeftSideline, std::max(lastBallPositionField.y() - 1000.f, theFieldDimensions.yPosRightSideline))));
-        ballsearch.ballSearchPositions[i].poses.push_back(Pose2f(175_deg,
-            std::min(theFieldDimensions.xPosOpponentGroundline, std::max(lastBallPositionField.x() - 1000.f, theFieldDimensions.xPosOwnGroundline)),
-            std::max(theFieldDimensions.yPosRightSideline, std::min(lastBallPositionField.y(), theFieldDimensions.yPosLeftSideline))));
-      }
-    }
-  }
   switch (offenseInBallSearch)
   {
   case 1:
@@ -208,7 +190,7 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
     for (size_t i = 0; i < ballsearch.rolesInBallSearch.size(); i++)
     {
       const BehaviorData::RoleAssignment& role = ballsearch.rolesInBallSearch[i];
-      if (role == BehaviorData::receiver || role == BehaviorData::ballchaser)
+      if (role == BehaviorData::receiver)
       {
         ballsearch.ballSearchPositions[i].poses.push_back(
             Pose2f(45_deg, theFieldDimensions.xPosOwnGroundline + (centerSearchStart + 1.f) * theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline * 0.75f));
@@ -226,6 +208,8 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
     break;
   }
   case 2:
+    [[fallthrough]]; // TODO: add 3 positions including rightWing
+  case 3:
   {
     for (size_t i = 0; i < ballsearch.rolesInBallSearch.size(); i++)
     {
@@ -244,7 +228,7 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
               Pose2f(-135_deg, theFieldDimensions.xPosOwnGroundline + centerSearchStart * 2.f * theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline * 0.15f));
         }
       }
-      else if (role == BehaviorData::ballchaser)
+      else if (role == BehaviorData::leftWing || role == BehaviorData::rightWing)
       {
         ballsearch.ballSearchPositions[i].poses.push_back(
             Pose2f(45_deg, theFieldDimensions.xPosOwnGroundline + (centerSearchStart + 1.f) * theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosRightSideline * 0.8f));
@@ -264,6 +248,28 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
   default:
     // no one
     break;
+  }
+
+  // special case: ballchaser goes to last ball position
+  if (timeSinceBallSearchStarted < 30000)
+  {
+    for (size_t i = 0; i < ballsearch.rolesInBallSearch.size(); i++)
+    {
+      const BehaviorData::RoleAssignment& role = ballsearch.rolesInBallSearch[i];
+      if (role == theRoleSymbols.role && theRobotInfo.number == theBallChaserDecision.playerNumberToBall)
+      {
+        ballsearch.ballSearchPositions[i].poses.clear();
+        ballsearch.ballSearchPositions[i].poses.push_back(Pose2f(45_deg,
+            std::max(theFieldDimensions.xPosOwnGroundline, std::min(lastBallPositionField.x() + 500.f, theFieldDimensions.xPosOpponentGroundline)),
+            std::max(theFieldDimensions.yPosRightSideline, std::min(lastBallPositionField.y() + 1000.f, theFieldDimensions.yPosLeftSideline))));
+        ballsearch.ballSearchPositions[i].poses.push_back(Pose2f(-45_deg,
+            std::max(theFieldDimensions.xPosOwnGroundline, std::min(lastBallPositionField.x() + 500.f, theFieldDimensions.xPosOpponentGroundline)),
+            std::min(theFieldDimensions.yPosLeftSideline, std::max(lastBallPositionField.y() - 1000.f, theFieldDimensions.yPosRightSideline))));
+        ballsearch.ballSearchPositions[i].poses.push_back(Pose2f(175_deg,
+            std::min(theFieldDimensions.xPosOpponentGroundline, std::max(lastBallPositionField.x() - 1000.f, theFieldDimensions.xPosOwnGroundline)),
+            std::max(theFieldDimensions.yPosRightSideline, std::min(lastBallPositionField.y(), theFieldDimensions.yPosLeftSideline))));
+      }
+    }
   }
 }
 

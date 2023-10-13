@@ -24,6 +24,7 @@ STREAMABLE(OdometryCorrectionTable2D,
 );
 
 STREAMABLE(OdometryCorrectionTables,,
+  (float) odometryCorrectionFactor,
   (OdometryCorrectionTable) backCorrectionTablePreview,
   (OdometryCorrectionTable) forwardCorrectionTablePreview,
   (OdometryCorrectionTable) sideCorrectionTablePreview,
@@ -102,8 +103,12 @@ public:
     return result;
   }
 
-  static Pose2f correctPreview(
-      const Pose2f& speed, const Pose2f& odometry, const OdometryCorrectionTable& backCorrectionPreview, const OdometryCorrectionTable& forwardCorrectionPreview, const OdometryCorrectionTable& sideCorrectionPreview)
+  static Pose2f correctPreview(const Pose2f& speed,
+      const Pose2f& odometry,
+      const float& odometryCorrectionFactor,
+      const OdometryCorrectionTable& backCorrectionPreview,
+      const OdometryCorrectionTable& forwardCorrectionPreview,
+      const OdometryCorrectionTable& sideCorrectionPreview)
   {
     float xCorrectionFactor, yCorrectionFactor, rotCorrectionFactor;
     xCorrectionFactor = yCorrectionFactor = rotCorrectionFactor = 1.f;
@@ -122,14 +127,15 @@ public:
       yCorrectionFactor = correct1D(sideCorrectionPreview, std::abs(odometry.translation.y()), std::abs(speed.translation.y()));
     }
 
-    correctedOdometry.translation.x() = odometry.translation.x() * xCorrectionFactor;
-    correctedOdometry.translation.y() = odometry.translation.y() * yCorrectionFactor;
-    correctedOdometry.rotation = odometry.rotation * rotCorrectionFactor;
+    correctedOdometry.translation.x() = odometry.translation.x() * xCorrectionFactor * odometryCorrectionFactor;
+    correctedOdometry.translation.y() = odometry.translation.y() * yCorrectionFactor * odometryCorrectionFactor;
+    correctedOdometry.rotation = odometry.rotation * rotCorrectionFactor * odometryCorrectionFactor;
     return correctedOdometry;
   }
 
   static Pose2f correct(const Pose2f& speed,
       const Pose2f& odometry,
+      const float& odometryCorrectionFactor,
       const OdometryCorrectionTable& backCorrection,
       const OdometryCorrectionTable& forwardCorrection,
       const OdometryCorrectionTable& sideCorrection,
@@ -174,6 +180,9 @@ public:
       correctedOdometry.translation.y() = odometry.translation.y() * yCorrectionFactor;
       correctedOdometry.rotation = odometry.rotation * rotCorrectionFactor;
     }
+    correctedOdometry.translation.x() *= odometryCorrectionFactor;
+    correctedOdometry.translation.y() *= odometryCorrectionFactor;
+    correctedOdometry.rotation *= odometryCorrectionFactor;
     return correctedOdometry;
   }
 };

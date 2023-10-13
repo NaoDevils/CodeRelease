@@ -11,6 +11,12 @@
 #define __STDC_FORMAT_MACROS
 #include <cinttypes>
 
+#ifdef _MSC_VER
+#pragma warning(push)
+// potentially uninitialized local variable 'x_in' used
+// declaration of 'buffer' hides previous local declaration
+#pragma warning(disable : 4701 4456)
+#endif
 
 ////// UPPER /////
 namespace YoloRobotDetectorCNNUpper
@@ -27,3 +33,7 @@ namespace YoloRobotDetectorCNNLower
 #include "nao_L16_V32_stride_res.c" // V6: 1.5ms (DCG - ArneImplSelector)
 
 } // namespace YoloRobotDetectorCNNLower
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif

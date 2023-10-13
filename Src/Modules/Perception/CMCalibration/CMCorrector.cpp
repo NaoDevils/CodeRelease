@@ -175,13 +175,13 @@ void CMCorrector::update(MotionRequest& motionRequest)
   }
   else if (cmCorrectorStatus.state == CMCorrectorStatus::CalibrationState::positioning)
   {
-    const auto mirrorX = [](const Pose2f& pose) -> Pose2f
+    const auto mirrorX = [](const Pose2f& pose)
     {
-      return {-pose.rotation, {pose.translation.x(), -pose.translation.y()}};
+      return Pose2f(-pose.rotation, {pose.translation.x(), -pose.translation.y()});
     };
-    const auto mirrorY = [](const Pose2f& pose) -> Pose2f
+    const auto mirrorY = [](const Pose2f& pose)
     {
-      return {Angle::normalize(180_deg - pose.rotation), {-pose.translation.x(), pose.translation.y()}};
+      return Pose2f(Angle::normalize(180_deg - pose.rotation), {-pose.translation.x(), pose.translation.y()});
     };
 
     const Pose2f scaledCalibrationPose{
@@ -216,10 +216,10 @@ void CMCorrector::update(MotionRequest& motionRequest)
     switch (theFallDownState.direction)
     {
     case FallDownState::Direction::back:
-      motionRequest.specialActionRequest.specialAction = theMotionSettings.standUpMotionBackSafest;
+      motionRequest.specialActionRequest.specialAction = theMotionState.standUpStatus.bestStandUpMotionBack;
       break;
     case FallDownState::Direction::front:
-      motionRequest.specialActionRequest.specialAction = theMotionSettings.standUpMotionFrontSafest;
+      motionRequest.specialActionRequest.specialAction = theMotionState.standUpStatus.bestStandUpMotionFront;
       break;
     case FallDownState::Direction::right:
       motionRequest.specialActionRequest.mirror = true;

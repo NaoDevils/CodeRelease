@@ -46,7 +46,7 @@ void RoleTestProvider::getCurrentTeamStatus(std::vector<int>& playerNumbers)
   // get information for teammates
   for (auto& mate : theTeammateData.teammates)
   {
-    playerNumbers.push_back(mate.number);
+    playerNumbers.push_back(mate.playerNumber);
   }
 }
 

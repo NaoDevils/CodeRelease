@@ -21,6 +21,8 @@
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Tools/Module/Module.h"
 #include "Tools/RingBufferWithSum.h"
 #include "Tools/ProcessFramework/CycleLocal.h"
@@ -35,11 +37,15 @@ MODULE(NaoProviderV6,
   PROVIDES(FrameInfo),
   REQUIRES(FrameInfo),
 
+  REQUIRES(GameInfo),
+
   PROVIDES(FsrSensorData),
   PROVIDES(InertialSensorData),
   PROVIDES(JointSensorData),
   PROVIDES(KeyStates),
   PROVIDES(SystemSensorData),
+  PROVIDES(SonarSensorData),
+  USES(WalkCalibration),
   USES(JointRequest), // Will be accessed in send()
   LOADS_PARAMETERS(,
     (Angle)(0.00125_deg) gyroBiasMaxErrorPerFrame,
@@ -63,6 +69,9 @@ private:
   RingBufferWithSum<Vector3a, GYRO_BUFFER_LENGTH> gyroBuffer{Vector3a::Zero()};
   Vector3a gyroBias = Vector3a::Zero();
   bool soundPlayed = false;
+  bool updateFsrRef = true;
+  bool setState = false;
+  unsigned setStarted = 0;
   unsigned lastBodyTemperatureReadTime = 0;
   static int firstSensorTimestamp;
 
@@ -225,6 +234,7 @@ private:
   void update(JointSensorData& jointSensorData);
   void update(KeyStates& keyStates);
   void update(SystemSensorData& systemSensorData);
+  void update(SonarSensorData& sonarSensorData);
 
   /** The function sends a command to the Nao. */
   void send();
@@ -256,6 +266,7 @@ private:
   void update(JointSensorData& jointSensorData) {}
   void update(KeyStates& keyStates) {}
   void update(SystemSensorData& systemSensorData) {}
+  void update(SonarSensorData& sonarSensorData) {}
   void send();
 
 public:

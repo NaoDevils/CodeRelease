@@ -19,11 +19,10 @@
 #include "Representations/Infrastructure/GroundTruthWorldState.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/JointRequest.h"
-#include "Representations/Infrastructure/USRequest.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/Infrastructure/SensorData/UsSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "Tools/Math/BHMath.h"
 #include "Tools/Math/Eigen.h"
@@ -146,13 +145,13 @@ void SimulatedRobot::init(SimRobot::Object* robot)
 
   // sonars
   parts[0] = "SonarLeft.distance";
-  leftUsSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
+  leftSonarSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
   parts[0] = "SonarRight.distance";
-  rightUsSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
+  rightSonarSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
   parts[0] = "SonarCenterLeft.distance";
-  centerLeftUsSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
+  centerLeftSonarSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
   parts[0] = "SonarCenterRight.distance";
-  centerRightUsSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
+  centerRightSonarSensor = dynamic_cast<SimRobotCore2::SensorPort*>(application->resolveObject(parts, robot, SimRobotCore2::sensorPort));
 
   // load calibration
   InMapFile stream("jointCalibration.cfg");
@@ -168,14 +167,14 @@ void SimulatedRobot::init(SimRobot::Object* robot)
   SimRobot::Object* group = application->resolveObject("RoboCup.robots", SimRobotCore2::compound);
   for (unsigned currentRobot = 0, count = application->getObjectChildCount(*group); currentRobot < count; ++currentRobot)
   {
-    SimRobot::Object* robot = application->getObjectChild(*group, currentRobot);
-    const int number = getNumber(robot);
+    SimRobot::Object* otherRobot = application->getObjectChild(*group, currentRobot);
+    const int number = getNumber(otherRobot);
     if (number != robotNumber)
     {
       if (number <= MAX_NUM_PLAYERS)
-        blueRobots.push_back(robot);
+        blueRobots.push_back(otherRobot);
       else
-        redRobots.push_back(robot);
+        redRobots.push_back(otherRobot);
     }
   }
 
@@ -191,21 +190,21 @@ void SimulatedRobot::init(SimRobot::Object* robot)
   group = application->resolveObject("RoboCup.extras", SimRobotCore2::compound);
   for (unsigned currentRobot = 0, count = application->getObjectChildCount(*group); currentRobot < count; ++currentRobot)
   {
-    SimRobot::Object* robot = application->getObjectChild(*group, currentRobot);
-    const int number = getNumber(robot);
+    SimRobot::Object* extraRobot = application->getObjectChild(*group, currentRobot);
+    const int number = getNumber(extraRobot);
     if (number != robotNumber)
     {
       if (number <= MAX_NUM_PLAYERS)
-        blueRobots.push_back(robot);
+        blueRobots.push_back(extraRobot);
       else
-        redRobots.push_back(robot);
+        redRobots.push_back(extraRobot);
     }
   }
 
-  // read UsConfiguration
-  InMapFile usStream("usConfiguration.cfg");
-  ASSERT(usStream.exists());
-  usStream >> usConfig;
+  // read SonarConfiguration
+  InMapFile sonarStream("sonarConfiguration.cfg");
+  ASSERT(sonarStream.exists());
+  sonarStream >> sonarConfig;
 
   // read RobotDimensions
   InMapFile rdStream("robotDimensions.cfg");
@@ -446,7 +445,7 @@ void SimulatedRobot::toggleCamera()
   activeCameras[activeCameraIndex] = dynamic_cast<SimRobotCore2::SensorPort*>(cameraSensor);
 }
 
-void SimulatedRobot::getSensorData(FsrSensorData& fsrSensorData, InertialSensorData& inertialSensorData, UsSensorData& usSensorData, const USRequest& usRequest)
+void SimulatedRobot::getSensorData(FsrSensorData& fsrSensorData, InertialSensorData& inertialSensorData, SonarSensorData& sonarSensorData)
 {
   ASSERT(robot);
 
@@ -534,63 +533,13 @@ void SimulatedRobot::getSensorData(FsrSensorData& fsrSensorData, InertialSensorD
     inertialSensorData.angle.y() = axis[1] * w;
   }
 
-  // ultrasonic (model approximation. not absolutely correct in reality)
-  static const float scale = 1000; //meter to millimeter
-  if (usRequest.receiveMode != -1)
-  {
-    usSensorData.actuatorMode = static_cast<UsSensorData::UsActuatorMode>(usRequest.receiveMode);
+  //FIXME simulate additional sensor values
 
-    //FIXME simulate additional sensor values
-    usSensorData.left.fill(usConfig.max);
-    usSensorData.right.fill(usConfig.max);
-
-    switch (usSensorData.actuatorMode)
-    {
-    case UsSensorData::leftToLeft:
-    {
-      const float leftUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(leftUsSensor)->getValue().floatValue * scale;
-      usSensorData.left[0] = addUsJitter(leftUsValue);
-      break;
-    }
-    case UsSensorData::leftToRight:
-    {
-      const float centerRightUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(centerRightUsSensor)->getValue().floatValue * scale;
-      usSensorData.right[0] = addUsJitter(centerRightUsValue);
-      break;
-    }
-    case UsSensorData::rightToLeft:
-    {
-      const float centerLeftUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(centerLeftUsSensor)->getValue().floatValue * scale;
-      usSensorData.left[0] = addUsJitter(centerLeftUsValue);
-      break;
-    }
-    case UsSensorData::rightToRight:
-    {
-      const float rightUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(rightUsSensor)->getValue().floatValue * scale;
-      usSensorData.right[0] = addUsJitter(rightUsValue);
-      break;
-    }
-    case UsSensorData::bothToSame:
-    {
-      const float leftUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(leftUsSensor)->getValue().floatValue * scale;
-      const float rightUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(rightUsSensor)->getValue().floatValue * scale;
-      usSensorData.left[0] = addUsJitter(leftUsValue);
-      usSensorData.right[0] = addUsJitter(rightUsValue);
-      break;
-    }
-    case UsSensorData::bothToOther:
-    {
-      const float centerLeftUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(centerLeftUsSensor)->getValue().floatValue * scale;
-      const float centerRightUsValue = dynamic_cast<SimRobotCore2::SensorPort*>(centerRightUsSensor)->getValue().floatValue * scale;
-      usSensorData.left[0] = addUsJitter(centerLeftUsValue);
-      usSensorData.right[0] = addUsJitter(centerRightUsValue);
-      break;
-    }
-    default:
-      ASSERT(false);
-    }
-    usSensorData.timeStamp = SystemCall::getCurrentSystemTime();
-  }
+  const float leftSonarDistanceM = dynamic_cast<SimRobotCore2::SensorPort*>(leftSonarSensor)->getValue().floatValue;
+  const float rightSonarDistanceM = dynamic_cast<SimRobotCore2::SensorPort*>(rightSonarSensor)->getValue().floatValue;
+  sonarSensorData.leftDistanceM = addSonarJitter(leftSonarDistanceM);
+  sonarSensorData.rightDistanceM = addSonarJitter(rightSonarDistanceM);
+  sonarSensorData.timestamp = SystemCall::getCurrentSystemTime();
 }
 
 void SimulatedRobot::moveRobot(const Vector3f& pos, const Vector3f& rot, bool changeRotation)
@@ -609,6 +558,8 @@ void SimulatedRobot::moveRobot(const Vector3f& pos, const Vector3f& rot, bool ch
   }
   else
     dynamic_cast<SimRobotCore2::Body*>(robot)->move(&position.x());
+
+  dynamic_cast<SimRobotCore2::Body*>(robot)->resetDynamics();
 }
 
 void SimulatedRobot::enablePhysics(bool enable)
@@ -622,6 +573,11 @@ void SimulatedRobot::moveBall(const Vector3f& pos, bool resetDynamics)
   dynamic_cast<SimRobotCore2::Body*>(ball)->move(&position.x());
   if (resetDynamics)
     dynamic_cast<SimRobotCore2::Body*>(ball)->resetDynamics();
+}
+
+void SimulatedRobot::setBallVelocity(const Vector3f& velocity)
+{
+  dynamic_cast<SimRobotCore2::Body*>(ball)->setVelocity(velocity.x(), velocity.y(), velocity.z());
 }
 
 Vector2f SimulatedRobot::getPosition(SimRobot::Object* obj)
@@ -682,16 +638,18 @@ void SimulatedRobot::getPose3f(SimRobot::Object* obj, Pose3f& pose3f) const
   pose3f.rotation = rot;
 }
 
-float SimulatedRobot::addUsJitter(float value)
+float SimulatedRobot::addSonarJitter(float value)
 {
-  if (value >= usConfig.max) // Nothing was measured
+  float sonarConfigMinInMeters = sonarConfig.minDistanceMm / 1000;
+  float sonarConfigMaxInMeters = sonarConfig.maxDistanceMm / 1000;
+  if (value >= sonarConfigMaxInMeters) // Nothing was measured
     return value;
   else
   {
     if (randomFloat() <= 0.1f)
-      return usConfig.max; // In 10% of all cases nothing is measured.
+      return sonarConfigMaxInMeters; // In 10% of all cases nothing is measured.
     else
-      return std::max(usConfig.min, value) + randomFloat(-10.f, 10.f);
+      return std::max(sonarConfigMinInMeters, value) + randomFloat(-0.01f, 0.01f);
   }
 }
 

@@ -33,7 +33,8 @@ MODULE(FieldColorProvider,
     (int) maxDiffOptCb,
     (int) maxDiffOptY,
     (int) maxDiffCbCrRatio,
-    (int)(30) minLineToFieldColorThreshold
+    (int)(30) minLineToFieldColorThresholdUpper,
+    (int)(30) minLineToFieldColorThresholdLower
   )
 );
 
@@ -59,6 +60,9 @@ public:
   FieldColors localFieldColorLower;
   FieldColorsUpper localFieldColorUpper;
 
+  DECLARE_DEBUG_IMAGE(FieldColor);
+  DECLARE_DEBUG_IMAGE(FieldColorUpper);
+
 private:
   void update(FieldColors& theFieldColor);
   void update(FieldColorsUpper& theFieldColorUpper);
@@ -67,6 +71,8 @@ private:
   void buildSamples(const bool& upper, const Vector2i& lowerLeft, const Vector2i& upperRight, const int& sampleSize);
   void calcFieldColorFromSamples(const bool& upper, FieldColors::FieldColor& fieldColor);
   void smoothFieldColors(const bool& upper);
+
+  void draw(const bool& upper);
 
   int fieldColorWeighted(const Image::Pixel& p, const int& optCr, const int& maxY);
 };

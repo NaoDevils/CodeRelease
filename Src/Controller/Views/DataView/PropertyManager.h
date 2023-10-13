@@ -99,7 +99,7 @@ private:
 
   /**
    * QtVariantProperties don't know anything about the type of the data they contain.
-   * Therefore they cannot store the value internally. Instead the Manager stores
+   * Therefore they cannot store the value internally. Instead the KickManager stores
    * the values for all properties.
    */
   QMap<const QtProperty*, QVariant> theValues;

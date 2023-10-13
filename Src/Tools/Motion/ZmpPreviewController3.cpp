@@ -16,9 +16,9 @@ ZmpPreviewController3::ZmpPreviewController3() : initialized(false) {}
 Matrix4d ZmpPreviewController3::dare(const Matrix4d& A, const Vector4d& B, const Matrix4d& Q, double R) const
 {
   //FIXME use same method as in dare2?!
+  [[maybe_unused]] bool converged = false;
   Matrix4d P = Matrix4d::Identity();
-  static constexpr int iterations = 1000;
-  for (int i = 0; i < iterations; ++i)
+  for (int i = 0; i < 10000; ++i)
   {
     const Matrix4d AX = A.transpose() * P;
     ASSERT(AX.allFinite());
@@ -33,11 +33,12 @@ Matrix4d ZmpPreviewController3::dare(const Matrix4d& A, const Vector4d& B, const
     const double relError = (Pnew - P).norm() / Pnew.norm();
     P = Pnew;
     if (relError < 1e-10)
+    {
+      converged = true;
       break;
-
-    // Make sure we still have iterations left
-    ASSERT(i < iterations - 1);
+    }
   }
+  ASSERT(converged);
   return P;
 }
 
@@ -48,18 +49,19 @@ Matrix3d ZmpPreviewController3::dare2(const Matrix3d& A, const Matrix3x2d& B, co
   Matrix3d P = Q;
   const Matrix3d At = A.transpose();
   const Matrix2x3d Bt = B.transpose();
-  static constexpr int iterations = 1000;
-  for (int i = 0; i < iterations; ++i)
+  [[maybe_unused]] bool converged = false;
+  for (int i = 0; i < 10000; ++i)
   {
     Matrix3d Pnew = Q + At * P * A - At * P * B * (R + Bt * P * B).inverse() * Bt * P * A;
     const double relError = (Pnew - P).norm() / Pnew.norm();
     P = Pnew;
     if (relError < 1e-09)
+    {
+      converged = true;
       break;
-
-    // Make sure we still have iterations left
-    ASSERT(i < iterations - 1);
+    }
   }
+  ASSERT(converged);
   return P;
 }
 

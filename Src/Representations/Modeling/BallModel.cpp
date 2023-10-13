@@ -78,23 +78,8 @@ void GroundTruthBallModel::draw() const
 }
 
 BallModelCompressed::BallModelCompressed(const BallModel& ballModel)
-    : position(ballModel.estimate.position.cast<short>()), velocity(ballModel.estimate.velocity.cast<short>()), timeWhenLastSeen(ballModel.timeWhenLastSeen),
-      validity(static_cast<std::uint8_t>(ballModel.validity * 255.f))
+    : position(ballModel.estimate.position), velocity(ballModel.estimate.velocity), timeWhenLastSeen(ballModel.timeWhenLastSeen), validity(ballModel.validity)
 {
-}
-
-BallModelCompressed::operator BallModel() const
-{
-  BallModel ballModel;
-  ballModel.lastPerception = position.cast<float>();
-  ballModel.estimate.position = position.cast<float>();
-  ballModel.estimate.velocity = velocity.cast<float>();
-  ballModel.timeWhenLastSeen = timeWhenLastSeen;
-  ballModel.timeWhenDisappeared = timeWhenLastSeen;
-  ballModel.seenPercentage = static_cast<unsigned char>(validity * 100.f); // unused by Dortmund
-  ballModel.validity = static_cast<float>(validity) / 255.f;
-  // END
-  return ballModel;
 }
 
 void MultipleBallModel::draw() const

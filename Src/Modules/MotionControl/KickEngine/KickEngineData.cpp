@@ -542,11 +542,11 @@ void KickEngineData::addDynPoint(const DynPoint& dynPoint, const TorsoMatrix& to
 
 void KickEngineData::transferDynPoint(Vector3f& d, const TorsoMatrix& torsoMatrix)
 {
-  const Pose3f& left = positions[Phase::leftFootTra];
-  const Pose3f& right = positions[Phase::rightFootTra];
+  const Vector3f& left = positions[Phase::leftFootTra];
+  const Vector3f& right = positions[Phase::rightFootTra];
 
-  const bool useLeft = left.translation.z() < right.translation.z();
-  const Vector3f& foot = useLeft ? left.translation : right.translation;
+  const bool useLeft = left.z() < right.z();
+  const Vector3f& foot = useLeft ? left : right;
 
   Pose3f left2 = torsoMatrix.rotation * robotModel.soleLeft;
   Pose3f right2 = torsoMatrix.rotation * robotModel.soleRight;
@@ -711,59 +711,58 @@ void KickEngineData::setExecutedKickRequest(KickRequest& br)
 
 void KickEngineData::initData(const FrameInfo& frame, const MotionRequest& mr, std::vector<KickEngineParameters>& params, const JointAngles& ja, const TorsoMatrix& torsoMatrix)
 {
-  if (getMotionIDByName(mr, params))
+  VERIFY(getMotionIDByName(mr, params)); // No kick found... Check KickEngine folder!!!
+
+  phase = 0.f;
+  phaseNumber = 0;
+  timeStamp = frame.time;
+
+  ref = Vector3f::Zero();
+  actualDiff = ref;
+  currentParameters = params[motionID];
+  if (mr.kickRequest.mirror)
+    currentParameters.mirror();
+  calculateOrigins(mr.kickRequest, ja, torsoMatrix);
+  currentParameters.initFirstPhase(origins, Vector2f(ja.angles[Joints::headPitch], ja.angles[Joints::headYaw]));
+
+  // TODO: // TODO: changed 17.09.2018, hard reset always for now, check this
+  //if(!wasActive)
   {
-    phase = 0.f;
-    phaseNumber = 0;
-    timeStamp = frame.time;
+    comRobotModel = robotModel;
+    lSupp = false;
+    rSupp = false;
+    toLeftSupport = false;
+    comOffset = Vector2f::Zero();
+    origin = Vector2f::Zero();
+    balanceSum = Vector2f::Zero();
+    gyro = Vector2f::Zero();
+    lastGyroLeft = Vector2f::Zero();
+    lastGyroRight = Vector2f::Zero();
+    gyroErrorLeft = Vector2f::Zero();
+    gyroErrorRight = Vector2f::Zero();
+    bodyError = Vector2f::Zero();
+    lastBody = Vector2f::Zero();
+    lastCom = Vector3f::Zero();
 
-    ref = Vector3f::Zero();
-    actualDiff = ref;
-    currentParameters = params[motionID];
-    if (mr.kickRequest.mirror)
-      currentParameters.mirror();
-    calculateOrigins(mr.kickRequest, ja, torsoMatrix);
-    currentParameters.initFirstPhase(origins, Vector2f(ja.angles[Joints::headPitch], ja.angles[Joints::headYaw]));
-
-    // TODO: // TODO: changed 17.09.2018, hard reset always for now, check this
-    //if(!wasActive)
+    for (int i = 0; i < Joints::numOfJoints; i++)
     {
-      comRobotModel = robotModel;
-      lSupp = false;
-      rSupp = false;
-      toLeftSupport = false;
-      comOffset = Vector2f::Zero();
-      origin = Vector2f::Zero();
-      balanceSum = Vector2f::Zero();
-      gyro = Vector2f::Zero();
-      lastGyroLeft = Vector2f::Zero();
-      lastGyroRight = Vector2f::Zero();
-      gyroErrorLeft = Vector2f::Zero();
-      gyroErrorRight = Vector2f::Zero();
-      bodyError = Vector2f::Zero();
-      lastBody = Vector2f::Zero();
-      lastCom = Vector3f::Zero();
-
-      for (int i = 0; i < Joints::numOfJoints; i++)
-      {
-        lastBalancedJointRequest.angles[i] = ja.angles[i];
-      }
+      lastBalancedJointRequest.angles[i] = ja.angles[i];
     }
-    for (unsigned int i = 0; i < mr.kickRequest.dynPoints.size(); i++)
-      if (mr.kickRequest.dynPoints[i].phaseNumber == phaseNumber)
-        addDynPoint(mr.kickRequest.dynPoints[i], torsoMatrix);
+  }
+  for (unsigned int i = 0; i < mr.kickRequest.dynPoints.size(); i++)
+    if (mr.kickRequest.dynPoints[i].phaseNumber == phaseNumber)
+      addDynPoint(mr.kickRequest.dynPoints[i], torsoMatrix);
 
-    lElbowFront = origins[Phase::leftHandRot].x() > pi_4;
-    rElbowFront = origins[Phase::rightHandRot].x() < -pi_4;
+  lElbowFront = origins[Phase::leftHandRot].x() > pi_4;
+  rElbowFront = origins[Phase::rightHandRot].x() < -pi_4;
 
-    if (mr.kickRequest.armsBackFix)
-    {
-      if (lElbowFront)
-        addDynPoint(DynPoint(Phase::leftHandRot, 0, Vector3f(pi_2, -pi_4, 0)), torsoMatrix);
+  if (mr.kickRequest.armsBackFix)
+  {
+    if (lElbowFront)
+      addDynPoint(DynPoint(Phase::leftHandRot, 0, Vector3f(pi_2, -pi_4, 0)), torsoMatrix);
 
-      if (rElbowFront)
-        addDynPoint(DynPoint(Phase::rightHandRot, 0, Vector3f(-pi_2, pi_4, 0)), torsoMatrix);
-    }
+    if (rElbowFront)
+      addDynPoint(DynPoint(Phase::rightHandRot, 0, Vector3f(-pi_2, pi_4, 0)), torsoMatrix);
   }
 }
 

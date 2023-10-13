@@ -23,6 +23,7 @@ public:
   unsigned timeLastPackageReceived = 0;
   unsigned timeFirstReadyState = 0; // Used for packet counter, since packets before do not count to limit (rules 2022)
   uint8_t oppTeamNumber = 0;
+  bool controllerConnected = false;
 
   GameInfo();
 
@@ -34,7 +35,6 @@ public:
 
   virtual Streamable& operator=(const Streamable&) noexcept;
 
-private:
   /**
    * The method makes the object streamable.
    * @param in The stream from which the object is read (if in != 0).
@@ -44,6 +44,7 @@ private:
 };
 
 /** The game info as sent by the GameController */
-struct RawGameInfo : public GameInfo
-{
-};
+STREAMABLE_WITH_BASE(RawGameInfo, GameInfo,
+  ,
+  (std::array<uint8_t, 4>)({0}) remoteIp
+);

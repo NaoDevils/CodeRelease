@@ -28,7 +28,7 @@ class TimeInfo
 private:
   enum
   {
-    ringBufferSize = 100
+    ringBufferSize = 1000
   };
 
 public:

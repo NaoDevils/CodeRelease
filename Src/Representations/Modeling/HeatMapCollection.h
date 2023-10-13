@@ -32,11 +32,9 @@ STREAMABLE(HeatMapCollection,
 
   ,
   (HeatMap) sidesHeatMap,
-  (HeatMap) opponentsGoalHeatMap,
-  (HeatMap) alliesHeatMap,
-  (HeatMap) alliesMaxHeatMap,
-  (HeatMap) alliesGoalKickHeatMap,
-  (HeatMap) opponentsHeatMap,
-  (HeatMap) opponentsMaxHeatMap,
-  (HeatMap) opponentsGoalKickHeatMap
+  (HeatMap) goalsHeatMap,
+  (HeatMap) teamKickHeatMap,
+  (HeatMap) teamGoalKickHeatMap,
+  (HeatMap) opponentKickHeatMap,
+  (HeatMap) opponentGoalKickHeatMap
 );

@@ -5,41 +5,12 @@
 
 #pragma once
 
-#include <vector>
-
-#include "Tools/Math/Eigen.h"
+#include "Modules/BehaviorControl/TacticControl/KicksProvider/Enums/KickWithLeftCondition.h"
+#include "Representations/MotionControl/KickRequest.h"
 #include "Tools/Enum.h"
+#include "Tools/Math/Eigen.h"
 #include "Tools/Streams/AutoStreamable.h"
-
-STREAMABLE(DynPoint,
-  DynPoint() = default;
-  DynPoint(int limb, int phaseNumber, int duration, const Vector3f& translation, const Vector3f& angle, const Vector3f& odometryOffset);
-  DynPoint(int limb, int phaseNumber, const Vector3f& translation);
-
-  bool operator==(const DynPoint& other) const
-  {
-    return limb == other.limb &&
-           phaseNumber == other.phaseNumber &&
-           duration == other.duration &&
-           translation == other.translation &&
-           angle == other.angle &&
-           odometryOffset == other.odometryOffset;
-  },
-
-  (int) limb,
-  (int) phaseNumber,
-  (int)(0) duration,
-  (Vector3f)(Vector3f::Zero()) translation,
-  (Vector3f)(Vector3f::Zero()) angle,
-  (Vector3f)(Vector3f::Zero()) odometryOffset
-);
-
-inline DynPoint::DynPoint(int limb, int phaseNumber, int duration, const Vector3f& translation, const Vector3f& angle, const Vector3f& odometryOffset)
-    : limb(limb), phaseNumber(phaseNumber), duration(duration), translation(translation), angle(angle), odometryOffset(odometryOffset)
-{
-}
-
-inline DynPoint::DynPoint(int limb, int phaseNumber, const Vector3f& translation) : limb(limb), phaseNumber(phaseNumber), translation(translation) {}
+#include <vector>
 
 class Phase : public Streamable
 {
@@ -60,7 +31,8 @@ public:
     numOfPoints = 3
   };
 
-  unsigned int duration;
+  unsigned int duration = 0;
+  bool kick = false;
 
   Vector3f controlPoints[Phase::numOfLimbs][numOfPoints];
   Vector2f comTra[numOfPoints];
@@ -78,6 +50,7 @@ public:
 STREAMABLE(KickEngineParameters,
   int numberOfPhases = 0;
   char name[260];
+  KickRequest::KickMotionID type = KickRequest::KickMotionID::kickMiddle;
 
   void mirror();
   void calcControlPoints();
@@ -92,6 +65,16 @@ STREAMABLE(KickEngineParameters,
   void initFirstPhaseLoop(const Vector3f* origins, const Vector2f& lastCom, const Vector2f& head);
 
   void onRead(),
+
+  (float)(0.f) horizontalInaccuracy,
+  (bool)(false) distanceAdjustable,
+  (bool)(false) kickBlind,
+  ((KickInfos) KickWithLeftCondition)(KickWithLeftCondition::onLeftSide) kickWithLeftCondition,
+  (bool)(false) switchKickFoot,
+
+  (Vector2f)(Vector2f::Zero()) ballOffset,
+  (Angle)(0_deg) kickAngle,
+  (std::vector<float>)({}) kickDistance,
 
   (Vector3f)(Vector3f::Zero()) footOrigin,
   (Vector3f)(Vector3f::Zero()) footRotOrigin,
@@ -113,4 +96,17 @@ STREAMABLE(KickEngineParameters,
   (bool)(false) ignoreHead,
 
   (std::vector<Phase>) phaseParameters
+
+  /*
+  LOADS_PARAMETERS(,
+    ((JoinedIMUData)InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
+    (PositionsByRules) positionsByRules,
+    (SelfLocator2017Parameters) parameters
+  )
+  */
+  /*
+  LOADS_PARAMETERS(,
+    ((KickInfos)KickWithLeftCondition)(KickInfos::ON_LEFT_SIDE) anglesource,
+  );
+  */
 );

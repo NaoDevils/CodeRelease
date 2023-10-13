@@ -2860,12 +2860,6 @@ void KickViewGLWidget::paintGL()
   originRot << r[0][0], r[0][1], r[0][2], r[1][0], r[1][1], r[1][2], r[2][0], r[2][1], r[2][2];
   originRot = RotationMatrix::aroundZ(originRot.getZAngle());
 
-  if (widget.getString > 0)
-  {
-    widget.commands.push_back("_get2 representation:MotionRequest");
-    widget.getString--;
-  }
-
   if (!widget.commands.empty())
   {
     if (widget.commands[0] == " ")
@@ -3382,8 +3376,8 @@ void KickViewGLWidget::mouseMoveEvent(QMouseEvent* event)
 {
   Vector3f newTarPos, camPos, camTarget, translationVec(0, 0, 0);
   renderer.getCamera(camPos.data(), camTarget.data());
-  const float* p = kickView.robot->getPosition();
-  newTarPos = Vector3f(p[0], p[1], p[2]);
+  const float* robotPosition = kickView.robot->getPosition();
+  newTarPos = Vector3f(robotPosition[0], robotPosition[1], robotPosition[2]);
   camPos -= camTarget;
   camPos += newTarPos;
   renderer.setCamera(camPos.data(), newTarPos.data());

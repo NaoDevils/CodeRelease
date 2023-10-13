@@ -1,3 +1,0 @@
-vp fallDownAngleReduction 200 0.0 6.0
-vpd fallDownAngleReduction module:PatternGenerator2017:fallDownAngleReduction.x green
-vpd fallDownAngleReduction module:PatternGenerator2017:fallDownAngleReduction.y red

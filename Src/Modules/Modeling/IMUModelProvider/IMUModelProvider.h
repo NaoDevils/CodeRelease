@@ -82,7 +82,7 @@ private:
   /* filter for global acceleration */
   UKF<State<Measurement<3>, 3>> ukf_acc_global;
 
-  typedef Measurement<3> IMU_AccMeasurementGlobal;
+  typedef Measurement<3> IMUAccMeasurementGlobal;
 
   Eigen::Matrix<double, 3, 3> Q_acc;
   Eigen::Matrix<double, 3, 3> Q_acc_walk;
@@ -94,20 +94,11 @@ private: /* small helper */
   bool isWalking = false;
   bool isActive = true, lastActive = true;
 
-  Eigen::Vector3d quaternionToRotationVector(const Eigen::Quaterniond& q) const
+  template <typename T> static Eigen::Vector<T, 3> quaternionToRotationVector(const Eigen::Quaternion<T>& q)
   {
-    Eigen::AngleAxisd temp(q);
+    const Eigen::AngleAxis<T> temp(q);
     return temp.angle() * temp.axis();
   }
-
-  Vector3d quaternionToVector3D(const Eigen::Quaterniond& q) const
-  {
-    Eigen::AngleAxisd temp(q);
-    Eigen::Vector3d temp2(temp.angle() * temp.axis());
-    return Vector3d(temp2(0), temp2(1), temp2(2));
-  }
-
-  Vector3d eigenVectorToVector3D(const Eigen::Vector3d& v) const { return Vector3d(v(0), v(1), v(2)); }
 
   Eigen::Quaterniond integrated;
 

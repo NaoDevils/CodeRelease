@@ -4,8 +4,10 @@
  */
 
 #include "BallModelProvider.h"
-#include "Tools/Math/Transformation.h"
 #include "Tools/Debugging/Annotation.h"
+#include "Tools/Math/Transformation.h"
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h>
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h>
 
 MAKE_MODULE(BallModelProvider, modeling)
 
@@ -14,25 +16,21 @@ MAKE_MODULE(BallModelProvider, modeling)
 
 void BallModelProvider::update(BallModel& ballModel)
 {
-  execute();
   ballModel = m_localBallModel;
 }
 
 void BallModelProvider::update(MultipleBallModel& multipleBallModel)
 {
-  execute();
   multipleBallModel = m_multipleBallModel;
 }
 
 void BallModelProvider::update(RemoteBallModel& remoteBallModel)
 {
-  execute();
   remoteBallModel = m_remoteBallModel;
 }
 
 void BallModelProvider::update(TeamBallModel& teamBallModel)
 {
-  execute();
   m_teamBallModelProvider.generateTeamBallModel(teamBallModel, m_localMultipleBallModel, m_remoteMultipleBallModel, theRobotPose, theFrameInfo);
 }
 
@@ -49,9 +47,7 @@ void BallModelProvider::initialize()
 
   // Remote ball model.
   m_remoteBallModel.timeWhenLastSeen = 0;
-  m_remoteTimeSinceBallSeen = std::vector<unsigned>(7); // one value per teammate (index = player number)
-  for (size_t i = 0; i < m_remoteTimeSinceBallSeen.size(); i++)
-    m_remoteTimeSinceBallSeen[i] = 0;
+  m_remoteTimeSinceBallSeen.assign(MAX_NUM_PLAYERS + 1, 0); // one value per teammate (index = player number)
 
   // Team ball model.
   m_teamBallModelProvider.initialize(teamParameters);
@@ -71,7 +67,7 @@ void BallModelProvider::initialize()
   }
 }
 
-void BallModelProvider::execute()
+void BallModelProvider::execute(tf::Subflow&)
 {
   for (int i = 0; i < JoinedIMUData::numOfInertialDataSources; i++)
   {
@@ -100,12 +96,6 @@ void BallModelProvider::execute()
   initModify();
   // Init debug drawings.
   initDebugDrawing();
-
-  // Only update once per step.
-  if (m_lastTimeStamp == theFrameInfo.time)
-  {
-    return;
-  }
 
   if (theFieldDimensions.xPosOpponentGroundline != 0)
   {
@@ -158,7 +148,6 @@ void BallModelProvider::execute()
 
   // --- Save current state for next iteration ---
   m_lastOdometryData = theOdometryData;
-  m_lastTimeStamp = theFrameInfo.time;
 }
 
 bool BallModelProvider::isBallInGoalBox(const Vector2f& positionOnField)
@@ -336,33 +325,33 @@ void BallModelProvider::sensorUpdateRemote()
   for (size_t i = 0; i < theTeammateData.teammates.size(); ++i)
   {
     // Loop over all players which have sent data and are active.
-    if (theTeammateData.teammates[i].status == Teammate::FULLY_ACTIVE)
+    if (theTeammateData.teammates[i].status == TeammateReceived::Status::FULLY_ACTIVE)
     {
       // The ball was recently seen by this teammate.
-      bool ballSeenByTeamMate = m_remoteTimeSinceBallSeen[theTeammateData.teammates[i].number] < theTeammateData.teammates[i].ball.timeWhenLastSeen;
+      bool ballSeenByTeamMate = m_remoteTimeSinceBallSeen[theTeammateData.teammates[i].playerNumber] < theTeammateData.teammates[i].ballModel.timeWhenLastSeen;
       if (!ballSeenByTeamMate)
         continue;
       // Save time of last percept which was used to update multiple ball model.
-      m_remoteTimeSinceBallSeen[theTeammateData.teammates[i].number] = theTeammateData.teammates[i].ball.timeWhenLastSeen;
+      m_remoteTimeSinceBallSeen[theTeammateData.teammates[i].playerNumber] = theTeammateData.teammates[i].ballModel.timeWhenLastSeen;
 
       // Get ball position from player i in global coordinates.
-      Vector2f percept = Transformation::robotToField(theTeammateData.teammates[i].pose, theTeammateData.teammates[i].ball.estimate.position);
-      Vector2f velocity = Transformation::robotToFieldVelocity(theTeammateData.teammates[i].pose, theTeammateData.teammates[i].ball.estimate.velocity);
+      Vector2f percept = Transformation::robotToField(theTeammateData.teammates[i].robotPose, theTeammateData.teammates[i].ballModel.position);
+      Vector2f velocity = Transformation::robotToFieldVelocity(theTeammateData.teammates[i].robotPose, theTeammateData.teammates[i].ballModel.velocity);
       // Distance from robot to ball percept.
-      float distanceToPercept = theTeammateData.teammates[i].ball.estimate.position.norm();
-      float robotPoseBasedValidity = theTeammateData.teammates[i].ball.validity * theTeammateData.teammates[i].pose.validity;
+      float distanceToPercept = theTeammateData.teammates[i].ballModel.position.norm();
+      float robotPoseBasedValidity = theTeammateData.teammates[i].ballModel.validity * theTeammateData.teammates[i].robotPose.validity;
 
       // Run sensor update with global ball position.
       RemoteKalmanPositionHypothesis::TeammateInfo teammate(robotPoseBasedValidity, theFrameInfo.time);
       m_remoteMultipleBallModel.sensorUpdate(percept,
           distanceToPercept,
           &velocity,
-          theTeammateData.teammates[i].ball.timeWhenLastSeen,
+          theTeammateData.teammates[i].ballModel.timeWhenLastSeen,
           robotPoseBasedValidity,
           parameters.remote.Hypotheses_mergeAngleDiff,
           robotPoseBasedValidity, //parameters.remote.Hypotheses_initialValidityForNewHypotheses,
           kalmanNoiseMatrices,
-          theTeammateData.teammates[i].number,
+          theTeammateData.teammates[i].playerNumber,
           teammate);
     }
   }
@@ -375,7 +364,7 @@ void BallModelProvider::sensorUpdateRemote()
 void BallModelProvider::handleGameState()
 {
   // Transition from SET to PLAYING:
-  if (m_lastGameState == STATE_SET && theGameInfo.state == STATE_PLAYING && parameters.State_SetToPlaying_addKickOffHypothesis) // This can be deactivated via config file.
+  if (m_lastGameState == STATE_SET && theGameInfo.state == STATE_PLAYING && parameters.State_SetToPlaying_addKickOffHypothesis && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT) // This can be deactivated via config file.
   {
     // Add a ball hypothesis at the kick off point.
     Vector2f kickOffPoint;
@@ -456,14 +445,7 @@ void BallModelProvider::handleKick()
 
   if (m_localMultipleBallModel.bestHypothesis() != nullptr)
   {
-    // Use robot model's foot positions intersecting with best hypothesis
-    const Pose3f& kickFoot = (theRobotModel.soleLeft.translation.z() > theRobotModel.soleRight.translation.z()) ? theRobotModel.soleLeft : theRobotModel.soleRight;
-    Vector2f ballPosition = m_localMultipleBallModel.bestHypothesis()->kalman.position();
-    bool footIntersectsWithModel = (ballPosition.y() - kickFoot.translation.y()) < theFieldDimensions.ballRadius && ballPosition.x() > 90.f
-        && (ballPosition.x() - kickFoot.translation.x()) < (180.f + theFieldDimensions.ballRadius); // 104 mm is foot length from base
-
-    // Two ways to trigger a kick are handled here: kick engine or in walk kick.
-    bool kickTriggered = (theMotionInfo.motion == MotionRequest::Motion::kick || (theMotionInfo.motion == MotionRequest::Motion::walk && theMotionInfo.walkKicking)) && footIntersectsWithModel;
+    bool kickTriggered = KickUtils::isBallKicked(theMotionInfo);
     if (kickTriggered)
     {
       // If the ball hypothesis already has a high velocity, the kick must be
@@ -585,16 +567,16 @@ void BallModelProvider::generateLocalBallModel()
 
     m_localBallModel.timeWhenLastSeen = bestHypothesis->timeWhenLastSeen;
     m_localBallModel.validity = bestHypothesis->validity;
-    m_localBallModel.seenPercentage = static_cast<unsigned char>((static_cast<float>(bestHypothesis->perceptsPerSecond()) / 30.f) * 100.f);
     m_localBallModel.lastPerception = bestHypothesis->lastPerception;
   }
   else
   {
+    if (m_localBallModel.timeWhenLastSeen > 0)
+      ANNOTATION("BallModelProvider", "WARNING: No bestHypothesis in generateLocalBallModel()");
+    m_localBallModel.lastPerception = Vector2f(1000, 0);
     m_localBallModel.estimate = BallState();
     m_localBallModel.timeWhenLastSeen = 0;
     m_localBallModel.validity = 0.f;
-    m_localBallModel.seenPercentage = 0;
-    m_localBallModel.lastPerception = Vector2f::Zero();
   }
   m_localBallModel.friction = ballFriction;
   updateTimeWhenBallFirstDisappeared(bestHypothesis, m_localBallModel); // set ballModel.timeWhenDisappeared
@@ -621,7 +603,6 @@ void BallModelProvider::generateMultipleBallModel()
       updateEstimatedBallState(kph, bm.estimate); // set ballModel.estimate
       bm.timeWhenLastSeen = kph.timeWhenLastSeen;
       bm.validity = kph.validity;
-      bm.seenPercentage = static_cast<unsigned char>((static_cast<float>(kph.perceptsPerSecond()) / 30.f) * 100.f);
       bm.lastPerception = kph.lastPerception;
       bm.friction = ballFriction;
       bm.timeWhenLastSeenByTeamMate = 0;

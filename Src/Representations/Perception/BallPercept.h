@@ -11,35 +11,25 @@
 #include "Tools/Enum.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Streams/AutoStreamable.h"
-#include "Tools/Debugging/DebugImages.h"
 #include "Representations/Infrastructure/Image.h"
+#include "Representations/Perception/ImagePatch.h"
+#include "Representations/Perception/BallSpot.h"
 
 #define CNN_POSITION_SIZE 32
 #define CNN_SCANLINES_SIZE 16
 
-STREAMABLE(BallPatch,
-  ENUM(DetectionSource,
-    scanlines,
-    yoloHypothesis,
-    ballModel
-  );
-
-  ENUM(DetectionVerifier,
-    scanlinesAndCNN,
-    ballPositionCNN,
-    yolo
-  );
+STREAMABLE_WITH_BASE(BallPatch, ImagePatch,
+  BallPatch() = default;
+  BallPatch(const CheckedBallSpot& ballSpot, const Image& image, const Vector2i& inputPosition, const Vector2i& inputSize, const Vector2i& outputSize, bool rgb = true);
+  void fromBallSpot(const CheckedBallSpot& ballSpot);
   ,
-
-  (bool)(true) rgb,
-  (std::vector<float>) patch,
   (Vector2f)(Vector2f::Zero()) centerInPatch,
   (float)(CNN_POSITION_SIZE / 2.f) radiusInPatch,
   (float)(1.f) resizeFactor,
   (float)(0.f) validity,
   (bool)(false) fromUpper,
-  (DetectionSource)(DetectionSource::scanlines) source,
-  (DetectionVerifier)(DetectionVerifier::ballPositionCNN) verifier
+  ((CheckedBallSpot) DetectionSource)(CheckedBallSpot::DetectionSource::scanlines) source,
+  ((CheckedBallSpot) DetectionVerifier)(CheckedBallSpot::DetectionVerifier::ballPositionCNN) verifier
 );
 
 /**
@@ -64,7 +54,8 @@ STREAMABLE(BallPercept,
     checkJersey /**< unused */
   );
 
-  DECLARE_DEBUG_IMAGE(BallPerceptPatch);
+  BallPercept() = default;
+  BallPercept(const CheckedBallSpot& ballSpot, unsigned timestamp, const Vector2f& posOnField);
 
   /** Draws the ball */
   void draw() const,
@@ -78,8 +69,8 @@ STREAMABLE(BallPercept,
   (float)(50) radiusOnField,                                /**< The radius of the ball on the field in mm */
   (float)(0) validity,                                      /**< The validity of the ball percept in range [0,1]. */
   (bool)(false) fromUpper,                                  /**< True, if ball was seen in upper image. Use with status. */
-  ((BallPatch) DetectionSource)(DetectionSource::scanlines) detectionSource, /**< Who is responsible for the detection. */
-  ((BallPatch) DetectionVerifier)(DetectionVerifier::scanlinesAndCNN) detectionVerifier, /**< Who is responsible for the verfication. */
+  ((CheckedBallSpot) DetectionSource)(CheckedBallSpot::scanlines) detectionSource, /**< Who is responsible for the detection. */
+  ((CheckedBallSpot) DetectionVerifier)(CheckedBallSpot::scanlinesAndCNN) detectionVerifier, /**< Who is responsible for the verfication. */
   (BallPatch) ballPatch                                    /**< Saved ballPatch image data for the log. */
 );
 
@@ -87,9 +78,7 @@ STREAMABLE(BallPercept,
  * Representation of multiple hypotheses for seen balls.
  */
 STREAMABLE(MultipleBallPercept,
-  MultipleBallPercept() = default;
-
-  DECLARE_DEBUG_IMAGE(MultipleBallPerceptPatch);
+  MultipleBallPercept() { balls.reserve(10); }
 
   /** Draws the ball */
   void draw() const,
@@ -101,9 +90,7 @@ STREAMABLE(MultipleBallPercept,
  * Representation of multiple processed ball patches.
  */
 STREAMABLE(ProcessedBallPatches,
-  ProcessedBallPatches() = default;
-
-  DECLARE_DEBUG_IMAGE(BallPatches);
+  ProcessedBallPatches() { patches.reserve(10); }
 
   /** Draws the patches */
   void draw() const,

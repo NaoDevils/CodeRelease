@@ -164,6 +164,8 @@ target_sources(${PROJECT_NAME}
         Settings.cpp
         Settings.h
         Streams/AutoStreamable.h
+        Streams/Compressed.cpp
+        Streams/Compressed.h
         Streams/Eigen.h
         Streams/InOut.cpp
         Streams/InOut.h

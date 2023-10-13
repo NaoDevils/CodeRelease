@@ -62,7 +62,7 @@ public:
    * @param src The uncompressed image.
    * @param quality The JPEG quality (0...100).
    */
-  void fromImage(const Image& src, int quality = defaultQuality);
+  void fromImage(const Image& src, int quality = 85);
 
   /**
    * Uncompress image.
@@ -81,15 +81,31 @@ private:
   static void onSrcIgnore(j_decompress_ptr);
   //!@}
 
-  static constexpr int defaultQuality = 85;
+  struct JPEGRawData
+  {
+    // since we are not using chroma subsampling, we can directly use DCTSIZE here
+    alignas(16) std::array<std::array<JSAMPLE, maxResolutionWidth>, DCTSIZE> y_plane;
+    alignas(16) std::array<std::array<JSAMPLE, maxResolutionWidth>, DCTSIZE> u_plane;
+    alignas(16) std::array<std::array<JSAMPLE, maxResolutionWidth>, DCTSIZE> v_plane;
 
-  /**
-   * Convert image from Nao's alignment (YUV422) to Aibo's alignment (one channel per line)
-   * destination is asserted to be allocated
-   * @param src Pointer to the source image in Nao's alignment
-   * @param dst Pointer to the destination image
-   */
-  void toAiboAlignment(const unsigned char* src, unsigned char* dst) const;
+    std::array<JSAMPROW, DCTSIZE> y_rows;
+    std::array<JSAMPROW, DCTSIZE> u_rows;
+    std::array<JSAMPROW, DCTSIZE> v_rows;
+
+    std::array<JSAMPARRAY, 3> rows;
+
+    JPEGRawData()
+    {
+      for (size_t i = 0; i < y_rows.size(); ++i)
+        y_rows[i] = y_plane[i].data();
+      for (size_t i = 0; i < u_rows.size(); ++i)
+        u_rows[i] = u_plane[i].data();
+      for (size_t i = 0; i < v_rows.size(); ++i)
+        v_rows[i] = v_plane[i].data();
+
+      rows = {y_rows.data(), u_rows.data(), v_rows.data()};
+    }
+  };
 
   /**
    * Convert image from Aibo's alignment (one channel per line) to Nao's alignment (YUV422)
@@ -98,6 +114,9 @@ private:
    * @param dst Pointer to the destination image
    */
   void fromAiboAlignment(const unsigned char* src, unsigned char* dst) const;
+
+  static void toJPEGData(const Image& src, JSAMPIMAGE dst, size_t yOffset, size_t ySize);
+  static void fromJPEGData(const JSAMPIMAGE src, Image& dst, size_t yOffset, size_t ySize);
 
   void serialize(In* in, Out* out);
 };

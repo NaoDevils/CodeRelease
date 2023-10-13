@@ -214,14 +214,22 @@ bool Geometry::isPointLeftOfLine(const Vector2f& point, const Line& line)
   return isPointLeftOfLine(point, line.base, line.base + line.direction);
 }
 
+bool Geometry::isPointLeftOfLine(const Vector2f& point, const Line& line, const float hysteresis)
+{
+  return isPointLeftOfLine(point, line.base, line.base + line.direction, hysteresis);
+}
+
 bool Geometry::isPointLeftOfLine(const Vector2f& point, const Vector2f& linePoint1, const Vector2f& linePoint2)
 {
   return isPointLeftOfLine(point, linePoint1, linePoint2, 0.f);
 }
 
+/**
+ * @param hysteresis has to be the squared value of the distance to one side in mm
+ */
 bool Geometry::isPointLeftOfLine(const Vector2f& point, const Vector2f& linePoint1, const Vector2f& linePoint2, const float hysteresis)
 {
-  return ((linePoint2.x() - linePoint1.x()) * (point.y() - linePoint1.y()) - (linePoint2.y() - linePoint1.y()) * (point.x() - linePoint1.x())) > hysteresis;
+  return ((linePoint2.x() - linePoint1.x()) * (point.y() - linePoint1.y()) - (linePoint2.y() - linePoint1.y()) * (point.x() - linePoint1.x())) + hysteresis > 0;
 }
 
 float Geometry::getDistanceToLine(const Line& line, const Vector2f& point)
@@ -698,7 +706,7 @@ void Geometry::computeFieldOfViewInFieldCoordinates(
   if (f > 0.f)
     p[0] = robotPose.translation;
   else
-    p[0] = (robotPose + pof).translation;
+    p[0] = robotPose * pof;
 
   r = cameraMatrix.rotation;
   r.rotateY(cameraInfo.openingAngleHeight / 2);
@@ -714,7 +722,7 @@ void Geometry::computeFieldOfViewInFieldCoordinates(
   if (f > 0.f)
     p[1] = robotPose.translation;
   else
-    p[1] = (robotPose + pof).translation;
+    p[1] = robotPose * pof;
 
   r = cameraMatrix.rotation;
   r.rotateY(-(cameraInfo.openingAngleHeight / 2));
@@ -732,7 +740,7 @@ void Geometry::computeFieldOfViewInFieldCoordinates(
   if (f > 0.f)
     p[2] = robotPose.translation + Vector2f(maxDist, 0).rotate(robotPose.rotation + (-cameraInfo.openingAngleWidth / 2) + cameraMatrix.rotation.getZAngle());
   else
-    p[2] = (robotPose + pof).translation;
+    p[2] = robotPose * pof;
 
   r = cameraMatrix.rotation;
   r.rotateY(-(cameraInfo.openingAngleHeight / 2));
@@ -748,7 +756,7 @@ void Geometry::computeFieldOfViewInFieldCoordinates(
   if (f > 0.f)
     p[3] = robotPose.translation + Vector2f(maxDist, 0).rotate(robotPose.rotation + (cameraInfo.openingAngleWidth / 2) + cameraMatrix.rotation.getZAngle());
   else
-    p[3] = (robotPose + pof).translation;
+    p[3] = robotPose * pof;
 }
 
 float Geometry::angleSizeToPixelSize(float angleSize, const CameraInfo& cameraInfo)

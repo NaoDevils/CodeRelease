@@ -61,7 +61,11 @@ bool Cognition::main()
       beforeRun();
     }
 
-    STOPWATCH_MONOTONIC_WITH_PLOT("Cognition:monotonic") STOPWATCH_WITH_PLOT("Cognition") moduleManager.execute();
+    {
+      Stopwatch s1(MONOTONIC_WITH_PLOT("Cognition:monotonic"));
+      Stopwatch s2(WITH_PLOT("Cognition"));
+      moduleManager.execute();
+    }
 
     STOPWATCH_WITH_PLOT("Cognition:postprocessing")
     {

@@ -9,6 +9,7 @@
 
 #include "Simulation/Sensors/ApproxDistanceSensor.h"
 #include "Simulation/Geometries/Geometry.h"
+#include "Simulation/Body.h"
 #include "Platform/Assert.h"
 #include "Tools/OpenGLTools.h"
 #include "Tools/ODETools.h"
@@ -62,7 +63,7 @@ void ApproxDistanceSensor::DistanceSensor::staticCollisionCallback(ApproxDistanc
   ASSERT(!dGeomIsSpace(geom2));
 
   Geometry* geometry = static_cast<Geometry*>(dGeomGetData(geom2));
-  if (reinterpret_cast<::PhysicalObject*>(geometry->parentBody) == sensor->physicalObject)
+  if (static_cast<::PhysicalObject*>(geometry->parentBody) == sensor->physicalObject)
     return; // avoid detecting the body on which the sensor is mounted
 
   const dReal* pos = dGeomGetPosition(geom2);

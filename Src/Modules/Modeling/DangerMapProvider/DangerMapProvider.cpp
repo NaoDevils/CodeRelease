@@ -44,7 +44,7 @@ void DangerMapProvider::updateDanger()
       // from team mate data
       for (auto& mate : theTeammateData.teammates)
       {
-        for (auto& robot : mate.robotMap.robots)
+        for (auto& robot : mate.localRobotMap.robots)
         {
           if (robot.robotType == RobotEstimate::teammateRobot)
             continue;

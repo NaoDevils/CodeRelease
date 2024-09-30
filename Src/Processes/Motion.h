@@ -10,6 +10,8 @@
 #include "Tools/ProcessFramework/Process.h"
 #include "Tools/Module/Logger.h"
 
+struct Settings;
+
 /**
  * @class Motion
  * A class that represents the process that sends commands to the robot at 100Hz.
@@ -26,7 +28,7 @@ private:
   void (*finishFrame)() = 0;
 
 public:
-  Motion();
+  Motion(Settings& settings);
 
   /**
    * The method is called from the framework once in every frame.

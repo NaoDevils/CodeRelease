@@ -26,16 +26,14 @@
 #include "Blackboard.h"
 #include "Platform/Semaphore.h"
 #include "Platform/Thread.h"
-#include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/SensorData/KeyStates.h"
-#include "Representations/Infrastructure/USBStatus.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
+#include "Tools/MessageQueue/MessageIDs.h"
 #include <mutex>
 #include <memory>
 #include <deque>
 #include <atomic>
+
+struct settings;
+class MessageQueue;
 
 class Logger
 {
@@ -91,6 +89,7 @@ private:
   TeamList teamList; /**< The list of all teams for naming the log file after the opponent. */
 
   std::unordered_map<char, Cycle> cycles;
+  std::vector<char> settings;
 
   std::vector<std::unique_ptr<MessageQueue>> buffer; /**< Ring buffer of message queues. Shared with the writer thread. */
   std::deque<MessageQueue*> freeBuffers;
@@ -139,6 +138,9 @@ private:
   /** Get streamed data type specification to be used in the logger thread. */
   std::vector<char> getStreamSpecification();
 
+  /** Get settings to be used in the logger thread. */
+  std::vector<char> getSettings(const Settings& settings);
+
   /** Write all loggable representations to a buffer. */
   void logFrame(char processIdentifier);
 
@@ -148,7 +150,7 @@ private:
   void dumpSystemLog();
 
 public:
-  Logger(std::initializer_list<char> cycles);
+  Logger(std::initializer_list<char> cycles, const Settings& settings);
   ~Logger();
 
   /** Has to be called in each cycle. */

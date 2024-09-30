@@ -1,9 +1,11 @@
 #include "TacticProvider.h"
+
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/RoleProvider.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/FieldUtils.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/PathUtils.h"
+#include "Representations/BehaviorControl/TacticSymbols.h"
 #include <algorithm>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/RoleProvider.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/FieldUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/TacticUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h>
+#include <Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Functions/ProbabilityFunctions.h>
 
 void TacticProvider::update(TacticSymbols& tacticSymbols)
 {
@@ -16,9 +18,39 @@ void TacticProvider::update(TacticSymbols& tacticSymbols)
   // Decides between defensive/offensive behavior based on the direction in which the ball has moved last.
   tacticSymbols.defensiveBehavior = decideDefensiveBehavior();
   tacticSymbols.activity = decideActivity();
-  decideFightForBall(tacticSymbols);
-  decideDefensiveCone(tacticSymbols);
+  decideFightForBall(tacticSymbols, theBallSymbols.ballPositionFieldPredicted, theRobotMap);
+  decideDefensiveCone(tacticSymbols, theBallSymbols.ballPositionFieldPredicted, theFieldDimensions);
+  updateDanger(tacticSymbols);
   tacticSymbols.keepRoleAssignment = theGameInfo.state == STATE_READY && theGameSymbols.timeSinceGameState > static_cast<int>(timeTillKeepRoleAssignmentInReady);
+
+  switch (currentDirection)
+  {
+  case TacticProvider::BallDirection::towardsEnemySide:
+    tacticSymbols.currentDirection = "towardsEnemySide";
+    break;
+  case TacticProvider::BallDirection::towardsOwnSide:
+    tacticSymbols.currentDirection = "towardsOwnSide";
+    break;
+  default:
+    break;
+  }
+  switch (currentSide)
+  {
+  case TacticProvider::BallSide::back:
+    tacticSymbols.currentSide = "back";
+    break;
+  case TacticProvider::BallSide::centerback:
+    tacticSymbols.currentSide = "centerback";
+    break;
+  case TacticProvider::BallSide::centerfront:
+    tacticSymbols.currentSide = "centerfront";
+    break;
+  case TacticProvider::BallSide::front:
+    tacticSymbols.currentSide = "front";
+    break;
+  default:
+    break;
+  }
 }
 
 /**
@@ -29,7 +61,7 @@ void TacticProvider::update(TacticSymbols& tacticSymbols)
 */
 void TacticProvider::calcNumberOfActiveFieldPlayers(TacticSymbols& tacticSymbols)
 {
-  if (theTeammateData.wlanOK)
+  if (theTeammateData.commEnabled)
   {
     tacticSymbols.numberOfActiveFieldPlayers = (theRobotInfo.number == 1 || theRobotInfo.penalty != PENALTY_NONE) ? 0 : 1; // myself
     for (auto& mate : theTeammateData.teammates)
@@ -53,7 +85,6 @@ void TacticProvider::calcNumberOfActiveFieldPlayers(TacticSymbols& tacticSymbols
     tacticSymbols.numberOfActiveFieldPlayers = MAX_NUM_PLAYERS - 1;
   }
 }
-
 
 /**
 * \brief Decides between defensive and offensive behavior based on the direction in which the ball has moved last.
@@ -128,14 +159,17 @@ void TacticProvider::getBallDirection()
   TacticProvider::BallSide newSide = TacticProvider::currentSide;
 
   // compare sides to detect movement
-  if ((previousSide == TacticProvider::BallSide::back && newSide == TacticProvider::BallSide::center)
-      || (previousSide == TacticProvider::BallSide::center && newSide == TacticProvider::BallSide::front))
+  if ((previousSide == TacticProvider::BallSide::back && (newSide == TacticProvider::BallSide::centerback || newSide == TacticProvider::BallSide::centerfront || newSide == TacticProvider::BallSide::front))
+      || (previousSide == TacticProvider::BallSide::centerback && (newSide == TacticProvider::BallSide::centerfront || newSide == TacticProvider::BallSide::front))
+      || (previousSide == TacticProvider::BallSide::centerfront && newSide == TacticProvider::BallSide::front))
   {
     // offensive direction
     currentDirection = TacticProvider::BallDirection::towardsEnemySide;
   }
-  else if ((previousSide == TacticProvider::BallSide::front && newSide == TacticProvider::BallSide::center)
-      || (previousSide == TacticProvider::BallSide::center && newSide == TacticProvider::BallSide::back))
+  else if ((previousSide == TacticProvider::BallSide::front
+               && (newSide == TacticProvider::BallSide::centerfront || newSide == TacticProvider::BallSide::centerback || newSide == TacticProvider::BallSide::back))
+      || (previousSide == TacticProvider::BallSide::centerfront && (newSide == TacticProvider::BallSide::centerback || newSide == TacticProvider::BallSide::back))
+      || (previousSide == TacticProvider::BallSide::centerback && newSide == TacticProvider::BallSide::back))
   {
     // defensive direction
     currentDirection = TacticProvider::BallDirection::towardsOwnSide;
@@ -152,15 +186,19 @@ void TacticProvider::getBallSide()
 
   Vector2f ballPosition = theBallSymbols.ballPositionField;
 
-  if (ballPosition.x() < 0.24 * theFieldDimensions.xPosOwnGroundline)
+  if (ballPosition.x() < 0.52 * theFieldDimensions.xPosOwnGroundline)
   {
     currentSide = TacticProvider::BallSide::back;
   }
-  else if (ballPosition.x() > 0.21 * theFieldDimensions.xPosOwnGroundline && ballPosition.x() < 0.21 * theFieldDimensions.xPosOpponentGroundline)
+  else if (ballPosition.x() > 0.48 * theFieldDimensions.xPosOwnGroundline && ballPosition.x() < 0.03 * theFieldDimensions.xPosOwnGroundline)
   {
-    currentSide = TacticProvider::BallSide::center;
+    currentSide = TacticProvider::BallSide::centerback;
   }
-  else if (ballPosition.x() > 0.24 * theFieldDimensions.xPosOpponentGroundline)
+  else if (ballPosition.x() > 0.03 * theFieldDimensions.xPosOpponentGroundline && ballPosition.x() < 0.48 * theFieldDimensions.xPosOpponentGroundline)
+  {
+    currentSide = TacticProvider::BallSide::centerfront;
+  }
+  else if (ballPosition.x() > 0.52 * theFieldDimensions.xPosOpponentGroundline)
   {
     currentSide = TacticProvider::BallSide::front;
   }
@@ -171,7 +209,6 @@ void TacticProvider::getBallSide()
 */
 bool TacticProvider::decideKickoffDirection(TacticSymbols& tacticSymbols)
 {
-
   // If dynamic side switching is disabled for kickoff, use kickOffToTheLeftSide parameter.
   if (!theBehaviorConfiguration.behaviorParameters.useDynamicKickoffSideSwitching)
     return theBehaviorConfiguration.behaviorParameters.kickOffToTheLeftSide;
@@ -200,51 +237,128 @@ bool TacticProvider::decideKickoffDirection(TacticSymbols& tacticSymbols)
   return (tacticSymbols.numberOfLeftOwnKickOffSuccess >= tacticSymbols.numberOfRightOwnKickOffSuccess);
 }
 
-void TacticProvider::decideFightForBall(TacticSymbols& tacticSymbols)
+void TacticProvider::decideFightForBall(TacticSymbols& tacticSymbols, const Vector2f& ballPosition, const RobotMap& theRobotMap)
 {
-  const int CLOSE_DISTANCE = 500;
-  const bool hysteresis = tacticSymbols.closeToBallRobotNumber > 0;
-  const float hysteresisMultiplier = hysteresis ? 1.1f : 1.f;
-  const int adjustedCloseDistance = (int)(hysteresisMultiplier * CLOSE_DISTANCE);
+  const float WHILE_KICKING_OPPONENT_TO_BALL_DISTANCE = 200.f;
 
-  const Vector2f& ballPosition = theBallSymbols.ballPositionField;
-
-  tacticSymbols.closeToBallRobotNumber = 0;
-  tacticSymbols.closeToBallOpponentRobotNumber = 0;
-  int minDistance = adjustedCloseDistance;
+  tacticSymbols.ballToRobotDistance = -1.f;
+  tacticSymbols.ballToOpponentRobotDistance = -1.f;
 
   for (const auto& robot : theRobotMap.robots)
   {
-    const int distance = (int)Geometry::distance(robot.pose.translation, ballPosition);
-    const bool opponentRobot = robot.robotType != RobotEstimate::RobotType::teammateRobot;
+    const float distance = Geometry::distance(robot.pose.translation, ballPosition);
+    const bool isOpponentRobot = robot.robotType != RobotEstimate::RobotType::teammateRobot;
 
-    if (distance <= minDistance)
+    if (tacticSymbols.ballToRobotDistance == -1.f || distance < tacticSymbols.ballToRobotDistance)
     {
-      minDistance = distance;
+      tacticSymbols.ballToRobotDistance = distance;
+      tacticSymbols.closestToBallRobot = robot.pose;
+    }
+    if (isOpponentRobot && (tacticSymbols.ballToOpponentRobotDistance == -1.f || distance < tacticSymbols.ballToOpponentRobotDistance))
+    {
+      tacticSymbols.ballToOpponentRobotDistance = distance;
+      tacticSymbols.closestToBallOpponentRobot = robot.pose;
+    }
+  }
 
-      tacticSymbols.closeToBallRobotNumber++;
-      tacticSymbols.closeToBallRobot = robot.pose;
-      if (opponentRobot)
-      {
-        tacticSymbols.closeToBallOpponentRobotNumber++;
-        tacticSymbols.closeToBallOpponentRobot = robot.pose;
-      }
-    }
-    else if (distance <= adjustedCloseDistance)
-    {
-      tacticSymbols.closeToBallRobotNumber++;
-      if (opponentRobot)
-      {
-        tacticSymbols.closeToBallOpponentRobotNumber++;
-      }
-    }
+  // update ball steal time
+  if (tacticSymbols.hasClosestOpponentRobot())
+  {
+    const Vector2f opponentToBall = ballPosition - tacticSymbols.closestToBallOpponentRobot.translation;
+    const Angle assumedOpponentKickAngle = opponentToBall.angle();
+    const Vector2f assumedOpponentKickPosition = ballPosition - opponentToBall.normalized(WHILE_KICKING_OPPONENT_TO_BALL_DISTANCE);
+    const Pose2f assumedOpponentKickPose = Pose2f(assumedOpponentKickAngle, assumedOpponentKickPosition);
+
+    const Pose2f assumedOppCurrentPose = Pose2f(assumedOpponentKickAngle, tacticSymbols.closestToBallOpponentRobot.translation); // TODO use detected angle soon
+
+    const float assumedOpponentKickTime = 2.f;
+    const float assumedOppPathTime = PathUtils::getPathTime(assumedOppCurrentPose, assumedOpponentKickPose, ballPosition);
+    tacticSymbols.untilOpponentStealsBallTime = assumedOpponentKickTime + assumedOppPathTime;
+  }
+  else
+  {
+    tacticSymbols.untilOpponentStealsBallTime = -1.f;
   }
 }
 
-void TacticProvider::decideDefensiveCone(TacticSymbols& theTacticSymbols)
+void TacticProvider::updateDanger(TacticSymbols& tacticSymbols)
 {
-  const Vector2f ballPosition = BallUtils::getBallPosition(theBallSymbols, theFrameInfo, theRobotPoseAfterPreview);
-  theTacticSymbols.defensiveCone = TacticUtils::getDefenseCone(180_deg, ballPosition, theFieldDimensions);
+  if (theGameSymbols.gameSituation == GameSymbols::GameSituation::regularPlay)
+  {
+    if (isDanger(450.f, tacticSymbols.ballInDanger == TacticSymbols::Danger::HIGH))
+    {
+      tacticSymbols.ballInDanger = TacticSymbols::Danger::HIGH;
+    }
+    else if (isDanger(800.f, tacticSymbols.ballInDanger == TacticSymbols::Danger::MEDIUM))
+    {
+      tacticSymbols.ballInDanger = TacticSymbols::Danger::MEDIUM;
+    }
+    else if (isDanger(1200.f, tacticSymbols.ballInDanger == TacticSymbols::Danger::LOW))
+    {
+      tacticSymbols.ballInDanger = TacticSymbols::Danger::LOW;
+    }
+    else
+    {
+      tacticSymbols.ballInDanger = TacticSymbols::Danger::NONE;
+    }
+  }
+  else
+  {
+    tacticSymbols.ballInDanger = TacticSymbols::Danger::IMPOSSIBLE;
+  }
+}
+
+bool TacticProvider::isDanger(float dangerDistance, const bool hysteresis) const
+{
+  dangerDistance = dangerDistance * (hysteresis ? 1.2f : 1.f);
+  for (const auto& robot : theRobotMap.robots)
+  {
+    if (robot.robotType != RobotEstimate::teammateRobot)
+    {
+      const float robotDistance = Geometry::distance(theBallSymbols.ballPositionFieldPredicted, robot.pose.translation);
+      if (robotDistance < dangerDistance)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void TacticProvider::decideDefensiveCone(TacticSymbols& theTacticSymbols, const Vector2f& ballPosition, const FieldDimensions& theFieldDimensions)
+{
+  const float defenseWidth = 180_deg;
+
+  ASSERT(0_deg < defenseWidth && defenseWidth < 360_deg);
+
+  const Angle step = defenseWidth / 2;
+  Angle leftAngle;
+  Angle rightAngle;
+
+  const bool ballOnOwnSide = ballPosition.x() < 0.f;
+  if (ballOnOwnSide)
+  {
+    const Vector2f ownGoalCenter = FieldUtils::getOwnGoalCenter(theFieldDimensions);
+    const Angle ownGoalCenterAngle = (ownGoalCenter - ballPosition).angle();
+    leftAngle = Angle(ownGoalCenterAngle + step).normalize();
+    rightAngle = Angle(ownGoalCenterAngle - step).normalize();
+
+    const Vector2f ownLeftGoalPost = {theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosLeftGoal};
+    const Vector2f ownRightGoalPost = {theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoal};
+    const Angle ownLeftGoalPostAngle = (ownLeftGoalPost - ballPosition).angle();
+    const Angle ownRightGoalPostAngle = (ownRightGoalPost - ballPosition).angle();
+    const auto [ll, lr] = MathUtils::getLeftAndRightAngle(leftAngle, ownRightGoalPostAngle);
+    const auto [rl, rr] = MathUtils::getLeftAndRightAngle(rightAngle, ownLeftGoalPostAngle);
+    leftAngle = ll;
+    rightAngle = rr;
+  }
+  else
+  {
+    rightAngle = 180_deg - step;
+    leftAngle = -180_deg + step;
+  }
+
+  theTacticSymbols.defensiveCone = {leftAngle, rightAngle};
 }
 
 MAKE_MODULE(TacticProvider, behaviorControl)

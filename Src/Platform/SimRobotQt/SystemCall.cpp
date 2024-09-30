@@ -158,7 +158,7 @@ unsigned SystemCall::getRealSystemTime()
 unsigned long long SystemCall::getCurrentThreadTime()
 {
 #if defined(WINDOWS)
-  static LARGE_INTEGER frequency = {0};
+  static LARGE_INTEGER frequency{.QuadPart = 0};
   if (frequency.QuadPart == 0)
   {
     QueryPerformanceFrequency(&frequency);

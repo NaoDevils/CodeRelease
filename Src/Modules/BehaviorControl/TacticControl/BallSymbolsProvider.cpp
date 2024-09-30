@@ -7,14 +7,14 @@
 */
 
 #include "BallSymbolsProvider.h"
+
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h"
 #include "Tools/Debugging/Annotation.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/Modify.h"
 #include "Tools/Math/Geometry.h"
 #include "Tools/Math/Transformation.h"
 #include "Tools/Modeling/BallPhysics.h"
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h>
 
 void BallSymbolsProvider::update(BallSymbols& ballSymbols)
 {
@@ -71,7 +71,6 @@ void BallSymbolsProvider::update(BallSymbols& ballSymbols)
     setPredictedBallPosition(localBallSymbols);
   }
 
-  ballWasSeenRecently = localBallSymbols.timeSinceLastSeen < timeForBallWasSeen;
   ballIsRolling = currentlyUsedBallModel.estimate.velocity.norm() > 50.f; // Ball is faster than 50 mm/s
   Vector2f vecBalltoRobot = theRobotPoseAfterPreview.translation - localBallSymbols.ballPositionField;
   Angle difBallRobot = 180_deg;
@@ -80,7 +79,7 @@ void BallSymbolsProvider::update(BallSymbols& ballSymbols)
   bool ballIsMovingTowardsTheRobot = ballIsRolling && difBallRobot < 70_deg;
 
   // for diving / ball stopping
-  if (ballWasSeenRecently && ballIsMovingTowardsTheRobot && ballSymbols.ballPositionField.x() > theFieldDimensions.xPosOwnGroundline) // getYPosWhenBallReachesOwnGroundLine calc doesn't make sense otherwise
+  if (localBallSymbols.ballWasSeen && ballIsMovingTowardsTheRobot && ballSymbols.ballPositionField.x() > theFieldDimensions.xPosOwnGroundline) // getYPosWhenBallReachesOwnGroundLine calc doesn't make sense otherwise
   {
     localBallSymbols.yPosWhenBallReachesOwnYAxis = getYPosWhenBallReachesOwnYAxis();
     localBallSymbols.yPosWhenBallReachesGroundLine = getYPosWhenBallReachesOwnGroundLine(localBallSymbols);
@@ -102,6 +101,11 @@ void BallSymbolsProvider::update(BallSymbols& ballSymbols)
   const int bufferZonePenalty = (localBallSymbols.ballInOwnGoalArea ? 300 : 100);
   localBallSymbols.ballInOwnPenaltyArea = (std::abs(localBallSymbols.ballPositionField.y()) < theFieldDimensions.yPosLeftPenaltyArea + bufferZonePenalty)
       && (localBallSymbols.ballPositionField.x() < theFieldDimensions.xPosOwnPenaltyArea + bufferZonePenalty);
+
+  if (localBallSymbols.ballOnLeftSide && localBallSymbols.ballPositionField.y() < -250.0f)
+    localBallSymbols.ballOnLeftSide = false;
+  if (!localBallSymbols.ballOnLeftSide && localBallSymbols.ballPositionField.y() > 250.0f)
+    localBallSymbols.ballOnLeftSide = true;
 
   localBallSymbols.ballProbablyCloseButNotSeen = calculateBallProbablyCloseButNotSeen(localBallSymbols);
 
@@ -162,14 +166,6 @@ void BallSymbolsProvider::setPredictedBallPosition(BallSymbols& ballSymbols)
 {
   if (KickUtils::isBallKicked(theMotionInfo)) // kick will be executed by motion
   {
-    timeWhenLastKickTriggered = theFrameInfo.time;
-    ballSymbols.avoidBall = false;
-    return;
-  }
-
-  if (theFrameInfo.getTimeSince(timeWhenLastKickTriggered) < ballPredictionTimeHorizon) // keep predicted position for some time after kick
-  {
-    ballSymbols.ballPositionRelativePredicted = Transformation::fieldToRobot(theRobotPoseAfterPreview, ballSymbols.ballPositionFieldPredicted);
     ballSymbols.avoidBall = false;
     return;
   }
@@ -267,14 +263,10 @@ bool BallSymbolsProvider::calculateBallBlockable(BallSymbols& ballSymbols)
 
 bool BallSymbolsProvider::calculateBallProbablyCloseButNotSeen(BallSymbols& ballSymbols)
 {
-  bool lastBallWasClose = currentlyUsedBallModel.lastPerception.norm() < 1000;
+  bool lastBallWasClose = currentlyUsedBallModel.lastPerception.norm() < 1000 && localBallSymbols.ballPositionRelativePredicted.norm() < 1000.f;
 
-  int timeForBallWasSeenBonus = (int)toDegrees(std::abs(theBallModelAfterPreview.estimate.position.angle())) * 10;
-  int totalTimeForBallWasSeen = (int)timeForBallWasSeen + timeForBallWasSeenBonus;
-
-  bool ballSeenRecently = ballSymbols.timeSinceLastSeen < (totalTimeForBallWasSeen + 20000);
-  bool ballSeenVeryRecently = ballSymbols.timeSinceLastSeen < (totalTimeForBallWasSeen + 2000);
-  ASSERT(!(!ballSeenRecently && ballSeenVeryRecently));
+  bool ballSeenRecently = ballSymbols.timeSinceLastSeen < (timeForBallWasSeen + 20000);
+  bool ballSeenVeryRecently = ballSymbols.timeSinceLastSeen < (timeForBallWasSeen + 2000);
 
   return lastBallWasClose && ballSeenRecently && !ballSeenVeryRecently;
 }

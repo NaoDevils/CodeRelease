@@ -4,6 +4,7 @@
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Math/Eigen.h"
+#include "Tools/Math/Pose3f.h"
 #include <vector>
 
 STREAMABLE(SimpleRobotsDistributed,

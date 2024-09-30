@@ -1,13 +1,13 @@
 #include <string>
 #include <algorithm>
 #include "Platform/File.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/ShowCmd.h"
-#include "Utils/dorsh/tools/Filesystem.h"
-#include "Utils/dorsh/tools/ShellTools.h"
-#include "Utils/dorsh/tools/StringTools.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/ShowCmd.h"
+#include "tools/Filesystem.h"
+#include "tools/ShellTools.h"
+#include "tools/StringTools.h"
 
 ShowCmd::ShowCmd()
 {

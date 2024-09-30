@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utils/dorsh/Session.h"
+#include "Session.h"
 #include <QScopedPointer>
 
 class QApplication;

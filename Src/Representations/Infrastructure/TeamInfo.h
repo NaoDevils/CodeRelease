@@ -9,6 +9,7 @@
 
 #include "RoboCupGameControlData.h"
 #include "Tools/Streams/Streamable.h"
+#include "Platform/BHAssert.h"
 
 struct TeamInfo : public RoboCup::TeamInfo, public Streamable
 {
@@ -18,11 +19,42 @@ private:
 
 public:
   int teamPort = 0;
+  bool onLeftSide = true;
 
   TeamInfo();
 
   /** Draws the score in the scene view. */
   void draw() const;
+
+  static const char* getColorName(uint8_t color)
+  {
+    switch (color)
+    {
+    case TEAM_BLUE:
+      return "blue";
+    case TEAM_RED:
+      return "red";
+    case TEAM_YELLOW:
+      return "yellow";
+    case TEAM_BLACK:
+      return "black";
+    case TEAM_WHITE:
+      return "white";
+    case TEAM_GREEN:
+      return "green";
+    case TEAM_ORANGE:
+      return "orange";
+    case TEAM_PURPLE:
+      return "purple";
+    case TEAM_BROWN:
+      return "brown";
+    case TEAM_GRAY:
+      return "gray";
+    default:
+      ASSERT(false);
+      return "";
+    }
+  }
 
 private:
   /**

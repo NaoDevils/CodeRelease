@@ -1,9 +1,8 @@
 #pragma once
 
+#include "Tools/Streams/AutoStreamable.h"
 #include "Angle.h"
 #include "Eigen.h"
-#include "Random.h"
-#include "Tools/Range.h"
 
 STREAMABLE(Pose2f,
   Pose2f() = default;
@@ -76,15 +75,7 @@ STREAMABLE(Pose2f,
   Pose2f inverse() const;
 
   Pose2f dotMirror() const;
-
-  /**
-   * The function creates a random pose.
-   * @param x The range for x-values of the pose.
-   * @param y The range for y-values of the pose.
-   * @param angle The range for the rotation of the pose.
-   */
-  static Pose2f random(const Rangef& angle, const Rangef& x, const Rangef& y),
-
+  ,
   (Angle)(0) rotation,
   (Vector2f)(Vector2f::Zero()) translation
 );
@@ -200,10 +191,4 @@ inline Pose2f Pose2f::inverse() const
 inline Pose2f Pose2f::dotMirror() const
 {
   return Pose2f(Angle::normalize(rotation + pi), -translation);
-}
-
-inline Pose2f Pose2f::random(const Rangef& angle, const Rangef& x, const Rangef& y)
-{
-  // angle should even work in wrap around case!
-  return Pose2f(float(::randomFloat() * (angle.max - angle.min) + angle.min), Vector2f(float(::randomFloat() * (x.max - x.min) + x.min), float(::randomFloat() * (y.max - y.min) + y.min)));
 }

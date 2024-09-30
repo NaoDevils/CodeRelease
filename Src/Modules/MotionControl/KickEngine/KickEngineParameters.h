@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include "Modules/BehaviorControl/TacticControl/KicksProvider/Enums/KickWithLeftCondition.h"
 #include "Representations/MotionControl/KickRequest.h"
 #include "Tools/Enum.h"
 #include "Tools/Math/Eigen.h"
@@ -66,10 +65,10 @@ STREAMABLE(KickEngineParameters,
 
   void onRead(),
 
-  (float)(0.f) horizontalInaccuracy,
-  (bool)(false) distanceAdjustable,
+  (float)(0.f) generalValue,
+  (float)(0.f) verticalInaccuracy,
+  (Angle)(0_deg) horizontalInaccuracy,
   (bool)(false) kickBlind,
-  ((KickInfos) KickWithLeftCondition)(KickWithLeftCondition::onLeftSide) kickWithLeftCondition,
   (bool)(false) switchKickFoot,
 
   (Vector2f)(Vector2f::Zero()) ballOffset,

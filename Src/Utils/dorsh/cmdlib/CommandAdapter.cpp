@@ -1,4 +1,4 @@
-#include "Utils/dorsh/cmdlib/CommandAdapter.h"
+#include "cmdlib/CommandAdapter.h"
 
 std::string CommandAdapter::getDescription() const
 {

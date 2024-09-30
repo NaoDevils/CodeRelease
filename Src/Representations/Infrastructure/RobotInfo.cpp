@@ -11,36 +11,15 @@
 #include "RobotInfo.h"
 #include <cstring>
 #include "Tools/Global.h"
-#include "Tools/Settings.h"
 #include "Platform/BHAssert.h"
+#include "Representations/Infrastructure/GameInfo.h"
 
-RobotInfo::RobotInfo() : number(Global::settingsExist() ? Global::getSettings().playerNumber : 0)
+RobotInfo::RobotInfo()
 {
   memset((RoboCup::RobotInfo*)this, 0, sizeof(RoboCup::RobotInfo));
 }
 
-bool RobotInfo::hasFeature(const RobotFeature feature) const
-{
-  switch (feature)
-  {
-  case hands:
-  case wristYaws:
-  case tactileHandSensores:
-    return naoBodyType >= H25;
-  case tactileHeadSensores:
-  case headLEDs:
-    return naoHeadType >= H25;
-  case grippyFingers:
-    return naoBodyType >= H25 && naoVersion >= RobotConfig::V5;
-  case zGyro:
-    return naoVersion >= RobotConfig::V5;
-  default:
-    ASSERT(false);
-    return false;
-  }
-}
-
-std::string RobotInfo::getPenaltyAsString() const
+const char* RobotInfo::getPenaltyAsString() const
 {
   switch (penalty)
   {
@@ -62,6 +41,8 @@ std::string RobotInfo::getPenaltyAsString() const
     return "Local Game Stuck";
   case PENALTY_SPL_ILLEGAL_POSITION_IN_SET:
     return "Illegal Position in Set";
+  case PENALTY_SPL_PLAYER_STANCE:
+    return "Player Stance";
   case PENALTY_SUBSTITUTE:
     return "Substitute";
   case PENALTY_MANUAL:
@@ -80,9 +61,6 @@ void RobotInfo::serialize(In* in, Out* out)
 {
   STREAM_REGISTER_BEGIN;
   STREAM(number); // robot number: 1..11
-  STREAM(naoVersion, RobotConfig);
-  STREAM(naoBodyType);
-  STREAM(naoHeadType);
   STREAM(transitionToFramework);
   STREAM(penalty); // PENALTY_NONE, PENALTY_BALL_HOLDING, ...
   STREAM(secsTillUnpenalised); // estimate of time till unpenalised.

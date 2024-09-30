@@ -10,6 +10,7 @@
 #include "Tools/Math/Covariance.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Modeling/BallPhysics.h"
+#include "Tools/Math/Transformation.h"
 
 #include <algorithm> // std::find
 

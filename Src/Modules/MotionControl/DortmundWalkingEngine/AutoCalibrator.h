@@ -7,20 +7,12 @@
 #include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/BehaviorControl/KeySymbols.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/MotionControl/KinematicOutput.h"
+#include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/MotionControl/MotionRequest.h"
-#include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/MotionControl/WalkCalibration.h"
-#include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/WalkingInfo.h"
+#include "Representations/MotionControl/JointError.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Sensing/JoinedIMUData.h"
-#include "Representations/Sensing/RobotModel.h"
-#include "Representations/Sensing/ZMPModel.h"
-#include "Representations/Infrastructure/JointRequest.h"
 #include "Tools/RingBufferWithSum.h"
 #include <algorithm>
 
@@ -28,21 +20,12 @@ constexpr unsigned IMU_BUFFER_LENGTH = static_cast<unsigned>(0.5 * 83);
 
 MODULE(AutoCalibrator,
   REQUIRES(FrameInfo),
-  USES(WalkingInfo),
-  USES(SpeedInfo),
   REQUIRES(BehaviorData),
-  REQUIRES(WalkingEngineParams),
-  REQUIRES(RobotDimensions),
-  REQUIRES(FieldDimensions),
-  REQUIRES(JointSensorData),
-  REQUIRES(MassCalibration),
-  REQUIRES(RobotModel),
   REQUIRES(RobotPose),
-  REQUIRES(ZMPModel),
   REQUIRES(JoinedIMUData),
   REQUIRES(KeySymbols),
-  USES(RawJointRequest),
-  USES(KinematicOutput),
+  REQUIRES(RawGameInfo),
+  USES(JointError),
   PROVIDES(WalkCalibration),
   PROVIDES(MotionRequest),
   PROVIDES(HeadControlRequest),
@@ -62,7 +45,6 @@ class AutoCalibrator : public AutoCalibratorBase
 {
 public:
   AutoCalibrator(void);
-  ~AutoCalibrator(void);
 
 private:
   ENUM(CalibrationState,
@@ -100,6 +82,7 @@ private:
   WalkCalibration localWalkCalibration;
   Vector2a fieldInclinationFromConfig = Vector2a::Zero();
   CSConverter2019Base::Parameters csConverterParams;
+  BehaviorData::BehaviorState lastBehaviorState = BehaviorData::BehaviorState::game;
 
   std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersX;
   std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> gyroDataBuffersY;
@@ -107,8 +90,8 @@ private:
   std::array<RingBufferWithSum<float, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> accDataBuffersX;
   std::array<RingBufferWithSum<float, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> accDataBuffersY;
   std::array<RingBufferWithSum<float, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> accDataBuffersZ;
-  std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> angleDataBuffersX;
-  std::array<RingBufferWithSum<Angle, IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> angleDataBuffersY;
+  std::array<RingBufferWithSum<Angle, 2 * IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> angleDataBuffersX;
+  std::array<RingBufferWithSum<Angle, 2 * IMU_BUFFER_LENGTH>, JoinedIMUData::numOfInertialDataSources> angleDataBuffersY;
 
   std::vector<std::tuple<Vector2f, Vector2a>> fieldLevelingPoints;
 

@@ -6,9 +6,10 @@
 
 #include "RemoteRobot.h"
 #include "ConsoleRoboCupCtrl.h"
+#include "LogPlayer.h"
 
 RemoteRobot::RemoteRobot(const char* name, const char* ip)
-    : RobotConsole((setGlobals(), theDebugReceiver), theDebugSender), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S"),
+    : RobotConsole(theDebugReceiver, theDebugSender, settings), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S"),
       bytesTransfered(0), transferSpeed(0), timeStamp(0)
 {
   strcpy(this->name, name);
@@ -32,7 +33,7 @@ void RemoteRobot::connect()
 void RemoteRobot::run()
 {
   Thread<RemoteRobot>::setName(std::string(name) + ".RemoteRobot");
-  setGlobals();
+  GlobalGuard g(getGlobals());
   while (isRunning())
     processMain();
 }
@@ -102,7 +103,7 @@ void RemoteRobot::update()
 
   if (puppet)
   {
-    simulatedRobot.setJointRequest(jointRequest);
+    simulatedRobot.setJointRequest(getJointRequest());
     if (moveOp != noMove)
     {
       if (moveOp == moveBoth)

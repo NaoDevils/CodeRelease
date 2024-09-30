@@ -1,10 +1,10 @@
 #pragma once
 
 #include <QObject>
-#include "Utils/dorsh/cmdlib/CommandAdapter.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
+#include "cmdlib/CommandAdapter.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/ProcessRunner.h"
 
 class CompileCmd : public CommandAdapter
 {

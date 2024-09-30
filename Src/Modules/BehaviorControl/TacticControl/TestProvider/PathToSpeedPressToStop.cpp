@@ -1,6 +1,7 @@
 #include "PathToSpeedPressToStop.h"
 #include "Tools/Settings.h"
 #include "Tools/Streams/InStreams.h"
+#include "Tools/Math/Transformation.h"
 #include <algorithm>
 #include <functional>
 
@@ -45,7 +46,9 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
   speedRequest.rotation = 0.f;
 
   // dont move if nearly falling
-  if (std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y()) >= emergencyStopFallDownReductionFactorThreshold)
+  if (theSensorControlParams.sensorControlActivation.activateSpeedReduction
+      && std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y())
+          >= theSensorControlParams.speedReduction.emergencyStopSpeedReductionFactorThreshold)
   {
     return;
   }
@@ -80,8 +83,7 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
 
     // TODO: seems to be a behavior thing to decide this
     // keeper in playing, not chasing the ball (not after penalty, not without wlan)
-    if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING && goalieCloseToGoal && !(theGameSymbols.timeSinceLastPenalty < 15000)
-        && !(theBehaviorConfiguration.noWLAN || !theTeammateData.wlanOK))
+    if (theRoleSymbols.role == BehaviorData::keeper && theGameInfo.state == STATE_PLAYING && goalieCloseToGoal && theGameSymbols.timeSinceLastPenalty >= 15000 && theTeammateData.commEnabled)
     {
       state = target;
     }
@@ -121,25 +123,25 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
     Vector2f translationOnPath = thePath.wayPoints[1].translation - thePath.wayPoints[0].translation;
     translationOnPath.rotate(-theRobotPoseAfterPreview.rotation);
 
-    float maxSpeedX = theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedLimits.speedFactor;
+    float maxSpeedX = theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedFactor;
     if (state != far)
     {
-      maxSpeedX = theWalkingEngineParams.speedLimits.xForwardOmni * theWalkingEngineParams.speedLimits.speedFactor;
+      maxSpeedX = theWalkingEngineParams.speedLimits.xForwardOmni * theWalkingEngineParams.speedFactor;
     }
 
     // if distance exceeds maxSpeeds, clip
-    if (translationOnPath.x() > maxSpeedX || std::abs(translationOnPath.y()) > (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor))
+    if (translationOnPath.x() > maxSpeedX || std::abs(translationOnPath.y()) > (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor))
     {
       float xFactor = std::abs(translationOnPath.x()) / maxSpeedX;
-      float yFactor = std::abs(translationOnPath.y()) / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor);
+      float yFactor = std::abs(translationOnPath.y()) / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor);
       translationOnPath /= std::max(0.001f, std::max(xFactor, yFactor));
     }
 
     inDribbling = false;
-    float maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor;
+    float maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedFactor;
     if (state != far)
     {
-      maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor * 0.8f;
+      maxSpeedR = theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedFactor * 0.8f;
     }
 
     switch (state)
@@ -155,7 +157,7 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
         rotDiff = theBallSymbols.ballPositionRelative.angle();
       /*float angleToTargetRel =
         Angle::normalize((thePath.wayPoints.back().translation - theRobotPoseAfterPreview.translation).angle() - theRobotPoseAfterPreview.rotation);*/
-      speedRequest.rotation = (float)(sgn(rotDiff) * std::min<float>(std::abs(rotDiff), theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedLimits.speedFactor));
+      speedRequest.rotation = (float)(sgn(rotDiff) * std::min<float>(std::abs(rotDiff), theWalkingEngineParams.speedLimits.r * theWalkingEngineParams.speedFactor));
       /*if (atBall && std::abs(theBallSymbols.ballPositionRelative.angle()) > pi3_4)
         speedRequest.translation = Vector2f::Zero();
       else*/
@@ -192,7 +194,7 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
       }
       else if (thePath.nearestObstacle < 750 && std::abs(angleNextWayPointRelative) > Angle::fromDegrees(30))
         alpha = std::min<float>(alpha, 0.5f);
-      speedRequest.translation.x() = theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedLimits.speedFactor * (float)alpha;
+      speedRequest.translation.x() = theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedFactor * (float)alpha;
       speedRequest.translation.y() = 0;
       alpha = std::min<float>(nextWPDistance / 500, 1);
       speedRequest.rotation = (float)(angleNextWayPointRelative * alpha + Angle::normalize(thePath.wayPoints[1].rotation - theRobotPoseAfterPreview.rotation) * (1 - alpha));
@@ -256,7 +258,7 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
     }
 
     float rotationLimit = (speedRequest.translation.x() == 0.f && speedRequest.translation.y() == 0.f)
-        ? static_cast<float>(theWalkingEngineParams.speedLimits.rOnly * theWalkingEngineParams.speedLimits.speedFactor)
+        ? static_cast<float>(theWalkingEngineParams.speedLimits.rOnly * theWalkingEngineParams.speedFactor)
         : maxSpeedR;
 
     // factors 4,2,2 are the speeds we typically do in one step for x/y/r
@@ -267,9 +269,9 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
     float stepSpeedX = speedRequest.translation.x() * 4;
     float stepSpeedY = speedRequest.translation.y() * 2;
     float stepSpeedR = speedRequest.rotation * 2;
-    if (stepSpeedX < maxSpeedX && stepSpeedX > (-theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedLimits.speedFactor)
-        && stepSpeedY < (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor)
-        && stepSpeedY > (-theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor) && std::abs(stepSpeedR) < rotationLimit)
+    if (stepSpeedX < maxSpeedX && stepSpeedX > (-theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedFactor)
+        && stepSpeedY < (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor)
+        && stepSpeedY > (-theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor) && std::abs(stepSpeedR) < rotationLimit)
     {
       speedRequest.translation.x() *= 4;
 
@@ -279,8 +281,8 @@ void PathToSpeedPressToStop::update(SpeedRequest& speedRequest)
     }
     float factorX = (speedRequest.translation.x() > 0)
         ? speedRequest.translation.x() / maxSpeedX
-        : speedRequest.translation.x() / (-theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedLimits.speedFactor);
-    float factorY = std::abs(speedRequest.translation.y()) / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor);
+        : speedRequest.translation.x() / (-theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedFactor);
+    float factorY = std::abs(speedRequest.translation.y()) / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor);
     float factorR = std::abs(speedRequest.rotation / rotationLimit);
     float maxFactor = std::max(factorX, std::max(factorY, factorR));
     if (maxFactor > 1.f)

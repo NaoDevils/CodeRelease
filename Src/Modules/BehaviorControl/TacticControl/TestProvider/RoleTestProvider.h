@@ -11,7 +11,6 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 
 

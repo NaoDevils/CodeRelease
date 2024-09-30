@@ -16,8 +16,6 @@ class ConsoleRoboCupCtrl;
 class RobotConsole;
 class DebugDataStreamer;
 class Framework;
-struct Settings;
-
 /**
  * singleton stream handler class
  */
@@ -105,8 +103,8 @@ private:
   friend class ConsoleRoboCupCtrl; // constructs a StreamHandler used when outside process contexts.
   friend class RobotConsole; // constructs a StreamHandler storing the information received.
   friend class Framework;
-  friend struct Settings; // construct a default StreamHandler when they are first loaded.
   friend class DebugDataStreamer; // needs access to internal data types.
   friend class LogPlayer; // constructs a StreamHandler to represent specification of logged data.
   friend class LogDataProvider; // constructs a StreamHandler to represent specification of logged data.
+  friend int main(int, char*[]); // construct a default StreamHandler in main function
 };

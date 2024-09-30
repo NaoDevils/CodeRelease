@@ -12,15 +12,21 @@
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/LowFrameRateImage.h"
 #include "Representations/Infrastructure/SequenceImage.h"
-#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
-#include "Representations/Sensing/JoinedIMUData.h"
+#include "Representations/Infrastructure/GameInfo.h"
+#include "Representations/Infrastructure/TeamInfo.h"
+#include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/Image.h"
+#include "Representations/Infrastructure/JPEGImage.h"
 #include "Platform/SystemCall.h"
 #include "Platform/BHAssert.h"
 #include "Platform/File.h"
+#include "Tools/RingBuffer.h"
 #include "Tools/MessageQueue/LogFileFormat.h"
-#include "Tools/Module/Blackboard.h"
 #include "Tools/Streams/Streamable.h"
 #include "Tools/Debugging/DebugDataStreamer.h"
+#include "Tools/Settings.h"
+#include "Tools/Streams/StreamHandler.h"
+#include "Tools/Global.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <snappy-c.h>
@@ -45,11 +51,7 @@ void LogPlayer::init()
   replayOffset = 0;
   state = initial;
   loop = true; //default: loop enabled
-  if (streamHandler)
-  {
-    delete streamHandler;
-    streamHandler = nullptr;
-  }
+  streamHandler.reset();
   streamSpecificationReplayed = false;
 }
 
@@ -63,6 +65,13 @@ bool LogPlayer::open(const char* fileName)
     char magicByte;
     file >> magicByte;
 
+    if (magicByte == logFileSettings)
+    {
+      Settings settings;
+      settings.read(file);
+      file >> magicByte;
+    }
+
     if (magicByte == logFileMessageIDs)
     {
       readMessageIDMapping(file);
@@ -72,7 +81,7 @@ bool LogPlayer::open(const char* fileName)
     while (magicByte == logFileStreamSpecification)
     {
       if (!streamHandler)
-        streamHandler = new StreamHandler;
+        streamHandler = std::unique_ptr<StreamHandler>(new StreamHandler());
 
       file >> *streamHandler;
       file >> magicByte;
@@ -730,18 +739,27 @@ bool LogPlayer::writeAudioFile(const char* fileName, std::vector<int> audioCandi
   if (!stream.exists())
     return false;
 
-  int frames = 0;
-  AudioData audioData;
-  for (size_t i = 0; i < audioCandidates.size(); i++)
+  const bool compatible = [&]()
   {
-    queue.setSelectedMessageForReading(audioCandidates[i]);
-    if (queue.getMessageID() == idAudioData)
-    {
-      in.bin >> audioData;
-      if (audioData.channels > 0)
-        frames += unsigned(audioData.samples.size()) / audioData.channels;
-    }
-  }
+    // Stream representation to acquire the current specification
+    OutBinarySize dummy;
+    dummy << AudioData();
+
+    // Make a copy of current specifications through streaming.
+    // As a result, all type names in currentStreamHandler are demangled.
+    OutBinarySize size;
+    size << Global::getStreamHandler();
+
+    std::vector<char> buffer(size.getSize());
+    OutBinaryMemory out(buffer.data());
+    out << Global::getStreamHandler();
+
+    StreamHandler currentStreamHandler;
+    InBinaryMemory in(buffer.data());
+    in >> currentStreamHandler;
+
+    return currentStreamHandler.areSpecificationsForTypesCompatible(*streamHandler, "AudioData", "AudioData");
+  }();
 
   struct WAVHeader
   {
@@ -760,38 +778,77 @@ bool LogPlayer::writeAudioFile(const char* fileName, std::vector<int> audioCandi
     int subchunk2Size;
   };
 
-  int length = sizeof(WAVHeader) + sizeof(float) * frames * audioData.channels;
-  WAVHeader* header = (WAVHeader*)new char[length];
-  *(unsigned*)header->chunkId = *(const unsigned*)"RIFF";
-  header->chunkSize = length - 8;
-  *(unsigned*)header->format = *(const unsigned*)"WAVE";
+  std::vector<char> buffer(sizeof(WAVHeader), 0);
+  buffer.reserve(100000);
 
-  *(unsigned*)header->subchunk1Id = *(const unsigned*)"fmt ";
-  header->subchunk1Size = 16;
-  header->audioFormat = 3;
-  header->numChannels = (short)audioData.channels;
-  header->sampleRate = audioData.sampleRate;
-  header->byteRate = audioData.sampleRate * audioData.channels * sizeof(float);
-  header->blockAlign = short(audioData.channels * sizeof(float));
-  header->bitsPerSample = 32;
+  {
+    WAVHeader* header = reinterpret_cast<WAVHeader*>(buffer.data());
+    *(unsigned*)header->chunkId = *(const unsigned*)"RIFF";
+    *(unsigned*)header->format = *(const unsigned*)"WAVE";
+    *(unsigned*)header->subchunk1Id = *(const unsigned*)"fmt ";
+    header->subchunk1Size = 16;
+    header->audioFormat = 3; // IEEE FLOAT
+    header->bitsPerSample = 32;
+    *(unsigned*)header->subchunk2Id = *(const unsigned*)"data";
+  }
 
-  *(unsigned*)header->subchunk2Id = *(const unsigned*)"data";
-  header->subchunk2Size = frames * audioData.channels * sizeof(float);
+  AudioData audioData;
+  static constexpr size_t typeSize = sizeof(decltype(audioData.samples)::value_type);
+  static_assert(std::is_same_v<decltype(audioData.samples)::value_type, float>, "header->audioFormat != IEEE FLOAT");
 
-  char* p = (char*)(header + 1);
+  size_t frames = 0;
   for (size_t i = 0; i < audioCandidates.size(); i++)
   {
     queue.setSelectedMessageForReading(audioCandidates[i]);
     if (queue.getMessageID() == idAudioData)
     {
-      in.bin >> audioData;
-      memcpy(p, audioData.samples.data(), audioData.samples.size() * sizeof(float));
-      p += audioData.samples.size() * sizeof(float);
+      if (compatible)
+      {
+        in.bin >> audioData;
+      }
+      else
+      {
+        // Stream into textual representation in memory using type specification of log file.
+        // Determine required buffer size first.
+        OutMapSize outMapSize(true);
+        {
+          DebugDataStreamer streamer(*streamHandler, in.bin, "AudioData");
+          outMapSize << streamer;
+          in.resetReadPosition();
+        }
+        std::vector<char> mapBuffer(outMapSize.getSize());
+        {
+          OutMapMemory outMap(mapBuffer.data(), true);
+          DebugDataStreamer streamer(*streamHandler, in.bin, "AudioData");
+          outMap << streamer;
+        }
+
+        // Read from textual representation. Errors are suppressed.
+        InMapMemory inMap(mapBuffer.data(), mapBuffer.size(), false);
+        inMap >> audioData;
+      }
+
+      const size_t size = audioData.samples.size() * typeSize;
+      buffer.resize(buffer.size() + size);
+      char* p = buffer.data() + buffer.size() - size;
+
+      memcpy(p, audioData.samples.data(), size);
+      frames += audioData.samples.size() / audioData.channels;
     }
   }
 
-  stream.write(header, length);
-  delete[] header;
+  const size_t frameSize = typeSize * audioData.channels;
+  {
+    WAVHeader* header = reinterpret_cast<WAVHeader*>(buffer.data());
+    header->chunkSize = static_cast<int>(sizeof(WAVHeader) - offsetof(WAVHeader, format) + frames * frameSize);
+    header->numChannels = static_cast<short>(audioData.channels);
+    header->sampleRate = audioData.sampleRate;
+    header->byteRate = static_cast<int>(audioData.sampleRate * frameSize);
+    header->blockAlign = static_cast<short>(frameSize);
+    header->subchunk2Size = static_cast<int>(frames * frameSize);
+  }
+
+  stream.write(buffer.data(), buffer.size());
 
   stop();
 

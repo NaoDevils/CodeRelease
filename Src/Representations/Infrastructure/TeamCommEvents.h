@@ -27,7 +27,10 @@ STREAMABLE(TeamCommEvents,
     symmetryLost,
     symmetryUpdate,
     newBallchaser,
-    timeResponse
+    whistleDetected,
+    timeResponse,
+    refereeGestureDetected,
+    uprightAgain
   );
 
   using SendReasonVectorCompressed = EnumVectorCompressed<SendReason COMMA SendReason::numOfSendReasons>;
@@ -38,7 +41,7 @@ STREAMABLE(TeamCommEvents,
 
 STREAMABLE(TeamCommEventsCompressed,
   // Increase version number whenever something changes!
-  static constexpr unsigned char version = 2;
+  static constexpr unsigned char version = 3;
 
   TeamCommEventsCompressed() = default;
   explicit TeamCommEventsCompressed(const TeamCommEvents& teamCommEvents) : sendReasons(teamCommEvents.sendReasons) {};

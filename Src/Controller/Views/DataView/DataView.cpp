@@ -8,6 +8,7 @@
 #include "DataWidget.h"
 #include "PropertyTreeCreator.h"
 #include "PropertyTreeWriter.h"
+#include "Controller/RobotConsole.h"
 #include "Tools/Debugging/DebugDataStreamer.h"
 #include "Tools/MessageQueue/InMessage.h"
 

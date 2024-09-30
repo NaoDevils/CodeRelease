@@ -61,7 +61,7 @@ void KickEngine::update(KickEngineOutput& kickEngineOutput)
         kickEngineOutput.isStable = true;
       } //this gotta go to config file and be more common
 
-      if (data.checkPhaseTime(theFrameInfo, theJointSensorData, theTorsoMatrix))
+      if (data.checkPhaseTime(theFrameInfo, theJointSensorData, theTorsoMatrix, theBallModel.estimate.position, adjustLegPosition, kickMinOffsetX, kickMaxOffsetX, kickMinOffsetY, kickMaxOffsetY, counterMomentumFactor))
       {
         data.calcPhaseState();
         data.calcPositions();

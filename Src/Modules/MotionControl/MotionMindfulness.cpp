@@ -72,7 +72,7 @@ MotionMindfulness::MotionMindfulness()
 
   if constexpr (Build::targetRobot())
   {
-    InTextFile motionMindfulnessDecreaseIncreaseFactorsFile(File::getPersistentDir() + "decreaseIncreaseFactors.value");
+    InMapFile motionMindfulnessDecreaseIncreaseFactorsFile(File::getPersistentDir() + "decreaseIncreaseFactors.cfg");
     WalkingStatus walkingStatus;
     if (motionMindfulnessDecreaseIncreaseFactorsFile.exists())
     {
@@ -81,16 +81,7 @@ MotionMindfulness::MotionMindfulness()
       decraseIncreaseFactorBackward = walkingStatus.decreaseIncreaseFactors[1];
       decraseIncreaseFactorLeft = walkingStatus.decreaseIncreaseFactors[2];
       decraseIncreaseFactorRight = walkingStatus.decreaseIncreaseFactors[3];
-      ANNOTATION("MotionState", "Loaded " << File::getPersistentDir() << "decreaseIncreaseFactors.value");
-    }
-
-    InTextFile motionMindfulnessStandUpPriorityFile(File::getPersistentDir() + "standUpPriority.value");
-    StandUpStatus standUpStatus;
-    if (motionMindfulnessStandUpPriorityFile.exists())
-    {
-      motionMindfulnessStandUpPriorityFile >> standUpStatus;
-      standUpPriorityList = standUpStatus.standUpPriority;
-      ANNOTATION("MotionState", "Loaded stand-up priority" << File::getPersistentDir() << "standUpPriority.value");
+      ANNOTATION("MotionState", "Loaded " << File::getPersistentDir() << "decreaseIncreaseFactors.cfg");
     }
   }
 
@@ -107,51 +98,48 @@ MotionMindfulness::~MotionMindfulness()
   {
     float minFactor = 0.75;
     SpeedLimits limits = theWalkingEngineParams.speedLimits;
-    if (backwardUpdated || maxSpeedRequestBackward > minFactor * limits.xBackward * limits.speedFactor)
+    if (backwardUpdated || maxSpeedRequestBackward > minFactor * limits.xBackward * theWalkingEngineParams.speedFactor)
     {
-      limits.xBackward *= localMotionState.walkingStatus.speedFactorBackward * limits.speedFactor;
+      limits.xBackward *= localMotionState.walkingStatus.speedFactorBackward * theWalkingEngineParams.speedFactor;
     }
     else
     {
-      limits.xBackward *= limits.speedFactor;
+      limits.xBackward *= theWalkingEngineParams.speedFactor;
     }
 
-    if (forwardUpdated || maxSpeedRequestForward > minFactor * limits.xForward * limits.speedFactor)
+    if (forwardUpdated || maxSpeedRequestForward > minFactor * limits.xForward * theWalkingEngineParams.speedFactor)
     {
-      limits.xForward *= localMotionState.walkingStatus.speedFactorForward * limits.speedFactor;
-      limits.xForwardArmContact *= localMotionState.walkingStatus.speedFactorForward * limits.speedFactor;
-      limits.xForwardOmni *= localMotionState.walkingStatus.speedFactorForward * limits.speedFactor;
+      limits.xForward *= localMotionState.walkingStatus.speedFactorForward * theWalkingEngineParams.speedFactor;
+      limits.xForwardArmContact *= localMotionState.walkingStatus.speedFactorForward * theWalkingEngineParams.speedFactor;
+      limits.xForwardOmni *= localMotionState.walkingStatus.speedFactorForward * theWalkingEngineParams.speedFactor;
     }
     else
     {
-      limits.xBackward *= limits.speedFactor;
+      limits.xForward *= theWalkingEngineParams.speedFactor;
+      limits.xForwardArmContact *= theWalkingEngineParams.speedFactor;
+      limits.xForwardOmni *= theWalkingEngineParams.speedFactor;
     }
 
-    if ((leftUpdated || lastMaxRequestLeft > minFactor * limits.y * limits.speedFactor) || (rightUpdated || lastMaxRequestRight > minFactor * limits.y * limits.speedFactor))
+    if ((leftUpdated || lastMaxRequestLeft > minFactor * limits.y * theWalkingEngineParams.speedFactor)
+        || (rightUpdated || lastMaxRequestRight > minFactor * limits.y * theWalkingEngineParams.speedFactor))
     {
-      limits.y *= std::max<float>(localMotionState.walkingStatus.speedFactorLeft, localMotionState.walkingStatus.speedFactorRight) * limits.speedFactor;
-      limits.yArmContact *= std::max<float>(localMotionState.walkingStatus.speedFactorLeft, localMotionState.walkingStatus.speedFactorRight) * limits.speedFactor;
+      limits.y *= std::max<float>(localMotionState.walkingStatus.speedFactorLeft, localMotionState.walkingStatus.speedFactorRight) * theWalkingEngineParams.speedFactor;
+      limits.yArmContact *= std::max<float>(localMotionState.walkingStatus.speedFactorLeft, localMotionState.walkingStatus.speedFactorRight) * theWalkingEngineParams.speedFactor;
     }
     else
     {
-      limits.xBackward *= limits.speedFactor;
+      limits.y *= theWalkingEngineParams.speedFactor;
+      limits.yArmContact *= theWalkingEngineParams.speedFactor;
     }
 
-    limits.speedFactor = 1.f;
-
-    OutTextFile motionMindfulnessSpeedLimitsFile(File::getPersistentDir() + "speedLimits.value");
+    OutMapFile motionMindfulnessSpeedLimitsFile(File::getPersistentDir() + "speedLimits.cfg");
     if (motionMindfulnessSpeedLimitsFile.exists())
       motionMindfulnessSpeedLimitsFile << limits;
 
     const WalkingStatus& walkingStatus = localMotionState.walkingStatus;
-    OutTextFile motionMindfulnessDecreaseIncreaseFactorsFile(File::getPersistentDir() + "decreaseIncreaseFactors.value");
+    OutMapFile motionMindfulnessDecreaseIncreaseFactorsFile(File::getPersistentDir() + "decreaseIncreaseFactors.cfg");
     if (motionMindfulnessDecreaseIncreaseFactorsFile.exists())
       motionMindfulnessDecreaseIncreaseFactorsFile << walkingStatus;
-
-    const StandUpStatus& standUpStatus = localMotionState.standUpStatus;
-    OutTextFile motionMindfulnessStandUpPriorityFile(File::getPersistentDir() + "standUpPriority.value");
-    if (motionMindfulnessStandUpPriorityFile.exists())
-      motionMindfulnessStandUpPriorityFile << standUpStatus;
   }
 }
 
@@ -174,7 +162,6 @@ void MotionMindfulness::update(MotionState& theMotionState)
     robotName = enableName ? Global::getSettings().robotName + "! " : "";
     // Check for problems and sanity
     checkForBrokenJoints(localMotionState);
-    checkForStandUpProblems(localMotionState);
     checkForFsrSanity(localMotionState);
     // Set the usability of the fsr sensors to false if one of the sensors is not working correctly
     localMotionState.fsrStatus.usableLeft = !std::any_of(localMotionState.fsrStatus.sensorStatusLeft.cbegin(),
@@ -325,10 +312,12 @@ void MotionMindfulness::checkForWalkProblems(MotionState& motionState)
   /***********************************/
   /* walking left check              */
   /***********************************/
-  if (angleX > (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1] + csConverterParams.legJointBalanceParams.targetAngleX))
+  if (theSensorControlParams.sensorControlActivation.activateSpeedReduction
+      && angleX > (theSensorControlParams.speedReduction.angleX.max + theSensorControlParams.ankleHipPID.targetAngle.x()))
   {
-    motionState.walkingStatus.fallDownSpeedReductionFactor.y() = fallDownFactor
-        * std::pow(fallDownExponentialBasis, std::abs((angleX - theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1]) / theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[1]));
+    motionState.walkingStatus.fallDownSpeedReductionFactor.y() = theSensorControlParams.speedReduction.speedReductionFactor
+        * std::pow(theSensorControlParams.speedReduction.speedReductionExponentialBasis,
+            std::abs((angleX - theSensorControlParams.speedReduction.angleX.max) / theSensorControlParams.speedReduction.angleX.max));
     updateWalkErrors(motionState, true);
   }
   else
@@ -339,10 +328,12 @@ void MotionMindfulness::checkForWalkProblems(MotionState& motionState)
   /***********************************/
   /* walking right check             */
   /***********************************/
-  if (angleX < (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0] + csConverterParams.legJointBalanceParams.targetAngleX))
+  if (theSensorControlParams.sensorControlActivation.activateSpeedReduction
+      && angleX < (theSensorControlParams.speedReduction.angleX.min + theSensorControlParams.ankleHipPID.targetAngle.x()))
   {
-    motionState.walkingStatus.fallDownSpeedReductionFactor.y() = fallDownFactor
-        * std::pow(fallDownExponentialBasis, std::abs((angleX - theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0]) / theWalkingEngineParams.walkTransition.fallDownAngleMinMaxX[0]));
+    motionState.walkingStatus.fallDownSpeedReductionFactor.y() = theSensorControlParams.speedReduction.speedReductionFactor
+        * std::pow(theSensorControlParams.speedReduction.speedReductionExponentialBasis,
+            std::abs((angleX - theSensorControlParams.speedReduction.angleX.min) / theSensorControlParams.speedReduction.angleX.min));
 
     updateWalkErrors(motionState, true);
   }
@@ -354,10 +345,12 @@ void MotionMindfulness::checkForWalkProblems(MotionState& motionState)
   /***********************************/
   /* walking forward check           */
   /***********************************/
-  if (angleY < (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0] + csConverterParams.legJointBalanceParams.targetAngleY))
+  if (theSensorControlParams.sensorControlActivation.activateSpeedReduction
+      && angleY < (theSensorControlParams.speedReduction.angleY.min + theSensorControlParams.ankleHipPID.targetAngle.y()))
   {
-    motionState.walkingStatus.fallDownSpeedReductionFactor.x() = fallDownFactor
-        * std::pow(fallDownExponentialBasis, std::abs((angleY - theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0]) / theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[0]));
+    motionState.walkingStatus.fallDownSpeedReductionFactor.x() = theSensorControlParams.speedReduction.speedReductionFactor
+        * std::pow(theSensorControlParams.speedReduction.speedReductionExponentialBasis,
+            std::abs((angleY - theSensorControlParams.speedReduction.angleY.min) / theSensorControlParams.speedReduction.angleY.min));
 
     updateWalkErrors(motionState, true);
   }
@@ -369,10 +362,12 @@ void MotionMindfulness::checkForWalkProblems(MotionState& motionState)
   /***********************************/
   /* walking backward check          */
   /***********************************/
-  if (angleY > (theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1] + csConverterParams.legJointBalanceParams.targetAngleY))
+  if (theSensorControlParams.sensorControlActivation.activateSpeedReduction
+      && angleY > (theSensorControlParams.speedReduction.angleY.max + theSensorControlParams.ankleHipPID.targetAngle.y()))
   {
-    motionState.walkingStatus.fallDownSpeedReductionFactor.x() = fallDownFactor
-        * std::pow(fallDownExponentialBasis, std::abs((angleY - theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1]) / theWalkingEngineParams.walkTransition.fallDownAngleMinMaxY[1]));
+    motionState.walkingStatus.fallDownSpeedReductionFactor.x() = theSensorControlParams.speedReduction.speedReductionFactor
+        * std::pow(theSensorControlParams.speedReduction.speedReductionExponentialBasis,
+            std::abs((angleY - theSensorControlParams.speedReduction.angleY.max) / theSensorControlParams.speedReduction.angleY.max));
 
     updateWalkErrors(motionState, true);
   }
@@ -634,233 +629,12 @@ void MotionMindfulness::checkForFsrSanity(MotionState& motionState)
   }
 }
 
-void MotionMindfulness::checkForStandUpProblems(MotionState& motionState)
-{
-  /***********************************/
-  /* Initialize values               */
-  /***********************************/
-
-  // Initialize successful attempts and on ground counter
-  if (initStandUpChances)
-  {
-    for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
-    {
-      motionState.standUpStatus.standUpChance[i] = 1.f;
-      successfulAttempts[i] = 1;
-      onGroundCount[i] = 1;
-    }
-
-    initStandUpChances = false;
-  }
-
-  if (backA != theMotionSettings.standUpMotionBackA || backB != theMotionSettings.standUpMotionBackB || backC != theMotionSettings.standUpMotionBackC
-      || frontA != theMotionSettings.standUpMotionFrontA || frontB != theMotionSettings.standUpMotionFrontB || frontC != theMotionSettings.standUpMotionFrontC)
-  {
-    localMotionSettings = theMotionSettings;
-    backA = theMotionSettings.standUpMotionBackA;
-    backB = theMotionSettings.standUpMotionBackB;
-    backC = theMotionSettings.standUpMotionBackC;
-    frontA = theMotionSettings.standUpMotionFrontA;
-    frontB = theMotionSettings.standUpMotionFrontB;
-    frontC = theMotionSettings.standUpMotionFrontC;
-
-    if (backA == SpecialActionRequest::none && backB == SpecialActionRequest::none && backC == SpecialActionRequest::none)
-      OUTPUT_WARNING("At least one stand-up back motion should be not none (using backup motion now)");
-    if (frontA == SpecialActionRequest::none && frontB == SpecialActionRequest::none && frontC == SpecialActionRequest::none)
-      OUTPUT_WARNING("At least one stand-up back motion should be not none (using backup motion now)");
-
-    auto backIdxA = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), backA);
-    auto backIdxB = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), backB);
-    auto backIdxC = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), backC);
-
-    auto frontIdxA = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), frontA);
-    auto frontIdxB = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), frontB);
-    auto frontIdxC = std::find(standUpPriorityList.begin(), standUpPriorityList.end(), frontC);
-
-    std::vector<std::tuple<int, SpecialActionRequest::SpecialActionID>> priorityMap;
-    priorityMap.reserve(3);
-    priorityMap.push_back(std::make_tuple(backIdxA - standUpPriorityList.begin(), backA));
-    priorityMap.push_back(std::make_tuple(backIdxB - standUpPriorityList.begin(), backB));
-    priorityMap.push_back(std::make_tuple(backIdxC - standUpPriorityList.begin(), backC));
-
-    std::sort(priorityMap.begin(),
-        priorityMap.end(),
-        [](auto const& a, auto const& b)
-        {
-          return std::get<0>(a) < std::get<0>(b);
-        });
-
-    localMotionSettings.standUpMotionBackA = std::get<1>(priorityMap[0]);
-    localMotionSettings.standUpMotionBackB = std::get<1>(priorityMap[1]);
-    localMotionSettings.standUpMotionBackC = std::get<1>(priorityMap[2]);
-
-    priorityMap.clear();
-    priorityMap.reserve(3);
-    priorityMap.push_back(std::make_tuple(frontIdxA - standUpPriorityList.begin(), frontA));
-    priorityMap.push_back(std::make_tuple(frontIdxB - standUpPriorityList.begin(), frontB));
-    priorityMap.push_back(std::make_tuple(frontIdxC - standUpPriorityList.begin(), frontC));
-
-    std::sort(priorityMap.begin(),
-        priorityMap.end(),
-        [](auto const& a, auto const& b)
-        {
-          return std::get<0>(a) < std::get<0>(b);
-        });
-
-    localMotionSettings.standUpMotionFrontA = std::get<1>(priorityMap[0]);
-    localMotionSettings.standUpMotionFrontB = std::get<1>(priorityMap[1]);
-    localMotionSettings.standUpMotionFrontC = std::get<1>(priorityMap[2]);
-  }
-
-  /***********************************/
-  /* Detect and set states           */
-  /***********************************/
-
-  // Load current stand-up motions suggestion pool
-  SpecialActionRequest::SpecialActionID motionIDsBack[3] = {localMotionSettings.standUpMotionBackA, localMotionSettings.standUpMotionBackB, localMotionSettings.standUpMotionBackC};
-  SpecialActionRequest::SpecialActionID motionIDsFront[3] = {localMotionSettings.standUpMotionFrontA, localMotionSettings.standUpMotionFrontB, localMotionSettings.standUpMotionFrontC};
-
-  // Detect and set current stand-up motion
-  if (theMotionInfo.inStandUpMotion() && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::lying && !theMotionInfo.inFallMotion())
-  {
-    currentMotionID = theMotionInfo.specialActionRequest.specialAction;
-    if (upright)
-      lastMotionID = currentMotionID;
-    upright = false;
-  }
-
-  // Detect and set upright / successful attempts
-  if (!upright && theFallDownState.state == FallDownState::upright)
-  {
-    successfulAttempts[currentMotionID] = successfulAttempts[currentMotionID] + 1;
-    upright = true;
-    lastMotionID = currentMotionID;
-
-    for (int i = 0; i < 3; i++)
-    {
-      if (successfulAttempts[motionIDsBack[i]] > onGroundCount[motionIDsBack[i]])
-        successfulAttempts[motionIDsBack[i]] = onGroundCount[motionIDsBack[i]];
-      if (successfulAttempts[motionIDsFront[i]] > onGroundCount[motionIDsFront[i]])
-        successfulAttempts[motionIDsFront[i]] = onGroundCount[motionIDsFront[i]];
-    }
-  }
-
-  // Detect on ground state
-  if (!onGround && (theFallDownState.state == FallDownState::onGround || theFallDownState.state == FallDownState::onGroundLyingStill) && theMotionInfo.inStandUpMotion()
-      && theMotionInfo.specialActionRequest.specialAction != SpecialActionRequest::lying)
-  {
-    if (lastMotionID == currentMotionID)
-      onGroundCount[currentMotionID] = onGroundCount[currentMotionID] + 1;
-    else
-    {
-      onGroundCount[currentMotionID] = onGroundCount[currentMotionID] + 1;
-      onGroundCount[lastMotionID] = onGroundCount[lastMotionID] + 1;
-    }
-    onGround = true;
-    lastMotionID = currentMotionID;
-  }
-  else if (onGround && ((theFallDownState.state != FallDownState::onGround && theFallDownState.state != FallDownState::onGroundLyingStill) || theSpecialActionsOutput.isFallProtectionNeeded))
-    onGround = false;
-
-
-  /***********************************/
-  /* Update motion state             */
-  /***********************************/
-
-  // Update motion ids and current stand-up chance
-  motionState.standUpStatus.currentStandUpMotion = currentMotionID;
-  motionState.standUpStatus.lastStandUpMotion = lastMotionID;
-  motionState.standUpStatus.fallDownState = theFallDownState.state;
-  int currentOnGroundBackCount = 0;
-  int currentOnGroundFrontCount = 0;
-  int activeMotionsBack = 0;
-  int activeMotionsFront = 0;
-  for (int i = 0; i < 3; i++)
-  {
-    motionState.standUpStatus.standUpChance[motionIDsBack[i]] = (float)successfulAttempts[motionIDsBack[i]] / (float)onGroundCount[motionIDsBack[i]];
-    motionState.standUpStatus.standUpChance[motionIDsFront[i]] = (float)successfulAttempts[motionIDsFront[i]] / (float)onGroundCount[motionIDsFront[i]];
-
-    // Collect info for persistant motion priority
-    if (motionIDsBack[i] != SpecialActionRequest::none)
-    {
-      currentOnGroundBackCount += onGroundCount[motionIDsBack[i]] - 1;
-      activeMotionsBack++;
-    }
-    if (motionIDsFront[i] != SpecialActionRequest::none)
-    {
-      currentOnGroundFrontCount += onGroundCount[motionIDsFront[i]] - 1;
-      activeMotionsFront++;
-    }
-  }
-
-  // If all motions are none set active motions to 1 to avoid divide by zero
-  if (activeMotionsBack == 0)
-    activeMotionsBack = 1;
-  if (activeMotionsFront == 0)
-    activeMotionsFront = 1;
-
-  float onGroundBackRatio = (float)currentOnGroundBackCount / (float)activeMotionsBack;
-  float onGroundFrontRatio = (float)currentOnGroundFrontCount / (float)activeMotionsFront;
-
-  // Get best stand up motion
-  float bestMotionChanceBack = -1.f;
-  SpecialActionRequest::SpecialActionID bestMoitionIDBack = SpecialActionRequest::standUpBackNaoFast; // Backup motion back
-  float bestMotionChanceFront = -1.f;
-  SpecialActionRequest::SpecialActionID bestMoitionIDFront = SpecialActionRequest::standUpFrontNaoFast; // Backup motion front
-  for (int i = 0; i < 3; i++)
-  {
-    if (motionIDsBack[i] != SpecialActionRequest::none && motionState.standUpStatus.standUpChance[motionIDsBack[i]] > bestMotionChanceBack)
-    {
-      bestMotionChanceBack = motionState.standUpStatus.standUpChance[motionIDsBack[i]];
-      bestMoitionIDBack = motionIDsBack[i];
-    }
-    if (motionIDsFront[i] != SpecialActionRequest::none && motionState.standUpStatus.standUpChance[motionIDsFront[i]] > bestMotionChanceFront)
-    {
-      bestMotionChanceFront = motionState.standUpStatus.standUpChance[motionIDsFront[i]];
-      bestMoitionIDFront = motionIDsFront[i];
-    }
-  }
-
-  // Prepare stand-up priority list to save stand-up motion order
-  if (onGroundBackRatio > 1 && onGroundFrontRatio > 1)
-  {
-    standUpPriorityMap.clear();
-    standUpPriorityMap.reserve(SpecialActionRequest::numOfSpecialActionIDs);
-    for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
-      standUpPriorityMap.push_back(std::make_tuple(motionState.standUpStatus.standUpChance[i], i));
-    std::sort(standUpPriorityMap.begin(),
-        standUpPriorityMap.end(),
-        [](auto const& a, auto const& b)
-        {
-          return std::get<0>(a) > std::get<0>(b);
-        });
-
-    standUpPriorityList.clear();
-    standUpPriorityList.reserve(SpecialActionRequest::numOfSpecialActionIDs);
-    for (int i = 0; i < SpecialActionRequest::numOfSpecialActionIDs; i++)
-      standUpPriorityList.push_back(std::get<1>(standUpPriorityMap[i]));
-
-    motionState.standUpStatus.standUpPriority = standUpPriorityList;
-  }
-
-  // Prepare motion suggestion for the behavior
-  if (bestMotionChanceBack >= minStandUpChance || bestMotionChanceBack == -1.f)
-    motionState.standUpStatus.bestStandUpMotionBack = bestMoitionIDBack;
-  else
-    motionState.standUpStatus.bestStandUpMotionBack = SpecialActionRequest::lying;
-
-  if (bestMotionChanceFront >= minStandUpChance || bestMotionChanceBack == -1.f)
-    motionState.standUpStatus.bestStandUpMotionFront = bestMoitionIDFront;
-  else
-    motionState.standUpStatus.bestStandUpMotionFront = SpecialActionRequest::lying;
-}
-
 void MotionMindfulness::checkForBrokenJoints(MotionState& motionState)
 {
   motionState.jointStatus.usableArms = true;
   motionState.jointStatus.usableLegs = true;
 
-  if (theGameInfo.state == STATE_INITIAL || (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::sitDown))
+  if (theGameInfo.inPreGame() || (theMotionInfo.motion == MotionRequest::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::sitDown))
     return; // only check if the robot is walking or standing up
 
   if (theBrokenJointState.jointState == BrokenJointState::alright)
@@ -1199,7 +973,7 @@ void MotionMindfulness::walkSpeedFactorPrediction(MotionState& motionState)
 
   if (bufferForwardFullAndStable)
   {
-    float speedFactorForward = ((100 / (theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedLimits.speedFactor)) * (maxSpeedForward * 1000.0f)) / 100.0f;
+    float speedFactorForward = ((100 / (theWalkingEngineParams.speedLimits.xForward * theWalkingEngineParams.speedFactor)) * (maxSpeedForward * 1000.0f)) / 100.0f;
     float speedFactorParam = decraseIncreaseFactorForward / 100;
     if (!hasProblem(motionState, MotionState::walkingForwardFailure) && speedFactorForward > upscaleThreshold)
     {
@@ -1236,7 +1010,7 @@ void MotionMindfulness::walkSpeedFactorPrediction(MotionState& motionState)
 
   if (bufferBackwardFullAndStable)
   {
-    float speedFactorBackward = ((100 / (theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedLimits.speedFactor)) * (maxSpeedBackward * 1000.0f)) / 100.0f;
+    float speedFactorBackward = ((100 / (theWalkingEngineParams.speedLimits.xBackward * theWalkingEngineParams.speedFactor)) * (maxSpeedBackward * 1000.0f)) / 100.0f;
     float speedFactorParam = decraseIncreaseFactorBackward / 100;
     if (!hasProblem(motionState, MotionState::walkingBackwardFailure) && speedFactorBackward > upscaleThreshold)
     {
@@ -1273,7 +1047,7 @@ void MotionMindfulness::walkSpeedFactorPrediction(MotionState& motionState)
 
   if (bufferLeftFullAndStable)
   {
-    float speedFactorLeft = ((100 / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor)) * (maxSpeedLeft * 1000.0f)) / 100.0f;
+    float speedFactorLeft = ((100 / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor)) * (maxSpeedLeft * 1000.0f)) / 100.0f;
     float speedFactorParam = decraseIncreaseFactorLeft / 100;
     if (!hasProblem(motionState, MotionState::walkingLeftFailure) && speedFactorLeft > upscaleThreshold)
     {
@@ -1310,7 +1084,7 @@ void MotionMindfulness::walkSpeedFactorPrediction(MotionState& motionState)
 
   if (bufferRightFullAndStable)
   {
-    float speedFactorRight = ((100 / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor)) * (maxSpeedRight * 1000.0f)) / 100.0f;
+    float speedFactorRight = ((100 / (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor)) * (maxSpeedRight * 1000.0f)) / 100.0f;
     float speedFactorParam = decraseIncreaseFactorRight / 100;
     if (!hasProblem(motionState, MotionState::walkingRightFailure) && speedFactorRight > upscaleThreshold)
     {

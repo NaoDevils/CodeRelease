@@ -8,12 +8,8 @@
 
 #include "Tools/Module/Module.h"
 #include "Tools/Math/Eigen.h"
-#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
-#include "Representations/Infrastructure/TeamInfo.h"
-
 MODULE(BehaviorConfigurationProvider,
-  REQUIRES(FieldDimensions),
   PROVIDES(BehaviorConfiguration)
   //PROVIDES(BehaviorConfiguration2015)
 );

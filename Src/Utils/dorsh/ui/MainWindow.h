@@ -4,7 +4,7 @@
 #include <map>
 #include <QCheckBox>
 #include <string>
-#include "Utils/dorsh/ui/TeamSelector.h"
+#include "ui/TeamSelector.h"
 
 class MainWindow : public QMainWindow
 {

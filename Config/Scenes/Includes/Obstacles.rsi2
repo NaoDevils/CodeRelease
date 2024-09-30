@@ -1,0 +1,60 @@
+<Simulation>
+  <Surface name="red" diffuseColor="rgb(70%, 0%, 0%)" ambientColor="rgb(70%, 20%, 20%)" specularColor="rgb(40%, 20%, 20%)" shininess="30"/>
+  <Surface name="green" diffuseColor="rgb(0%, 70%, 0%)" ambientColor="rgb(20%, 70%, 20%)" specularColor="rgb(20%, 40%, 20%)" shininess="30"/>
+  <Surface name="blue" diffuseColor="rgb(0%, 0%, 70%)" ambientColor="rgb(20%, 20%, 70%)" specularColor="rgb(20%, 20%, 40%)" shininess="30"/>
+  <Surface name="cyan" diffuseColor="rgb(0%, 70%, 70%)" ambientColor="rgb(20%, 70%, 70%)" specularColor="rgb(20%, 40%, 40%)" shininess="30"/>
+  <Surface name="magenta" diffuseColor="rgb(70%, 0%, 70%)" ambientColor="rgb(70%, 20%, 70%)" specularColor="rgb(40%, 20%, 40%)" shininess="30"/>
+  <Surface name="yellow" diffuseColor="rgb(70%, 70%, 0%)" ambientColor="rgb(70%, 70%, 20%)" specularColor="rgb(40%, 40%, 20%)" shininess="30"/>
+  <Surface name="white" diffuseColor="rgb(70%, 70%, 70%)" ambientColor="rgb(70%, 70%, 70%)" specularColor="rgb(40%, 40%, 40%)" shininess="30"/>
+
+  <Compound name="obstacle2mm">
+    <CylinderGeometry height="2mm" radius="100mm" name="obstacle1">
+      <Translation y="0mm" z="1mm"/>
+      <Material name="fieldCarpet"/>
+    </CylinderGeometry>
+    <CylinderAppearance height="2mm" radius="100mm" name="obstacle2">
+      <Translation y="0mm" z="1mm"/>
+      <Surface ref="$color"/>
+    </CylinderAppearance>
+  </Compound>
+  <Compound name="obstacle4mm">
+    <CylinderGeometry height="4mm" radius="100mm" name="obstacle1">
+      <Translation y="0mm" z="2mm"/>
+      <Material name="fieldCarpet"/>
+    </CylinderGeometry>
+    <CylinderAppearance height="4mm" radius="100mm" name="obstacle2">
+      <Translation y="0mm" z="2mm"/>
+      <Surface ref="$color"/>
+    </CylinderAppearance>
+  </Compound>
+  <Compound name="obstacle6mm">
+    <CylinderGeometry height="6mm" radius="100mm" name="obstacle1">
+      <Translation y="0mm" z="3mm"/>
+      <Material name="fieldCarpet"/>
+    </CylinderGeometry>
+    <CylinderAppearance height="6mm" radius="100mm" name="obstacle2">
+      <Translation y="0mm" z="3mm"/>
+      <Surface ref="$color"/>
+    </CylinderAppearance>
+  </Compound>
+  <Compound name="obstacle10mm">
+    <CylinderGeometry height="10mm" radius="100mm" name="obstacle1">
+      <Translation y="0mm" z="5mm"/>
+      <Material name="fieldCarpet"/>
+    </CylinderGeometry>
+    <CylinderAppearance height="10mm" radius="100mm" name="obstacle2">
+      <Translation y="0mm" z="5mm"/>
+      <Surface ref="$color"/>
+    </CylinderAppearance>
+  </Compound>
+  <Compound name="obstacle20mm">
+    <CylinderGeometry height="20mm" radius="100mm" name="obstacle1">
+      <Translation y="0mm" z="10mm"/>
+      <Material name="fieldCarpet"/>
+    </CylinderGeometry>
+    <CylinderAppearance height="20mm" radius="100mm" name="obstacle2">
+      <Translation y="0mm" z="10mm"/>
+      <Surface ref="$color"/>
+    </CylinderAppearance>
+  </Compound>
+</Simulation>

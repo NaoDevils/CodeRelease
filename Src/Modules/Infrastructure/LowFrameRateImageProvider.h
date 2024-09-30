@@ -13,13 +13,9 @@
 #include "Representations/Infrastructure/LowFrameRateImage.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/CameraInfo.h"
-
 MODULE(LowFrameRateImageProvider,
   REQUIRES(Image),
   REQUIRES(ImageUpper),
-  REQUIRES(CameraInfo),
-  REQUIRES(CameraInfoUpper),
   REQUIRES(FrameInfo),
   PROVIDES_WITHOUT_MODIFY(LowFrameRateImage),
   PROVIDES_WITHOUT_MODIFY(LowFrameRateImageUpper),

@@ -9,14 +9,11 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Perception/CameraMatrix.h"
 
 MODULE(RobotCameraMatrixProvider,
   REQUIRES(CameraCalibration),
-  REQUIRES(CameraInfo),
-  REQUIRES(CameraInfoUpper),
   REQUIRES(JointSensorData),
   REQUIRES(RobotDimensions),
   PROVIDES(RobotCameraMatrix),

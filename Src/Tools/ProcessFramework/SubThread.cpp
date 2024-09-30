@@ -11,8 +11,9 @@
 #include <taskflow/algorithm/for_each.hpp>
 #include <mutex>
 #include <condition_variable>
+#include "ExecutorObserver.h"
 
-SubThread::SubThread(SuperThread& superThread) : timingManager(&superThread.timingManager), superThread(&superThread)
+SubThread::SubThread(SuperThread& superThread) : superThread(&superThread), timingManager(&superThread.timingManager)
 {
   sender.setSize(5200000, 100000);
   threadName = superThread.getThreadName() + "Worker";
@@ -25,14 +26,6 @@ SubThread::SubThread(SuperThread& superThread) : timingManager(&superThread.timi
 
   Thread<ProcessBase>::setName(threadName);
   BH_TRACE_INIT(threadName.c_str());
-
-  this->superThread->setGlobals();
-
-  // overwrite own instances
-  Global::theDebugOut = &sender.out;
-  Global::theTimingManager = &timingManager;
-  Global::theDebugRequestTable = &debugRequestTable;
-  Global::theStreamHandler = &streamHandler;
 }
 
 SubThread::~SubThread()
@@ -40,6 +33,15 @@ SubThread::~SubThread()
   BH_TRACE_TERM;
 }
 
+Global SubThread::getGlobals()
+{
+  Global global = superThread->getGlobals();
+  global.debugOut = &sender.out;
+  global.timingManager = &timingManager;
+  global.debugRequestTable = &debugRequestTable;
+  global.streamHandler = &streamHandler;
+  return global;
+}
 
 bool SubThread::handleMessage(InMessage& message)
 {
@@ -86,12 +88,15 @@ void SubThread::afterRun()
   debugRequestTable.propagateDisabledRequests(this->superThread->debugRequestTable);
 }
 
-SuperThread::SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, std::string configFile) : Process(debugIn, debugOut), configFile(std::move(configFile))
+SuperThread::SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, Settings& settings, std::string configFile)
+    : Process(debugIn, debugOut, settings), configFile(std::move(configFile))
 {
   InMapFile stream(this->configFile);
   ASSERT(stream.exists());
   stream >> config;
 }
+
+SuperThread::~SuperThread() = default;
 
 void SuperThread::setNumOfSubthreads(unsigned n)
 {
@@ -235,6 +240,14 @@ bool SuperThread::handleMessage(InMessage& message)
     message.resetReadPosition();
   }
   return Process::handleMessage(message);
+}
+
+void SuperThread::observeFunction(std::string name, std::function<void()> f)
+{
+  if (observer)
+    return observer->observeFunction(std::move(name), f);
+  else
+    return f();
 }
 
 void SuperThread::moveMessages(MessageQueue& processSender)

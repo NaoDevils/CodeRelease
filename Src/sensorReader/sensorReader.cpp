@@ -60,14 +60,39 @@ int SensorReader::main()
   gcSocket.bind("0.0.0.0", 3838);
 
   // wait for start up of naodevilsbase
-  while (!shutdown && !mapSharedMemory())
+  while (!shutdown && (!mapSharedMemory() || dataV6->bodyId[0] == 0))
     sleep(2);
+
+
+  // load body name
+  std::string robotConfig("/home/nao/Config/Robots/robots.cfg");
+  std::string bodyName = "";
+
+  std::ifstream cfg(robotConfig.c_str());
+  if (cfg.is_open())
+  {
+    std::string line;
+    const std::regex re(".*name\\s*=\\s*(\\S+);.*(" + std::string(dataV6->bodyId) + ").+");
+    while (!cfg.eof())
+    {
+      std::getline(cfg, line);
+      std::smatch match;
+      if (std::regex_search(line, match, re) && match.size() == 3)
+      {
+        bodyName = match[1].str();
+        break;
+      }
+    }
+    cfg.close();
+  }
 
   std::cout << "Start sending data." << std::endl;
 
   while (!shutdown)
   {
     nlohmann::json j = getJson();
+
+    j["body_name"] = bodyName;
 
     std::array<char, 1024> name{0};
     gethostname(name.data(), name.size());
@@ -78,6 +103,49 @@ int SensorReader::main()
 
     if (std::smatch match; std::regex_search(output, match, regex) && match.size() == 2)
       j["wifi_state"] = match[1].str();
+
+    //load walk calibration quality
+    try
+    {
+      std::string walkCalibration("/home/nao/Persistent/" + bodyName + "/walkCalibration.cfg");
+      if (walkCalibrationTimestamp != std::filesystem::last_write_time(walkCalibration))
+      {
+        std::ifstream wc(walkCalibration.c_str());
+        if (wc.is_open())
+        {
+          std::string line;
+          const std::regex quality("qualityOfRobotHardware\\s*=\\s*(.*);");
+          const std::regex calibrated("walkCalibrated\\s*=\\s*(.*);");
+
+          while (!wc.eof())
+          {
+            std::getline(wc, line);
+            std::smatch match;
+            if (std::regex_search(line, match, quality) && match.size() == 2)
+            {
+              qualityOfRobotHardware = std::stof(match[1].str());
+            }
+            if (std::regex_search(line, match, calibrated) && match.size() == 2)
+            {
+              walkCalibrated = strcasecmp("true", match[1].str().c_str()) == 0;
+              walkCalibrationTimestamp = std::filesystem::last_write_time(walkCalibration);
+            }
+          }
+          // for debug
+          //std::cout << j["body_name"] << ": walkCalibrated = " << walkCalibrated << " | qualityOfRobotHardware = " << qualityOfRobotHardware << std::endl;
+
+          wc.close();
+        }
+      }
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+      walkCalibrated = false;
+      // for debug
+      //std::cout << "Catch: " << e.what() << std::endl;
+    }
+
+    j["hardware_quality"] = walkCalibrated ? qualityOfRobotHardware : -1.f;
 
     const std::vector<uint8_t> data = nlohmann::json::to_msgpack(j);
 
@@ -121,7 +189,7 @@ int SensorReader::main()
     }
 
     using namespace std::chrono_literals;
-    if (now - wlanRequest < 15s && now - gcData > 1min)
+    if (now - wlanRequest < 15s && now - gcData > 10s)
     {
       socket.setTarget("10.0.255.255", 55555);
       if (socket.write(reinterpret_cast<const char*>(data.data()), static_cast<int>(data.size())))

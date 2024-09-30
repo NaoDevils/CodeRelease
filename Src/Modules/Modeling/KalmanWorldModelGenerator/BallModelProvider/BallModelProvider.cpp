@@ -4,10 +4,9 @@
  */
 
 #include "BallModelProvider.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h"
 #include "Tools/Debugging/Annotation.h"
 #include "Tools/Math/Transformation.h"
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h>
 
 MAKE_MODULE(BallModelProvider, modeling)
 
@@ -364,7 +363,19 @@ void BallModelProvider::sensorUpdateRemote()
 void BallModelProvider::handleGameState()
 {
   // Transition from SET to PLAYING:
-  if (m_lastGameState == STATE_SET && theGameInfo.state == STATE_PLAYING && parameters.State_SetToPlaying_addKickOffHypothesis && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT) // This can be deactivated via config file.
+  if (m_lastGameState == STATE_SET && theGameInfo.state == STATE_PLAYING && parameters.State_SetToPlaying_addKickOffHypothesis
+      && (theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)) // This can be deactivated via config file.
+  {
+    // Add a ball hypothesis at the kick off point.
+    Vector2f kickOffPoint;
+    kickOffPoint << theFieldDimensions.xPosKickOffPoint, theFieldDimensions.yPosKickOffPoint;
+    // Adds fake percepts when position for the ball is known
+    addFakePercepts(kickOffPoint);
+  }
+
+  // Transition from INITIAL/PLAYING to SET:
+  if ((m_lastGameState == STATE_INITIAL || m_lastGameState == STATE_STANDBY || m_lastGameState == STATE_PLAYING) && theGameInfo.state == STATE_READY && parameters.State_PlayingToReady_addKickOffHypothesis
+      && (theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)) // This can be deactivated via config file.
   {
     // Add a ball hypothesis at the kick off point.
     Vector2f kickOffPoint;

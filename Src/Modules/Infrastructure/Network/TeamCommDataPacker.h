@@ -17,6 +17,7 @@
 #include "Representations/Modeling/WhistleDortmund.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Modeling/RobotMap.h"
+#include "Representations/Modeling/RefereeGesture.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/TeamCommData.h"
 #include "Representations/Sensing/FallDownState.h"
@@ -34,6 +35,7 @@ MODULE(TeamCommDataPacker,
   REQUIRES(SpeedInfo),
   REQUIRES(LocalRobotMap),
   REQUIRES(FallDownState),
+  REQUIRES(RefereeGesture),
   PROVIDES(TeamCommOutput)
 );
 

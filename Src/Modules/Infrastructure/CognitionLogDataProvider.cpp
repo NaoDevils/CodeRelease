@@ -7,6 +7,8 @@
 #include "CognitionLogDataProvider.h"
 #include "Representations/Infrastructure/Thumbnail.h"
 #include "Representations/Infrastructure/YoloInput.h"
+#include "Representations/Infrastructure/LowFrameRateImage.h"
+#include "Representations/Infrastructure/JPEGImage.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 
 CycleLocal<CognitionLogDataProvider*> CognitionLogDataProvider::theInstance(nullptr);

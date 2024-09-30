@@ -11,8 +11,6 @@
 #include <algorithm>
 #include "Tools/Module/Module.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/BallModel.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GoalSymbols.h"
@@ -20,7 +18,6 @@
 MODULE(GoalSymbolsProvider,
   REQUIRES(BallSymbols),
   REQUIRES(FieldDimensions),
-  REQUIRES(FrameInfo),
   REQUIRES(RobotPoseAfterPreview),
   PROVIDES(GoalSymbols)
 );

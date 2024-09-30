@@ -14,6 +14,8 @@
 
 void JointErrorCalc::update(JointError& jointError)
 {
+  DECLARE_PLOT("module:JointErrorCalc:sum");
+
   init(jointError);
   for (int j = 0; j < Joints::numOfJoints; j++)
     jointAngleBuffer[currentJointAngleID].angles[j] = theRawJointRequest.angles[j];
@@ -21,7 +23,11 @@ void JointErrorCalc::update(JointError& jointError)
   currentJointAngleID = currentJointAngleID % 5;
   for (int i = 0; i < Joints::numOfJoints; i++)
   {
-    jointError.angles[i] = jointAngleBuffer[theWalkingEngineParams.jointSensorDelayFrames - 2].angles[i] - theJointSensorData.angles[i];
+    jointError.angles[i] = jointAngleBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1].angles[i] - theJointSensorData.angles[i];
+    if (std::abs(jointError.angles[i]) < 0.1_deg)
+    {
+      jointError.angles[i] = 0_deg;
+    }
   }
 
   jointPlayCalc(jointError);
@@ -46,19 +52,21 @@ void JointErrorCalc::init(JointError& jointError)
 
 void JointErrorCalc::jointPlayCalc(JointError& jointError)
 {
-  const bool isWalkingNow = theMotionRequest.motion == MotionRequest::walk && theMotionInfo.motion == MotionRequest::walk && theGroundContactState.contact;
+  const bool isWalkingNow = theMotionRequest.motion == MotionRequest::walk && (theSpeedRequest.translation.norm() > 0.f || std::abs(theSpeedRequest.rotation) > 0.f)
+      && theFallDownState.state == FallDownState::upright;
+
   if ((isWalkingNow && !isWalking) || startWalkingTimestamp > theFrameInfo.time)
     startWalkingTimestamp = theFrameInfo.time;
   isWalking = isWalkingNow;
   const bool skipBuffer = theFrameInfo.getTimeSince(startWalkingTimestamp) < minWalkTime || !isWalking;
   if (!skipBuffer)
-    timeSpendWalking += theFrameInfo.cycleTime;
-  const float ratio = Rangef::ZeroOneRange().limit(timeSpendWalking / interpolateLowpassFilterTime);
+    jointError.timeSpendWalking += theFrameInfo.cycleTime;
+  const float ratio = Rangef::ZeroOneRange().limit(jointError.timeSpendWalking / interpolateLowpassFilterTime);
   const float useLowPassFilterFactor = lowpassFilterFactor.min * ratio + lowpassFilterFactor.max * (1.f - ratio);
-  Angle jointPlaySum = 0.f;
+  Angle jointPlaySum = 0_deg;
   const float minSpeedRatio = minForwardSpeed / theWalkingEngineParams.speedLimits.xForward;
   const float speedRatio = theSpeedRequest.translation.norm() == 0 ? 0.f : (theSpeedRequest.translation.x()) / theWalkingEngineParams.speedLimits.xForward;
-  const Angle jointPlayOffset = (1.f - Rangef::ZeroOneRange().limit((speedRatio - minSpeedRatio) / (1.f - minSpeedRatio))) * jointPlayScalingWalkingSpeed;
+  const Angle jointPlayOffset = (1.f - Rangef::ZeroOneRange().limit((speedRatio - minSpeedRatio) / (1.f - minSpeedRatio + std::numeric_limits<float>::epsilon()))) * jointPlayScalingWalkingSpeed;
   // 2. Filter
   //FOREACH_ENUM(JointPlayTrack, joint)
   for (JointPlayTrack joint = JointPlayTrack::lhyp; joint < JointPlayTrack::numOfJointPlayTracks; joint = JointPlayTrack(joint + 1))
@@ -78,11 +86,18 @@ void JointErrorCalc::jointPlayCalc(JointError& jointError)
         + (std::abs(theJointSensorData.angles[getJoint(joint)] - bufferRequest[joint].back()) - (maxJointPlay[joint] - useJointPlayOffset)) * lowpassFilterFactor.max;
 
     jointPlayList[joint] = bufferValue[joint];
-    jointPlaySum += std::max(jointPlayList[joint], 0_deg) * maxJointPlayRatio[joint];
+    const Angle jointPlay = std::max(jointPlayList[joint], 0_deg) * maxJointPlayRatio[joint];
+    setJointPlayAvg(jointError, joint, jointPlay);
+    jointPlaySum += jointPlay;
+    ASSERT(!std::isnan(jointPlaySum));
   }
 
   if (!skipBuffer)
-    jointError.qualityOfRobotHardware = 1.f - Rangef::ZeroOneRange().limit((jointPlaySum - jointPlayScalingmin) / jointPlayScalingmax);
+  {
+    PLOT("module:JointErrorCalc:sum", jointPlaySum.toDegrees());
+    jointError.qualityOfRobotHardware = 1.f - Rangef::ZeroOneRange().limit((jointPlaySum - jointPlayScalingMin) / jointPlayScalingMax);
+  }
+
 
   PLOT("module:JointErrorCalc:lhyp", jointPlayList[JointPlayTrack::lhyp].toDegrees());
   PLOT("module:JointErrorCalc:lhr", jointPlayList[JointPlayTrack::lhr].toDegrees());
@@ -104,8 +119,52 @@ void JointErrorCalc::jointPlayCalc(JointError& jointError)
   PLOT("module:JointErrorCalc:rkps", bufferValueShortTerm[JointPlayTrack::rkp].toDegrees());
   PLOT("module:JointErrorCalc:raps", bufferValueShortTerm[JointPlayTrack::rap].toDegrees());
 
-  PLOT("module:JointErrorCalc:sum", jointPlaySum.toDegrees());
   PLOT("module:JointErrorCalc:qualityOfRobotHardware", jointError.qualityOfRobotHardware);
+}
+
+void JointErrorCalc::setJointPlayAvg(JointError& jointError, JointPlayTrack joint, Angle avgJointPlay)
+{
+  switch (joint)
+  {
+  case lhyp:
+    jointError.averageJointPlay.lHipYawPitch = avgJointPlay;
+    break;
+  case lhr:
+    jointError.averageJointPlay.lHipRoll = avgJointPlay;
+    break;
+  case lhp:
+    jointError.averageJointPlay.lHipPitch = avgJointPlay;
+    break;
+  case lkp:
+    jointError.averageJointPlay.lKneePitch = avgJointPlay;
+    break;
+  case lap:
+    jointError.averageJointPlay.lAnklePitch = avgJointPlay;
+    break;
+  case lar:
+    jointError.averageJointPlay.lAnkleRoll = avgJointPlay;
+    break;
+  case rhyp:
+    jointError.averageJointPlay.rHipYawPitch = avgJointPlay;
+    break;
+  case rhr:
+    jointError.averageJointPlay.rHipRoll = avgJointPlay;
+    break;
+  case rhp:
+    jointError.averageJointPlay.rHipPitch = avgJointPlay;
+    break;
+  case rkp:
+    jointError.averageJointPlay.rKneePitch = avgJointPlay;
+    break;
+  case rap:
+    jointError.averageJointPlay.rAnklePitch = avgJointPlay;
+    break;
+  case rar:
+    jointError.averageJointPlay.rAnkleRoll = avgJointPlay;
+    break;
+  default:
+    ASSERT(false);
+  }
 }
 
 Joints::Joint JointErrorCalc::getJoint(JointPlayTrack joint)

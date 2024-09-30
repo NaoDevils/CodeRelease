@@ -17,7 +17,7 @@ GameInfo::GameInfo()
 static void drawDigit(int digit, const Vector3f& pos, float size, const ColorRGBA& color)
 {
   static const Vector3f points[8] = {Vector3f(1, 0, 1), Vector3f(1, 0, 0), Vector3f(0, 0, 0), Vector3f(0, 0, 1), Vector3f(0, 0, 2), Vector3f(1, 0, 2), Vector3f(1, 0, 1), Vector3f(0, 0, 1)};
-  static const unsigned char digits[10] = {0x3f, 0x0c, 0x76, 0x5e, 0x4d, 0x5b, 0x7b, 0x0e, 0x7f, 0x5f};
+  static const unsigned char digits[11] = {0x3f, 0x0c, 0x76, 0x5e, 0x4d, 0x5b, 0x7b, 0x0e, 0x7f, 0x5f, 0x40};
   digit = digits[std::abs(digit)];
   for (int i = 0; i < 7; ++i)
     if (digit & (1 << i))
@@ -34,7 +34,10 @@ void GameInfo::draw() const
   {
     const int mins = std::abs((int)(short)secsRemaining) / 60;
     const int secs = std::abs((int)(short)secsRemaining) % 60;
-    const ColorRGBA color = (short)secsRemaining < 0 ? ColorRGBA::red : ColorRGBA::black;
+    const ColorRGBA color = state == STATE_READY ? ColorRGBA::blue : state == STATE_SET ? ColorRGBA::yellow : state == STATE_PLAYING ? ColorRGBA::darkgreen : ColorRGBA::black;
+
+    if (secsRemaining < 0)
+      drawDigit(10, Vector3f(-620, 3500, 1000), 200, color); // -
     drawDigit(mins / 10, Vector3f(-350, 3500, 1000), 200, color);
     drawDigit(mins % 10, Vector3f(-80, 3500, 1000), 200, color);
     drawDigit(secs / 10, Vector3f(280, 3500, 1000), 200, color);
@@ -57,6 +60,8 @@ std::string GameInfo::getStateAsString() const
   {
   case STATE_INITIAL:
     return "Initial";
+  case STATE_STANDBY:
+    return "Standby";
   case STATE_READY:
     return "Ready";
   case STATE_SET:
@@ -92,6 +97,11 @@ std::string GameInfo::getSetPlayAsString() const
 Streamable& GameInfo::operator=(const Streamable& other) noexcept
 {
   return *this = dynamic_cast<const GameInfo&>(other);
+}
+
+bool GameInfo::isSetPlay() const
+{
+  return setPlay != SET_PLAY_NONE;
 }
 
 void GameInfo::serialize(In* in, Out* out)

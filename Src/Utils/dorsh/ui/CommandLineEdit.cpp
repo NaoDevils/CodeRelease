@@ -6,10 +6,10 @@
  * @author <a href="ojlr@informatik.uni-bremen.de">Ole Jan Lars Riemann</a>
  */
 
-#include "Utils/dorsh/ui/CommandLineEdit.h"
-#include "Utils/dorsh/ui/CommandLineCompleter.h"
-#include "Utils/dorsh/ui/Console.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
+#include "ui/CommandLineEdit.h"
+#include "ui/CommandLineCompleter.h"
+#include "ui/Console.h"
+#include "cmdlib/Commands.h"
 #include <QKeyEvent>
 
 bool CommandLineEdit::eventFilter(QObject* o, QEvent* e)

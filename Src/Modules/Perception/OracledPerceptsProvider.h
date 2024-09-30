@@ -14,6 +14,7 @@
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GroundTruthWorldState.h"
+#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Perception/BallPercept.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/CLIPGoalPercept.h"
@@ -30,6 +31,7 @@ MODULE(OracledPerceptsProvider,
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(FieldDimensions),
+  REQUIRES(OwnTeamInfo),
   PROVIDES(BallPercept),
   PROVIDES(MultipleBallPercept),
   PROVIDES(CLIPGoalPercept),

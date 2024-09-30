@@ -1,12 +1,14 @@
 #include "CLIPBallPerceptor.h"
 #include "Tools/Math/Geometry.h"
 #include "Tools/Math/Random.h"
+#include "Tools/Math/Transformation.h"
 #include "Tools/RingBufferWithSum.h"
 #include "Tools/Modeling/BallPhysics.h"
 #include "Platform/File.h"
-#include <filesystem>
 #include "Modules/Perception/CNNs/CLIPBallPerceptorCNNs.h"
 #include "Modules/Perception/CLIP/BallPerceptTools.h"
+#include <filesystem>
+#include <algorithm>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/find.hpp>
 #include <taskflow/algorithm/transform.hpp>
@@ -114,6 +116,7 @@ void CLIPBallPerceptor::execute(tf::Subflow& subflow)
         && addBallModel(theImage, theCameraMatrix, theCameraInfo)
         && addBallModel(theImageUpper, theCameraMatrixUpper, theCameraInfoUpper)
         && addBallSpots(ballSpots, theBallHypothesesYolo.ballSpots, CheckedBallSpot::DetectionSource::yoloHypothesis, CheckedBallSpot::DetectionVerifier::ballPositionCNN)
+        && addBallSpots(ballSpots, theBallHypothesesSegmentor.ballSpots, CheckedBallSpot::DetectionSource::segmentorHypothesis, CheckedBallSpot::DetectionVerifier::ballPositionCNN)
         && addBallSpots(ballSpots, theScanlinesBallSpots.ballSpots, CheckedBallSpot::DetectionSource::scanlines, CheckedBallSpot::DetectionVerifier::ballPositionCNN)
         && addBallSpots(ballSpots, theBallHypothesesYolo.ballSpotsUpper, CheckedBallSpot::DetectionSource::yoloHypothesis, CheckedBallSpot::DetectionVerifier::ballPositionCNN)
         && addBallSpots(ballSpots, theScanlinesBallSpots.ballSpotsUpper, CheckedBallSpot::DetectionSource::scanlines, CheckedBallSpot::DetectionVerifier::ballPositionCNN)
@@ -265,6 +268,9 @@ std::tuple<bool, std::optional<BallPatch>> CLIPBallPerceptor::checkBallSpot(Chec
     break;
   case CheckedBallSpot::DetectionSource::ballModel:
     brushColor = ColorRGBA::violet;
+    break;
+  case CheckedBallSpot::DetectionSource::segmentorHypothesis:
+    brushColor = ColorRGBA::yellow;
     break;
   }
 

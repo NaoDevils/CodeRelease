@@ -9,20 +9,13 @@
 
 #pragma once
 #include "Tools/Module/Module.h"
-#include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/RoleSelection.h"
-#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
-#include "Representations/BehaviorControl/RoleSymbols/BallchaserKeeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/DefenderSingle.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/TeamInfo.h"
-#include "Representations/Infrastructure/TeammateData.h"
 #include "Utils/AvoidUtils.h"
 #include "Utils/PositionUtils.h"
 #include "Utils/TeamUtils.h"
@@ -31,19 +24,12 @@
 #include <optional>
 
 MODULE(DefenderSingleProvider,
-  REQUIRES(Ballchaser), // for avoidance
-  REQUIRES(BallchaserKeeper), // for avoidance
-  REQUIRES(BallChaserDecision), // for avoidance
   REQUIRES(BallSymbols),
   REQUIRES(BehaviorConfiguration),
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(GameSymbols),
-  REQUIRES(OwnTeamInfo),
   REQUIRES(RobotPose),
-  REQUIRES(RoleSelection),
-  REQUIRES(TacticSymbols),
-  REQUIRES(TeammateData),
   PROVIDES(DefenderSingle),
   LOADS_PARAMETERS(,
       (float)(2400.f) setPlayOppCornerKickDistanceX,
@@ -95,7 +81,5 @@ private:
   void handleGeneralSetPlay(DefenderSingle& positioningSymbolds);
 
   // member variables
-  void updateBallIsLeft(const Vector2f& ballPosition);
-  bool ballIsLeft = false; /**< Used to decide where the short angle of the goal is. */
   bool guardPass = false;
 };

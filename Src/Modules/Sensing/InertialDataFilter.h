@@ -7,7 +7,6 @@
 #pragma once
 
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
@@ -23,7 +22,6 @@ MODULE(InertialDataFilter,
   REQUIRES(FrameInfo),
   REQUIRES(InertialSensorData),
   REQUIRES(RobotDimensions),
-  REQUIRES(RobotInfo),
   REQUIRES(RobotModel),
   USES(MotionInfo),
   USES(WalkingEngineOutput),

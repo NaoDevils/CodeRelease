@@ -31,8 +31,6 @@ option(StandUp)
         goto lyingOnBack;
       else if (theFallDownState.direction == FallDownState::front)
         goto lyingOnFront;
-      else if (theMotionRequest.GoalieIsDiving && (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right))
-        goto lyingOnSideGoalie;
       else if (theFallDownState.direction == FallDownState::left || theFallDownState.direction == FallDownState::right)
         goto lyingOnSide;
       else
@@ -53,7 +51,7 @@ option(StandUp)
     action
     {
       theMotionRequest.GoalieIsDiving = false;
-      SpecialAction(theMotionState.standUpStatus.bestStandUpMotionBack, false);
+      SpecialAction(SpecialActionRequest::standUpBack, false);
     }
   }
 
@@ -69,7 +67,7 @@ option(StandUp)
     action
     {
       theMotionRequest.GoalieIsDiving = false;
-      SpecialAction(theMotionState.standUpStatus.bestStandUpMotionFront, false);
+      SpecialAction(SpecialActionRequest::standUpFront, false);
     }
   }
 
@@ -93,31 +91,7 @@ option(StandUp)
     }
     action
     {
-      SpecialAction(SpecialActionRequest::standUpSideNao, theFallDownState.direction == FallDownState::right);
-    }
-  }
-
-  state(lyingOnSideGoalie)
-  {
-    transition
-    {
-      if (state_time > 3000) // TODO: check this
-      {
-        goto lying;
-      }
-      if (state_time > 1000)
-      {
-        if (theFallDownState.direction == FallDownState::back)
-          goto lyingOnBack;
-        else if (theFallDownState.direction == FallDownState::front)
-          goto lyingOnFront;
-        else if (theFallDownState.state == FallDownState::upright)
-          goto standing_up;
-      }
-    }
-    action
-    {
-      SpecialAction(SpecialActionRequest::standUpSideNaoGoalie, theFallDownState.direction == FallDownState::right);
+      SpecialAction(SpecialActionRequest::standUpSide, theFallDownState.direction == FallDownState::right);
     }
   }
 

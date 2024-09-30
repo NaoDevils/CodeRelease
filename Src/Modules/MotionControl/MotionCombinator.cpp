@@ -94,12 +94,14 @@ void MotionCombinator::update(RawJointRequest& rawJointRequest)
       PLOT("module:MotionCombinator:offsetToRobotPoseAfterPreview.x", theWalkingEngineOutput.offsetToRobotPoseAfterPreview.translation.x());
       PLOT("module:MotionCombinator:offsetToRobotPoseAfterPreview.y", theWalkingEngineOutput.offsetToRobotPoseAfterPreview.translation.y());
       PLOT("module:MotionCombinator:offsetToRobotPoseAfterPreview.r", theWalkingEngineOutput.offsetToRobotPoseAfterPreview.rotation);
-      motionInfo.offsetToRobotPoseAfterPreview = OdometryCorrection::correctPreview(theWalkingEngineOutput.speed,
+      motionInfo.offsetToRobotPoseAfterPreview = OdometryCorrection::correct(theWalkingEngineOutput.speed,
           theWalkingEngineOutput.offsetToRobotPoseAfterPreview,
           theOdometryCorrectionTables.odometryCorrectionFactor,
-          theOdometryCorrectionTables.backCorrectionTablePreview,
-          theOdometryCorrectionTables.forwardCorrectionTablePreview,
-          theOdometryCorrectionTables.sideCorrectionTablePreview);
+          theOdometryCorrectionTables.backCorrectionTable,
+          theOdometryCorrectionTables.forwardCorrectionTable,
+          theOdometryCorrectionTables.sideCorrectionTable,
+          theOdometryCorrectionTables.rotCorrectionTable,
+          theOdometryCorrectionTables.rot2DCorrectionTable);
       PLOT("module:MotionCombinator:offsetToRobotPoseAfterPreviewCorrected.x", motionInfo.offsetToRobotPoseAfterPreview.translation.x());
       PLOT("module:MotionCombinator:offsetToRobotPoseAfterPreviewCorrected.y", motionInfo.offsetToRobotPoseAfterPreview.translation.y());
       PLOT("module:MotionCombinator:offsetToRobotPoseAfterPreviewCorrected.r", motionInfo.offsetToRobotPoseAfterPreview.rotation);

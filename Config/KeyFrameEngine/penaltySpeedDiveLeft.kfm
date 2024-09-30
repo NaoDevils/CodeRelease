@@ -1,0 +1,140 @@
+keyFrameID = penaltySpeedDiveLeft;
+initialKeyFrame = true;
+nextMotionConditions = [none];
+nextKeyFrameMotionIDs = [none];
+YstabilizationP = 0.1;
+YstabilizationI = 0;
+YstabilizationD = -0.02;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+errorMultiplier = 2;
+reductionRate = 0.05;
+maxCompensation = 10deg;
+compensationThreshold = 4deg;
+hipYawCorrectionFactors = [0, 0, 0];
+hipCorrectionFactors = [0, 0];
+kneeCorrectionFactors = [0];
+ankleCorrectionFactors = [0, 0];
+localArmAngleReachedThreshold = 10deg;
+keyFrames = [
+  //copy from penaltyGoaliePrepareDive 
+  {
+    //HeadYaw, HeadPitch
+    headAngles = [20000,20000];
+    //ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand 
+    armsAngles = [50.0deg,45.0deg,0.0deg,-20.0deg,0.0deg,0.0deg, 50.0deg,-10.0deg,0.0deg,20.0deg,0.0deg,0.0deg];
+    //HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg, 0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg];
+    stiffnesses = [50,50, 50,50,50,50,50,50, 50,50,50,50,50,50 ,60,60,60,60,60,60, 60,60,60,60,60,60];
+    duration = 100;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  //speed up to ground (let fall) arm in pose 1
+  {
+    headAngles = [20000,20000];
+    //ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand 
+    //armsAngles = [-96.7deg,38.9deg,12.7deg,-33.9deg,-90deg,0deg,  30deg,20deg,0deg,70deg,90.0deg,0deg];
+    //armsAngles = [-100deg,55deg,0deg,0deg,-90.0deg,0deg,  30deg,20deg,0deg,70deg,90.0deg,0deg];
+    //armsAngles = [16.0deg,68.1deg,-9.8deg,-25deg,-90deg,0deg,  30deg,20deg,0deg,70deg,90.0deg,0deg]; //
+    armsAngles = [23.8deg,76.9deg,-24.8deg,-0.9deg,-90deg,0deg, 31.8deg,8.9deg,-1.1deg,58.2deg,90deg,0deg]; //pose1
+    //HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [0.0deg,0.0deg,-55.0deg,115.0deg,-60.0deg,0.0deg,  0deg, 0.0deg,-45.0deg,100.0deg,-50.0deg,10deg];
+    stiffnesses = [20,20, 70,70,70,70,70,70, 30,30,30,30,30,30, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 150;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  //hold on fall - arm in pose2 
+  {
+    headAngles = [-0.5deg,20.3deg];
+    //ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [-38.9deg,71.0deg,-24.7deg,-0.7deg,-90deg,0deg, 31.8deg,8.9deg,-1.1deg,68.2deg,90deg,0deg]; //pose2
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [0.0deg,0.0deg,-60.0deg,120.0deg,-60.0deg,0.0deg,  0deg, 0.0deg,-40.0deg,80.0deg,-40.0deg,0deg];
+    stiffnesses = [20,20, 50,50,50,50,50,50, 30,30,30,30,30,30, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 200;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+   //hold on fall - arm in pose3 
+  {
+    headAngles = [-0.5deg,20.3deg];
+    //ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [-88.9deg,48.9deg,-24.8deg,-10.8deg,-90deg,0deg, 31.8deg,8.9deg,-1.1deg,68.2deg,90deg,0deg]; //pose3
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [0.0deg,0.0deg,-60.0deg,120.0deg,-60.0deg,0.0deg,  0deg, 0.0deg,-40.0deg,75.0deg,-35.0deg,0deg];
+    stiffnesses = [20,20, 30,30,50,50,50,50, 30,30,30,30,30,30, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 150;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+   //hold on fall - arm in pose4
+  {
+    headAngles = [-0.5deg,20.3deg];
+    //ShoulderPitch, ShoulderRoll, ElbowYaw, ElbowRoll, WristYaw, Hand
+    armsAngles = [-90.0deg,20.0deg,9.9deg,-0.9deg,-90deg,0deg, 31.8deg,8.9deg,-1.1deg,68.2deg,90deg,0deg]; //pose4
+    // HipYawPitch, HipRoll, HipPitch, KneePitch, AnklePitch, AnkleRoll
+    legsAngles = [0.0deg,0.0deg,-60.0deg,120.0deg,-60.0deg,0.0deg,  0deg, 0.0deg,-40.0deg,75.0deg,-35.0deg,0deg];
+    stiffnesses = [20,20, 30,30,100,100,80,80, 30,30,30,30,30,30, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 150;
+    intType = linear;
+    angleAtKeyFrameTarget = 0;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];

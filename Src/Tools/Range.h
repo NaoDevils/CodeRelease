@@ -144,3 +144,4 @@ template <typename T> const Range<T>& Range<T>::OneRange()
 
 using Rangei = Range<int>;
 using Rangef = Range<float>;
+using Rangea = Range<Angle>;

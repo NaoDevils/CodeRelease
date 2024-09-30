@@ -11,10 +11,9 @@
 
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Eigen.h"
-#include "Tools/Math/Transformation.h"
-#include "Representations/Modeling/RobotPose.h"
-#include "Representations/Modeling/TeamBallModel.h"
 #include "Tools/Streams/Compressed.h"
+
+struct RobotPose;
 
 /**
  * \struct BallState
@@ -28,12 +27,7 @@ STREAMABLE(BallState,
   * \param rp The ball position is assumed to be relative to this robot pose.
   * \return The velocity of the ball relative to the field coordinate system (in mm/s).
   */
-  Vector2f getVelocityInFieldCoordinates(const RobotPose& rp) const
-  {
-    float c(std::cos(rp.rotation));
-    float s(std::sin(rp.rotation));
-    return Vector2f(velocity.x()*c - velocity.y()*s, velocity.x()*s + velocity.y()*c);
-  }
+  Vector2f getVelocityInFieldCoordinates(const RobotPose& rp) const;
   /**
   * Updates the \c position and \c velocity of the ball by converting the
   * given values from global field coordinates to values relative to the robot
@@ -46,14 +40,8 @@ STREAMABLE(BallState,
   */
   void setPositionAndVelocityFromFieldCoordinates(const Vector2f& positionOnField,
     const Vector2f& velocityOnField,
-    const RobotPose& rp)
-  {
-    position = Transformation::fieldToRobot(rp, positionOnField);
-    float c(std::cos(rp.rotation));
-    float s(std::sin(rp.rotation));
-    velocity = Vector2f(velocityOnField.x()*c + velocityOnField.y()*s,
-      -velocityOnField.x()*s + velocityOnField.y()*c);
-  },
+    const RobotPose& rp);
+  ,
 
   (Vector2f)(Vector2f(1000,0)) position, /**< The position of the ball relative to the robot (in mm)*/
   (Vector2f)(Vector2f::Zero()) velocity, /**< The velocity of the ball relative to the robot (in mm/s)*/

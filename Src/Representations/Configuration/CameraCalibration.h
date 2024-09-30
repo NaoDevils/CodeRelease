@@ -11,8 +11,13 @@
 #include "Tools/Math/Angle.h"
 #include "Tools/Module/Next.h"
 
-STREAMABLE(CameraCalibration,,
+
+STREAMABLE(CameraCalibrationFile,,
   (Vector3a)(Vector3a::Zero()) lowerCameraRotationCorrection, //!< The correction of the lower camera rotation
   (Vector3a)(Vector3a::Zero()) upperCameraRotationCorrection, //!< The correction of the upper camera rotation
   (Vector2a)(Vector2a::Zero()) bodyRotationCorrection //!< The correction of the body rotation
+);
+
+STREAMABLE_WITH_BASE(CameraCalibration, CameraCalibrationFile,,
+    (bool)(false) calibrated //!< If the camera was calibrated
 );

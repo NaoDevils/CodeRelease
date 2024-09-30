@@ -28,7 +28,10 @@ void SimpleRobotMapProvider::execute(tf::Subflow&)
   // validity decreases with every frame
   for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
   {
-    simpleRobots[sr].validity = std::max(0.f, simpleRobots[sr].validity - validityUpdate);
+    if (simpleRobots[sr].fromTeamMatePoses)
+      simpleRobots[sr].validity = std::max(0.f, simpleRobots[sr].validity - validityUpdate / 4.f);
+    else
+      simpleRobots[sr].validity = std::max(0.f, simpleRobots[sr].validity - validityUpdate);
   }
 
   // predict with velocity
@@ -161,7 +164,8 @@ void SimpleRobotMapProvider::updateWithTeamMatePoses()
   for (auto& mate : theTeammateData.teammates)
   {
     const RobotPoseCompressed& otherPose = mate.robotPose;
-    if (otherPose.validity > 0.7f && mate.status != TeammateReceived::Status::INACTIVE && mate.receiveTimestamp == theFrameInfo.time)
+    if (otherPose.validity > teamMateMinValidity && mate.status != TeammateReceived::Status::INACTIVE
+        && (theFrameInfo.getTimeSince(mate.receiveTimestamp) < 750 || (theGameInfo.state == STATE_SET && theFrameInfo.getTimeSince(mate.receiveTimestamp) < theGameSymbols.timeSinceGameState)))
     {
       bool merged = false;
       for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
@@ -203,64 +207,67 @@ void SimpleRobotMapProvider::updateWithGlobalData()
 {
   for (auto& mate : theTeammateData.teammates)
   {
-    if (mate.robotPose.validity < 0.7f || mate.status != TeammateReceived::Status::FULLY_ACTIVE)
-      continue;
+    if (mate.robotPose.validity > 0.7f && mate.status != TeammateReceived::Status::INACTIVE && theFrameInfo.getTimeSince(mate.receiveTimestamp) < 250)
+    {
+      for (auto& teamRobot : mate.localRobotMap.robots)
+      {
+        bool merged = false;
+        Vector2f perceptFieldCoordinates = teamRobot.pose.translation;
 
-    // Not available as long as SimpleRobotsDistributed are not transmitted
+        // check if percept is robot itself
+        if ((perceptFieldCoordinates - theRobotPose.translation).norm() < mergeLocationDiff)
+          continue;
+        for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
+        {
+          SimpleRobot& robot = simpleRobots[sr];
+          const Vector2f poseDiff = (perceptFieldCoordinates - robot.pose.translation);
+          if (poseDiff.norm() < mergeLocationDiff * 5.f) // TODO: && teamRobot.timeOfLastUpdate > robot.timeOfLastUpdate)
+          {
+            merged = true;
+            Vector2f oldTrans = robot.pose.translation;
+            float otherVal = static_cast<float>(teamRobot.validity) / 1000.f;
+            robot.pose.translation += poseDiff * otherVal;
+            // TODO: work with validty from simple robots and send them
+            robot.validity = std::max(otherVal, robot.validity);
+            float alpha = 0.2f;
+            if (!robot.fromTeamMatePoses)
+            {
+              robot.velocity = robot.velocity * alpha
+                  + (robot.pose.translation - oldTrans) * (1 - alpha) * ((1000.f * theFrameInfo.cycleTime) / ((float)theFrameInfo.getTimeSince(robot.timeOfLastUpdate) + 1.f));
+            }
+            float velocityNorm = robot.velocity.norm();
+            if (velocityNorm > 250.f)
+              robot.velocity *= 250.f / velocityNorm;
+            if (teamRobot.robotType == RobotEstimate::teammateRobot)
+              robot.teamMateCounter += 1;
+            else if (teamRobot.robotType == RobotEstimate::opponentRobot)
+              robot.teamMateCounter += -1;
 
-    //for (auto& teamRobot : mate.simpleRobotsDistributed.robots)
-    //{
-    //  bool merged = false;
-    //  Vector2f perceptFieldCoordinates = Vector2f((float)teamRobot.x, (float)teamRobot.y);
+            robot.timeOfLastUpdate = theFrameInfo.time;
+            robot.fromTeamMatePoses = false;
+            break;
+          }
+        }
+        if (!merged && useTeamMatePercepts)
+        {
+          SimpleRobot newRobot;
+          newRobot.fromTeamMatePoses = false;
+          newRobot.pose.translation = perceptFieldCoordinates;
+          newRobot.velocity = Vector2f::Zero();
+          if (teamRobot.robotType == RobotEstimate::teammateRobot)
+            newRobot.teamMateCounter = 1;
+          else if (teamRobot.robotType == RobotEstimate::opponentRobot)
+            newRobot.teamMateCounter = -1;
+          else
+            newRobot.teamMateCounter = 0;
 
-    //  // check if percept is robot itself
-    //  if ((perceptFieldCoordinates - theRobotPose.translation).norm() < mergeLocationDiff)
-    //    continue;
-    //  for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
-    //  {
-    //    SimpleRobot& robot = simpleRobots[sr];
-    //    const Vector2f poseDiff = (perceptFieldCoordinates - robot.pose.translation);
-    //    if (poseDiff.norm() < mergeLocationDiff && teamRobot.timeOfLastUpdate > robot.timeOfLastUpdate)
-    //    {
-    //      merged = true;
-    //      Vector2f oldTrans = robot.pose.translation;
-    //      float otherVal = static_cast<float>(teamRobot.validity) / 1000.f;
-    //      robot.pose.translation += poseDiff * otherVal;
-    //      // TODO: work with validty from simple robots and send them
-    //      robot.validity = std::max(otherVal, robot.validity);
-    //      float alpha = 0.2f;
-    //      if (!robot.fromTeamMatePoses)
-    //      {
-    //        robot.velocity = robot.velocity * alpha
-    //            + (robot.pose.translation - oldTrans) * (1 - alpha) * ((1000.f * theFrameInfo.cycleTime) / ((float)theFrameInfo.getTimeSince(robot.timeOfLastUpdate) + 1.f));
-    //      }
-    //      float velocityNorm = robot.velocity.norm();
-    //      if (velocityNorm > 250.f)
-    //        robot.velocity *= 250.f / velocityNorm;
-    //      robot.teamMateCounter += sgn(teamRobot.colorCount);
-
-    //      robot.timeOfLastUpdate = theFrameInfo.time;
-    //      robot.fromTeamMatePoses = false;
-    //      break;
-    //    }
-    //  }
-    //  if (!merged && useTeamMatePercepts)
-    //  {
-    //    SimpleRobot newRobot;
-    //    newRobot.fromTeamMatePoses = false;
-    //    newRobot.pose.translation = perceptFieldCoordinates;
-    //    newRobot.velocity = Vector2f((float)teamRobot.velocity.x(), (float)teamRobot.velocity.y());
-    //    float velocityNorm = newRobot.velocity.norm();
-    //    if (velocityNorm > 250.f)
-    //      newRobot.velocity *= 250.f / velocityNorm;
-    //    newRobot.teamMateCounter = teamRobot.colorCount;
-
-    //    newRobot.validity = (float)teamRobot.validity / 1000.f;
-    //    newRobot.timeOfLastUpdate = teamRobot.timeOfLastUpdate;
-    //    newRobot.timeOfLastLocalUpdate = 0;
-    //    simpleRobots.push_back(newRobot);
-    //  }
-    //}
+          newRobot.validity = (float)teamRobot.validity / 1000.f;
+          newRobot.timeOfLastUpdate = theFrameInfo.time;
+          newRobot.timeOfLastLocalUpdate = 0;
+          simpleRobots.push_back(newRobot);
+        }
+      }
+    }
   }
 }
 
@@ -367,17 +374,31 @@ void SimpleRobotMapProvider::fillRobotMap()
       internalRobotMap.robots.push_back(re);
     }
   }
+
+  Pose2f robotPoseDiff = (theRobotPose - lastRobotPose);
+
   for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
   {
     int timeSinceLastLocalUpdate = theFrameInfo.getTimeSince(simpleRobots[sr].timeOfLastLocalUpdate);
     int timeSinceLastRemoteUpdate = theFrameInfo.getTimeSince(simpleRobots[sr].timeOfLastUpdate);
 
-    if (simpleRobots[sr].validity < 0.05f || (timeSinceLastLocalUpdate > maxLocalLifetimeOfUnseenRobot && !simpleRobots[sr].fromTeamMatePoses) || (timeSinceLastRemoteUpdate > maxLifetimeOfUnseenRobot))
+
+    //if (robotPoseDiff.translation.norm() > 1000)
+    //{
+    //  Vector2f& reOnField = simpleRobots[sr].pose.translation;
+    //  reOnField -= robotPoseDiff.translation;
+    //  reOnField.rotate(-robotPoseDiff.rotation);
+    //}
+
+    if (robotPoseDiff.translation.norm() > 1000 || simpleRobots[sr].validity < 0.05f
+        || (timeSinceLastLocalUpdate > maxLocalLifetimeOfUnseenRobot && !simpleRobots[sr].fromTeamMatePoses) || (timeSinceLastRemoteUpdate > maxLifetimeOfUnseenRobot))
     {
       simpleRobots.erase(simpleRobots.begin() + sr);
       sr--;
     }
   }
+
+  lastRobotPose = theRobotPose;
 }
 
 MAKE_MODULE(SimpleRobotMapProvider, modeling)

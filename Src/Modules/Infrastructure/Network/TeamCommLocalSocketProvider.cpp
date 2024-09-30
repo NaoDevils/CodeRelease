@@ -12,20 +12,24 @@ std::array<std::array<std::shared_mutex, MAX_NUM_PLAYERS>, 2> TeamCommLocalSocke
 
 TeamCommLocalSocketProvider::~TeamCommLocalSocketProvider()
 {
-  ASSERT(theOwnTeamInfo.teamNumber == 1 || theOwnTeamInfo.teamNumber == 2);
+  if (theOwnTeamInfo.teamNumber == 0 || theOpponentTeamInfo.teamNumber == 0)
+    return;
 
-  std::unique_lock l(mutex[theOwnTeamInfo.teamNumber - 1][theRobotInfo.number - 1]);
-  messages[theOwnTeamInfo.teamNumber - 1][theRobotInfo.number - 1].reset();
+  ASSERT(theOwnTeamInfo.teamNumber != theOpponentTeamInfo.teamNumber && theRobotInfo.number > 0);
+  const size_t team = theOwnTeamInfo.teamNumber < theOpponentTeamInfo.teamNumber ? 0 : 1;
+
+  std::unique_lock l(mutex[team][theRobotInfo.number - 1]);
+  messages[team][theRobotInfo.number - 1].reset();
 }
 
 void TeamCommLocalSocketProvider::update(TeamCommSocket& teamCommSocket)
 {
-  teamCommSocket.send = [=](const TeamCommData& msg)
+  teamCommSocket.send = [this](const TeamCommData& msg)
   {
     return this->send(msg);
   };
 
-  teamCommSocket.receive = [=]()
+  teamCommSocket.receive = [this]()
   {
     return this->receive();
   };
@@ -33,10 +37,14 @@ void TeamCommLocalSocketProvider::update(TeamCommSocket& teamCommSocket)
 
 bool TeamCommLocalSocketProvider::send(const TeamCommData& teamCommData)
 {
-  ASSERT(theOwnTeamInfo.teamNumber == 1 || theOwnTeamInfo.teamNumber == 2);
+  if (theOwnTeamInfo.teamNumber == 0 || theOpponentTeamInfo.teamNumber == 0)
+    return false;
 
-  std::unique_lock l(mutex[theOwnTeamInfo.teamNumber - 1][theRobotInfo.number - 1]);
-  auto& msg = messages[theOwnTeamInfo.teamNumber - 1][theRobotInfo.number - 1];
+  ASSERT(theOwnTeamInfo.teamNumber != theOpponentTeamInfo.teamNumber && theRobotInfo.number > 0);
+  const size_t team = theOwnTeamInfo.teamNumber < theOpponentTeamInfo.teamNumber ? 0 : 1;
+
+  std::unique_lock l(mutex[team][theRobotInfo.number - 1]);
+  auto& msg = messages[team][theRobotInfo.number - 1];
   if (msg)
   {
     ++std::get<unsigned int>(*msg);
@@ -52,12 +60,16 @@ bool TeamCommLocalSocketProvider::send(const TeamCommData& teamCommData)
 
 std::vector<TeamCommDataReceived> TeamCommLocalSocketProvider::receive()
 {
-  ASSERT(theOwnTeamInfo.teamNumber == 1 || theOwnTeamInfo.teamNumber == 2);
-
   std::vector<TeamCommDataReceived> ret;
-  auto m = mutex[theOwnTeamInfo.teamNumber - 1].begin();
+  if (theOwnTeamInfo.teamNumber == 0 || theOpponentTeamInfo.teamNumber == 0)
+    return ret;
 
-  const auto& teamMessages = messages[theOwnTeamInfo.teamNumber - 1];
+  ASSERT(theOwnTeamInfo.teamNumber != theOpponentTeamInfo.teamNumber && theRobotInfo.number > 0);
+  const size_t team = theOwnTeamInfo.teamNumber < theOpponentTeamInfo.teamNumber ? 0 : 1;
+
+  auto m = mutex[team].begin();
+
+  const auto& teamMessages = messages[team];
   for (size_t num = 0; num < teamMessages.size(); ++num)
   {
     const auto& robotMessage = teamMessages[num];

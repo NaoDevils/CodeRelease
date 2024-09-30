@@ -17,8 +17,7 @@
 #include "DebugDrawing3D.h"
 #include "Platform/BHAssert.h"
 #include "Platform/SystemCall.h"
-#include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Configuration/RobotDimensions.h"
+#include "Representations/Infrastructure/Image.h"
 
 DebugDrawing3D::DebugDrawing3D() : flip(false), robotConsole(0)
 {

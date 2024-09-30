@@ -29,6 +29,7 @@ if(CONAN_INSTALL)
                 qt/6.3.1
                 glew/2.2.0
                 ode/0.16.2
+                sol2/3.3.0
         )
         list(APPEND
             CONAN_OPTIONS

@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <QThread>
-#include "Utils/dorsh/cmdlib/AbstractConsole.h"
+#include "cmdlib/AbstractConsole.h"
 
 class Context;
 struct RobotConfigDorsh;

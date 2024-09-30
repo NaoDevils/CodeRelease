@@ -1,7 +1,7 @@
 #include <QFrame>
 #include <QFormLayout>
 #include <QPushButton>
-#include "Utils/dorsh/cmdlib/AbstractConsole.h"
+#include "cmdlib/AbstractConsole.h"
 #pragma once
 
 class Console;

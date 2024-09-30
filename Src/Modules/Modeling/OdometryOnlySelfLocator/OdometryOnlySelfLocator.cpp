@@ -19,6 +19,7 @@ void OdometryOnlySelfLocator::update(RobotPose& robotPose)
   robotPose.sideConfidenceState = SideConfidence::ConfidenceState::CONFIDENT;
 
   MODIFY("module:OdometryOnlySelfLocator:basePose", base);
+  MODIFY("module:OdometryOnlySelfLocator:offset", offset);
   DEBUG_RESPONSE_ONCE("module:OdometrOnlySelfLocator:resetReferenceOdometry")
   {
     referenceOdometry = theOdometryData;
@@ -35,7 +36,7 @@ void OdometryOnlySelfLocator::update(RobotPose& robotPose)
 
   if (theKeySymbols.pressed_and_released[KeyStates::headMiddle] && !lastPressedAndRelease)
   {
-    OUTPUT(idConsole, text, "set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };");
+    OUTPUT(idConsole, text, "set representation:MotionRequest motion = stand; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; accLimits = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; kickPose = { rotation = 0deg; translation = { x = 0; y = 0; }; }; }; GoalieIsDiving = false;");
     OUTPUT(idConsole, text, "dr module:OdometrOnlySelfLocator:getDistance");
   }
 

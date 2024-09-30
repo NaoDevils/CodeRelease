@@ -3,7 +3,7 @@
   <Include href="Includes/NaoV6H25.rsi2"/>
   <Include href="Includes/Field2020SPL.rsi2"/>
 
-  <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="35000" Kd="150" contactKp="5300" contactKd="1">
+  <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="12500" Kd="10000" contactKp="1425" contactKd="7.5">
    <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
 
     <Compound name="puppets">

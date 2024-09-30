@@ -9,17 +9,12 @@
 #include "Tools/Module/Module.h"
 
 // input
-#include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/RoboCupGameControlData.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionInfo.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Perception/FieldColor.h"
-#include "Representations/BehaviorControl/KeySymbols.h"
-#include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
 #include "Representations/Modeling/BallModel.h"
@@ -36,13 +31,11 @@ MODULE(CognitionMindfulness,
   // low level input
 
   // high level input
-  REQUIRES(GameInfo),
   REQUIRES(RobotInfo),
   REQUIRES(BallSymbols),
   REQUIRES(BallModel),
   REQUIRES(MotionInfo),
   REQUIRES(MotionRequest),
-  REQUIRES(RobotPoseAfterPreview),
   REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
   REQUIRES(FieldDimensions),
@@ -50,9 +43,7 @@ MODULE(CognitionMindfulness,
   REQUIRES(FrameInfo),
 
   REQUIRES(RobotModel),
-  REQUIRES(RobotHealth),
   REQUIRES(SystemSensorData),
-  REQUIRES(KeySymbols),
 
   PROVIDES(CognitionState),
   LOADS_PARAMETERS(,

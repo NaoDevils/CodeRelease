@@ -10,12 +10,10 @@
 #include "Tools/Module/Module.h"
 
 #include "Representations/Infrastructure/TeamCommSocket.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Tools/Network/UdpComm.h"
 
 MODULE(TeamCommUDPSocketProvider,
-  REQUIRES(RobotInfo),
   REQUIRES(OwnTeamInfo),
   PROVIDES_WITHOUT_MODIFY(TeamCommSocket)
 );

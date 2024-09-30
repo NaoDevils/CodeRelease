@@ -9,7 +9,6 @@
 #include "Tools/Module/Module.h"
 #include "Tools/MessageQueue/InMessage.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Configuration/HeadLimits.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
@@ -35,7 +34,6 @@ private:
   static CycleLocal<CognitionConfigurationDataProvider*> theInstance; /**< Points to the only instance of this class in this process or is 0 if there is none. */
 
   std::unique_ptr<FieldDimensions> theFieldDimensions = nullptr;
-  std::unique_ptr<CameraCalibration> theCameraCalibration = nullptr;
   std::unique_ptr<RobotDimensions> theRobotDimensions = nullptr;
   std::unique_ptr<HeadLimits> theHeadLimits = nullptr;
   std::unique_ptr<OdometryCorrectionTables> theOdometryCorrectionTables = nullptr;
@@ -44,13 +42,11 @@ private:
 
   void update(USBSettings& usbSettings);
   void update(FieldDimensions& fieldDimensions);
-  void update(CameraCalibration& cameraCalibration);
   void update(RobotDimensions& robotDimensions);
   void update(HeadLimits& headLimits);
   void update(OdometryCorrectionTables& odometryCorrectionTables);
 
   void readFieldDimensions();
-  void readCameraCalibration();
   void readRobotDimensions();
   void readHeadLimits();
   void readOdometryCorrectionTables();

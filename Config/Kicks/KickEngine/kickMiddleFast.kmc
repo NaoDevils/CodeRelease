@@ -1,23 +1,29 @@
-horizontalInaccuracy = 1.5;
-distanceAdjustable = false;
+generalValue = 0.65;
+verticalInaccuracy = 1.0;
+horizontalInaccuracy = 25deg;
 kickBlind = false;
-kickWithLeftCondition = onLeftSide;
 switchKickFoot = false;
 ballOffset = {
-  x = 0.190;
-  y = 0.055;
+  x = 0.18;
+  y = 0.065;
 };
 kickAngle = 0deg;
-kickDistance = [2.5, 4.2];
-
+kickDistance = [
+  4.0,
+  4.0
+];
+translationThresholdXFront = 0.022;
+translationThresholdXBack = 0.012;
+translationThresholdY = 0.020;
+rotationThreshold = 6.5deg;
 footOrigin = {
-  x = 0;
+  x = -25;
   y = 55;
-  z = -240;
+  z = -235;
 };
 footRotOrigin = {
   x = 0;
-  y = 0;
+  y = 0.02;
   z = 0;
 };
 armOrigin = {
@@ -53,43 +59,43 @@ phaseParameters = [
     duration = 24;
     kick = false;
     leftFootTra1 = {
-      x = 0;
+      x = -25;
       y = 55;
-      z = -240;
+      z = -235;
     };
     leftFootTra2 = {
-      x = 0;
+      x = -20;
       y = 55;
-      z = -240;
+      z = -235;
     };
     leftFootRot1 = {
-      x = -0.1;
-      y = -0;
+      x = 0.025;
+      y = 0.02;
       z = 0;
     };
     leftFootRot2 = {
-      x = -0.1;
-      y = -0;
+      x = 0.047;
+      y = 0.02;
       z = 0;
     };
     rightFootTra1 = {
-      x = 0;
+      x = -25;
       y = -55;
-      z = -240;
+      z = -235;
     };
     rightFootTra2 = {
-      x = 0;
+      x = -20;
       y = -55;
-      z = -240;
+      z = -235;
     };
     rightFootRot1 = {
-      x = -0.05;
-      y = -0;
+      x = -0.025;
+      y = 0.02;
       z = -0;
     };
     rightFootRot2 = {
-      x = -0.05;
-      y = -0;
+      x = -0.047;
+      y = 0.02;
       z = -0;
     };
     leftArmTra1 = {
@@ -158,43 +164,43 @@ phaseParameters = [
     duration = 400;
     kick = false;
     leftFootTra1 = {
-      x = 0;
+      x = -10;
       y = 65;
-      z = -240;
+      z = -235;
     };
     leftFootTra2 = {
       x = 0;
       y = 65;
-      z = -240;
+      z = -235;
     };
     leftFootRot1 = {
-      x = -0.1;
-      y = -0;
+      x = 0.048;
+      y = 0.02;
       z = 0;
     };
     leftFootRot2 = {
-      x = -0.1;
-      y = -0;
+      x = 0.048;
+      y = 0.02;
       z = 0;
     };
     rightFootTra1 = {
-      x = 0;
+      x = -10;
       y = -20;
-      z = -240;
+      z = -235;
     };
     rightFootTra2 = {
       x = 0;
       y = -20;
-      z = -240;
+      z = -235;
     };
     rightFootRot1 = {
-      x = -0.05;
-      y = -0;
+      x = -0.048;
+      y = -0.08;
       z = -0;
     };
     rightFootRot2 = {
-      x = -0.05;
-      y = -0;
+      x = -0.048;
+      y = -0.08;
       z = -0;
     };
     leftArmTra1 = {
@@ -265,41 +271,41 @@ phaseParameters = [
     leftFootTra1 = {
       x = -40;
       y = 95;
-      z = -190;
+      z = -185;
     };
     leftFootTra2 = {
       x = -40;
       y = 95;
-      z = -190;
+      z = -185;
     };
     leftFootRot1 = {
-      x = -0.2;
-      y = 0.23;
+      x = 0.096;
+      y = 0.02;
       z = 0;
     };
     leftFootRot2 = {
-      x = -0.2;
-      y = 0.23;
+      x = 0.096;
+      y = 0.02;
       z = 0;
     };
     rightFootTra1 = {
       x = 0;
       y = -20;
-      z = -240;
+      z = -235;
     };
     rightFootTra2 = {
       x = 0;
       y = -20;
-      z = -240;
+      z = -235;
     };
     rightFootRot1 = {
-      x = -0.1;
-      y = -0.13;
+      x = -0.096;
+      y = -0.08;
       z = 0;
     };
     rightFootRot2 = {
-      x = -0.1;
-      y = -0.13;
+      x = -0.096;
+      y = -0.08;
       z = -0;
     };
     leftArmTra1 = {
@@ -365,46 +371,46 @@ phaseParameters = [
     };
   },
   {
-    duration = 150;
-    kick = false;
+    duration = 80;
+    kick = true;
     leftFootTra1 = {
-      x = 80;
+      x = 85;
       y = 100;
-      z = -190;
+      z = -185;
     };
     leftFootTra2 = {
-      x = 110;
+      x = 115;
       y = 100;
-      z = -190;
+      z = -185;
     };
     leftFootRot1 = {
-      x = -0.2;
-      y = 0.25;
+      x = 0.0750008;
+      y = 0.02;
       z = 0;
     };
     leftFootRot2 = {
-      x = -0.2;
-      y = 0.25;
+      x = 0.0499992;
+      y = 0.02;
       z = 0;
     };
     rightFootTra1 = {
       x = 0;
       y = -20;
-      z = -240;
+      z = -235;
     };
     rightFootTra2 = {
       x = 0;
       y = -20;
-      z = -240;
+      z = -235;
     };
     rightFootRot1 = {
-      x = -0.05;
-      y = -0;
+      x = -0.0750008;
+      y = -0.03;
       z = -0;
     };
     rightFootRot2 = {
-      x = -0.05;
-      y = -0;
+      x = -0.0499992;
+      y = 0.02;
       z = -0;
     };
     leftArmTra1 = {
@@ -473,43 +479,43 @@ phaseParameters = [
     duration = 250;
     kick = false;
     leftFootTra1 = {
-      x = -0;
+      x = 0;
       y = 80;
-      z = -230;
+      z = -225;
     };
     leftFootTra2 = {
-      x = -0;
+      x = 0;
       y = 80;
-      z = -230;
+      z = -225;
     };
     leftFootRot1 = {
-      x = -0.1;
-      y = -0;
+      x = 0.0349998;
+      y = 0.02;
       z = 0;
     };
     leftFootRot2 = {
-      x = -0.1;
-      y = -0;
+      x = 0.0349998;
+      y = 0.02;
       z = 0;
     };
     rightFootTra1 = {
       x = 0;
       y = -35;
-      z = -240;
+      z = -235;
     };
     rightFootTra2 = {
       x = 0;
       y = -35;
-      z = -240;
+      z = -235;
     };
     rightFootRot1 = {
-      x = -0.05;
-      y = -0;
+      x = -0.0349998;
+      y = 0.02;
       z = -0;
     };
     rightFootRot2 = {
-      x = -0.05;
-      y = -0;
+      x = -0.0349998;
+      y = 0.02;
       z = -0;
     };
     leftArmTra1 = {
@@ -578,43 +584,43 @@ phaseParameters = [
     duration = 1000;
     kick = false;
     leftFootTra1 = {
-      x = 0;
-      y = 40;
-      z = -240;
+      x = -25;
+      y = 65;
+      z = -235;
     };
     leftFootTra2 = {
-      x = 0;
-      y = 40;
-      z = -240;
+      x = -25;
+      y = 55;
+      z = -235;
     };
     leftFootRot1 = {
       x = 0;
-      y = -0;
+      y = 0.02;
       z = 0;
     };
     leftFootRot2 = {
       x = 0;
-      y = -0;
+      y = 0.02;
       z = 0;
     };
     rightFootTra1 = {
-      x = 0;
+      x = -25;
       y = -40;
-      z = -240;
+      z = -235;
     };
     rightFootTra2 = {
-      x = 0;
-      y = -40;
-      z = -240;
+      x = -25;
+      y = -55;
+      z = -235;
     };
     rightFootRot1 = {
       x = 0;
-      y = -0;
+      y = 0.02;
       z = -0;
     };
     rightFootRot2 = {
       x = 0;
-      y = -0;
+      y = 0.02;
       z = -0;
     };
     leftArmTra1 = {

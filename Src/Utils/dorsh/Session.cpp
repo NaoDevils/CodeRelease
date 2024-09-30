@@ -1,10 +1,10 @@
 #include "Platform/BHAssert.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/agents/DataAgent.h"
-#include "Utils/dorsh/cmdlib/IConsole.h"
-#include "Utils/dorsh/cmdlib/Context.h"
+#include "Session.h"
+#include "models/Robot.h"
+#include "models/Team.h"
+#include "agents/DataAgent.h"
+#include "cmdlib/IConsole.h"
+#include "cmdlib/Context.h"
 #include <iostream>
 
 Session::Session() : console(0), logLevel(ALL), dataAgent(0), robotsByName() {}

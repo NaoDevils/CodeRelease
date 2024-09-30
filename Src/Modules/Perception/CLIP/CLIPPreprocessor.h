@@ -13,15 +13,11 @@
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/FieldColor.h"
-#include "Representations/Perception/GoalPercept.h"
 #include "Representations/Perception/CLIPPointsPercept.h"
 #include "Representations/Perception/BallSpots.h"
-#include "Representations/Perception/BallPercept.h"
 #include "Representations/Perception/RobotsPercept.h"
-#include "Representations/Perception/BodyContour.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Tools/RingBufferWithSum.h"
 #include <algorithm>
@@ -37,7 +33,6 @@ MODULE(CLIPPreprocessor,
   REQUIRES(ImageUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
-  USES(RobotPose),
   PROVIDES(CLIPPointsPercept),
   PROVIDES(ScanlinesBallSpots),
   PROVIDES(ObstacleBasePoints),

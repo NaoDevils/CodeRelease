@@ -9,7 +9,6 @@
 #include "Tools/Module/Module.h"
 
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamCommData.h"
 #include "Representations/Infrastructure/TeamCommSocket.h"
 #include "Representations/Infrastructure/TeamCommSenderOutput.h"

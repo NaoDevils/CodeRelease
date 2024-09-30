@@ -6,13 +6,9 @@
 
 #pragma once
 
-#include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/FootSteps.h"
-#include "Representations/Sensing/RobotModel.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Tools/Module/Module.h"
 #include "CoMProvider.h"
-#include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/MotionControl/ActualCoM.h"
 
 MODULE(CoMProviderModule,

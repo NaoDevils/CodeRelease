@@ -1,5 +1,5 @@
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/tools/Platform.h"
+#include "cmdlib/ProcessRunner.h"
+#include "tools/Platform.h"
 #include <QDir>
 #include <QRegularExpression>
 #include <QString>

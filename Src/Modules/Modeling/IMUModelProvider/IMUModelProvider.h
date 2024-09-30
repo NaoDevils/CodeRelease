@@ -13,7 +13,6 @@
 
 #include "Tools/Module/Module.h"
 #include "Tools/Math/Eigen.h"
-#include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Modeling/IMUModel.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"

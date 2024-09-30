@@ -7,6 +7,7 @@
 
 #include "Modules/MotionControl/KickEngine/DynPoint.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Math/Pose2f.h"
 
 STREAMABLE(KickRequest,
   ENUM(KickMotionID,

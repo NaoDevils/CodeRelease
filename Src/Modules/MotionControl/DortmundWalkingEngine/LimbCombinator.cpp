@@ -76,10 +76,16 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
   unsigned int kickHackKneePhaseEnd = kickHackKneePhaseStart + theFootpositions.kickHackDurationKnee;
   bool doKickHackKnee = inKick && theFootpositions.frameInPhase >= kickHackKneePhaseStart && theFootpositions.frameInPhase < kickHackKneePhaseEnd;
 
+  unsigned int kickHackKneeReversePhaseStart = kickHackKneePhaseEnd + 1;
+  unsigned int kickHackKneeReversePhaseEnd = kickHackKneeReversePhaseStart + theFootpositions.kickHackDurationKneeReverse;
+  bool doKickHackKneeReverse = inKick && theFootpositions.frameInPhase >= kickHackKneeReversePhaseStart && theFootpositions.frameInPhase < kickHackKneeReversePhaseEnd;
+
   if (doKickHackHip)
     applyKickHackHip(walkingEngineOutput);
   if (doKickHackKnee)
     applyKickHackKnee(walkingEngineOutput);
+  if (doKickHackKneeReverse)
+    applyKickHackKneeReverse(walkingEngineOutput);
   if (inKick)
     applyAnkleCompensation(walkingEngineOutput);
 
@@ -102,22 +108,18 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
   walkingEngineOutput.offsetToRobotPoseAfterPreview = theWalkingInfo.offsetToRobotPoseAfterPreview;
 
   //set leg hardness
-  static unsigned int waitCounter = 0;
-  {
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipYawPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[0];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[1];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[2];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::lKneePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[3];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnklePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[4];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnkleRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[5];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipYawPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[0];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[1];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[2];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::rKneePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[3];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnklePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[4];
-    walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnkleRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[5];
-    waitCounter--;
-  }
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipYawPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[0];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[1];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::lHipPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[2];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::lKneePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[3];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnklePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[4];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::lAnkleRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[5];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipYawPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[0];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[1];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::rHipPitch] = theWalkingEngineParams.jointCalibration.legJointHardness[2];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::rKneePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[3];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnklePitch] = theWalkingEngineParams.jointCalibration.legJointHardness[4];
+  walkingEngineOutput.stiffnessData.stiffnesses[Joints::rAnkleRoll] = theWalkingEngineParams.jointCalibration.legJointHardness[5];
 
   // set arm hardness
   for (int i = Joints::lShoulderPitch; i <= Joints::rElbowRoll; i++)
@@ -131,11 +133,14 @@ void LimbCombinator::update(WalkingEngineOutput& walkingEngineOutput)
   }
 
   // compensate joint error, i.e. when a joint is not able to reach its target
-  unsigned sensorDelay = std::min<unsigned>(theWalkingEngineParams.jointSensorDelayFrames - 1, MAX_DELAY_FRAMES - 1);
-  Angle lHipPitchError = std::max(-5_deg, std::min<Angle>(lHipPitchTargetAngle[sensorDelay] - theJointSensorData.angles[Joints::lHipPitch], 5_deg));
-  Angle rHipPitchError = std::max(-5_deg, std::min<Angle>(rHipPitchTargetAngle[sensorDelay] - theJointSensorData.angles[Joints::rHipPitch], 5_deg));
-  walkingEngineOutput.angles[Joints::lKneePitch] -= lHipPitchError * hipPitchKneeCompensation;
-  walkingEngineOutput.angles[Joints::rKneePitch] -= rHipPitchError * hipPitchKneeCompensation;
+  if (!inKick)
+  {
+    unsigned sensorDelay = std::min<unsigned>(theWalkingEngineParams.jointSensorDelayFrames - 1, MAX_DELAY_FRAMES - 1);
+    Angle lHipPitchError = std::max(-5_deg, std::min<Angle>(lHipPitchTargetAngle[sensorDelay] - theJointSensorData.angles[Joints::lHipPitch], 5_deg));
+    Angle rHipPitchError = std::max(-5_deg, std::min<Angle>(rHipPitchTargetAngle[sensorDelay] - theJointSensorData.angles[Joints::rHipPitch], 5_deg));
+    walkingEngineOutput.angles[Joints::lKneePitch] -= lHipPitchError * hipPitchKneeCompensation;
+    walkingEngineOutput.angles[Joints::rKneePitch] -= rHipPitchError * hipPitchKneeCompensation;
+  }
 
   // TODO: replace this with other logging mechanisms
   // TODO: Care about your own problems
@@ -201,6 +206,19 @@ void LimbCombinator::applyKickHackKnee(WalkingEngineOutput& walkingEngineOutput)
   {
     walkingEngineOutput.angles[Joints::lKneePitch] = theFootpositions.kickHackKneeIntensity * theFootpositions.kickHackKneeAngle
         + (1 - theFootpositions.kickHackKneeIntensity) * walkingEngineOutput.angles[Joints::lKneePitch];
+  }
+}
+void LimbCombinator::applyKickHackKneeReverse(WalkingEngineOutput& walkingEngineOutput)
+{
+  if (theFootpositions.onFloor[LEFT_FOOT])
+  {
+    walkingEngineOutput.angles[Joints::rKneePitch] = theFootpositions.kickHackKneeIntensityReverse * theFootpositions.kickHackKneeAngle
+        + (1 - theFootpositions.kickHackKneeIntensityReverse) * walkingEngineOutput.angles[Joints::rKneePitch];
+  }
+  else
+  {
+    walkingEngineOutput.angles[Joints::lKneePitch] = (1 - theFootpositions.kickHackKneeIntensityReverse) * theFootpositions.kickHackKneeAngle
+        + theFootpositions.kickHackKneeIntensityReverse * walkingEngineOutput.angles[Joints::lKneePitch];
   }
 }
 

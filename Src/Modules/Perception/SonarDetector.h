@@ -11,14 +11,12 @@
 #include "Representations/Configuration/SonarConfiguration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Perception/SonarPercept.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Representations/Sensing/FallDownState.h"
 
 MODULE(SonarDetector,
   REQUIRES(SonarSensorData),
   REQUIRES(SonarConfiguration),
   REQUIRES(RobotDimensions),
-  REQUIRES(RobotPose),
   REQUIRES(FallDownState),
   PROVIDES(SonarPercept),
 

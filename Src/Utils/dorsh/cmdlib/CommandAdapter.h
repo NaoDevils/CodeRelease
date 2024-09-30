@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utils/dorsh/cmdlib/Command.h"
+#include "cmdlib/Command.h"
 
 class CommandAdapter : public Command
 {

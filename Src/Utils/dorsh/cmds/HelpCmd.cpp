@@ -1,7 +1,7 @@
-#include "Utils/dorsh/cmds/HelpCmd.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/tools/StringTools.h"
+#include "cmds/HelpCmd.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "tools/StringTools.h"
 
 HelpCmd HelpCmd::theHelpCmd;
 

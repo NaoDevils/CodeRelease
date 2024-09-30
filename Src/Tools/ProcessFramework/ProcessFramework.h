@@ -14,11 +14,13 @@
 #include "Receiver.h"
 #include "Sender.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Global.h"
 #ifdef TARGET_SIM
 #include "Controller/RoboCupCtrl.h"
 #endif
 
 class Logger;
+struct Settings;
 
 /**
  * The class is a helper that allows to instantiate a class as an Windows process.
@@ -101,7 +103,7 @@ protected:
     setPriority(process.getPriority());
     process.processBase = this;
     Thread<ProcessBase>::yield(); // always leave processing time to other threads
-    process.setGlobals();
+    GlobalGuard g(process.getGlobals());
     while (isRunning())
     {
       if (process.getFirstReceiver())
@@ -125,20 +127,14 @@ public:
    * Note that process.setGlobals() is called before process is constructed.
    * @param name The name of the process.
    */
-  ProcessFrame(const std::string& name, Logger* logger) : name(name)
+  ProcessFrame(const std::string& name, Logger* logger, Settings& settings) : name(name), process(settings)
   {
-    process.setGlobals();
     process.setLogger(logger);
   }
 
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-
-  ~ProcessFrame()
-  {
-    process.setGlobals();
-  }
 
   /**
    * The functions searches for a sender with a given name.
@@ -212,7 +208,7 @@ protected:
    * The function creates a process.
    * @return A pointer to the new process.
    */
-  virtual std::unique_ptr<ProcessBase> create(Logger* logger) const = 0;
+  virtual std::unique_ptr<ProcessBase> create(Logger* logger, Settings& settings) const = 0;
 
 public:
   ProcessCreatorBase() : next(first) { first = this; }
@@ -234,7 +230,7 @@ protected:
    * The function creates a process.
    * @return A pointer to the new process.
    */
-  std::unique_ptr<ProcessBase> create(Logger* logger) const { return std::make_unique<T>(name, logger); }
+  std::unique_ptr<ProcessBase> create(Logger* logger, Settings& settings) const { return std::make_unique<T>(name, logger, settings); }
 
 public:
   /**
@@ -249,15 +245,22 @@ public:
 class ProcessList : public std::list<std::unique_ptr<ProcessBase>>
 {
 public:
+  ~ProcessList()
+  {
+    while (!empty())
+      pop_back();
+  }
+
   /**
    * Creates a process for each process constructor and inserts them
    * into the list.
    * @param logger Pointer to Logger instance.
+   * @param settings Pointer to Settings instance.
    */
-  void create(Logger* logger)
+  void create(Logger* logger, Settings& settings)
   {
     for (const ProcessCreatorBase* i = ProcessCreatorBase::first; i; i = i->next)
-      push_back(i->create(logger));
+      push_back(i->create(logger, settings));
   }
 
   /**

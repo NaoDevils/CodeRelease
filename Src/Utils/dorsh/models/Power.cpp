@@ -1,4 +1,4 @@
-#include "Utils/dorsh/models/Power.h"
+#include "models/Power.h"
 
 Power::Power() : value(101) {}
 

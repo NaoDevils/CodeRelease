@@ -7,46 +7,43 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
+#include "Tools/ColorModelConversions.h"
+#include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/SystemSensorData.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/CMCorrectorStatus.h"
-#include "Representations/Perception/CLIPGoalPercept.h"
+#include "Representations/Infrastructure/LEDRequest.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Sensing/GroundContactState.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
-#include "Representations/BehaviorControl/BehaviorLEDRequest.h"
 #include "Representations/Modeling/WhistleDortmund.h"
-#include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/MotionControl/StandEngineOutput.h"
-#include "Representations/MotionControl/MotionState.h"
+#include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/Sensing/FallDownState.h"
 
 MODULE(LEDHandler,
-  REQUIRES(BallModel),
   REQUIRES(BallSymbols),
   REQUIRES(BehaviorData),
-  REQUIRES(MotionState),
-  REQUIRES(BehaviorLEDRequest),
+  REQUIRES(CameraCalibration),
   REQUIRES(RoleSymbols),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
-  REQUIRES(CLIPGoalPercept),
-  REQUIRES(GroundContactState),
   REQUIRES(RobotInfo),
   REQUIRES(RobotPose),
   REQUIRES(SpeedInfo),
   REQUIRES(SystemSensorData),
   REQUIRES(TeammateData),
   REQUIRES(WhistleDortmund),
-  REQUIRES(GameSymbols),
   REQUIRES(StandEngineOutput),
   REQUIRES(CMCorrectorStatus),
   REQUIRES(FallDownState),
+  REQUIRES(MotionInfo),
+  REQUIRES(WalkCalibration),
   PROVIDES(LEDRequest)
 );
 
@@ -55,36 +52,47 @@ class LEDHandler : public LEDHandlerBase
 private:
   void update(LEDRequest& ledRequest);
 
-  void setEyeColor(LEDRequest& ledRequest, bool left, BehaviorLEDRequest::EyeColor col, LEDRequest::LEDState s, bool onlyLeft = false, bool onlyRight = false);
-
-  void setFrameworkInactiveLEDs(LEDRequest& ledRequest);
-  void setCalibrationLEDs(LEDRequest& ledRequest);
-  void setTestLEDs(LEDRequest& ledRequest);
-  void setWhistleDetectionLEDs(LEDRequest& ledRequest);
+  void setCalibrationLEDs(LEDRequest& ledRequest) const;
+  void setTestLEDs(LEDRequest& ledRequest) const;
+  void setWhistleDetectionLEDs(LEDRequest& ledRequest) const;
   void setGameLEDs(LEDRequest& ledRequest);
-  void setStaticFireEyes(LEDRequest& ledRequest, BehaviorLEDRequest::EyeColor col1, BehaviorLEDRequest::EyeColor col2, BehaviorLEDRequest::EyeColor col3);
-  void setRandomizedFireEyes(LEDRequest& ledRequest, BehaviorLEDRequest::EyeColor col1, BehaviorLEDRequest::EyeColor col2, BehaviorLEDRequest::EyeColor col3);
-  void setDynamicRainbowEyes(LEDRequest& ledRequest);
+
+  void setStaticFireEyes(LEDRequest& ledRequest, LEDRequest::RGBLED col1, LEDRequest::RGBLED col2, LEDRequest::RGBLED col3);
+  void setRandomizedFireEyes(LEDRequest& ledRequest, LEDRequest::RGBLED col1, LEDRequest::RGBLED col2, LEDRequest::RGBLED col3);
+  void setFloatingFireEyes(LEDRequest& ledRequest, short hue1, short hue2, short hue3);
   void setStaticRainbowEyes(LEDRequest& ledRequest);
+  void setFloatingRainbowEyes(LEDRequest& ledRequest);
+
   // duration means number of update calls
-  void setRotatingEyesTwoColors(LEDRequest& ledRequest, BehaviorLEDRequest::EyeColor col1, BehaviorLEDRequest::EyeColor col2, int duration, bool mirrored);
-  void setRotatingEyesThreeColors(LEDRequest& ledRequest, BehaviorLEDRequest::EyeColor col1, BehaviorLEDRequest::EyeColor col2, BehaviorLEDRequest::EyeColor transition, int duration, bool mirrored);
-  // led must be between 0 and 7: 0=N, 1=NW, 2=W, 3=SW, 4=S, 5=SE, 6=E, 7=NE
-  void setLEDInBothEyesToColor(LEDRequest& ledRequest, BehaviorLEDRequest::EyeColor col, int led, bool mirrored);
-  void setBatteryInfo(LEDRequest& ledRequest); /**< Battery info to right ear. */
-  void setConnectionInfo(LEDRequest& ledRequest); /**< Connection info to left ear. */
-  void setDetectionInfo(LEDRequest& ledRequest); /**< Set perception info to left eye. */
-  void setRoleInfo(LEDRequest& ledRequest); /**< Set role info to right eye. */
+  void setRotatingEyesTwoColors(LEDRequest& ledRequest, LEDRequest::RGBLED col1, LEDRequest::RGBLED col2, int duration, bool mirrored);
+  void setRotatingEyesThreeColors(LEDRequest& ledRequest, LEDRequest::RGBLED col1, LEDRequest::RGBLED col2, LEDRequest::RGBLED transition, int duration, bool mirrored);
+
+  void setBatteryInfo(LEDRequest& ledRequest) const; /**< Battery info to right ear. */
+  void setChargingStatus(LEDRequest& ledRequest); /**< Set charging status to eyes. */
+  void setCheeringAnimation(LEDRequest& ledRequest); /**< Set cheering animation to eyes. */
+  void setConnectionInfo(LEDRequest& ledRequest) const; /**< Connection info to left ear. */
+  void setDetectionInfo(LEDRequest& ledRequest) const; /**< Set perception info to left eye. */
+  void setRoleInfo(LEDRequest& ledRequest) const; /**< Set role info to right eye. */
   void setFlyingStateInfo(LEDRequest& ledRequest); /**< Set feedback for flying state to eyes. */
   void setDamagedJoints(LEDRequest& ledRequest); /**< Set feedback for broken Joints to eyes. */
   void setGameStateInfo(LEDRequest& ledRequest); /**< Set game state info to chest button. */
-  void setLocaInfo(LEDRequest& ledRequest); /**< Set loca info on head. */
-  void setMotionInfo(LEDRequest& ledRequest); /**< Set motion info to feet. */
-  void setObstacleInfo(LEDRequest& ledRequest); /**< Set obstacle info to feet. */
+  void setLocaInfo(LEDRequest& ledRequest) const; /**< Set loca info on head. */
+  void setMotionInfo(LEDRequest& ledRequest) const; /**< Set motion info to feet. */
+  void setMicStatusLEDs(LEDRequest& ledRequest); /**<show mic status during initial. */
+
+  float blinking = 0.f;
+  float fastBlinking = 0.f;
 
   int rotationState = 0;
+  int rotationStateFire = 0;
   int lastUpdate = 0;
-  std::vector<bool> col1LEDs = {0, 0, 0, 0, 1, 1, 1, 0};
-  std::vector<bool> col2LEDs = {0, 1, 1, 1, 0, 0, 0, 1};
-  std::vector<bool> col3LEDs = {1, 1, 1, 1, 1, 1, 1, 1};
+  int offset = 0;
+
+  std::array<bool, LEDRequest::EyeLED::numOfEyeLEDs> col1LEDsOld = {0, 0, 0, 1, 1, 1, 0, 0};
+  std::array<bool, LEDRequest::EyeLED::numOfEyeLEDs> col2LEDsOld = {0, 1, 1, 0, 0, 0, 1, 1};
+  std::array<bool, LEDRequest::EyeLED::numOfEyeLEDs> col3LEDsOld = {1, 1, 1, 1, 1, 1, 1, 1};
+
+  std::array<bool, LEDRequest::EyeLED::numOfEyeLEDs> col1LEDs = {0, 0, 0, 1, 1, 1, 0, 0};
+  std::array<bool, LEDRequest::EyeLED::numOfEyeLEDs> col2LEDs = {0, 1, 1, 0, 0, 0, 1, 1};
+  std::array<bool, LEDRequest::EyeLED::numOfEyeLEDs> col3LEDs = {1, 1, 1, 1, 1, 1, 1, 1};
 };

@@ -9,9 +9,10 @@
 #include "Modules/MotionControl/MotionSelector.h"
 #include "Modules/MotionControl/KeyFrameEngine/KeyFrameEngine.h"
 #include "Tools/Build.h"
+#include "Tools/Settings.h"
 //#include "Modules/MotionControl/WalkingEngine/WalkingEngine.h"
 
-Motion::Motion()
+Motion::Motion(Settings& settings)
     : INIT_SUPERTHREAD_DEBUGGING("motion.cfg"), INIT_RECEIVER(CognitionToMotion), INIT_SENDER(MotionToCognition),
       moduleManager({ModuleBase::motionInfrastructure, ModuleBase::motionControl, ModuleBase::sensing, ModuleBase::dortmundWalkingEngine}, this)
 {

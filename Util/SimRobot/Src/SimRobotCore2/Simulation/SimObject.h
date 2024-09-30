@@ -13,7 +13,8 @@
 #include "SimRobotCore2.h"
 #include "Parser/Element.h"
 #include "Tools/Math/Eigen.h"
-#include "Tools/Math/RotationMatrix.h"
+
+class RotationMatrix;
 
 /**
 * @class SimObject

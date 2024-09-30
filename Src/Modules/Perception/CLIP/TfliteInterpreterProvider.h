@@ -11,8 +11,6 @@
 #include "Tools/Module/Module.h"
 #include "Tools/Enum.h"
 #include "Representations/Perception/TfliteInterpreter.h"
-#include <taskflow/taskflow.hpp>
-
 
 MODULE(TfliteInterpreterProvider,
   HAS_PREEXECUTION,

@@ -2,8 +2,13 @@
 
 #pragma once
 
+#include <vector>
+#include "Representations/Modeling/RobotPose.h"
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Pose2f.h"
+#include "Tools/Math/Angle.h"
+#include "Tools/Math/Eigen.h"
+#include "Tools/ColorRGBA.h"
 
 STREAMABLE(SonarEstimate,
   ENUM(SensorPosition,

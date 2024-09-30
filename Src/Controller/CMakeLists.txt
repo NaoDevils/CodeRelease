@@ -10,6 +10,7 @@ find_package(libjpeg-turbo 2.1 REQUIRED)
 find_package(nlohmann_json 3.11 REQUIRED)
 find_package(Snappy 1.1 REQUIRED)
 find_package(portaudio 19.7 REQUIRED)
+find_package(sol2 3.3.0 REQUIRED)
 
 add_subdirectory(../../Util/qtpropertybrowser qtpropertybrowser)
 add_subdirectory(../../Util/libqxt libqxt)
@@ -125,21 +126,13 @@ add_library(${PROJECT_NAME}
 
 target_precompile_headers(${PROJECT_NAME}
     PRIVATE
+        "../Tools/Math/Angle.h"
         "../Tools/Math/Eigen.h"
-        
-        "../Tools/Boundary.h"
-        "../Tools/RingBufferWithSum.h"
-        "../Tools/Debugging/DebugDrawings.h"
-        "../Tools/Math/Geometry.h"
         "../Tools/Math/Pose3f.h"
-        "../Tools/Math/Transformation.h"
-        "../Tools/MessageQueue/MessageQueue.h"
         "../Tools/Module/Module.h"
+        "../Tools/Debugging/DebugDrawings.h"
+
         "RobotConsole.h"
-        
-        <algorithm>
-        <list>
-        <sstream>
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -172,6 +165,7 @@ target_link_libraries(${PROJECT_NAME}
         GameController
         Snappy::Snappy
         portaudio::portaudio
+        sol2::sol2
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE TARGET_SIM)

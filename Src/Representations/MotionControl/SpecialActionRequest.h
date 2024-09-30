@@ -28,28 +28,34 @@ STREAMABLE(SpecialActionRequest,
     cheering4,
     cheering5,
     wave_left,
-    kickLeftFast,
-    kickLeftSlow,
     penaltyGoaliePrepareDive,
     // add new non-standup and non-block motions here
     numOfUprightMotions,
     
     // stand up motions
     firstStandUpMotion = numOfUprightMotions,
-    standUpBackNaoFast = firstStandUpMotion,
+    standUpBack = firstStandUpMotion,
+    standUpBackSlide,
+    standUpBackSpreadLegs,
+    standUpBackLean,
     lying,
-    standUpFrontNaoFast,
-    standUpBackNaoFastOld,
-    standUpFrontNaoFastOld,
-    standUpFrontNaoSlowOld,
-    standUpSideNaoGoalie,
+    freeArmsFront,
+    freeArmsBack,
+    untangleArms,
+    standUpFront,
+    standUpFrontSlide,
+    standUpFrontSlidePart2,
+    standUpFrontLean,
+    standUpFrontPull,
     lastStandUpMotion,
-    standUpSideNao = lastStandUpMotion,
+    standUpSide = lastStandUpMotion,
 
     // falldown protection
     firstFallMotion,
     saveFallFront = firstFallMotion,
     saveFall,
+    sit,
+    rip,
     lastFallMotion,
     saveFallBack = lastFallMotion,
 
@@ -57,13 +63,14 @@ STREAMABLE(SpecialActionRequest,
     firstBlockMotion,
     wideStanceWithStandUp = firstBlockMotion,
     goalkeeperDefendLeft,
+    penaltySpeedDiveLeft,
     lastBlockMotion,
     penaltyGoalieDiveLeft = lastBlockMotion,
 
     // do not use any motion at all
     none
   );
-
+using MotionIDVector = std::vector<SpecialActionID>;
 /**
  * The function searches the id for a special action name.
  * @param name The name of the special action.

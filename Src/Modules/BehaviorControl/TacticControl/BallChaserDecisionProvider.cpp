@@ -7,6 +7,7 @@
 #include "BallChaserDecisionProvider.h"
 #include "BallChaserDecisionProvider.h"
 #include "Tools/Debugging/Annotation.h"
+#include "Tools/Math/Transformation.h"
 #include <cmath>
 
 /**
@@ -33,7 +34,7 @@ void BallChaserDecisionProvider::update(BallChaserDecision& ballChaserDecision)
   if (theGameInfo.state == STATE_PLAYING && theBallSymbols.timeSinceLastSeenByTeam > 3000)
     return;
 
-  if (!theTeammateData.wlanOK)
+  if (!theTeammateData.commEnabled)
   {
     decideLocal(ballChaserDecision);
     return;
@@ -88,7 +89,7 @@ void BallChaserDecisionProvider::decideLocal(BallChaserDecision& ballChaserDecis
     };
 
     // Highest player number will be playerNumberToBall during initial/ready/set
-    if (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY || theGameInfo.state == STATE_SET)
+    if (theGameInfo.inPreGame() || theGameInfo.state == STATE_READY || theGameInfo.state == STATE_SET)
     {
       for (unsigned char player = MAX_NUM_PLAYERS; player > 0; --player)
       {
@@ -100,14 +101,14 @@ void BallChaserDecisionProvider::decideLocal(BallChaserDecision& ballChaserDecis
       }
     }
     // I will be playerNumberToBall if I am the only one
-    else if (std::count_if(theOwnTeamInfo.players, theOwnTeamInfo.players + MAX_NUM_PLAYERS - 1, isActive) == 1)
+    else if (std::count_if(theOwnTeamInfo.players, theOwnTeamInfo.players + MAX_NUM_PLAYERS, isActive) == 1)
     {
       ballChaserDecision.playerNumberToBall = theRobotInfo.number;
       return;
     }
   }
   // If no game controller is connected in initial/ready/set, assume 7 robots are active and the highest number will be playerNumberToBall.
-  else if (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY || theGameInfo.state == STATE_SET)
+  else if (theGameInfo.inPreGame() || theGameInfo.state == STATE_READY || theGameInfo.state == STATE_SET)
   {
     ballChaserDecision.playerNumberToBall = MAX_NUM_PLAYERS;
     return;
@@ -356,7 +357,7 @@ float BallChaserDecisionProvider::calcDistanceToBall(const Pose2f& fromPose, con
 {
   // The keeper should never be the ballchaser in ready when other options are available.
   // Otherwise, we cannot replace a specific role by the ballchaser in RoleDynamicProvider.
-  if ((theGameInfo.state == STATE_READY || theGameInfo.state == STATE_INITIAL) && playerNumber == 1)
+  if ((theGameInfo.state == STATE_READY || theGameInfo.inPreGame()) && playerNumber == 1)
     return std::numeric_limits<float>::max(); // We cannot use infinity here. Otherwise, the robot will not be considered as a last choice.
 
   const Vector2f targetRelative = Transformation::fieldToRobot(fromPose, targetOnField.translation);

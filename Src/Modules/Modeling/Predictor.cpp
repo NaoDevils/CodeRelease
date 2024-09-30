@@ -66,7 +66,8 @@ void Predictor::update(MultipleBallModelAfterPreview& multipleBallModelAfterPrev
 void Predictor::execute(tf::Subflow& subflow)
 {
   correctedOdometryOffset = theMotionInfo.offsetToRobotPoseAfterPreview;
-  static_cast<Pose2f&>(robotPoseAfterPreview) = theRobotPose + correctedOdometryOffset;
+  static_cast<RobotPose&>(robotPoseAfterPreview) = theRobotPose;
+  static_cast<Pose2f&>(robotPoseAfterPreview) += correctedOdometryOffset;
 
   PLOT("module:Predictor:robotPose.x", theRobotPose.translation.x());
   PLOT("module:Predictor:robotPose.y", theRobotPose.translation.y());

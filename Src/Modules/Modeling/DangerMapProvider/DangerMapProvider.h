@@ -10,9 +10,7 @@
 
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/DangerMap.h"
 #include "Representations/Modeling/RobotMap.h"
@@ -24,7 +22,6 @@ MODULE(DangerMapProvider,
   REQUIRES(BallModel),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
-  REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(TeammateData),

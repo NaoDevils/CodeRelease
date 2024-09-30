@@ -10,7 +10,6 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
-#include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/RoleSelection.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackupBallchaser.h"
 #include "Representations/BehaviorControl/RoleSymbols/Center.h"
@@ -20,21 +19,16 @@
 #include "Representations/BehaviorControl/RoleSymbols/Keeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
-#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
 #include "Representations/BehaviorControl/RoleSymbols/LeftWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/FrontWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackWing.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
-#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/TeamInfo.h"
-#include "Representations/Modeling/DangerMap.h"
-#include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Sensing/FallDownState.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 
 namespace NDBehavior
@@ -49,8 +43,6 @@ namespace NDBehavior
 
 MODULE(RoleDynamicProvider,
   REQUIRES(BallChaserDecision),
-  REQUIRES(BallSymbols),
-  REQUIRES(Ballchaser),
   REQUIRES(BackupBallchaser),
   REQUIRES(Center),
   REQUIRES(DefenderLeft),
@@ -64,14 +56,10 @@ MODULE(RoleDynamicProvider,
   REQUIRES(Receiver),
   REQUIRES(ReplacementKeeper),
   REQUIRES(RoleSelection),
-  REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(RobotInfo),
   REQUIRES(TeammateData),
-  REQUIRES(DangerMap),
-  REQUIRES(RobotMap),
   REQUIRES(RobotPoseAfterPreview),
-  REQUIRES(FallDownState),
   REQUIRES(OwnTeamInfo),
   REQUIRES(TacticSymbols),
   PROVIDES(RoleSymbols),

@@ -12,14 +12,13 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/JointError.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/MotionInfo.h"
-#include "Representations/Sensing/GroundContactState.h"
+#include "Representations/Sensing/FallDownState.h"
 #include "Representations/MotionControl/MotionRequest.h"
-#include "Representations/MotionControl/Footpositions.h"
-#include "Representations/MotionControl/FootSteps.h"
 #include "Tools/Joints.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Enum.h"
+#include "Tools/RingBufferWithSum.h"
+#include "Tools/Range.h"
 
 ENUM(JointPlayTrack,
   lhyp,
@@ -40,9 +39,8 @@ MODULE(JointErrorCalc,
   REQUIRES(FrameInfo),
   USES(RawJointRequest),
   REQUIRES(JointSensorData),
-  USES(MotionInfo),
   REQUIRES(MotionRequest),
-  REQUIRES(GroundContactState),
+  REQUIRES(FallDownState),
   REQUIRES(WalkingEngineParams),
   REQUIRES(SpeedRequest),
   PROVIDES(JointError),
@@ -54,8 +52,8 @@ MODULE(JointErrorCalc,
       (std::array<float, JointPlayTrack::numOfJointPlayTracks>) maxJointPlayRatio, /**< Max joint play values, based on a good robot. */
       (Angle) jointPlayScalingWalkingSpeed, /**< When walking slower, a lower joint play is expected. */
       (float) minForwardSpeed, /**< scale expected joint play from this min speed. */
-      (Angle) jointPlayScalingmin, /**< A robot below the minimum is good, a robot above bad. */
-      (Angle) jointPlayScalingmax
+      (Angle) jointPlayScalingMin, /**< A robot below the minimum is good, a robot above bad. */
+      (Angle) jointPlayScalingMax
   )
 );
 
@@ -71,10 +69,11 @@ private:
 
   // Converts JointPlayTrack into the Joint enum
   Joints::Joint getJoint(JointPlayTrack joint);
+  void setJointPlayAvg(JointError& jointError, JointPlayTrack joint, Angle avgJointPlay);
 
 
   // Buffer for the joint request. Needed because of the motion delay, until a request is executed
-  RingBufferWithSum<Angle, 4> bufferRequest[JointPlayTrack::numOfJointPlayTracks];
+  RingBufferWithSum<Angle, 3> bufferRequest[JointPlayTrack::numOfJointPlayTracks];
 
   // Filtered values over a long periode of time.
   Angle bufferValue[JointPlayTrack::numOfJointPlayTracks];
@@ -89,9 +88,6 @@ private:
 
   // Timestamp walking started
   unsigned int startWalkingTimestamp = 0;
-
-  // Time spend walking
-  float timeSpendWalking = 0.f;
 
   // Is robot currently walking?
   bool isWalking = false;

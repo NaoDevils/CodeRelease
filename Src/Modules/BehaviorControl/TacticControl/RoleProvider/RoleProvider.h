@@ -4,6 +4,7 @@
 #include <Representations/BehaviorControl/BallSymbols.h>
 #include <Representations/BehaviorControl/GameSymbols.h>
 #include <Representations/Infrastructure/GameInfo.h>
+#include "Representations/Configuration/FieldDimensions.h"
 #include <optional>
 #include <stdexcept>
 
@@ -59,7 +60,7 @@ protected:
         if (theGameSymbols.ownKickOff)
         {
           setplayContinueSeconds = statePlaying_penaltyKick_own(positioningSymbols);
-          positioningSymbols.log_currState = "PHASE_PENALTYSHOOT STATE_PLAYING SET_PLAY_PENALTY_KICK statePlaying_penaltyKick_own";
+          positioningSymbols.log_currState = "PHASE_PENALTYSHOOT STATE_PLAYING SET_PLAY_PENALTY_KICK penaltyKick_own_playing";
         }
         else
         {
@@ -74,6 +75,7 @@ protected:
       switch (theGameInfo.state)
       {
       case STATE_INITIAL:
+      case STATE_STANDBY:
       {
         bool stop = stateInitial(positioningSymbols);
         if (stop)
@@ -112,12 +114,12 @@ protected:
             if (theGameSymbols.ownKickOff)
             {
               setplayContinueSeconds = stateReady_penaltyKick_own(positioningSymbols);
-              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK stateReady_penaltyKick_own";
+              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK penaltyKick_own_ready";
             }
             else
             {
               setplayContinueSeconds = stateReady_penaltyKick_opponent(positioningSymbols);
-              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK stateReady_penaltyKick_opponent";
+              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK penaltyKick_opponent_ready";
             }
             return;
           default:
@@ -131,12 +133,12 @@ protected:
         if (theGameSymbols.ownKickOff)
         {
           stateReady_kickOff_own(positioningSymbols, Vector2f::Zero());
-          positioningSymbols.log_currState = "STATE_READY stateReady_kickOff_own";
+          positioningSymbols.log_currState = "STATE_READY kickOff_own";
         }
         else
         {
           stateReady_kickOff_opponent(positioningSymbols, Vector2f::Zero());
-          positioningSymbols.log_currState = "STATE_READY stateReady_kickOff_opponent";
+          positioningSymbols.log_currState = "STATE_READY kickOff_opponent";
         }
         return;
       }
@@ -159,13 +161,13 @@ protected:
           if (theGameSymbols.ownKickOff)
           {
             statePlaying_kickOff_own(positioningSymbols, Vector2f::Zero());
-            positioningSymbols.log_currState = "STATE_PLAYING stateReady_kickOff_own";
+            positioningSymbols.log_currState = "STATE_PLAYING kickOff_own";
             return;
           }
           else if (theGameSymbols.avoidCenterCircle)
           {
             statePlaying_kickOff_opponent(positioningSymbols, Vector2f::Zero());
-            positioningSymbols.log_currState = "STATE_PLAYING stateReady_kickOff_opponent";
+            positioningSymbols.log_currState = "STATE_PLAYING kickOff_opponent";
             return;
           }
         }
@@ -232,7 +234,7 @@ protected:
             if (theGameSymbols.ownKickOff)
             {
               setplayContinueSeconds = statePlaying_penaltyKick_own(positioningSymbols);
-              positioningSymbols.log_currState = "STATE_PLAYING SET_PLAY_PENALTY_KICK statePlaying_penaltyKick_own";
+              positioningSymbols.log_currState = "STATE_PLAYING SET_PLAY_PENALTY_KICK penaltyKick_own_playing";
             }
             else
             {

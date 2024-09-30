@@ -3,6 +3,7 @@
 #include "Platform/SystemCall.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/HeadAngleRequest.h"
+#include "Representations/Infrastructure/JointAngles.h"
 
 #include <QTimer>
 
@@ -177,7 +178,7 @@ void ButtonToolBar::pressButton(int pressedKey)
   console.setRepresentation("KeyStates", keyState);
   QTimer::singleShot(1000,
       this,
-      [=]
+      [=, this]
       {
         releaseButton(pressedKey);
       });

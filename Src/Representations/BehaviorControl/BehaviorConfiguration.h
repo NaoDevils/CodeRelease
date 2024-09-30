@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 #include "Tools/Streams/AutoStreamable.h"
-#include "Modules/BehaviorControl/CABSL/Options/PenaltyShootout/PenaltyShootout2017Parameters.h"
 #include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
 
 STREAMABLE(BehaviorConfiguration,,
@@ -20,7 +19,6 @@ STREAMABLE(BehaviorConfiguration,,
   (Angle)(10_deg) gotoBaseThreshRot,
   (float)(0.2f) isLocalizedMinValidity,
   (bool)(false) isLocalizedNoSymmetrie,
-  (bool)(false) noWLAN,
   (float)(190.f) optDistanceToBallX,
   (float)(55.f) optDistanceToBallY,
   (float)(190.f) optLongkickDistanceToBallX,
@@ -32,7 +30,6 @@ STREAMABLE(BehaviorConfiguration,,
   (float) targetDistanceRobotRotFactor,
   (float) targetDistanceObstacleFactor,
 
-  (BehaviorParameters) behaviorParameters,
-  (PenaltyShootout2017Parameters) penaltyShootout2017Parameters
+  (BehaviorParameters) behaviorParameters
 
 );

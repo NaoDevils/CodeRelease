@@ -20,7 +20,7 @@ along with MoToFlex.  If not, see <http://www.gnu.org/licenses/>.
 Contact e-mail: oliver.urbann@tu-dortmund.de
 */
 
-/** 
+/**
 * @file Modules/MotionControl/DortmundWalkingEngine/PatternGenerator2017.h
 * Generator for foot steps
 * @author <a href="mailto:oliver.urbann@tu-dortmund.de> Oliver Urbann</a>
@@ -39,17 +39,13 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "WalkingInformations.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/Modeling/Path.h"
-#include "Representations/MotionControl/WalkingInfo.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/MotionControl/ActualCoM.h"
 #include "Representations/MotionControl/FootSteps.h"
-#include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/MotionSelection.h"
@@ -60,39 +56,33 @@ Contact e-mail: oliver.urbann@tu-dortmund.de
 #include "Representations/Modeling/BallModel.h"
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/RobotHealth.h"
-#include "Representations/MotionControl/WalkRequest.h"
 #include "Tools/Settings.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/CSConverter2019.h"
 #include "Representations/MotionControl/MotionState.h"
 #include "Tools/Debugging/DebugImages.h"
-#include "Representations/Infrastructure/Image.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
 #include "Representations/MotionControl/CustomStepSelection.h"
+#include "Representations/MotionControl/SupportFoot.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/WalkParamsProvider.h"
 
 
 MODULE(PatternGenerator2017,
   REQUIRES(WalkingEngineParams),
+  REQUIRES(SensorControlParams),
+  REQUIRES(SupportFoot),
   REQUIRES(ActualCoMRCS),
   REQUIRES(SpeedRequest),
-  REQUIRES(Path),
   REQUIRES(RobotModel),
   REQUIRES(TorsoMatrix),
-  REQUIRES(RobotDimensions),
   REQUIRES(FallDownState),
   REQUIRES(FLIPMParameter),
   REQUIRES(MotionSelection),
   REQUIRES(MotionRequest),
   USES(MotionState),
-  REQUIRES(FsrSensorData),
   REQUIRES(JoinedIMUData),
-  REQUIRES(RobotInfo),
-  REQUIRES(ZMPModel),
-  USES(WalkingInfo),
   REQUIRES(FrameInfo),
   REQUIRES(BallModel),
-  REQUIRES(BallModelAfterPreview),
   REQUIRES(RobotHealth),
   PROVIDES_CONCURRENT(FootSteps),
   PROVIDES_CONCURRENT(Footpositions),
@@ -100,7 +90,6 @@ MODULE(PatternGenerator2017,
   PROVIDES_CONCURRENT(SpeedInfo),
   PROVIDES_CONCURRENT(CustomStepSelection),
   REQUIRES(RobotPose),
-  REQUIRES(RobotPoseAfterPreview),
   REQUIRES(RoleSymbols),
   REQUIRES(OdometryCorrectionTables),
   REQUIRES(GameInfo),
@@ -117,31 +106,18 @@ MODULE(PatternGenerator2017,
     (int)(3) stepsBetweenCustomSteps,
     (bool)(false) resetPreviewDuringPrependStep,
     ((WalkRequest) StepRequestVector) activeGoalieKicks,
-    (bool)(true) useResetPreview,
     (bool)(false) useHalfFramesInRefZMP,
     (bool)(false) startRefZMPCycleInDS,
     (bool)(false) useRotationForRefZMP,
     (bool)(false) useZeroRefZMP,
-    (bool)(false) freezeDSRefZMPUntilFSR,
-    (bool)(false) slowDSRefZMPUntilFSR,
-    (int)(5) maxFramesForDSExtension,
+    (bool)(true) useResetPreview,
     (int) (90) slowDownTemperature,
     (Angle)(2_deg) maxGyroSpeedForTransition,
     (float)(0.239f) initialStandbyHeight,
     (bool)(false) useRealSpeedInCustomSteps,
     (float)(0.5f) penaltyShootoutSlowDownFactor,
-    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
-    (bool)(false) useSafetySteps,
-    (int)(1000) angleSumForSafetyStepFront,
-    (int)(300) angleSumForSafetyStepBack,
-    (float)(2.f) angleSumDecay,
-    (float)(7.f) comErrorFrontForSafetySteps,
-    (float)(-5.f) comErrorBackForSafetySteps,
-    (Vector2f)(Vector2f(3.f,2.f)) maxSafetyStepCorrection,
     (bool)(false) customStepOdometryCorrection,
-    (float)(1.5f) customStepFallDownFactorStable,
-    (float)(0.95f) exponentialFactorForStepDuration,
-    (float)(1.0f) fallDownSpeedInfluenceFactor 
+    (float)(15.0f) backwardsCorrectionSpeed
   )
 );
 
@@ -158,7 +134,7 @@ public:
   /**
   * This function changes the newState (the desired walk state) and the
   * currentState, if possible.
-  * State change will happen during updateWalkPhase() otherwise, 
+  * State change will happen during updateWalkPhase() otherwise,
   * since walk states change usually at end of a walk phase.
   * @return True if state change was successful.
   */
@@ -180,9 +156,6 @@ public:
   * @param CoM The position of the center of mass in robot coordinate system.
   */
   void updateCoM(Point CoM);
-
-  /** Updates the support foot and max force on left/right foot */
-  void calcSupportFoot();
 
   /** Constructor.
   */
@@ -236,10 +209,7 @@ protected:
   RefZMP2018 localRefZMP2018;
   ZMP zmp;
   Vector2f lastRefZMPEndPositionFC = Vector2f::Zero();
-  // for support foot change detection -->
-  RingBufferWithSum<float, 3> supportFootBuffer;
-  RingBufferWithSum<float, 5> supportFootDirectionBuffer;
-  DWE::SupportFootState supportFootState = DWE::bothFeetSupport;
+
   // <--
   // for safety step detection
   RingBufferWithSum<float, 50> comXBuffer;
@@ -258,10 +228,7 @@ protected:
   /** Current time (frames since running) */
   int currentTimeStamp;
 
-  CSConverter2019::Parameters csConverterParams;
-  WalkParamsProvider::Parameters walkParamsProviderParams;
-
-  /** 
+  /**
   * Time counter in current state, from <length of phase> to 1.
   * If zero, state/phase change is happening (e.g. double support to single support).
   **/
@@ -345,7 +312,6 @@ protected:
   bool isSpeed0() { return (theSpeedRequest.translation.x() == 0) && (theSpeedRequest.translation.y() == 0) && (theSpeedRequest.rotation == 0); };
 
   /* SpeedInfo related stuff */
-  RingBufferWithSum<Pose2f, PREVIEW_LENGTH> speedBuffer;
   bool decelByAcc;
 
   std::vector<CustomStepsFile> stepFiles;

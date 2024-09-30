@@ -1,0 +1,102 @@
+keyFrameID = standUpFrontSlidePart2;
+initialKeyFrame = false;
+nextMotionConditions = [execute];
+nextKeyFrameMotionIDs = [stand];
+YstabilizationP = -0.04; //-0.05;
+YstabilizationI = 0;
+YstabilizationD = -0.45; // -0.6;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+errorMultiplier = 100;
+reductionRate = 0.25;
+maxCompensation = 10deg;
+compensationThreshold = 8deg;
+hipYawCorrectionFactors = [1, 0.2, 0.2];
+hipCorrectionFactors = [0, 0];
+kneeCorrectionFactors = [0];
+ankleCorrectionFactors = [0.25, 0.25];
+localArmAngleReachedThreshold = 10deg;
+keyFrames = [
+  { // squat
+    headAngles = [0deg,-30deg];
+    armsAngles = [60deg,20deg,0deg,20000,20000,20000, 60deg,-20deg,0,20000,20000,20000];
+    legsAngles = [-50deg,0,-70deg,100deg,-15deg,-5deg, -50deg,0,-70deg,100deg,-15deg,5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 250;
+    intType = linear;
+    angleAtKeyFrameTarget = 27deg;
+    angleAtKeyFrameError = [45deg,20deg];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  { // squat 2
+    headAngles = [0deg,-30deg];
+    armsAngles = [60deg,20deg,0deg,20000,20000,20000, 60deg,-20deg,0,20000,20000,20000];
+    legsAngles = [-50deg,0,-90deg,120deg,-15deg,-5deg, -50deg,0,-90deg,120deg,-15deg,5deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 300;
+    intType = linear;
+    angleAtKeyFrameTarget = 27deg;
+    angleAtKeyFrameError = [45deg,20deg];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  { // sit wide legs
+    headAngles = [0,0];
+    armsAngles = [90deg,30deg,0,0,-90deg,0, 90deg,-30deg,0,0,90deg,0];
+    legsAngles = [-40deg,0,-60deg,123deg,-41deg,0, -40deg,0,-60deg,123deg,-41deg,0];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 300;
+    intType = linear;
+    angleAtKeyFrameTarget = 2deg;
+    angleAtKeyFrameError = [30deg,20deg];
+    stabilize = true;
+    waitForStable = true;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+ { // sit legs closed
+    headAngles = [0deg,0deg];
+    armsAngles = [90deg,7deg,0,-2.5deg,-90deg,0, 90deg,-7deg,0,2.5deg,90deg,0];
+    legsAngles = [0,0,-55deg,121deg,-67.8deg,0, 0,0,-55deg,121deg,-67.8deg,0];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 500;
+    intType = linear;
+    angleAtKeyFrameTarget = 0deg;
+    angleAtKeyFrameError = [25deg,20deg];
+    stabilize = true;
+    waitForStable = true;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];
+

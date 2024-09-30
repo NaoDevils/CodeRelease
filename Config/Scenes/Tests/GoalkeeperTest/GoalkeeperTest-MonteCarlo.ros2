@@ -1,0 +1,30 @@
+<Simulation>
+
+  <Include href="../../Includes/NaoV6H25.rsi2"/>
+  <Include href="../../Includes/Ball2016SPL.rsi2"/>
+  <Include href="../../Includes/Field2020SPL.rsi2"/>
+  <Include href="../../Includes/Boards.rsi2"/>
+
+  <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="35000" Kd="150" contactKp="5300" contactKd="1">
+   <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
+
+    <Compound name="robots">
+      <Body ref="Nao" name="robot01">
+        <Translation x="4.5" xRandom="0" y="0" yRandom="0" z="330mm"/>
+        <Rotation z="180degree" zRandom="25degree"/>
+        <Set name="NaoColor" value="yellow"/>
+      </Body>
+    </Compound>
+
+    <Compound name="balls">
+      <Body ref="ball">
+        <Translation z="0.05m"/>
+      </Body>
+    </Compound>
+
+    <Compound name="field">
+      <Compound ref="field"/>
+    </Compound>
+
+  </Scene>
+</Simulation>

@@ -6,6 +6,7 @@
 
 #include "Blackboard.h"
 #include "Tools/Streams/Streamable.h"
+#include "Tools/Global.h"
 #include "Platform/BHAssert.h"
 #include "Platform/SystemCall.h"
 #include <unordered_map>
@@ -13,9 +14,6 @@
 #ifndef WINDOWS
 #include <cxxabi.h>
 #endif
-
-/** The instance of the blackboard of the current process. */
-static thread_local Blackboard* theInstance = nullptr;
 
 /** The actual type of the map for all entries. */
 class Blackboard::Entries : public std::unordered_map<std::string, Blackboard::Entry>
@@ -25,15 +23,10 @@ class Blackboard::CopyEntries : public std::unordered_map<std::string, Blackboar
 {
 };
 
-Blackboard::Blackboard() : entries(*new Entries), copyEntries(*new CopyEntries)
-{
-  theInstance = this;
-}
+Blackboard::Blackboard() : entries(*new Entries), copyEntries(*new CopyEntries) {}
 
 Blackboard::~Blackboard()
 {
-  ASSERT(theInstance == this);
-  theInstance = 0;
   ASSERT(entries.size() == 0);
   delete &entries;
   delete &copyEntries;
@@ -87,12 +80,7 @@ void Blackboard::free(const char* representation)
 
 Blackboard& Blackboard::getInstance()
 {
-  return *theInstance;
-}
-
-void Blackboard::setInstance(Blackboard& blackboard)
-{
-  theInstance = &blackboard;
+  return Global::getBlackboard();
 }
 
 void Blackboard::addCopyEntry(const char* representation)

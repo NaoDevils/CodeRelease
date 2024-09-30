@@ -70,6 +70,7 @@ void TeamInfo::serialize(In* in, Out* out)
   STREAM(players); // the team's players
 
   STREAM(teamPort); // the team's UDP port
+  STREAM(onLeftSide); // if the team plays on left (or right) side as seen from the game controller
   STREAM_REGISTER_FINISH;
 }
 
@@ -110,7 +111,10 @@ void TeamInfo::draw() const
   };
 }
 
-OwnTeamInfo::OwnTeamInfo() {}
+OwnTeamInfo::OwnTeamInfo()
+{
+  onLeftSide = true;
+}
 
 void OwnTeamInfo::draw() const
 {
@@ -119,7 +123,8 @@ void OwnTeamInfo::draw() const
 
   DEBUG_DRAWING("representation:OwnTeamInfo", "drawingOnField")
   {
-    DRAWTEXT("representation:OwnTeamInfo", -5000, -3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor)fieldPlayerColour));
+    const std::string colorName = std::string(getColorName(fieldPlayerColour)) + " (" + getColorName(goalkeeperColour) + ")";
+    DRAWTEXT("representation:OwnTeamInfo", -5000, -3800, 140, ColorRGBA::red, colorName);
   }
 }
 
@@ -128,7 +133,10 @@ Streamable& OwnTeamInfo::operator=(const Streamable& other) noexcept
   return *this = dynamic_cast<const OwnTeamInfo&>(other);
 }
 
-OpponentTeamInfo::OpponentTeamInfo() {}
+OpponentTeamInfo::OpponentTeamInfo()
+{
+  onLeftSide = false;
+}
 
 void OpponentTeamInfo::draw() const
 {
@@ -137,7 +145,8 @@ void OpponentTeamInfo::draw() const
 
   DEBUG_DRAWING("representation:OpponentTeamInfo", "drawingOnField")
   {
-    DRAWTEXT("representation:OpponentTeamInfo", -5000, 3800, 140, ColorRGBA::red, Settings::getName((Settings::TeamColor)fieldPlayerColour));
+    const std::string colorName = std::string(getColorName(fieldPlayerColour)) + " (" + getColorName(goalkeeperColour) + ")";
+    DRAWTEXT("representation:OpponentTeamInfo", -5000, 3800, 140, ColorRGBA::red, colorName);
   }
 }
 

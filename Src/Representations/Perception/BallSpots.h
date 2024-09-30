@@ -143,3 +143,24 @@ struct BallHypothesesYoloUpper : public BallSpots
     }
   }
 };
+
+struct BallHypothesesSegmentor : public BallSpots
+{
+  /** The method draws all ball spots. */
+  void draw() const
+  {
+    DECLARE_DEBUG_DRAWING("representation:BallHypothesesSegmentor:Image:Lower", "drawingOnImage"); // Draws the ballspots to the image
+
+    char buffer[10];
+    COMPLEX_DRAWING("representation:BallHypothesesSegmentor:Image:Lower")
+    {
+      for (std::vector<BallSpot>::const_iterator i = ballSpots.begin(); i != ballSpots.end(); ++i)
+      {
+        CIRCLE("representation:BallHypothesesSegmentor:Image:Lower", i->position.x(), i->position.y(), i->radiusInImage, 3, Drawings::solidPen, ColorRGBA::yellow, Drawings::noBrush, ColorRGBA::yellow);
+
+        sprintf(buffer, "%.1f", i->validity * 100.f);
+        DRAWTEXT("representation:BallHypothesesSegmentor:Image:Lower", i->position.x() + i->radiusInImage, i->position.y(), 13, ColorRGBA::yellow, buffer << "%");
+      }
+    }
+  }
+};

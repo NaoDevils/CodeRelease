@@ -22,5 +22,11 @@ STREAMABLE_WITH_BASE(SpecialActionsOutput, JointRequest,
   (bool)(false) isMotionStable, /**< Is the position of the camera directly related to the kinematic chain of joint angles? */
   (bool)(false) isFallProtectionNeeded, /**< Is it necessary to activate the fall down protection*/
   (bool)(true) isMotionFinished,
+  (unsigned)(0) lCompensatedID,
+  (Angle)(0_deg) lError,
+  (unsigned)(0) rCompensatedID,
+  (Angle)(0_deg) rError,
+  (std::vector<float>) standUpStatisticFront,
+  (std::vector<float>) standUpStatisticBack,
   (SpecialActionRequest) executedSpecialAction /**< The special action currently executed. */
 );

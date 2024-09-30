@@ -8,7 +8,8 @@
 #pragma once
 
 #include "Tools/Math/Angle.h"
-#include "Tools/Math/Eigen.h"
+#include "Tools/Math/Angle.h"
+#include "Tools/Math/Pose2f.h"
 #include "Tools/Streams/AutoStreamable.h"
 
 

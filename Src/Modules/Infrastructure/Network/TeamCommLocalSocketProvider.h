@@ -11,6 +11,7 @@
 #include "Representations/Infrastructure/TeamCommSocket.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
+#include "Platform/SystemCall.h"
 #include <array>
 #include <mutex>
 #include <shared_mutex>
@@ -20,6 +21,7 @@
 MODULE(TeamCommLocalSocketProvider,
   REQUIRES(RobotInfo),
   REQUIRES(OwnTeamInfo),
+  REQUIRES(OpponentTeamInfo),
   PROVIDES_WITHOUT_MODIFY(TeamCommSocket)
 );
 

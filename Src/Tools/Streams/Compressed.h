@@ -10,6 +10,8 @@
 
 #include "Tools/Streams/Streamable.h"
 #include "Tools/Math/Angle.h"
+#include "Tools/Math/Eigen.h"
+#include "Tools/Math/Pose2f.h"
 #include <vector>
 #include <limits>
 

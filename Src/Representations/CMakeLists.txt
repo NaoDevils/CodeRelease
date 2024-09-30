@@ -1,5 +1,5 @@
 target_sources(${PROJECT_NAME}
-    PRIVATE
+        PRIVATE
         BehaviorControl/ActivationGraph.h
         BehaviorControl/BallChaserDecision.cpp
         BehaviorControl/BallChaserDecision.h
@@ -8,20 +8,25 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/BallSymbols.h
         BehaviorControl/BehaviorConfiguration.h
         BehaviorControl/BehaviorData.h
-        BehaviorControl/BehaviorLEDRequest.h
         BehaviorControl/GameSymbols.h
         BehaviorControl/GoalSymbols.h
         BehaviorControl/HeadControlRequest.h
+        BehaviorControl/HeadPOIList.cpp
+        BehaviorControl/HeadPOIList.h
         BehaviorControl/KeySymbols.h
-        BehaviorControl/PSGoalieTrigger.h
         BehaviorControl/RoleSymbols/PositioningSymbols.cpp
         BehaviorControl/RoleSymbols/PositioningSymbols.h
+        BehaviorControl/JoystickControl/JoystickControlParameters.h
+        BehaviorControl/JoystickControl/JoystickDeviceParameters.h
+        BehaviorControl/JoystickControl/JoystickState.cpp
+        BehaviorControl/JoystickControl/JoystickState.h
         BehaviorControl/RoleSelection.h
         BehaviorControl/RoleSymbols.cpp
         BehaviorControl/RoleSymbols.h
         BehaviorControl/RoleSymbols/BackupBallchaser.h
         BehaviorControl/RoleSymbols/BackWing.h
         BehaviorControl/RoleSymbols/Ballchaser.h
+        BehaviorControl/RoleSymbols/BallchaserHeadPOIList.h
         BehaviorControl/RoleSymbols/BallchaserKeeper.h
         BehaviorControl/RoleSymbols/Center.h
         BehaviorControl/RoleSymbols/DefenderLeft.h
@@ -33,6 +38,7 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/RoleSymbols/ReplacementKeeper.h
         BehaviorControl/TacticSymbols.cpp
         BehaviorControl/TacticSymbols.h
+        BehaviorControl/VisualRefereeBehaviorSymbols.h
         Configuration/CameraCalibration.h
         Configuration/FieldDimensions.cpp
         Configuration/FieldDimensions.h
@@ -45,6 +51,7 @@ target_sources(${PROJECT_NAME}
         Configuration/OdometryCorrectionTable.h
         Configuration/RobotDimensions.h
         Configuration/SonarConfiguration.h
+        Infrastructure/AudioData.cpp
         Infrastructure/AudioData.h
         Infrastructure/CMCorrectorStatus.h
         Infrastructure/CameraInfo.cpp
@@ -57,6 +64,7 @@ target_sources(${PROJECT_NAME}
         Infrastructure/DummyRepresentation.h
         Infrastructure/FrameInfo.h
         Infrastructure/FrameInfo.cpp
+        Infrastructure/FsrModelData.h
         Infrastructure/GameInfo.cpp
         Infrastructure/GameInfo.h
         Infrastructure/GroundTruthWorldState.h
@@ -68,6 +76,7 @@ target_sources(${PROJECT_NAME}
         Infrastructure/JointAngles.h
         Infrastructure/JointRequest.cpp
         Infrastructure/JointRequest.h
+        Infrastructure/LEDRequest.cpp
         Infrastructure/LEDRequest.h
         Infrastructure/LiveConfigurationState.h
         Infrastructure/LowFrameRateImage.h
@@ -105,18 +114,26 @@ target_sources(${PROJECT_NAME}
         Infrastructure/USBStatus.h
         Infrastructure/YoloInput.cpp
         Infrastructure/YoloInput.h
+        Modeling/RecommendedKick/PositionInfo/Config.h
+        Modeling/RecommendedKick/PositionInfo/HeatMap.h
+        Modeling/RecommendedKick/PositionInfo/HeatMapFunctions.h
+        Modeling/RecommendedKick/PositionInfo/PositionInfo.h
+        Modeling/RecommendedKick/PositionInfo/SplitCell.h
+        Modeling/RecommendedKick/PositionInfo/SplitCellFunctions.h
+        Modeling/RecommendedKick/PositionInfo/SplitHeatMap.h
+        Modeling/RecommendedKick/DirectionInfo.cpp
+        Modeling/RecommendedKick/DirectionInfo.h
+        Modeling/RecommendedKick/RecommendedKick.cpp
+        Modeling/RecommendedKick/RecommendedKick.h
         Modeling/BallModel.cpp
         Modeling/BallModel.h
         Modeling/DangerMap.h
-        Modeling/HeatMapCollection.h
-        Modeling/HeatMap.h
         Modeling/IMUModel.h
         Modeling/Kicks.h
-        Modeling/KickWheel.cpp
-        Modeling/KickWheel.h
         Modeling/LineMatchingResult.cpp
         Modeling/LineMatchingResult.h
         Modeling/Path.h
+        Modeling/RefereeGesture.h
         Modeling/RemoteBallModel.cpp
         Modeling/RemoteBallModel.h
         Modeling/RobotMap.cpp
@@ -160,11 +177,13 @@ target_sources(${PROJECT_NAME}
         MotionControl/OdometryData.h
         MotionControl/PatternGenRequest.h
         MotionControl/RefZMP.h
+        MotionControl/SensorControlParams.h
         MotionControl/SpecialActionRequest.cpp
         MotionControl/SpecialActionRequest.h
         MotionControl/SpecialActionsOutput.h
         MotionControl/SpeedInfo.h
         MotionControl/StandEngineOutput.h
+        MotionControl/SupportFoot.h
         MotionControl/TargetCoM.h
         MotionControl/WalkCalibration.h
         MotionControl/WalkRequest.h
@@ -186,6 +205,8 @@ target_sources(${PROJECT_NAME}
         Perception/CenterCirclePercept.h
         Perception/CognitionState.h
         Perception/FieldColor.h
+        Perception/FieldColorMask.cpp
+        Perception/FieldColorMask.h
         Perception/GoalPercept.cpp
         Perception/GoalPercept.h
         Perception/ImageCoordinateSystem.cpp
@@ -196,6 +217,7 @@ target_sources(${PROJECT_NAME}
         Perception/PenaltyCrossHypotheses.cpp
         Perception/PenaltyCrossHypotheses.h
         Perception/PenaltyCrossPercept.h
+        Perception/RefereeKeypoints.h
         Perception/RobotsPercept.cpp
         Perception/RobotsPercept.h
         Perception/SonarPercept.cpp
@@ -213,5 +235,6 @@ target_sources(${PROJECT_NAME}
         Sensing/RobotModel.cpp
         Sensing/RobotModel.h
         Sensing/TorsoMatrix.h
+        Sensing/ZMPModel.cpp
         Sensing/ZMPModel.h
 )

@@ -1,6 +1,9 @@
 #include "TfliteInterpreterProvider.h"
 #include "Representations/Perception/BallPercept.h"
 #include "Platform/File.h"
+#include "Modules/Perception/TFlite.h"
+#include "Tools/Math/Random.h"
+#include <taskflow/taskflow.hpp>
 
 TfliteInterpreterProvider::TfliteInterpreterProvider()
 {
@@ -19,7 +22,7 @@ void TfliteInterpreterProvider::setInferenceModeInput(InferenceMode inferenceMod
   }
   else
   {
-    std::fill(inferenceModeInput.begin(), inferenceModeInput.end(), 0);
+    std::fill(inferenceModeInput.begin(), inferenceModeInput.end(), (unsigned char)0);
   }
 }
 

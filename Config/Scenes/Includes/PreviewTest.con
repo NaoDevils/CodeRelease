@@ -1,0 +1,19 @@
+mr RobotPose OdometryOnlySelfLocator
+set module:CSConverter:params filter_alpha = 0.1; standup_fac = 0.7; lower_CoM_fac = 0.1; odometryVariant = 1;
+#dr module:OdometrOnlySelfLocator:resetReferenceOdometry 
+vp offset 200 -50 100
+vpd offset module:MotionCombinator:offsetToRobotPoseAfterPreview.x red
+vpd offset module:MotionCombinator:offsetToRobotPoseAfterPreview.y green
+
+vp RobotPoseAfterPreview.x 200 0 500
+vpd RobotPoseAfterPreview.x module:Predictor:robotPose.x red
+vpd RobotPoseAfterPreview.x module:Predictor:robotPoseAfterPreview.x green
+
+vp RobotPoseAfterPreview.y 200 0 500
+vpd RobotPoseAfterPreview.y module:Predictor:robotPose.y red
+vpd RobotPoseAfterPreview.y module:Predictor:robotPoseAfterPreview.y green
+
+get representation:MotionRequest 
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 100; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = standHigh; mirror = false; }; walkRequest = { requestType = speed; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; standType = doubleSupport; kickStrength = 0; kickDirection = 0; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };

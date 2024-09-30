@@ -8,8 +8,9 @@
  * @author Colin Graf
  */
 
-#include "RobotConsole.h"
+#include "SimulatedRobot.h"
 #include "RoboCupCtrl.h"
+#include "Tools/ProcessFramework/Process.h"
 #include "Platform/SimRobotQt/Robot.h"
 
 #include <QIcon>
@@ -54,7 +55,10 @@ bool RoboCupCtrl::compile()
     const QString& fullName = robot->getFullName();
     std::string robotName = fullName.toUtf8().constData();
     this->robotName = robotName.c_str();
-    robots.push_back(new Robot(fullName.mid(fullName.lastIndexOf('.') + 1).toUtf8().constData()));
+    Settings settings;
+    settings.load();
+    GlobalKeeper k;
+    robots.push_back(new Robot(fullName.mid(fullName.lastIndexOf('.') + 1).toStdString(), settings));
   }
   this->robotName = 0;
   const SimRobot::Object* balls = (SimRobotCore2::Object*)RoboCupCtrl::application->resolveObject("RoboCup.balls", SimRobotCore2::compound);
@@ -147,10 +151,11 @@ void RoboCupCtrl::start()
 void RoboCupCtrl::stop()
 {
   MultiDebugSenderBase::terminating = true;
-  for (std::list<Robot*>::iterator i = robots.begin(); i != robots.end(); ++i)
+  for (std::list<Robot*>::reverse_iterator i = robots.rbegin(); i != robots.rend(); ++i)
     (*i)->announceStop();
-  for (std::list<Robot*>::iterator i = robots.begin(); i != robots.end(); ++i)
+  for (std::list<Robot*>::reverse_iterator i = robots.rbegin(); i != robots.rend(); ++i)
   {
+    GlobalKeeper k;
     (*i)->stop();
     delete *i;
   }
@@ -190,7 +195,7 @@ void RoboCupCtrl::collided(SimRobotCore2::Geometry& geom1, SimRobotCore2::Geomet
   if (!body)
     return;
   body = body->getRootBody();
-  GameController::setLastBallContactRobot(body);
+  GameController::getInstance().setLastBallContactRobot(body);
 }
 
 std::string RoboCupCtrl::getRobotName() const

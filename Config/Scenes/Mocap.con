@@ -1,0 +1,23 @@
+call Includes/Normal
+
+# activate mocap modules
+mr MocapData MocapDataProvider
+mr MocapRobotPose MocapRobotPoseProvider
+mr MocapBallModel MocapRobotPoseProvider
+
+# basic views
+vf worldState
+vfd worldState fieldLines
+vfd worldState goalFrame 
+vfd worldState fieldPolygons
+vfd worldState representation:GameInfo
+vfd worldState representation:RobotPose
+# from now, relative to estimated robot pose
+vfd worldState origin:RobotPose
+vfd worldState representation:BallModel
+# back to global coordinates
+vfd worldState origin:Reset
+
+# mocap
+vfd worldState representation:MocapRobotPose
+vfd worldState representation:MocapBallModel

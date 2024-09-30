@@ -16,6 +16,8 @@
 #include "Platform/Thread.h"
 #include "Controller/RoboCupCtrl.h"
 #include "Controller/Visualization/HeaderedWidget.h"
+#include "Representations/Infrastructure/JointRequest.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Tools/SensorData.h"
 
 

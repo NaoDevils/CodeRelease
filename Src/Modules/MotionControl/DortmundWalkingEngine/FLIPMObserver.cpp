@@ -59,7 +59,7 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   Vector2f targetCoM2WCS(theTargetCoM.state_x[3], theTargetCoM.state_y[3]);
 
   /* rotate target values from WCS in RCS */
-  if (theFLIPMObserverGains.useRCS)
+  if (theSensorControlParams.flipmObserverGains.useRCS)
   {
     targetAccWCS.rotate(-robotPosition.rotation);
     targetCoM1WCS.rotate(-robotPosition.rotation);
@@ -76,17 +76,17 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   //////////////
   Vector2f realCoM1;
   /* CoM1 Provider (WCS) */
-  if (theFLIPMObserverGains.CoM1Provider == FLIPMObserverGains::MRECoM)
+  if (theSensorControlParams.flipmObserverGains.CoM1Provider == FLIPMObserverGains::MRECoM)
   {
     realCoM1.x() = theFLIPMObservedState.actualCoM_MRE.x();
     realCoM1.y() = theFLIPMObservedState.actualCoM_MRE.y();
   }
-  else if (theFLIPMObserverGains.CoM1Provider == FLIPMObserverGains::targetCoM)
+  else if (theSensorControlParams.flipmObserverGains.CoM1Provider == FLIPMObserverGains::targetCoM)
   {
     realCoM1.x() = coM1DelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1].x();
     realCoM1.y() = coM1DelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1].y();
   }
-  else if (theFLIPMObserverGains.CoM1Provider == FLIPMObserverGains::IMUCoM)
+  else if (theSensorControlParams.flipmObserverGains.CoM1Provider == FLIPMObserverGains::IMUCoM)
   {
     realCoM1.x() = theFLIPMObservedState.actualCoM_IMU.x();
     realCoM1.y() = theFLIPMObservedState.actualCoM_IMU.y();
@@ -96,11 +96,11 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   realCoM1.rotate(-robotPosition.rotation);
 
   /* add offsets to CoM1 which are in RCS */
-  realCoM1.x() += theFLIPMObserverGains.CoM1OffsetX;
-  realCoM1.y() += theFLIPMObserverGains.CoM1OffsetY;
+  realCoM1.x() += theSensorControlParams.flipmObserverGains.CoM1OffsetX;
+  realCoM1.y() += theSensorControlParams.flipmObserverGains.CoM1OffsetY;
 
   /* CoM1 Provider (RCS->WCS)*/
-  if (!theFLIPMObserverGains.useRCS)
+  if (!theSensorControlParams.flipmObserverGains.useRCS)
   {
     realCoM1.rotate(robotPosition.rotation);
   }
@@ -112,17 +112,17 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   //////////////
   Vector2f realCoM2;
   /* CoM2 Provider (WCS) */
-  if (theFLIPMObserverGains.CoM2Provider == FLIPMObserverGains::MRECoM)
+  if (theSensorControlParams.flipmObserverGains.CoM2Provider == FLIPMObserverGains::MRECoM)
   {
     realCoM2.x() = theFLIPMObservedState.actualCoM_MRE.x();
     realCoM2.y() = theFLIPMObservedState.actualCoM_MRE.y();
   }
-  else if (theFLIPMObserverGains.CoM2Provider == FLIPMObserverGains::targetCoM)
+  else if (theSensorControlParams.flipmObserverGains.CoM2Provider == FLIPMObserverGains::targetCoM)
   {
     realCoM2.x() = coM2DelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1].x();
     realCoM2.y() = coM2DelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1].y();
   }
-  else if (theFLIPMObserverGains.CoM2Provider == FLIPMObserverGains::IMUCoM)
+  else if (theSensorControlParams.flipmObserverGains.CoM2Provider == FLIPMObserverGains::IMUCoM)
   {
     realCoM2.x() = theFLIPMObservedState.actualCoM_IMU.x();
     realCoM2.y() = theFLIPMObservedState.actualCoM_IMU.y();
@@ -132,11 +132,11 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   realCoM2.rotate(-robotPosition.rotation);
 
   /* add offsets to CoM2 which are in RCS */
-  realCoM2.x() += theFLIPMObserverGains.CoM2OffsetX;
-  realCoM2.y() += theFLIPMObserverGains.CoM2OffsetY;
+  realCoM2.x() += theSensorControlParams.flipmObserverGains.CoM2OffsetX;
+  realCoM2.y() += theSensorControlParams.flipmObserverGains.CoM2OffsetY;
 
   /* CoM2 Provider (RCS->WCS)*/
-  if (!theFLIPMObserverGains.useRCS)
+  if (!theSensorControlParams.flipmObserverGains.useRCS)
   {
     realCoM2.rotate(robotPosition.rotation);
   }
@@ -148,37 +148,37 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   //////////////
   Vector2f realAcc;
   /* ACC Provider (WCS)*/
-  if (theFLIPMObserverGains.ACC1Provider == FLIPMObserverGains::ZMPCoM1Acc)
+  if (theSensorControlParams.flipmObserverGains.ACC1Provider == FLIPMObserverGains::ZMPCoM1Acc)
   {
     realAcc.x() = (-1 * theZMPModel.ZMP_WCS.x() + realCoM1.x()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsX.z_h);
     realAcc.y() = (-1 * theZMPModel.ZMP_WCS.y() + realCoM1.y()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsY.z_h);
   }
-  else if (theFLIPMObserverGains.ACC1Provider == FLIPMObserverGains::ZMPAcc)
+  else if (theSensorControlParams.flipmObserverGains.ACC1Provider == FLIPMObserverGains::ZMPAcc)
   {
-    float filter = theFLIPMObserverGains.accFilter;
+    float filter = theSensorControlParams.flipmObserverGains.accFilter;
     filteredAccX = filteredAccX * (1 - filter)
-        + (-1 * theZMPModel.ZMP_WCS.x() + realCoM1DelayBuffer[theFLIPMObserverGains.CoM1Delay].x()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsX.z_h) * filter;
+        + (-1 * theZMPModel.ZMP_WCS.x() + realCoM1DelayBuffer[theSensorControlParams.flipmObserverGains.CoM1Delay].x()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsX.z_h) * filter;
     filteredAccY = filteredAccY * (1 - filter)
-        + (-1 * theZMPModel.ZMP_WCS.y() + realCoM1DelayBuffer[theFLIPMObserverGains.CoM1Delay].y()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsY.z_h) * filter;
+        + (-1 * theZMPModel.ZMP_WCS.y() + realCoM1DelayBuffer[theSensorControlParams.flipmObserverGains.CoM1Delay].y()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsY.z_h) * filter;
     realAcc.x() = filteredAccX;
     realAcc.y() = filteredAccY;
   }
-  else if (theFLIPMObserverGains.ACC1Provider == FLIPMObserverGains::ZMPTargetAcc)
+  else if (theSensorControlParams.flipmObserverGains.ACC1Provider == FLIPMObserverGains::ZMPTargetAcc)
   {
-    float filter = theFLIPMObserverGains.accFilter;
+    float filter = theSensorControlParams.flipmObserverGains.accFilter;
     filteredAccX = filteredAccX * (1 - filter) + (-1 * theZMPModel.ZMP_WCS.x() + targetCoM1WCS.x()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsX.z_h) * filter;
     filteredAccY = filteredAccY * (1 - filter) + (-1 * theZMPModel.ZMP_WCS.y() + targetCoM1WCS.y()) * (theWalkCalibration.gravity / theFLIPMParameter.paramsY.z_h) * filter;
     realAcc.x() = filteredAccX;
     realAcc.y() = filteredAccY;
   }
-  else if (theFLIPMObserverGains.ACC1Provider == FLIPMObserverGains::targetAcc)
+  else if (theSensorControlParams.flipmObserverGains.ACC1Provider == FLIPMObserverGains::targetAcc)
   {
     realAcc.x() = accDelayBuffer[theWalkingEngineParams.imuSensorDelayFrames - 1].x();
     realAcc.y() = accDelayBuffer[theWalkingEngineParams.imuSensorDelayFrames - 1].y();
   }
-  else if (theFLIPMObserverGains.ACC1Provider == FLIPMObserverGains::IMUAcc)
+  else if (theSensorControlParams.flipmObserverGains.ACC1Provider == FLIPMObserverGains::IMUAcc)
   {
-    float filter = theFLIPMObserverGains.accFilter;
+    float filter = theSensorControlParams.flipmObserverGains.accFilter;
     filteredAccX = filteredAccX * (1 - filter) + (theFLIPMObservedState.actualAcc.x()) * filter;
     filteredAccY = filteredAccY * (1 - filter) + (theFLIPMObservedState.actualAcc.y()) * filter;
     realAcc.x() = filteredAccX;
@@ -186,7 +186,7 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   }
 
   /* ACC Provider (WCS->RCS) */
-  if (theFLIPMObserverGains.useRCS)
+  if (theSensorControlParams.flipmObserverGains.useRCS)
   {
     realAcc.rotate(-robotPosition.rotation);
   }
@@ -200,7 +200,8 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
 
   if (theTargetCoM.isRunning && static_cast<unsigned int>(accDelayBuffer.size()) > theWalkingEngineParams.imuSensorDelayFrames
       && static_cast<unsigned int>(coM1DelayBuffer.size()) > theWalkingEngineParams.jointSensorDelayFrames
-      && static_cast<unsigned int>(realCoM2DelayBuffer.size()) > theFLIPMObserverGains.CoM2Delay && static_cast<unsigned int>(realCoM1DelayBuffer.size()) > theFLIPMObserverGains.CoM1Delay)
+      && static_cast<unsigned int>(realCoM2DelayBuffer.size()) > theSensorControlParams.flipmObserverGains.CoM2Delay
+      && static_cast<unsigned int>(realCoM1DelayBuffer.size()) > theSensorControlParams.flipmObserverGains.CoM1Delay)
   {
     /* ZMP calculation
     Vector2f ZMPDelay, realZMP;
@@ -217,18 +218,30 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
     */
 
     ACC_1_diff = realAcc - accDelayBuffer[theWalkingEngineParams.imuSensorDelayFrames - 1];
-    CoM_1_diff = realCoM1DelayBuffer[theFLIPMObserverGains.CoM1Delay] - coM1DelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1];
-    CoM_2_diff = realCoM1DelayBuffer[theFLIPMObserverGains.CoM1Delay] - realCoM2DelayBuffer[theFLIPMObserverGains.CoM2Delay]
-        + Vector2f(theFLIPMObserverGains.CoM2DiffXOffset, theFLIPMObserverGains.CoM2DiffYOffset);
+    CoM_1_diff = realCoM1DelayBuffer[theSensorControlParams.flipmObserverGains.CoM1Delay] - coM1DelayBuffer[theWalkingEngineParams.jointSensorDelayFrames - 1];
+    CoM_2_diff = realCoM1DelayBuffer[theSensorControlParams.flipmObserverGains.CoM1Delay] - realCoM2DelayBuffer[theSensorControlParams.flipmObserverGains.CoM2Delay]
+        + Vector2f(theSensorControlParams.flipmObserverGains.CoM2DiffXOffset, theSensorControlParams.flipmObserverGains.CoM2DiffYOffset);
 
-    ACC_1_diff.x() = ACC_1_diff.x() > 0.f ? std::min(ACC_1_diff.x(), theFLIPMObserverGains.maxDiffACCClip) : std::max(ACC_1_diff.x(), -theFLIPMObserverGains.maxDiffACCClip);
-    ACC_1_diff.y() = ACC_1_diff.y() > 0.f ? std::min(ACC_1_diff.y(), theFLIPMObserverGains.maxDiffACCClip) : std::max(ACC_1_diff.y(), -theFLIPMObserverGains.maxDiffACCClip);
+    ACC_1_diff.x() = ACC_1_diff.x() > 0.f
+        ? std::min(ACC_1_diff.x(), theSensorControlParams.flipmObserverGains.maxDiffACCClip)
+        : std::max(ACC_1_diff.x(), -theSensorControlParams.flipmObserverGains.maxDiffACCClip);
+    ACC_1_diff.y() = ACC_1_diff.y() > 0.f
+        ? std::min(ACC_1_diff.y(), theSensorControlParams.flipmObserverGains.maxDiffACCClip)
+        : std::max(ACC_1_diff.y(), -theSensorControlParams.flipmObserverGains.maxDiffACCClip);
 
-    CoM_1_diff.x() = CoM_1_diff.x() > 0.f ? std::min(CoM_1_diff.x(), theFLIPMObserverGains.maxDiffCoMClip) : std::max(CoM_1_diff.x(), -theFLIPMObserverGains.maxDiffCoMClip);
-    CoM_1_diff.y() = CoM_1_diff.y() > 0.f ? std::min(CoM_1_diff.y(), theFLIPMObserverGains.maxDiffCoMClip) : std::max(CoM_1_diff.y(), -theFLIPMObserverGains.maxDiffCoMClip);
+    CoM_1_diff.x() = CoM_1_diff.x() > 0.f
+        ? std::min(CoM_1_diff.x(), theSensorControlParams.flipmObserverGains.maxDiffCoMClip)
+        : std::max(CoM_1_diff.x(), -theSensorControlParams.flipmObserverGains.maxDiffCoMClip);
+    CoM_1_diff.y() = CoM_1_diff.y() > 0.f
+        ? std::min(CoM_1_diff.y(), theSensorControlParams.flipmObserverGains.maxDiffCoMClip)
+        : std::max(CoM_1_diff.y(), -theSensorControlParams.flipmObserverGains.maxDiffCoMClip);
 
-    CoM_2_diff.x() = CoM_2_diff.x() > 0.f ? std::min(CoM_2_diff.x(), theFLIPMObserverGains.maxDiffCoMClip) : std::max(CoM_2_diff.x(), -theFLIPMObserverGains.maxDiffCoMClip);
-    CoM_2_diff.y() = CoM_2_diff.y() > 0.f ? std::min(CoM_2_diff.y(), theFLIPMObserverGains.maxDiffCoMClip) : std::max(CoM_2_diff.y(), -theFLIPMObserverGains.maxDiffCoMClip);
+    CoM_2_diff.x() = CoM_2_diff.x() > 0.f
+        ? std::min(CoM_2_diff.x(), theSensorControlParams.flipmObserverGains.maxDiffCoMClip)
+        : std::max(CoM_2_diff.x(), -theSensorControlParams.flipmObserverGains.maxDiffCoMClip);
+    CoM_2_diff.y() = CoM_2_diff.y() > 0.f
+        ? std::min(CoM_2_diff.y(), theSensorControlParams.flipmObserverGains.maxDiffCoMClip)
+        : std::max(CoM_2_diff.y(), -theSensorControlParams.flipmObserverGains.maxDiffCoMClip);
   }
   else
   {
@@ -251,12 +264,12 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
   ///////////////////
   // Real Values ////
   ///////////////////
-  PLOT("module:FLIPMObserver:realCoM1.x", realCoM1DelayBuffer[theFLIPMObserverGains.CoM1Delay].x());
-  PLOT("module:FLIPMObserver:realCoM1.y", realCoM1DelayBuffer[theFLIPMObserverGains.CoM1Delay].y());
+  PLOT("module:FLIPMObserver:realCoM1.x", realCoM1DelayBuffer[theSensorControlParams.flipmObserverGains.CoM1Delay].x());
+  PLOT("module:FLIPMObserver:realCoM1.y", realCoM1DelayBuffer[theSensorControlParams.flipmObserverGains.CoM1Delay].y());
   PLOT("module:FLIPMObserver:realAcc.x", realAcc.x());
   PLOT("module:FLIPMObserver:realAcc.y", realAcc.y());
-  PLOT("module:FLIPMObserver:realCoM2.x", realCoM2DelayBuffer[theFLIPMObserverGains.CoM2Delay].x());
-  PLOT("module:FLIPMObserver:realCoM2.y", realCoM2DelayBuffer[theFLIPMObserverGains.CoM2Delay].y());
+  PLOT("module:FLIPMObserver:realCoM2.x", realCoM2DelayBuffer[theSensorControlParams.flipmObserverGains.CoM2Delay].x());
+  PLOT("module:FLIPMObserver:realCoM2.y", realCoM2DelayBuffer[theSensorControlParams.flipmObserverGains.CoM2Delay].y());
   ///////////////////
   // Differences ////
   ///////////////////
@@ -306,35 +319,35 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
     localSensorScale -= 1.0f / theWalkingEngineParams.walkTransition.crouchingDownPhaseLength;
   }
 
-  if (theFLIPMObserverGains.useRCS)
+  if (theSensorControlParams.flipmObserverGains.useRCS)
   {
-    CoM_1_diff.x() *= (theFLIPMObserverGains.sensorControlRatioObserverX[0] * localSensorScale);
-    CoM_1_diff.y() *= (theFLIPMObserverGains.sensorControlRatioObserverY[0] * localSensorScale);
-    ACC_1_diff.x() *= (theFLIPMObserverGains.sensorControlRatioObserverX[1] * localSensorScale);
-    ACC_1_diff.y() *= (theFLIPMObserverGains.sensorControlRatioObserverY[1] * localSensorScale);
-    CoM_2_diff.x() *= (theFLIPMObserverGains.sensorControlRatioObserverX[2] * localSensorScale);
-    CoM_2_diff.y() *= (theFLIPMObserverGains.sensorControlRatioObserverY[2] * localSensorScale);
+    CoM_1_diff.x() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverX[0] * localSensorScale);
+    CoM_1_diff.y() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverY[0] * localSensorScale);
+    ACC_1_diff.x() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverX[1] * localSensorScale);
+    ACC_1_diff.y() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverY[1] * localSensorScale);
+    CoM_2_diff.x() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverX[2] * localSensorScale);
+    CoM_2_diff.y() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverY[2] * localSensorScale);
   }
   else
   {
     /* Transform WCS into RCS and back, to apply some scaling*/
     CoM_1_diff.rotate(-robotPosition.rotation);
-    CoM_1_diff.x() *= (theFLIPMObserverGains.sensorControlRatioObserverX[0] * localSensorScale) * theFLIPMObserverGains.sensorXFactor;
-    CoM_1_diff.y() *= (theFLIPMObserverGains.sensorControlRatioObserverY[0] * localSensorScale) * theFLIPMObserverGains.sensorYFactor;
+    CoM_1_diff.x() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverX[0] * localSensorScale) * theSensorControlParams.flipmObserverGains.sensorXFactor;
+    CoM_1_diff.y() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverY[0] * localSensorScale) * theSensorControlParams.flipmObserverGains.sensorYFactor;
     CoM_1_diff.rotate(robotPosition.rotation);
 
     ACC_1_diff.rotate(-robotPosition.rotation);
-    ACC_1_diff.x() *= (theFLIPMObserverGains.sensorControlRatioObserverX[1] * localSensorScale) * theFLIPMObserverGains.sensorXFactor;
-    ACC_1_diff.y() *= (theFLIPMObserverGains.sensorControlRatioObserverY[1] * localSensorScale) * theFLIPMObserverGains.sensorYFactor;
+    ACC_1_diff.x() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverX[1] * localSensorScale) * theSensorControlParams.flipmObserverGains.sensorXFactor;
+    ACC_1_diff.y() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverY[1] * localSensorScale) * theSensorControlParams.flipmObserverGains.sensorYFactor;
     ACC_1_diff.rotate(robotPosition.rotation);
 
     CoM_2_diff.rotate(-robotPosition.rotation);
-    CoM_2_diff.x() *= (theFLIPMObserverGains.sensorControlRatioObserverX[2] * localSensorScale) * theFLIPMObserverGains.sensorXFactor;
-    CoM_2_diff.y() *= (theFLIPMObserverGains.sensorControlRatioObserverY[2] * localSensorScale) * theFLIPMObserverGains.sensorYFactor;
+    CoM_2_diff.x() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverX[2] * localSensorScale) * theSensorControlParams.flipmObserverGains.sensorXFactor;
+    CoM_2_diff.y() *= (theSensorControlParams.flipmObserverGains.sensorControlRatioObserverY[2] * localSensorScale) * theSensorControlParams.flipmObserverGains.sensorYFactor;
     CoM_2_diff.rotate(robotPosition.rotation);
   }
 
-  if (theFLIPMObserverGains.activateSensorX == true)
+  if (theSensorControlParams.sensorControlActivation.activateFLIPMObserverGains && theSensorControlParams.flipmObserverGains.activateSensorX == true)
   {
     observedFLIPMError.observedError.x() = theFLIPMObserverParameter.observerParamsX.L * Vector3d(CoM_1_diff.x(), ACC_1_diff.x(), CoM_2_diff.x());
   }
@@ -343,7 +356,7 @@ void FLIPMObserver::update(ObservedFLIPMError& observedFLIPMError)
     observedFLIPMError.observedError.x() = theFLIPMObserverParameter.observerParamsX.L * Vector3d(0, 0, 0);
   }
 
-  if (theFLIPMObserverGains.activateSensorY == true)
+  if (theSensorControlParams.sensorControlActivation.activateFLIPMObserverGains && theSensorControlParams.flipmObserverGains.activateSensorY == true)
   {
     observedFLIPMError.observedError.y() = theFLIPMObserverParameter.observerParamsY.L * Vector3d(CoM_1_diff.y(), ACC_1_diff.y(), CoM_2_diff.y());
   }

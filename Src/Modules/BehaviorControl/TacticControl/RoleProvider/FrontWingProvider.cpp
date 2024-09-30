@@ -3,9 +3,11 @@
 #include "Utils/PositionUtils.h"
 #include "Utils/ThresholdUtils.h"
 #include "Utils/MathUtils.h"
+#include "Utils/BlockedUtils.h"
 
 void FrontWingProvider::update(FrontWing& role)
 {
+  DECLARE_DEBUG_DRAWING("behavior:FrontWingProvider", "drawingOnField");
   role.stopAtTarget = true;
 
   decide(role, theBallSymbols, theFieldDimensions, theGameInfo, theGameSymbols);
@@ -91,12 +93,37 @@ float FrontWingProvider::stateReady_penaltyKick_opponent(FrontWing& role)
 void FrontWingProvider::regularPlay(FrontWing& role)
 {
   ThresholdUtils::setThreshholdsExtremeHeigh(role, theTacticSymbols.activity);
-
   PositionUtils::turnTowardsBall(role, theBallSymbols);
 
-  const float x = MathUtils::clamp_f(theBallSymbols.ballPositionField.x() + 2000.f, -theFieldDimensions.xPosOpponentPenaltyArea / 2, theFieldDimensions.xPosOpponentPenaltyArea);
-  const float y = -500.f;
-  PositionUtils::setPosition(role, x, y);
+  float xPos = MathUtils::clamp_f(theBallSymbols.ballPositionField.x() + 2000.f, -theFieldDimensions.xPosOpponentPenaltyArea / 2, theFieldDimensions.xPosOpponentPenaltyArea);
+  //translates the ball Y position to -1..1
+  float relativeYBallPosition = MathUtils::clamp_f(theBallSymbols.ballPositionField.y() / theFieldDimensions.yPosLeftSideline, -1.0f, 1.0f);
+  //max y deviation = half of field width
+  float maxYDeviation = theFieldDimensions.yPosLeftSideline;
+  //deviate from planned y pos based on the ball position
+  float yDeviation = relativeYBallPosition * maxYDeviation;
+
+  float yPos = MathUtils::clamp_f(-500.f + yDeviation, theFieldDimensions.yPosRightSideline * 0.7f, theFieldDimensions.yPosLeftSideline * 0.7f);
+  LINE("behavior:FrontWingProvider", xPos, yPos, theBallSymbols.ballPositionField.x(), theBallSymbols.ballPositionField.y(), 10, Drawings::dashedPen, ColorRGBA::red);
+
+
+  float activity = theTacticSymbols.activity;
+  Vector2f newPosition;
+  if (theRoleSymbols.role == BehaviorData::frontWing)
+  {
+    role.framesSinceLastSideStep++;
+    newPosition = BlockedUtils::moveIfBlocked(xPos, yPos, role.framesSinceLastSideStep, role.optPosition.translation, role.blockedByRobot, activity, theRobotMap, theBallSymbols);
+  }
+  else
+  {
+    newPosition = Vector2f(xPos, yPos);
+  }
+
+  ThresholdUtils::setThreshholdsExtremeHeigh(role, activity);
+  PositionUtils::setPosition(role, newPosition.x(), newPosition.y());
+  CROSS("behavior:FrontWingProvider", xPos, yPos, 100, 50, Drawings::solidPen, ColorRGBA::red);
+  CROSS("behavior:FrontWingProvider", newPosition.x(), newPosition.y(), 100, 10, Drawings::solidPen, ColorRGBA::red);
+  LINE("behavior:FrontWingProvider", newPosition.x(), newPosition.y(), theBallSymbols.ballPositionField.x(), theBallSymbols.ballPositionField.y(), 10, Drawings::solidPen, ColorRGBA::red);
 }
 
 MAKE_MODULE(FrontWingProvider, behaviorControl)

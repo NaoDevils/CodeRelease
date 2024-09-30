@@ -14,12 +14,10 @@
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/BehaviorControl/BehaviorLEDRequest.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/GoalSymbols.h"
 #include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/BehaviorControl/KeySymbols.h"
-#include "Representations/BehaviorControl/PSGoalieTrigger.h"
 #include "Representations/BehaviorControl/RoleSelection.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackupBallchaser.h"
@@ -37,6 +35,7 @@
 #include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
+#include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
 #include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Configuration/HeadLimits.h"
@@ -147,7 +146,6 @@ MODULE(BehaviorControl,
   REQUIRES(WalkingEngineParams),
   REQUIRES(WalkCalibration),
   REQUIRES(ArmContact),
-  REQUIRES(PSGoalieTrigger),
   REQUIRES(BallSearch),
   REQUIRES(WhistleDortmund),
   REQUIRES(CMCorrectorStatus),
@@ -155,10 +153,10 @@ MODULE(BehaviorControl,
   REQUIRES(USBSettings),
   REQUIRES(USBStatus),
   REQUIRES(NetworkStatus),
+  REQUIRES(VisualRefereeBehaviorSymbols),
   USES(TeamCommSenderOutput),
   PROVIDES(ActivationGraph),
   PROVIDES(BehaviorData),
-  PROVIDES(BehaviorLEDRequest),
   PROVIDES(HeadControlRequest),
   PROVIDES(MotionRequest)
 );
@@ -173,13 +171,11 @@ namespace NDBehavior
   public:
     ActivationGraph& theActivationGraph;
     BehaviorData& theBehaviorData;
-    BehaviorLEDRequest& theBehaviorLEDRequest;
     HeadControlRequest& theHeadControlRequest;
     MotionRequest& theMotionRequest;
 
-    BehaviorOutput(ActivationGraph& theActivationGraph, BehaviorData& theBehaviorData, BehaviorLEDRequest& theBehaviorLEDRequest, HeadControlRequest& theHeadControlRequest, MotionRequest& theMotionRequest)
-        : theActivationGraph(theActivationGraph), theBehaviorData(theBehaviorData), theBehaviorLEDRequest(theBehaviorLEDRequest), theHeadControlRequest(theHeadControlRequest),
-          theMotionRequest(theMotionRequest)
+    BehaviorOutput(ActivationGraph& theActivationGraph, BehaviorData& theBehaviorData, HeadControlRequest& theHeadControlRequest, MotionRequest& theMotionRequest)
+        : theActivationGraph(theActivationGraph), theBehaviorData(theBehaviorData), theHeadControlRequest(theHeadControlRequest), theMotionRequest(theMotionRequest)
     {
     }
   };
@@ -192,7 +188,6 @@ namespace NDBehavior
   private:
     void update(ActivationGraph&) {}
     void update(BehaviorData&) {}
-    void update(BehaviorLEDRequest&) {}
     void update(HeadControlRequest&) {}
     void update(MotionRequest&) {}
 

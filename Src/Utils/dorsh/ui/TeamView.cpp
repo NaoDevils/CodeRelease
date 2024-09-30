@@ -1,8 +1,8 @@
-#include "Utils/dorsh/ui/TeamView.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/ui/RobotView.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
-#include "Utils/dorsh/tools/Filesystem.h"
+#include "ui/TeamView.h"
+#include "models/Team.h"
+#include "ui/RobotView.h"
+#include "ui/TeamSelector.h"
+#include "tools/Filesystem.h"
 
 #include <QPushButton>
 #include <QComboBox>
@@ -125,20 +125,6 @@ void TeamView::init()
     teamnumberLayout->addWidget(sbNumber);
     settingsGrid->addLayout(teamnumberLayout);
     connect(sbNumber, SIGNAL(valueChanged(int)), this, SLOT(numberChanged(int)));
-
-    /* GAMEMODE */
-    QHBoxLayout* gameModeLayout = new QHBoxLayout();
-    gameModeLayout->setDirection(QBoxLayout::TopToBottom);
-    cbGameMode = new QComboBox(this);
-    cbGameMode->addItem("mixedTeam");
-    cbGameMode->addItem("preliminary");
-    cbGameMode->addItem("playOff");
-    cbGameMode->addItem("penaltyShootout");
-    cbGameMode->setCurrentIndex(cbGameMode->findText(QString::fromStdString(team->gameMode)));
-    gameModeLayout->addWidget(new QLabel("Mode:", lePort));
-    gameModeLayout->addWidget(cbGameMode);
-    settingsGrid->addLayout(gameModeLayout);
-    connect(cbGameMode, SIGNAL(currentTextChanged(const QString&)), this, SLOT(gameModeChanged(const QString&)));
 
     /* WLANCONFIG */
     QHBoxLayout* wlanConfigLayout = new QHBoxLayout();
@@ -323,12 +309,6 @@ void TeamView::overlaysChanged(const QString& overlays)
     else
       team->overlays[0] = overlays.toStdString();
   }
-}
-
-void TeamView::gameModeChanged(const QString& gameMode)
-{
-  if (team)
-    team->gameMode = gameMode.toStdString();
 }
 
 void TeamView::wlanConfigChanged(const QString& config)

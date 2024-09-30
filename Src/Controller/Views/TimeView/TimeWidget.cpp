@@ -15,6 +15,7 @@
 #include <QLineEdit>
 #include <QSettings>
 #include "TimeView.h"
+#include "Representations/TimeInfo.h"
 #include "Platform/Thread.h"
 
 /**A simple QTableWidgetItem that enables correct sorting of numbers*/

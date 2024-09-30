@@ -4,6 +4,7 @@
 #include "Tools/Settings.h"
 #include "Tools/Streams/InStreams.h"
 #include "Tools/Math/Pose2f.h"
+#include "Tools/Build.h"
 #include <string>
 
 STREAMABLE(OdometryCorrectionTable,
@@ -14,10 +15,18 @@ STREAMABLE(OdometryCorrectionTable,
   (std::vector<Entry>) odometryTable
 );
 
+STREAMABLE(OdometryCorrectionTableRot,
+  STREAMABLE(Entry,,
+    (Angle)(120_deg) speed,
+    (float)(1.f) multiplier
+  ),
+  (std::vector<Entry>) odometryTable
+);
+
 STREAMABLE(OdometryCorrectionTable2D,
   STREAMABLE(Entry,,
     (float)(0.f) speedX,
-    (float)(0.f) speedR,
+    (Angle)(0_deg) speedR,
     (float)(1.f) multiplier
   ),
   (std::vector<Entry>) odometryTable
@@ -25,24 +34,21 @@ STREAMABLE(OdometryCorrectionTable2D,
 
 STREAMABLE(OdometryCorrectionTables,,
   (float) odometryCorrectionFactor,
-  (OdometryCorrectionTable) backCorrectionTablePreview,
-  (OdometryCorrectionTable) forwardCorrectionTablePreview,
-  (OdometryCorrectionTable) sideCorrectionTablePreview,
   (OdometryCorrectionTable) backCorrectionTable,
   (OdometryCorrectionTable) forwardCorrectionTable,
   (OdometryCorrectionTable) sideCorrectionTable,
-  (OdometryCorrectionTable) rotCorrectionTable,
+  (OdometryCorrectionTableRot) rotCorrectionTable,
   (OdometryCorrectionTable2D) rot2DCorrectionTable
 );
 
 class OdometryCorrection
 {
 public:
-  static float correct1D(const OdometryCorrectionTable& table, const float& odometryAbs, const float& absExecutedSpeed)
+  template <typename T> static float correct1D(const T& table, const float& odometryAbs, const float& absExecutedSpeed)
   {
     float result = 1.f;
-    if (odometryAbs < 0.001f)
-      return result;
+    //if (odometryAbs < 0.001f)
+    //  return result;
     const int entries = static_cast<int>(table.odometryTable.size());
     int entry = 0, lastEntry = 0;
     while (entry < (entries - 1) && absExecutedSpeed >= table.odometryTable[entry].speed)
@@ -69,8 +75,8 @@ public:
   static float correct2D(const OdometryCorrectionTable2D& table, const float& odometryAbs, const float& absExecutedSpeed, const float& absExecutedRot)
   {
     float result = 1.f;
-    if (odometryAbs < 0.001f)
-      return result;
+    //if (odometryAbs < 0.001f)
+    //  return result;
     const int entries = static_cast<int>(table.odometryTable.size());
     int entry = 0;
     int entryLowSpeed = 0;
@@ -103,43 +109,13 @@ public:
     return result;
   }
 
-  static Pose2f correctPreview(const Pose2f& speed,
-      const Pose2f& odometry,
-      const float& odometryCorrectionFactor,
-      const OdometryCorrectionTable& backCorrectionPreview,
-      const OdometryCorrectionTable& forwardCorrectionPreview,
-      const OdometryCorrectionTable& sideCorrectionPreview)
-  {
-    float xCorrectionFactor, yCorrectionFactor, rotCorrectionFactor;
-    xCorrectionFactor = yCorrectionFactor = rotCorrectionFactor = 1.f;
-    Pose2f correctedOdometry;
-    //OdometryCorrection
-    if (speed.translation.x() < 0)
-    {
-      xCorrectionFactor = correct1D(backCorrectionPreview, std::abs(odometry.translation.x()), std::abs(speed.translation.x()));
-    }
-    else if (speed.translation.x() > 0)
-    {
-      xCorrectionFactor = correct1D(forwardCorrectionPreview, std::abs(odometry.translation.x()), std::abs(speed.translation.x()));
-    }
-    if (speed.translation.y() != 0)
-    {
-      yCorrectionFactor = correct1D(sideCorrectionPreview, std::abs(odometry.translation.y()), std::abs(speed.translation.y()));
-    }
-
-    correctedOdometry.translation.x() = odometry.translation.x() * xCorrectionFactor * odometryCorrectionFactor;
-    correctedOdometry.translation.y() = odometry.translation.y() * yCorrectionFactor * odometryCorrectionFactor;
-    correctedOdometry.rotation = odometry.rotation * rotCorrectionFactor * odometryCorrectionFactor;
-    return correctedOdometry;
-  }
-
   static Pose2f correct(const Pose2f& speed,
       const Pose2f& odometry,
       const float& odometryCorrectionFactor,
       const OdometryCorrectionTable& backCorrection,
       const OdometryCorrectionTable& forwardCorrection,
       const OdometryCorrectionTable& sideCorrection,
-      const OdometryCorrectionTable& rotCorrection,
+      const OdometryCorrectionTableRot& rotCorrection,
       const OdometryCorrectionTable2D& rot2DCorrection,
       const bool predict = false)
   {
@@ -149,19 +125,19 @@ public:
     //OdometryCorrection
     if (speed.translation.x() < 0)
     {
-      xCorrectionFactor = correct1D(backCorrection, std::abs(odometry.translation.x()), std::abs(speed.translation.x()));
+      xCorrectionFactor = correct1D<OdometryCorrectionTable>(backCorrection, std::abs(odometry.translation.x()), std::abs(speed.translation.x()));
     }
     else if (speed.translation.x() > 0)
     {
-      xCorrectionFactor = correct1D(forwardCorrection, std::abs(odometry.translation.x()), std::abs(speed.translation.x()));
+      xCorrectionFactor = correct1D<OdometryCorrectionTable>(forwardCorrection, std::abs(odometry.translation.x()), std::abs(speed.translation.x()));
     }
     if (speed.translation.y() != 0)
     {
-      yCorrectionFactor = correct1D(sideCorrection, std::abs(odometry.translation.y()), std::abs(speed.translation.y()));
+      yCorrectionFactor = correct1D<OdometryCorrectionTable>(sideCorrection, std::abs(odometry.translation.y()), std::abs(speed.translation.y()));
     }
     if (speed.translation.x() == 0 && speed.rotation != 0)
     {
-      rotCorrectionFactor = correct1D(rotCorrection, std::abs(odometry.rotation), std::abs(speed.rotation));
+      rotCorrectionFactor = correct1D<OdometryCorrectionTableRot>(rotCorrection, std::abs(odometry.rotation), std::abs(speed.rotation));
     }
     else if (speed.rotation != 0)
     {
@@ -170,6 +146,10 @@ public:
 
     if (predict)
     {
+      xCorrectionFactor = std::min(1.f, xCorrectionFactor);
+      yCorrectionFactor = std::min(1.f, yCorrectionFactor);
+      rotCorrectionFactor = std::min(1.f, rotCorrectionFactor);
+
       correctedOdometry.translation.x() = odometry.translation.x() / xCorrectionFactor;
       correctedOdometry.translation.y() = odometry.translation.y() / yCorrectionFactor;
       correctedOdometry.rotation = odometry.rotation / rotCorrectionFactor;

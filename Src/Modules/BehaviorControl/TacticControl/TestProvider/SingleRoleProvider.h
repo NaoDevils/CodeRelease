@@ -9,13 +9,10 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/LiveConfigurationState.h"
-#include "Representations/Infrastructure/SensorData/KeyStates.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 
 
 MODULE(SingleRoleProvider,
-  REQUIRES(KeyStates),
   REQUIRES(LiveConfigurationState),
   REQUIRES(RobotInfo),
   PROVIDES(RoleSymbols)

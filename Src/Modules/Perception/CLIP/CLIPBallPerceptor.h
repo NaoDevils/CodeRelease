@@ -9,7 +9,6 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
-#include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -17,16 +16,14 @@
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Perception/BodyContour.h"
 #include "Representations/Perception/CameraMatrix.h"
-#include "Representations/Infrastructure/CameraIntrinsics.h"
 #include "Representations/Perception/FieldColor.h"
 #include "Representations/Perception/BallPercept.h"
 #include "Representations/Perception/BallSpots.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/Perception/TfliteInterpreter.h"
-#include <algorithm>
+#include <optional>
 #include "stdint.h"
 
 STREAMABLE(MatlabCNN,,
@@ -47,12 +44,10 @@ STREAMABLE(TFLiteCNN,,
 
 MODULE(CLIPBallPerceptor,
   REQUIRES(BodyContour),
-  REQUIRES(BodyContourUpper),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
-  REQUIRES(CameraIntrinsics),
   REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
   REQUIRES(FieldDimensions),
@@ -61,9 +56,9 @@ MODULE(CLIPBallPerceptor,
   REQUIRES(ImageUpper),
   REQUIRES(ScanlinesBallSpots),
   REQUIRES(BallHypothesesYolo),
+  REQUIRES(BallHypothesesSegmentor),
   REQUIRES(CLIPFieldLinesPercept),
   USES(RobotPose),
-  REQUIRES(MotionInfo),
   REQUIRES(BallPerceptTfliteInterpreter),
   REQUIRES(SplittedTfliteInterpreter),
   USES(BallModel),

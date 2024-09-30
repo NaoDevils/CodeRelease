@@ -9,91 +9,27 @@
 #include "Tools/Enum.h"
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Configuration/RobotConfig.h"
-#include "Representations/Infrastructure/GameInfo.h"
 
 /**
  * @class Settings
  * The class provides access to settings-specific configuration directories.
  */
 STREAMABLE(Settings,
-public:
-  ENUM(TeamColor,
-    blue,
-    red,
-    yellow,
-    black,
-    white,
-    green,
-    orange,
-    purple,
-    brown,
-    gray
-  );
-  
-  ENUM(GameMode,
-    mixedTeam,
-    preliminary,
-    playOff,
-    penaltyShootout
-  );
-  
-  std::string robotName; /**< The name of this robot. */
-  std::string bodyName; /**< The name of this robot's body. */
-  
-  static bool recover; /**< Start directly without the pre-initial state. */
+  std::string robotName = "Nao"; /**< The name of this robot. */
+  std::string bodyName = "Nao"; /**< The name of this robot's body. */
 
-  static constexpr int highestValidPlayerNumber = MAX_NUM_PLAYERS; /**< No player can have a number greater than this */
-  static constexpr int lowestValidPlayerNumber = 1;  /**< No player can have a number smaller than this */
-  bool isGoalkeeper;            /**< Is this robot the goaliekeeper? */
-  
-  friend class Framework; /**< To access loaded. */
-
-
-  Settings();
-
-  static bool loadingSucceeded() { return loaded; }
-private:
-  static Settings settings; /**< The master settings instance. */
-  static bool loaded; /**< The load() of the master settings instance was called or not. */
-
-  /**
-   * Constructor for the master settings instance.
-   */
-  Settings(bool master);
-
-
-  /**
-   * Assignment operator
-   * @param other The other settings that is assigned to this one
-   * @return A reference to this object after the assignment.
-   */
-  Settings& operator=(const Settings& other)
-  {
-    naoVersion = other.naoVersion;
-    teamNumber = other.teamNumber;
-    teamColor = other.teamColor;
-    playerNumber = other.playerNumber;
-    overlays = other.overlays; // avoid copy-on-write
-    teamPort = other.teamPort;
-    robotName = other.robotName.c_str(); // avoid copy-on-write
-    bodyName = other.bodyName.c_str(); // avoid copy-on-write
-    gameMode = other.gameMode;
-    return *this;
-  }
-  
   /**
    * The function loads the settings from disk.
    * @return Whether the settings were loaded successfully.
    */
   bool load();
 
-public:  
+  void write(Out& out) const;
+  void read(In& in);
+
+  // Increase version number whenever something changes!
+  static constexpr unsigned char version = 1;
   ,
-  ((RobotConfig) NaoVersion) naoVersion,
-  (int)(0) teamNumber, /**< The number of our team in the game controller. Use theOwnTeamInfo.teamNumber instead. */
-  (TeamColor)(blue) teamColor, /**< The color of our team. Use theOwnTeamInfo.teamColor instead. */
-  (int)(0) playerNumber, /**< The number of the robot in the team. Use theRobotInfo.playerNumber instead. */
-  (std::vector<std::string>) overlays, /**< The activated config overlays. */
-  (int)(0) teamPort, /**< The UDP port our team uses for team communication. */
-  (GameMode)(preliminary) gameMode
+  ((RobotConfig) NaoVersion)(NaoVersion::V6) naoVersion,
+  (std::vector<std::string>) overlays /**< The activated config overlays. */
 );

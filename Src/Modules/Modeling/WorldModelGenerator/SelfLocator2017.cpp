@@ -477,17 +477,18 @@ void SelfLocator2017::pruneHypotheses()
   pruneHypothesesWithInvalidValues();
 
   // special case: no position on opp side
-  if ((theBehaviorData.role == BehaviorData::keeper // Let's simply assume that the keeper will never be in the opponent half!  :)
-          || (theGameInfo.state == STATE_SET // Cannot be in opponent half in set, except in penalty kick situations
-              && Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)))
+  if (theBehaviorData.role == BehaviorData::keeper // Let's simply assume that the keeper will never be in the opponent half!  :)
+      || (theGameInfo.state == STATE_SET // Cannot be in opponent half in set, except in penalty kick situations
+          && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)
+      || theGameInfo.inPreGame())
     pruneHypothesesInOpponentHalf();
 
   // in penalty shootout the striker will never reach the own half because of manually placement
-  if ((Global::getSettings().gameMode == Settings::penaltyShootout || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT) && theBehaviorData.role != BehaviorData::keeper)
+  if (theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT && theBehaviorData.role != BehaviorData::keeper)
     pruneHypothesesInOwnHalf();
 
   // Prune hypothesis outside of field in set state. We can be sure to be inside of field after set!
-  if (theGameInfo.state == STATE_SET && Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
+  if (theGameInfo.state == STATE_SET && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
     pruneHypothesesOutsideField();
 
 
@@ -624,7 +625,8 @@ bool SelfLocator2017::hasPositionBeenFoundAfterLoss()
 void SelfLocator2017::evaluateLocalizationState()
 {
   // are we playing regularly yet?
-  if ((theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_FINISHED) && theBehaviorData.behaviorState < BehaviorData::BehaviorState::firstCalibrationState)
+  if ((theGameInfo.inPreGame() || theGameInfo.state == STATE_FINISHED) && theBehaviorData.behaviorState < BehaviorData::BehaviorState::firstCalibrationState
+      && theVisualRefereeBehaviorSymbols.state == VisualRefereeBehaviorSymbols::State::idle)
   {
     lastNonPlayingTimeStamp = theFrameInfo.time;
   }
@@ -659,7 +661,7 @@ void SelfLocator2017::evaluateLocalizationState()
   {
     lastNonSetTimestamp = theFrameInfo.time;
   }
-  if (theGameInfo.state == STATE_INITIAL)
+  if (theGameInfo.inPreGame())
   {
     handleInitialState();
   }
@@ -807,7 +809,7 @@ void SelfLocator2017::handleUnPenalized()
 void SelfLocator2017::handleSetState()
 {
   // delete all hypotheses on the wrong side of the field unless in penalty kick
-  if (Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)
+  if (theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)
   {
     auto i = poseHypotheses.begin();
     while (i != poseHypotheses.end() && poseHypotheses.size() > 1)
@@ -838,13 +840,12 @@ void SelfLocator2017::handleInitialState()
 
 void SelfLocator2017::addHypothesesOnManualPositioningPositions()
 {
-  bool ownKickoff = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber;
   // special position for goalie
   const bool isGoalKeeper = (theBehaviorData.role == BehaviorData::keeper);
   if (isGoalKeeper)
   {
     // penalty shootout
-    if (Global::getSettings().gameMode == Settings::penaltyShootout || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
+    if (theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
     {
       poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(Pose2f(0, positionsByRules.penaltyShootoutGoaliePosition),
           parameters.spawning.positionConfidenceWhenPositionedManuallyForGoalKeeper,
@@ -854,35 +855,29 @@ void SelfLocator2017::addHypothesesOnManualPositioningPositions()
     }
     else
     {
-      poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(Pose2f(0, positionsByRules.goaliePosition),
-          parameters.spawning.positionConfidenceWhenPositionedManuallyForGoalKeeper,
-          SideConfidence::ConfidenceState::CONFIDENT,
-          theFrameInfo.time,
-          parameters));
+      poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
+          thePositioningSymbols.optPosition, parameters.spawning.positionConfidenceWhenPositionedManually, SideConfidence::ConfidenceState::CONFIDENT, theFrameInfo.time, parameters));
     }
   }
   // one of the field positions for field players
   else
   {
     // penalty shootout
-    if (Global::getSettings().gameMode == Settings::penaltyShootout || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
+    if (theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
     {
       addPenaltyStrikerStartingHypothesis();
     }
     else
     {
-      for (auto& position : (ownKickoff ? positionsByRules.fieldPlayerPositionsOwnKickoff : positionsByRules.fieldPlayerPositionsOppKickoff))
-      {
-        poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
-            Pose2f(0, position), parameters.spawning.positionConfidenceWhenPositionedManually, SideConfidence::ConfidenceState::CONFIDENT, theFrameInfo.time, parameters));
-      }
+      poseHypotheses.push_back(std::make_unique<PoseHypothesis2017>(
+          thePositioningSymbols.optPosition, parameters.spawning.positionConfidenceWhenPositionedManually, SideConfidence::ConfidenceState::CONFIDENT, theFrameInfo.time, parameters));
     }
   }
 }
 
 void SelfLocator2017::addHypothesesOnInitialKickoffPositions()
 {
-  if (Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
+  if (theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
   {
     addHypothesesOnInitialPositions(parameters.spawning.positionConfidenceWhenPositionedManually);
   }
@@ -908,7 +903,7 @@ void SelfLocator2017::addPenaltyStrikerStartingHypothesis()
 
 void SelfLocator2017::addHypothesesOnInitialPositions(float newPositionConfidence)
 {
-  if (Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
+  if (theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
   {
     const SideConfidence::ConfidenceState sc = SideConfidence::ConfidenceState::CONFIDENT;
 
@@ -927,7 +922,7 @@ void SelfLocator2017::addHypothesesOnInitialPositions(float newPositionConfidenc
 
 void SelfLocator2017::addHypothesesOnPenaltyPositions(float newPositionConfidence)
 {
-  if (Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
+  if (theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
   {
     SideConfidence::ConfidenceState sc = SideConfidence::ConfidenceState::CONFIDENT;
 
@@ -1085,7 +1080,8 @@ bool SelfLocator2017::addNewHypotheses()
   bool added = false;
 
   // Add hypothesis in initial all the time
-  if (theGameInfo.state == STATE_INITIAL && theBehaviorData.behaviorState < BehaviorData::BehaviorState::firstCalibrationState)
+  if (theGameInfo.inPreGame() && theBehaviorData.behaviorState < BehaviorData::BehaviorState::firstCalibrationState
+      && theVisualRefereeBehaviorSymbols.state == VisualRefereeBehaviorSymbols::State::idle)
   {
     addHypothesesOnInitialKickoffPositions();
     added = true;
@@ -1114,7 +1110,7 @@ bool SelfLocator2017::addNewHypotheses()
     // The only case for this to happen is if this robot is in a legal position and we want to manually position the whole team.
     if (theGameInfo.state == STATE_SET && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK
         && (!bestHyp || bestHyp->getPositionConfidence() < parameters.spawning.spawnWhilePositionTrackingWhenBestConfidenceBelowThisThreshold)
-        && (gotPickedUp || Global::getSettings().gameMode == Settings::penaltyShootout || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT))
+        && (gotPickedUp || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT))
     {
       addHypothesesOnManualPositioningPositions();
       added = true;

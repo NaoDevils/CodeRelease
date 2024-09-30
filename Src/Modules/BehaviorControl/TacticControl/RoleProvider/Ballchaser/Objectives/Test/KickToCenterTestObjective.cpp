@@ -1,12 +1,7 @@
 #include "KickToCenterTestObjective.h"
 
 #include <Modules/BehaviorControl/TacticControl/KicksProvider/KicksProvider.h>
-#include <Modules/BehaviorControl/TacticControl/KicksProvider/Types/Dribble.h>
 #include <Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/TargetFunctions.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Factors.h>
 
 
 KickToCenterTestObjective::KickToCenterTestObjective(BallchaserProvider* role, BehaviorLogger& logger, const std::string& kickName) : Objective("TestObjective", role, logger)
@@ -18,30 +13,18 @@ KickToCenterTestObjective::KickToCenterTestObjective(BallchaserProvider* role, B
 
 bool KickToCenterTestObjective::perform(Ballchaser& ballchaser)
 {
-  const Filterer filterer = {};
-  const Factors factors = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, -1.f};
-  const Vector2f targetPosition = Vector2f(0, 0);
-  const std::optional<KickPlan> selectableKickOptional = TargetFunctions::getKickPlanForTarget(role->theRobotPoseAfterPreview,
-      role->ballPosition,
-      targetPosition,
-      DistanceRequirement::mayShorterOrFurther,
-      KickUtils::unpack(kicks),
-      kickManager.getCurrentKick(role->ballPosition),
-      filterer,
-      factors,
-      role->theFieldDimensions,
-      role->theHeatMapCollection,
-      role->theRobotMap,
-      role->theTacticSymbols,
-      role->theKickWheel);
-  if (selectableKickOptional.has_value())
+  Kick* kick = KickUtils::unpack(kicks).at(0);
+  const bool kickWithLeft = true;
+  const Vector2f absoluteBallPosition = role->theBallSymbols.ballPositionFieldPredicted;
+
+  Vector2f targetDirectionVector = Vector2f(0.f, 0.f) - role->theRobotPoseAfterPreview.translation;
+  if (targetDirectionVector.x() == 0.f && targetDirectionVector.y() == 0.f)
   {
-    kickManager.kickTo(ballchaser, selectableKickOptional.value(), role->theFrameInfo);
-    return true;
+    targetDirectionVector = Vector2f(1.f, 0.f);
   }
-  logger.addSuccessReason("Cant Kick!");
-  const Vector2f defensivePosition = BallchaserUtils::getWaitPosition(role->ballPosition, role->theFieldDimensions);
-  PositionUtils::setPosition(ballchaser, defensivePosition);
+  const Pose2f kickPose = kick->getKickPose(absoluteBallPosition, targetDirectionVector.angle(), kickWithLeft);
+  const Vector2f target = absoluteBallPosition + targetDirectionVector.normalize(1000.f);
+  currentKickManager.setCurrentKick(ballchaser, kick, kickPose, kickWithLeft, target, role->theBallSymbols, role->theFrameInfo);
   return true;
 }
 

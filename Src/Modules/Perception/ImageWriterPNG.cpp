@@ -146,6 +146,11 @@ void ImageWriterPNG::update(PNGImageDummy& dummy)
 {
   counter = 0;
 
+  if (theBehaviorData.soccerState == BehaviorData::SoccerState::penalized)
+  {
+    return;
+  }
+
   if (sequenceImageConfig.enabled)
   {
     dummy.successful = false;

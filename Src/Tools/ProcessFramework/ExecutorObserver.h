@@ -11,6 +11,7 @@
 #include <mutex>
 #include <memory>
 #include <limits>
+#include <functional>
 
 #include <taskflow/taskflow.hpp>
 
@@ -89,7 +90,7 @@ public:
   */
   inline size_t num_tasks() const;
 
-  template <typename F> inline auto observeFunction(std::string name, F f);
+  void observeFunction(std::string name, std::function<void()> f);
 
 private:
   inline void set_up(size_t num_workers) override final;
@@ -230,26 +231,11 @@ inline size_t ExecutorObserver::num_tasks() const
   return std::accumulate(_taskExecutions.begin(), _taskExecutions.end(), size_t{0}, sumUpSize) + _genericExecutions.size();
 }
 
-template <typename F> inline auto ExecutorObserver::observeFunction(std::string name, F f)
+inline void ExecutorObserver::observeFunction(std::string name, std::function<void()> f)
 {
   auto beg = std::chrono::steady_clock::now();
+  f();
+  auto end = std::chrono::steady_clock::now();
 
-  if constexpr (std::is_same<decltype(f()), void>::value)
-  {
-    f();
-
-    auto end = std::chrono::steady_clock::now();
-
-    _genericExecutions.push_back({std::move(name), beg, end});
-  }
-  else
-  {
-    auto ret = f();
-
-    auto end = std::chrono::steady_clock::now();
-
-    _genericExecutions.push_back({std::move(name), beg, end});
-
-    return ret;
-  }
+  _genericExecutions.push_back({std::move(name), beg, end});
 }

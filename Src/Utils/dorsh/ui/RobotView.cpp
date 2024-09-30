@@ -10,12 +10,12 @@
 #include <sstream>
 #include <iostream>
 
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/tools/ShellTools.h"
-#include "Utils/dorsh/ui/RobotView.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
-#include "Utils/dorsh/ui/SensorWindow.h"
+#include "models/Robot.h"
+#include "models/Team.h"
+#include "tools/ShellTools.h"
+#include "ui/RobotView.h"
+#include "ui/TeamSelector.h"
+#include "ui/SensorWindow.h"
 #include "Platform/SystemCall.h"
 #include <naodevilsbase/naodevilsbase.h>
 
@@ -265,8 +265,8 @@ void RobotView::setPower(const nlohmann::json& json)
   }
   else
   {
-    powerBar->setStyleSheet("QProgressBar::chunk { background-color: gray; border: 1px solid silver; }");
     powerBar->reset();
+    powerBar->setStyleSheet("QProgressBar::chunk { background-color: #e6e6e6; border: 1px solid silver; }");
   }
 }
 
@@ -298,8 +298,8 @@ void RobotView::setTemp(const nlohmann::json& json)
     return;
   }
 
-  tempBar->setStyleSheet("QProgressBar::chunk { background-color: gray; border: 1px solid silver; }");
   tempBar->reset();
+  tempBar->setStyleSheet("QProgressBar::chunk { background-color: #e6e6e6; border: 1px solid silver; }");
 }
 
 void RobotView::setMap(const nlohmann::json& json)
@@ -320,9 +320,9 @@ void RobotView::setMap(const nlohmann::json& json)
   QString bodyText = "";
   int state = 0;
 
+
   if (lastDataUpdate(json) < dataTimeout)
   {
-
     const auto sameBodyId = [&](const auto& r)
     {
       return sensorMap.contains("bodyId") && r.second->bodyId == sensorMap.at("bodyId").get<std::string>();
@@ -333,9 +333,33 @@ void RobotView::setMap(const nlohmann::json& json)
       bodyText = QString::fromStdString(bodyIt->first);
 
     state = sensorMap.contains("state") ? sensorMap.at("state").get<int>() : 0;
+
+    float hardware_quality = sensorMap.contains("hardware_quality") ? sensorMap.at("hardware_quality").get<float>() : -1.f;
+    if (hardware_quality >= 0.f)
+    {
+      if (hardware_quality > 0.75)
+        bodyName->setStyleSheet("QLabel { background-color : lime; border: 1px solid silver; font-size: 7pt; }");
+      else if (hardware_quality > 0.50)
+        bodyName->setStyleSheet("QLabel { background-color : yellow; border: 1px solid silver; font-size: 7pt; }");
+      else if (hardware_quality > 0.25)
+        bodyName->setStyleSheet("QLabel { background-color : orange; border: 1px solid silver; font-size: 7pt; }");
+      else
+        bodyName->setStyleSheet("QLabel { background-color : red; border: 1px solid silver; font-size: 7pt; }");
+    }
+    else
+    {
+      bodyName->setStyleSheet("QLabel { background-color: #e6e6e6; border: 1px solid silver; font-size: 7pt; }");
+    }
+  }
+  else
+  {
+    bodyName->setStyleSheet("QLabel { background-color: #e6e6e6; border: 1px solid silver; font-size: 7pt; }");
   }
 
-  bodyName->setText(bodyText);
+  if (strcmp(bodyText.toStdString().c_str(), robot->name.c_str()) == 0)
+    bodyName->setText("<font size = 4>" + bodyText + "</font>");
+  else
+    bodyName->setText("<font size = 4><b>" + bodyText + "</b></font>");
 
   if (playerNumber)
   {

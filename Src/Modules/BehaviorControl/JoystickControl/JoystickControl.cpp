@@ -12,13 +12,10 @@
 
 MAKE_MODULE(JoystickControl, behaviorControl)
 
-
-JoystickControl::JoystickControl() : m_inCustomStepTest(false)
+JoystickControl::JoystickControl() : m_walkOnSpot(false)
 {
   initialize();
 }
-
-JoystickControl::~JoystickControl() {}
 
 void JoystickControl::update(ArmContact& armContact)
 {
@@ -40,26 +37,6 @@ void JoystickControl::update(MotionRequest& motionRequest)
 
 void JoystickControl::initialize()
 {
-  // Check connection to a joystick
-  joystick.connect();
-
-  // TODO: may play sound for connection?
-  if (!joystick.isFound())
-  {
-    OUTPUT(idText, text, "Failed to open joystick.");
-  }
-
-  // Create joystick state object which stores state of buttons and axes.
-  // Initializes all buttons with false and all axes with 0.
-  state = JoystickState(parameters.device.buttonsCount, parameters.device.axesCount);
-
-  // Initialize split axes with -1.
-  if (parameters.device.walkRotAxisSplit())
-  {
-    state.axes[parameters.device.walkRotLeftAxis] = -1.f;
-    state.axes[parameters.device.walkRotRightAxis] = -1.f;
-  }
-
   // Robot starts with centered head.
   localHeadControlRequest.controlType = HeadControlRequest::direct;
   localHeadControlRequest.pan = 0_deg;
@@ -80,17 +57,37 @@ void JoystickControl::initialize()
 
 void JoystickControl::execute(tf::Subflow&)
 {
-  MODIFY("module:JoystickControl:parameters", parameters);
-  MODIFY("module:JoystickControl:deviceParameters", parameters.device);
+  checkButtonOrAxisAvailability();
+
+  if (backButtonAvailable && theJoystickState.wasButtonReleasedThisFrame(theJoystickDeviceParameters.backButton))
+  {
+    m_walkOnSpot = !m_walkOnSpot;
+  }
 
   if (theRobotInfo.transitionToFramework >= 0.f)
   {
-    // Read all pending joystick events.
-    parseJoystickEvents();
-
     // Process joystick events.
     generateHeadControlRequest();
     generateMotionRequest();
+
+    // Stay in walking when special mode is on or last walk motion is less than 10 seconds old
+    bool walkingActive = localMotionRequest.motion == MotionRequest::walk && localMotionRequest.walkRequest.requestType == WalkRequest::speed
+        && (localMotionRequest.walkRequest.request.translation.norm() > 0.f || std::abs(localMotionRequest.walkRequest.request.rotation) > 0_deg);
+    if (walkingActive)
+    {
+      m_timestampOfLastWalkMovement = theFrameInfo.time;
+    }
+    if (!walkingActive)
+    {
+      if ((m_walkOnSpot || theFrameInfo.getTimeSince(m_timestampOfLastWalkMovement) < static_cast<int>(continueWalkingTime)))
+      {
+        localMotionRequest.walkRequest.request.translation.x() = -1.f;
+      }
+      if (standing() && !actionRunning() && theFrameInfo.getTimeSince(m_timestampOfLastWalkMovement) >= static_cast<int>(continueWalkingTime))
+      {
+        localMotionRequest.motion = MotionRequest::stand;
+      }
+    }
   }
   else
   {
@@ -99,101 +96,16 @@ void JoystickControl::execute(tf::Subflow&)
   }
 }
 
-void JoystickControl::parseJoystickEvents()
+void JoystickControl::processStartButton()
 {
-#ifdef LINUX
-  // Check if joystick is connected.
-  if (!joystick.isFound())
+  // Was the start button pressed?
+  if (startButtonAvailable && theJoystickState.wasButtonReleasedThisFrame(theJoystickDeviceParameters.startButton))
   {
-    // Try to reconnect.
-    joystick.connect();
-    if (!joystick.isFound())
-    {
-      // Connection failed.
-      state.deleteEvents(parameters);
-      return;
-    }
-  }
-
-  // Receive new joystick events.
-  JoystickEvent event;
-  while (joystick.sample(&event))
-  {
-    if (event.isButton())
-    {
-      // Received a button event (pressed/released).
-#ifdef TEXT_OUTPUT
-      // Output event description.
-      std::stringstream ss;
-      ss << "Joystick: Button " << (int)event.number << " is " << (event.value == 0 ? "up" : "down");
-      OUTPUT(idText, text, ss.str());
-      std::cout << ss.str() << std::endl;
-#endif
-
-      // Don't care about button release.
-      if (event.value == 0)
-        continue;
-
-      // Button <event.number> was pressed. Save this in joystick state.
-      state.pressedButtons[event.number] = true;
-    }
-    else
-    {
-      // Received an axis event.
-#ifdef TEXT_OUTPUT
-      // Output event description.
-      std::stringstream ss;
-      ss << "Joystick: Axis " << (int)event.number << " is at position " << event.value;
-      OUTPUT(idText, text, ss.str());
-      std::cout << ss.str() << std::endl;
-#endif
-
-      // Axes <event.number> was moved. Save axis value mapped to range [-1,1] in joystick state.
-      state.axes[event.number] = (float)event.value / (float)SHRT_MAX;
-
-      // Cut off the axis value at about -1 if the axis is combined with another one.
-      if (parameters.device.walkRotAxisSplit() && (event.number == parameters.device.walkRotLeftAxis || event.number == parameters.device.walkRotRightAxis))
-      {
-        if (state.axes[event.number] < (-1.f + parameters.device.minAxisValue))
-        {
-          state.axes[event.number] = -1.f;
-        }
-      }
-      // Cut off the axis value at the threshold minAxisValue.
-      else if (fabs(state.axes[event.number]) < parameters.device.minAxisValue)
-      {
-        state.axes[event.number] = 0.f;
-      }
-
-      if (event.number == parameters.device.customStepXAxis || event.number == parameters.device.customStepYAxis)
-      {
-        state.axes[event.number] = (float)event.value / (float)SHRT_MAX;
-      }
-    }
-  }
-#endif
-}
-
-void JoystickControl::processChestButton()
-{
-  // Was the chest button pressed?
-  if (theKeyStates.pressed[KeyStates::chest]
-      || (parameters.device.startButton >= 0 && (unsigned int)parameters.device.startButton <= parameters.device.buttonsCount && state.pressedButtons[parameters.device.startButton]))
-  {
-    // Ignore all incoming button events when the chest button was pressed.
-    state.deleteEvents(parameters);
-
-    // Change standing state.
+    // Change standing theJoystickState.
     if (standing())
     {
       m_standing = false;
       sitDown();
-
-      // Reset joystick connection.
-      state.deleteEvents(parameters);
-
-      // TODO: check when to execute
-      joystick.connect();
     }
     else
     {
@@ -208,20 +120,22 @@ void JoystickControl::generateHeadControlRequest()
   localHeadControlRequest.controlType = HeadControlRequest::direct;
 
   // Set pan.
-  if (parameters.device.headPanAxis >= 0 && (unsigned int)parameters.device.headPanAxis <= parameters.device.axesCount)
-    localHeadControlRequest.pan = -state.axes[parameters.device.headPanAxis] * parameters.maxHeadPan;
+  if (headPanAxisAvailable)
+    localHeadControlRequest.pan = -theJoystickState.axes[theJoystickDeviceParameters.headPanAxis] * theJoystickControlParameters.maxHeadPan;
   else
     localHeadControlRequest.pan = 0.f;
 
   // Set tilt.
-  if (parameters.device.headTiltAxis >= 0 && (unsigned int)parameters.device.headTiltAxis <= parameters.device.axesCount)
+  if (headTiltAxisAvailable)
   {
-    float maxTilt = std::fmaxf(fabsf(parameters.maxHeadTilt), fabsf(parameters.minHeadTilt));
-    localHeadControlRequest.tilt = -state.axes[parameters.device.headTiltAxis] * maxTilt;
-    if (localHeadControlRequest.tilt < parameters.minHeadTilt)
-      localHeadControlRequest.tilt = parameters.minHeadTilt;
-    if (localHeadControlRequest.tilt > parameters.maxHeadTilt)
-      localHeadControlRequest.tilt = parameters.maxHeadTilt;
+    float maxWholeTiltAngle = std::abs(theJoystickControlParameters.maxHeadTilt) + std::abs(theJoystickControlParameters.minHeadTilt);
+    localHeadControlRequest.tilt = -theJoystickState.axes[theJoystickDeviceParameters.headTiltAxis] * (maxWholeTiltAngle / 2.f);
+    localHeadControlRequest.tilt += theJoystickControlParameters.minHeadTilt + (maxWholeTiltAngle / 2.f);
+
+    if (localHeadControlRequest.tilt < theJoystickControlParameters.minHeadTilt)
+      localHeadControlRequest.tilt = theJoystickControlParameters.minHeadTilt;
+    if (localHeadControlRequest.tilt > theJoystickControlParameters.maxHeadTilt)
+      localHeadControlRequest.tilt = theJoystickControlParameters.maxHeadTilt;
   }
   else
     localHeadControlRequest.tilt = 0.f;
@@ -232,12 +146,10 @@ void JoystickControl::generateMotionRequest()
   // Keep last motion request while the action is still running.
   if (actionRunning())
   {
-    // Ignore all incoming button events while an action is executed.
-    state.deleteEvents(parameters);
     return;
   }
 
-  processChestButton();
+  processStartButton();
 
   // Don't allow any other action while the robot does not stand.
   if (!standing())
@@ -253,18 +165,8 @@ void JoystickControl::generateMotionRequest()
   localMotionRequest.motion = MotionRequest::walk;
   localMotionRequest.walkRequest.requestType = WalkRequest::speed;
 
-  if (parameters.device.backButton >= 0 && (unsigned int)parameters.device.backButton <= parameters.device.buttonsCount && state.pressedButtons[parameters.device.backButton])
-  {
-    m_inCustomStepTest = !m_inCustomStepTest;
-  }
-
-  if (m_inCustomStepTest)
-  {
-    localMotionRequest.walkRequest.request.translation[0] = 1.f;
-  }
-
   // Evaluate button press if available.
-  if (state.pressedButtonAvailable())
+  if (theFrameInfo.getTimeSince(theJoystickState.timestampLastButtonEvent) < (theFrameInfo.cycleTime * 1000))
   {
     generateActionRequest();
   }
@@ -278,18 +180,19 @@ void JoystickControl::generateMotionRequest()
 void JoystickControl::generateActionRequest()
 {
   // Trigger left kick.
-  if (parameters.device.leftKickButton >= 0 && static_cast<unsigned int>(parameters.device.leftKickButton) <= parameters.device.buttonsCount)
+  if (leftKickButtonAvailable)
   {
-    if (state.pressedButtons[parameters.device.leftKickButton])
+    if (theJoystickState.wasButtonReleasedThisFrame(theJoystickDeviceParameters.leftKickButton))
     {
       kick(true);
       return;
     }
   }
+
   // Trigger right kick.
-  if (parameters.device.rightKickButton >= 0 && static_cast<unsigned int>(parameters.device.rightKickButton) <= parameters.device.buttonsCount)
+  if (rightKickButtonAvailable)
   {
-    if (state.pressedButtons[parameters.device.rightKickButton])
+    if (theJoystickState.wasButtonReleasedThisFrame(theJoystickDeviceParameters.rightKickButton))
     {
       kick(false);
       return;
@@ -297,27 +200,23 @@ void JoystickControl::generateActionRequest()
   }
 
   // Trigger special actions.
-  for (size_t s = 0; s < parameters.device.specialActions.size(); s++)
+  for (size_t s = 0; s < theJoystickDeviceParameters.specialActions.size(); s++)
   {
-    if (parameters.device.specialActions[s].button >= 0 && static_cast<unsigned int>(parameters.device.specialActions[s].button) <= parameters.device.buttonsCount)
+    if (specialActionsButtonAvailable.at(s))
     {
-      if (state.pressedButtons[parameters.device.specialActions[s].button])
+      if (theJoystickState.wasButtonReleasedThisFrame(theJoystickDeviceParameters.specialActions[s].button))
       {
-        specialAction(parameters.device.specialActions[s].specialAction, parameters.device.specialActions[s].duration);
+        specialAction(theJoystickDeviceParameters.specialActions[s].specialAction, theJoystickDeviceParameters.specialActions[s].duration);
         return;
       }
     }
   }
-
-  // Unassigned button was pressed -> clear states!
-  for (size_t b = 0; b < state.pressedButtons.size(); b++)
-    state.pressedButtons[b] = false;
 }
 
 bool JoystickControl::standing()
 {
   if (!m_standing)
-    // The robot is sitting. Press chest button to stand up.
+    // The robot is sitting. Press start button to stand up.
     return false;
 
   // TODO correct checking of FallDownState
@@ -355,57 +254,44 @@ bool JoystickControl::actionRunning()
 
 void JoystickControl::generateWalkRequest()
 {
-  if (!m_inCustomStepTest)
+  // Walk at speed.
+  localMotionRequest.motion = MotionRequest::walk;
+  localMotionRequest.walkRequest.requestType = WalkRequest::speed;
+
+  // Walking direction x.
+  if (walkXAxisAvailable)
+    localMotionRequest.walkRequest.request.translation[0] = -theJoystickState.axes[theJoystickDeviceParameters.walkXAxis] * theJoystickControlParameters.maxVelocityX;
+  else
+    localMotionRequest.walkRequest.request.translation[0] = 0.f;
+
+  // Add value of additional walkXAxis.
+  if (additionalWalkXAxisAvailable)
   {
-    // Walk at speed.
-    localMotionRequest.motion = MotionRequest::walk;
-    localMotionRequest.walkRequest.requestType = WalkRequest::speed;
-
-    if (parameters.device.backButton >= 0 && (unsigned int)parameters.device.backButton <= parameters.device.buttonsCount && state.pressedButtons[parameters.device.backButton])
-    {
-      m_inCustomStepTest = !m_inCustomStepTest;
-    }
-
-    if (m_inCustomStepTest)
-    {
-      localMotionRequest.walkRequest.request.translation[0] = 10.f;
-    }
-
-    // Walking direction x.
-    if (parameters.device.walkXAxis >= 0 && static_cast<unsigned int>(parameters.device.walkXAxis) <= parameters.device.axesCount)
-      localMotionRequest.walkRequest.request.translation[0] = -state.axes[parameters.device.walkXAxis] * parameters.maxVelocityX;
-    else
-      localMotionRequest.walkRequest.request.translation[0] = 0.f;
-
-    // Add value of additional walkXAxis.
-    if (parameters.device.additionalWalkXAxis >= 0 && static_cast<unsigned int>(parameters.device.additionalWalkXAxis) <= parameters.device.axesCount)
-    {
-      localMotionRequest.walkRequest.request.translation[0] = localMotionRequest.walkRequest.request.translation.x()
-          - state.axes[parameters.device.additionalWalkXAxis] * parameters.maxVelocityX;
-    }
-    if (localMotionRequest.walkRequest.request.translation.x() > 0.0 && localMotionRequest.walkRequest.request.translation.x() > parameters.maxVelocityX)
-      localMotionRequest.walkRequest.request.translation[0] = parameters.maxVelocityX;
-    if (localMotionRequest.walkRequest.request.translation.x() < 0.0 && localMotionRequest.walkRequest.request.translation.x() < parameters.minVelocityX)
-      localMotionRequest.walkRequest.request.translation[0] = parameters.minVelocityX;
-
-    // Walking direction y.
-    if (parameters.device.walkYAxis >= 0 && static_cast<unsigned int>(parameters.device.walkYAxis) <= parameters.device.axesCount)
-      localMotionRequest.walkRequest.request.translation[1] = -state.axes[parameters.device.walkYAxis] * parameters.maxVelocityY;
-    else
-      localMotionRequest.walkRequest.request.translation[1] = 0.f;
-
-    // Walking rotation.
-    if (parameters.device.walkRotAxis >= 0 && static_cast<unsigned int>(parameters.device.walkRotAxis) <= parameters.device.axesCount)
-      localMotionRequest.walkRequest.request.rotation = -state.axes[parameters.device.walkRotAxis] * parameters.maxVelocityRot;
-    else if (parameters.device.walkRotAxisSplit())
-    {
-      float left = (state.axes[parameters.device.walkRotLeftAxis] + 1.f) / 2.f; // range [0,1]
-      float right = (state.axes[parameters.device.walkRotRightAxis] + 1.f) / 2.f; // range [0,1]
-      localMotionRequest.walkRequest.request.rotation = (left - right) * parameters.maxVelocityRot;
-    }
-    else
-      localMotionRequest.walkRequest.request.rotation = 0.0;
+    localMotionRequest.walkRequest.request.translation[0] = localMotionRequest.walkRequest.request.translation.x()
+        - theJoystickState.axes[theJoystickDeviceParameters.additionalWalkXAxis] * theJoystickControlParameters.maxVelocityX;
   }
+  if (localMotionRequest.walkRequest.request.translation.x() > 0.0 && localMotionRequest.walkRequest.request.translation.x() > theJoystickControlParameters.maxVelocityX)
+    localMotionRequest.walkRequest.request.translation[0] = theJoystickControlParameters.maxVelocityX;
+  if (localMotionRequest.walkRequest.request.translation.x() < 0.0 && localMotionRequest.walkRequest.request.translation.x() < theJoystickControlParameters.minVelocityX)
+    localMotionRequest.walkRequest.request.translation[0] = theJoystickControlParameters.minVelocityX;
+
+  // Walking direction y.
+  if (walkYAxisAvailable)
+    localMotionRequest.walkRequest.request.translation[1] = -theJoystickState.axes[theJoystickDeviceParameters.walkYAxis] * theJoystickControlParameters.maxVelocityY;
+  else
+    localMotionRequest.walkRequest.request.translation[1] = 0.f;
+
+  // Walking rotation.
+  if (walkRotAxisAvailable)
+    localMotionRequest.walkRequest.request.rotation = -theJoystickState.axes[theJoystickDeviceParameters.walkRotAxis] * theJoystickControlParameters.maxVelocityRot;
+  else if (theJoystickDeviceParameters.walkRotAxisSplit())
+  {
+    float left = (theJoystickState.axes[theJoystickDeviceParameters.walkRotLeftAxis] + 1.f) / 2.f; // range [0,1]
+    float right = (theJoystickState.axes[theJoystickDeviceParameters.walkRotRightAxis] + 1.f) / 2.f; // range [0,1]
+    localMotionRequest.walkRequest.request.rotation = (left - right) * theJoystickControlParameters.maxVelocityRot;
+  }
+  else
+    localMotionRequest.walkRequest.request.rotation = 0.0;
 }
 
 void JoystickControl::generateCustomStep()
@@ -416,14 +302,15 @@ void JoystickControl::generateCustomStep()
   float stateValueX = 0.0f;
   float stateValueY = 0.0f;
 
-  if (parameters.device.customStepXAxis >= 0 && static_cast<unsigned int>(parameters.device.customStepXAxis) <= parameters.device.axesCount)
+
+  if (customStepXAxisAvailable)
   {
-    stateValueX = state.axes[parameters.device.customStepXAxis];
+    stateValueX = theJoystickState.axes[theJoystickDeviceParameters.customStepXAxis];
   }
 
-  if (parameters.device.customStepYAxis >= 0 && static_cast<unsigned int>(parameters.device.customStepYAxis) <= parameters.device.axesCount)
+  if (customStepYAxisAvailable)
   {
-    stateValueY = state.axes[parameters.device.customStepYAxis];
+    stateValueY = theJoystickState.axes[theJoystickDeviceParameters.customStepYAxis];
   }
 
   if (startOfCustomStep == 0)
@@ -431,7 +318,7 @@ void JoystickControl::generateCustomStep()
     currentExecutedCustomStep = WalkRequest::StepRequest::none;
     currentExecutedCustomStepMirror = false;
 
-    for (JoystickDeviceParameters::StepRequestButtonPair pair : parameters.device.activeKicks)
+    for (JoystickDeviceParameters::StepRequestButtonPair pair : theJoystickDeviceParameters.activeKicks)
     {
       if (pair.stateValueX == stateValueX && pair.stateValueY == stateValueY)
       {
@@ -448,6 +335,30 @@ void JoystickControl::generateCustomStep()
   {
     startOfCustomStep -= 1;
   }
+}
+
+void JoystickControl::checkButtonOrAxisAvailability()
+{
+  // clang-format off
+  startButtonAvailable = theJoystickDeviceParameters.startButton >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.startButton) <= theJoystickDeviceParameters.buttonsCount;
+  backButtonAvailable = theJoystickDeviceParameters.backButton >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.backButton) <= theJoystickDeviceParameters.buttonsCount;
+  rightKickButtonAvailable = theJoystickDeviceParameters.rightKickButton >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.rightKickButton) <= theJoystickDeviceParameters.buttonsCount;
+  leftKickButtonAvailable = theJoystickDeviceParameters.leftKickButton >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.leftKickButton) <= theJoystickDeviceParameters.buttonsCount;
+
+  specialActionsButtonAvailable.clear();
+  for (size_t s = 0; s < theJoystickDeviceParameters.specialActions.size(); s++)
+    specialActionsButtonAvailable.push_back(theJoystickDeviceParameters.specialActions[s].button >= 0
+        && static_cast<unsigned int>(theJoystickDeviceParameters.specialActions[s].button) <= theJoystickDeviceParameters.buttonsCount);
+
+  headPanAxisAvailable = theJoystickDeviceParameters.headPanAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.headPanAxis) <= theJoystickDeviceParameters.axesCount;
+  headTiltAxisAvailable = theJoystickDeviceParameters.headTiltAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.headTiltAxis) <= theJoystickDeviceParameters.axesCount;
+  walkXAxisAvailable = theJoystickDeviceParameters.walkXAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.walkXAxis) <= theJoystickDeviceParameters.axesCount;
+  additionalWalkXAxisAvailable = theJoystickDeviceParameters.additionalWalkXAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.additionalWalkXAxis) <= theJoystickDeviceParameters.axesCount;
+  walkYAxisAvailable = theJoystickDeviceParameters.walkYAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.walkYAxis) <= theJoystickDeviceParameters.axesCount;
+  walkRotAxisAvailable = theJoystickDeviceParameters.walkRotAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.walkRotAxis) <= theJoystickDeviceParameters.axesCount;
+  customStepXAxisAvailable = theJoystickDeviceParameters.customStepXAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.customStepXAxis) <= theJoystickDeviceParameters.axesCount;
+  customStepYAxisAvailable = theJoystickDeviceParameters.customStepYAxis >= 0 && static_cast<unsigned int>(theJoystickDeviceParameters.customStepYAxis) <= theJoystickDeviceParameters.axesCount;
+  // clang-format on
 }
 
 // --- Actions ---
@@ -471,7 +382,7 @@ void JoystickControl::specialAction(SpecialActionRequest::SpecialActionID id, bo
   m_actionRunning = true;
 }
 
-void JoystickControl::specialAction(SpecialActionRequest& specialAction, unsigned duration)
+void JoystickControl::specialAction(const SpecialActionRequest& specialAction, unsigned duration)
 {
   localMotionRequest.motion = MotionRequest::specialAction;
   localMotionRequest.specialActionRequest = specialAction;
@@ -479,7 +390,6 @@ void JoystickControl::specialAction(SpecialActionRequest& specialAction, unsigne
   m_actionEndTime = theFrameInfo.time + duration;
   m_actionRunning = true;
 }
-
 
 void JoystickControl::playDead()
 {
@@ -490,12 +400,13 @@ void JoystickControl::playDead()
 
 void JoystickControl::stand()
 {
-  specialAction(SpecialActionRequest::stand, false, 3500);
+  specialAction(SpecialActionRequest::stand, false, standTime);
+  //specialAction(SpecialActionRequest::standHigh, false, standTime);
 }
 
 void JoystickControl::sitDown()
 {
-  specialAction(SpecialActionRequest::sitDown, false, 2500);
+  specialAction(SpecialActionRequest::sitDown, false, sitDownTime);
 }
 
 void JoystickControl::standUpFallen()
@@ -512,11 +423,11 @@ void JoystickControl::standUpFallen()
   {
     if (theFallDownState.direction == FallDownState::back)
     {
-      specialAction(theMotionState.standUpStatus.bestStandUpMotionBack, false, 5000);
+      specialAction(SpecialActionRequest::standUpBack, false, standUpBackTime);
     }
     else if (theFallDownState.direction == FallDownState::front)
     {
-      specialAction(theMotionState.standUpStatus.bestStandUpMotionFront, false, 2800);
+      specialAction(SpecialActionRequest::standUpFront, false, standUpFrontTime);
     }
     // Set the action running.
     m_actionRunning = true;
@@ -541,6 +452,6 @@ void JoystickControl::kick(bool kickLeft)
   localMotionRequest.kickRequest.dynamical = true;
   localMotionRequest.kickRequest.kickTarget << 1000.f, 0.f;
   // Set duration of action.
-  m_actionEndTime = theFrameInfo.time + 500;
+  m_actionEndTime = theFrameInfo.time + kickTime;
   m_actionRunning = true;
 }

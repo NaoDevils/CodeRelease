@@ -19,13 +19,7 @@
 #include <QMenu>
 
 #include <SimRobot.h>
-#include "Tools/Math/Eigen.h"
-#include "Controller/RobotConsole.h"
-#include "Controller/RoboCupCtrl.h"
-#include "Controller/Visualization/PaintMethods.h"
-#include "Controller/ImageViewAdapter.h"
 #include "Representations/Infrastructure/Image.h"
-#include "Platform/Thread.h"
 
 class RobotConsole;
 class ImageWidget;

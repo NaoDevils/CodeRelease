@@ -2,7 +2,7 @@
 
 #include <QObject>
 #include <QMetaType>
-#include "Utils/dorsh/cmdlib/IConsole.h"
+#include "cmdlib/IConsole.h"
 
 class QString;
 

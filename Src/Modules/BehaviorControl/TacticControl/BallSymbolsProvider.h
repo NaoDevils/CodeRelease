@@ -10,38 +10,27 @@
 
 #include <algorithm>
 #include "Tools/Module/Module.h"
-#include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RemoteBallModel.h"
-#include "Representations/Modeling/Path.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Infrastructure/CameraInfo.h"
-#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/LEDRequest.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/MotionControl/MotionInfo.h"
-#include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/Perception/CameraMatrix.h"
-#include "Representations/Sensing/FallDownState.h"
-#include "Representations/Sensing/RobotModel.h"
-
 MODULE(BallSymbolsProvider,
-  REQUIRES(BehaviorConfiguration),
   REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
   REQUIRES(CameraInfo),
   REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
-  REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
@@ -49,12 +38,9 @@ MODULE(BallSymbolsProvider,
   REQUIRES(RemoteBallModel),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotMap),
-  REQUIRES(RobotModel),
   REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
-  REQUIRES(TeammateData),
   REQUIRES(MotionInfo),
-  REQUIRES(MotionSelection),
   USES(GameSymbols),
   PROVIDES(BallSymbols),
   LOADS_PARAMETERS(,
@@ -85,12 +71,10 @@ private:
   unsigned int lastFrameTime = 0;
   bool lastBallProbablyCloseButNotSeen = false;
 
-  bool ballWasSeenRecently = false;
   bool ballIsRolling = false;
 
   unsigned timeWhenBallHitTriggered = 0;
   unsigned timeWhenBallBlockableTriggered = 0;
-  unsigned timeWhenLastKickTriggered = 0;
 
   void chooseBallModel(BallSymbols& ballSymbols, BallModel& currentlyUsedBallModel);
   void setPredictedBallPosition(BallSymbols& ballSymbols);

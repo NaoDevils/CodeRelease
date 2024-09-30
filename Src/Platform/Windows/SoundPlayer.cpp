@@ -15,7 +15,7 @@ int SoundPlayer::play(const std::string& name)
 {
   if (name.substr(0, 4).compare("t2s:") == 0)
   {
-    Text2Speech::getInstance().text2Speech(name.substr(3));
+    Text2Speech::getInstance().text2Speech(name.substr(4));
     return 1;
   }
   else

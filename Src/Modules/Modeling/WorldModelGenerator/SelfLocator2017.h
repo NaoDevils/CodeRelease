@@ -18,7 +18,8 @@
 // ------------- NAO-Framework includes --------------
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Tools/Module/Module.h"
-#include "Tools/RingBuffer.h"
+#include "Tools/RingBufferWithSum.h"
+#include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPoseHypotheses.h"
 #include "Representations/Modeling/BallModel.h"
@@ -28,10 +29,8 @@
 
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/CenterCirclePercept.h"
 #include "Representations/Perception/CLIPGoalPercept.h"
@@ -42,6 +41,7 @@
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 
 #include "Tools/Math/Probabilistics.h"
 #include "Tools/Math/GaussianDistribution3D.h"
@@ -59,7 +59,6 @@ MODULE(SelfLocator2017,
   REQUIRES(CameraMatrixUpper),
   REQUIRES(FrameInfo),
   REQUIRES(TeammateData),
-  REQUIRES(OwnTeamInfo),
   REQUIRES(FieldDimensions),
   REQUIRES(JoinedIMUData),
   REQUIRES(RobotInfo),
@@ -72,8 +71,9 @@ MODULE(SelfLocator2017,
   REQUIRES(BallModel),
   REQUIRES(FallDownState),
   REQUIRES(CLIPFieldLinesPercept),
-  REQUIRES(JointSensorData),
   REQUIRES(RemoteBallModel),
+  USES(VisualRefereeBehaviorSymbols),
+  USES(PositioningSymbols),
   USES(LocalRobotMap),
   USES(RemoteRobotMap),
   USES(BehaviorData), // For manual positions, role is required (right now only goalie vs field player)

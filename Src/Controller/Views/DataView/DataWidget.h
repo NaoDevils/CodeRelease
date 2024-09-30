@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include "Controller/RobotConsole.h"
 #include "PropertyEditorFactory.h"
 #include <QMenu>
 #include <QtTreePropertyBrowser>

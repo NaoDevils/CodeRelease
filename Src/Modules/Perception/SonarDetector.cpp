@@ -199,7 +199,7 @@ std::tuple<float, float> SonarDetector::movingAverageFilter(RingBuffer<float, ri
     }
   }
   if (nonNegativeCount == 0)
-    return {0, 0};
+    return {0.f, 0.f};
   else
   {
     float movingAverageMeasurement = nonNegativeSum / static_cast<float>(nonNegativeCount);
@@ -214,11 +214,11 @@ std::tuple<float, float> SonarDetector::exponentialFilter(float sensorMeasuremen
   lastExponentialMeasurement = filteredMeasurement;
   if (isValidMeasurement(filteredMeasurement))
   {
-    return {filteredMeasurement, 1};
+    return {filteredMeasurement, 1.f};
   }
   else
   {
-    return {0, 0};
+    return {0.f, 0.f};
   }
 }
 
@@ -234,7 +234,7 @@ std::tuple<float, float> SonarDetector::minMaxExponentialFilter(float sensorMeas
   }
   else
   {
-    return {0, 0};
+    return {0.f, 0.f};
   }
 }
 
@@ -248,9 +248,9 @@ std::tuple<float, float> SonarDetector::kalmanFilter(float sonarSensorMeasuremen
   kalmanParameters.P = (1 - kalmanParameters.K * kalmanParameters.H) * kalmanParameters.P + kalmanParameters.Q;
 
   if (isValidMeasurement(kalmanParameters.filteredMeasurement))
-    return {kalmanParameters.filteredMeasurement, 1};
+    return {kalmanParameters.filteredMeasurement, 1.f};
   else
-    return {0, 0};
+    return {0.f, 0.f};
 }
 
 MAKE_MODULE(SonarDetector, perception);

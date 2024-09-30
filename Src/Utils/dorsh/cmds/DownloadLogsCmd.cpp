@@ -10,13 +10,13 @@
 #include "Platform/File.h"
 #include <QString>
 #include <QStringList>
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/models/Robot.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/ProcessRunner.h"
+#include "tools/Platform.h"
+#include "Session.h"
+#include "models/Team.h"
+#include "models/Robot.h"
 
 DownloadLogsCmd DownloadLogsCmd::theDownloadLogsCmd;
 

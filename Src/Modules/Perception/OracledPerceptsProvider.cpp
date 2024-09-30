@@ -292,17 +292,13 @@ void OracledPerceptsProvider::update(PenaltyCrossPercept& penaltyMarkPercept)
 void OracledPerceptsProvider::update(RobotsPercept& playersPercept)
 {
   playersPercept.robots.clear();
-  if (!theCameraMatrix.isValid || !Global::settingsExist())
+  if (!theCameraMatrix.isValid || !Global::hasSettings())
     return;
 
-  // Simulation scene should only use blue and red for now
-  //ASSERT(Global::getSettings().teamColor == Settings::blue || Global::getSettings().teamColor == Settings::red);
-
-  const bool isBlue = Global::getSettings().teamNumber == 1;
-  for (unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.bluePlayers[i], !isBlue, playersPercept);
-  for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
-    createPlayerBox(theGroundTruthWorldState.redPlayers[i], isBlue, playersPercept);
+  for (const auto& bluePlayer : theGroundTruthWorldState.bluePlayers)
+    createPlayerBox(bluePlayer, theOwnTeamInfo.teamNumber != 1, playersPercept);
+  for (const auto& redPlayer : theGroundTruthWorldState.redPlayers)
+    createPlayerBox(redPlayer, theOwnTeamInfo.teamNumber != 2, playersPercept);
 }
 
 void OracledPerceptsProvider::update(CLIPCenterCirclePercept& centerCirclePercept)

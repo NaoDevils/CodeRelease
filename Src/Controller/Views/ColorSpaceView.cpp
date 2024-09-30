@@ -33,10 +33,10 @@ void ColorSpaceView::updateDisplayLists()
   std::string imageString = upperCam ? "raw imageUpper" : "raw image";
 
   if (i != currentImages.end())
-    image = i->second.image;
+    image = i->second.get();
   i = currentImages.find(imageString);
   if (i != currentImages.end())
-    raw = i->second.image;
+    raw = i->second.get();
   if (image && (channel < 3 || raw))
   {
     if (!channel)
@@ -86,6 +86,6 @@ bool ColorSpaceView::needsUpdate() const
   RobotConsole::Images& currentImages = console.camImages;
   RobotConsole::Images::const_iterator i = currentImages.find(name);
   if (i != currentImages.end())
-    image = i->second.image;
+    image = i->second.get();
   return ((image && image->timeStamp != lastTimeStamp) || (!image && lastTimeStamp));
 }

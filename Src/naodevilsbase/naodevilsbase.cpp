@@ -33,6 +33,9 @@
   If in standby state and sitting upright, hip pitch and yaw have stiffness for stabilization.
   If chest button is held for >3 seconds, a controlled shut down is initiated.
 */
+
+using namespace std::chrono_literals;
+
 class NDevils
 {
 public:
@@ -448,6 +451,9 @@ void NDevils::unpack_data(const std::vector<uint8_t>& buffer, NDData::SensorData
 
 void NDevils::processSensorData(const NDData::SensorData& sensordata)
 {
+  // detect charging status
+  chargingStatus = !(static_cast<int>(sensordata.battery[NDData::Battery::status]) & 0b100000);
+
   const bool chestButtonPressed = sensordata.touch[NDData::Touch::chestButton] == 1.f;
 
   // detect transition or shutdown request via chest-button
@@ -471,15 +477,8 @@ void NDevils::processSensorData(const NDData::SensorData& sensordata)
   if (!isTripleHeadPressed || transitionTriggered)
     tripleHeadPressStartTime = sensordata.timestamp;
 
-  transitionTriggered = false;
-  if (sensordata.timestamp - tripleHeadPressStartTime > 1000)
-  {
-    transitionTriggered = true;
-  }
+  transitionTriggered = sensordata.timestamp - tripleHeadPressStartTime > 1000 && !(chargingStatus && state == sitting);
 
-
-  // detect charging status
-  chargingStatus = !(static_cast<int>(sensordata.battery[NDData::Battery::status]) & 0b100000);
 
   disableFrameworkWhenCharging();
 

@@ -5,22 +5,11 @@
  */
 
 #pragma once
-#include "Tools/SIMD.h"
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Enum.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/ColorModelConversions.h"
 #include <type_traits>
-
-// TODO: check this warning
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wconversion"
-#endif
-#include <tmmintrin.h>
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
 ENUM(ImageSource,
   naoProviderV6,
@@ -205,7 +194,7 @@ public:
 
   std::vector<int> copyAndResizeRGBFloatNoHorizon(int sizeXNew, int sizeYNew, const int horizon_y, float* result) const;
   bool shouldBeProcessed() const;
-
+  /*
   template <bool rgb = true, bool checkBounds = true, bool overwrite = checkBounds, typename T>
   void copyAndResizeArea(const Vector2i inputPos, const Vector2i inputSize, const Vector2i outputSize, T* result) const
   {
@@ -253,6 +242,118 @@ public:
         }
 
         result += rgb ? 3 : 1;
+      }
+    }
+  } 
+*/
+
+  template <bool rgb = true, bool checkBounds = true, bool overwrite = checkBounds, bool channelFirst = false, bool usefloat255 = false, typename T>
+  void copyAndResizeArea(const Vector2i inputPos, const Vector2i inputSize, const Vector2i outputSize, T* result) const
+  {
+    static_assert(checkBounds || !overwrite, "Cannot overwrite without checkBounds");
+
+    const std::vector<int> xIndices = getIndices(inputSize.x(), outputSize.x(), inputPos.x());
+    const std::vector<int> yIndices = getIndices(inputSize.y(), outputSize.y(), inputPos.y());
+
+    for (const int y : yIndices)
+    {
+      for (const int x : xIndices)
+      {
+        if constexpr (checkBounds)
+        {
+          if (x < 0 || x >= width || y < 0 || y >= height)
+          {
+            if constexpr (overwrite)
+            {
+              result[0] = 0;
+              if constexpr (rgb)
+              {
+                if constexpr (channelFirst)
+                {
+                  if constexpr (std::is_floating_point_v<T>)
+                  {
+                    if constexpr (usefloat255)
+                    {
+                      result[1 * outputSize.x() * outputSize.y()] = 135.f;
+                    }
+                    else
+                    {
+                      result[1 * outputSize.x() * outputSize.y()] = 135.f / 255.f;
+                    }
+                  }
+                  else
+                    result[1 * outputSize.x() * outputSize.y()] = 135;
+
+                  result[2 * outputSize.x() * outputSize.y()] = 0;
+                }
+                else
+                {
+                  // Y=0, U=0, V=0 => R=0, G=135, B=0
+                  if constexpr (std::is_floating_point_v<T>)
+                  {
+                    if constexpr (usefloat255)
+                    {
+                      result[1] = 135.f;
+                    }
+                    else
+                    {
+                      result[1] = 135.f / 255.f;
+                    }
+                  }
+                  else
+                    result[1] = 135;
+
+                  result[2] = 0;
+                }
+              }
+            }
+            result += (rgb && !channelFirst) ? 3 : 1;
+            continue;
+          }
+        }
+
+        const auto& p = (*this)[y][x];
+
+        if constexpr (channelFirst)
+        {
+          if constexpr (rgb)
+          {
+            ColorModelConversions::fromYCbCrToRGB(p.y, p.cb, p.cr, result[0], result[1 * outputSize.x() * outputSize.y()], result[2 * outputSize.x() * outputSize.y()]);
+            if constexpr (usefloat255)
+            {
+              result[0] *= 255.f;
+              result[1 * outputSize.x() * outputSize.y()] *= 255.f;
+              result[2 * outputSize.x() * outputSize.y()] *= 255.f;
+            }
+          }
+          else
+          {
+            result[0] = p.y;
+            if constexpr (std::is_floating_point_v<T> && !usefloat255)
+              result[0] /= 255.f;
+          }
+        }
+        else
+        {
+          if constexpr (rgb)
+          {
+            ColorModelConversions::fromYCbCrToRGB(p.y, p.cb, p.cr, result[0], result[1], result[2]);
+            if constexpr (usefloat255)
+            {
+              result[0] *= 255.f;
+              result[1] *= 255.f;
+              result[2] *= 255.f;
+            }
+          }
+          else
+          {
+            result[0] = p.y;
+            if constexpr (std::is_floating_point_v<T> && !usefloat255)
+              result[0] /= 255.f;
+          }
+        }
+
+        result += (rgb && !channelFirst) ? 3 : 1;
       }
     }
   }

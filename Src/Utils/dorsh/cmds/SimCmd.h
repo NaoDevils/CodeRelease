@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utils/dorsh/cmdlib/CommandAdapter.h"
+#include "cmdlib/CommandAdapter.h"
 
 class SimCmd : public CommandAdapter
 {

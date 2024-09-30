@@ -9,22 +9,23 @@
 #pragma once
 
 #include <QObject>
-#ifndef WINDOWS
 #include <QThread>
-#include <QSocketNotifier>
 #include <iostream>
-#endif
 
 class ConsoleRoboCupCtrl;
+#ifdef Q_OS_WIN
+class QWinEventNotifier;
+#else
+class QSocketNotifier;
+#endif
 
-class StdInConsole : QObject
+class StdInConsole : public QObject
 {
   Q_OBJECT;
 
 public:
   StdInConsole(ConsoleRoboCupCtrl* console);
 
-#ifndef WINDOWS
   ~StdInConsole();
 
 Q_SIGNALS:
@@ -32,7 +33,11 @@ Q_SIGNALS:
 
 private:
   ConsoleRoboCupCtrl* console;
+#ifdef Q_OS_WIN
+  QWinEventNotifier* notifier;
+#else
   QSocketNotifier* notifier;
+#endif
 
 private Q_SLOTS:
   void on_finishedGetLine(const QString& strNewLine);
@@ -40,5 +45,4 @@ private Q_SLOTS:
 
 private:
   QThread thread;
-#endif
 };

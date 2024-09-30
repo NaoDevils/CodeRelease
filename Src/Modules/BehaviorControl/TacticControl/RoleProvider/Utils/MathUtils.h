@@ -1,8 +1,33 @@
 #pragma once
 
+#include <vector>
+#include "Tools/Math/Eigen.h"
+#include "Tools/Math/Angle.h"
+#include "Tools/ColorRGBA.h"
+
 class MathUtils
 {
 public:
+  static ColorRGBA valueToRGB(const float value)
+  {
+    ASSERT(0 <= value);
+    ASSERT(value <= 1);
+    return valuesToRGB(1.f, 0.f, 0.f, 155.f * value);
+  }
+
+  static ColorRGBA valuesToRGB(const float valueRed, const float valueGreen, const float valueBlue, const float alpha)
+  {
+    ASSERT(0 <= valueRed);
+    ASSERT(valueRed <= 1);
+    ASSERT(0 <= valueGreen);
+    ASSERT(valueGreen <= 1);
+    ASSERT(0 <= valueBlue);
+    ASSERT(valueBlue <= 1);
+    ASSERT(0 <= alpha);
+    ASSERT(alpha <= 255);
+    return {(unsigned char)(255 * valueRed), (unsigned char)(255 * valueGreen), (unsigned char)(255 * valueBlue), (unsigned char)(alpha)};
+  }
+
   static int clamp_i(const int current, const int min, const int max) { return current < min ? min : current > max ? max : current; }
 
   static float clamp_f(const float current, const float min, const float max) { return current < min ? min : current > max ? max : current; }
@@ -63,7 +88,6 @@ public:
     ASSERT(leftAngle < 181_deg);
     ASSERT(rightAngle > -181_deg);
     ASSERT(rightAngle < 181_deg);
-    ASSERT(getAngleSmallestDiff(leftAngle, rightAngle) < 181_deg);
     if (leftAngle > rightAngle)
     {
       return leftAngle > angle && angle > rightAngle;

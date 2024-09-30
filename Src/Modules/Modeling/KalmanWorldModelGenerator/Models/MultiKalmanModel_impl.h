@@ -6,6 +6,7 @@
  */
 
 #include "MultiKalmanModel.h"
+#include "Tools/Math/Transformation.h"
 #include "Tools/Math/Covariance.h"
 #include "Tools/Debugging/DebugDrawings.h"
 

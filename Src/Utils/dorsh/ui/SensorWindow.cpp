@@ -6,7 +6,7 @@
 #include <QLabel>
 #include <QScrollArea>
 
-#include "Utils/dorsh/ui/SensorWindow.h"
+#include "ui/SensorWindow.h"
 
 #include "Platform/File.h"
 #include <nlohmann/json.hpp>

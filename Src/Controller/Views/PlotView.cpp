@@ -254,10 +254,10 @@ void PlotWidget::paint(QPainter& painter)
       int numOfPoints = std::min((int)list.size(), (int)plotView.plotSize);
       if (numOfPoints > 1)
       {
-        std::list<float>::const_iterator k = list.begin();
-        for (int j = plotView.plotSize - numOfPoints; j < int(plotView.plotSize); ++j)
+        std::list<float>::const_iterator k = list.end();
+        for (int j = plotView.plotSize - 1; j >= (int)plotView.plotSize - numOfPoints; --j)
         {
-          const float& value(*(k++));
+          const float& value(*(k--));
           plotView.points[j].ry() = value;
           if (started && continousMinMax)
           {
@@ -341,10 +341,10 @@ void PlotWidget::determineMinMaxValue()
       int numOfPoints = std::min((int)list.size(), (int)plotView.plotSize);
       if (numOfPoints > 1)
       {
-        std::list<float>::const_iterator k = list.begin();
-        for (int j = plotView.plotSize - numOfPoints; j < int(plotView.plotSize); ++j)
+        std::list<float>::const_iterator k = list.end();
+        for (int j = plotView.plotSize - 1; j >= (int)plotView.plotSize - numOfPoints; --j)
         {
-          const float& value(*(k++));
+          const float& value(*(k--));
           if (started)
           {
             if (value < plotView.minValue)

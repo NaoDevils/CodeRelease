@@ -13,26 +13,18 @@
 #include <vector>
 
 // input
-#include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotHealth.h"
-#include "Representations/Modeling/DangerMap.h"
-#include "Representations/MotionControl/SpecialActionsOutput.h"
-#include "Representations/MotionControl/WalkingEngineOutput.h"
-#include "Representations/MotionControl/KickEngineOutput.h"
 #include "Representations/MotionControl/MotionRequest.h"
-#include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/MotionState.h"
-#include "Representations/MotionControl/JointError.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
-#include "Representations/Infrastructure/SensorData/KeyStates.h"
-#include "Representations/Infrastructure/SensorData/SystemSensorData.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/BrokenJointState.h"
@@ -47,32 +39,22 @@
 MODULE(MotionMindfulness,
   // low level input
   REQUIRES(FrameInfo),
-  REQUIRES(RobotInfo),
   REQUIRES(JointSensorData),
-  REQUIRES(RawJointRequest),
   REQUIRES(JoinedIMUData),
-  REQUIRES(KeyStates),
-  REQUIRES(SystemSensorData),
   REQUIRES(FsrSensorData),
 
   // high level input
-  REQUIRES(SpecialActionsOutput),
   REQUIRES(GameInfo),
-  REQUIRES(WalkingEngineOutput),
-  REQUIRES(KickEngineOutput),
   REQUIRES(FallDownState),
   REQUIRES(MotionRequest),
-  REQUIRES(MotionSettings),
-  REQUIRES(MotionSelection),
-  REQUIRES(DangerMap),
   REQUIRES(MotionInfo), // for custom step kick
   REQUIRES(RobotHealth),
   REQUIRES(SpeedInfo),
   REQUIRES(SpeedRequest),
   REQUIRES(WalkingEngineParams),
+  REQUIRES(SensorControlParams),
   REQUIRES(KinematicRequest),
   REQUIRES(BrokenJointState),
-  REQUIRES(JointError),
   PROVIDES(MotionState),
   LOADS_PARAMETERS(,
     (bool)(true) activate,
@@ -94,9 +76,6 @@ MODULE(MotionMindfulness,
     // imu status detection parameters --------------------------------------------------
     (int)(30) maxImuErrors,
 
-    // stand up problem detection parameters --------------------------------------------
-    (float)(0.25f) minStandUpChance,
-
     // walking problem detection parameters ---------------------------------------------
     (Angle)(5_deg) maxAngleWalkingSidewardsX,
     (Angle)(5_deg) maxAngleWalkingSidewardsY,
@@ -106,9 +85,6 @@ MODULE(MotionMindfulness,
     (Angle)(5_deg) maxAngleWalkingBackwardsX,
     (Angle)(5_deg) maxAngleWalkingBackwardsY,
     (int)(50) maxSpeedSideward, // used to detect backwards walking
-
-    (float)(1.f) fallDownFactor,
-    (float)(3.f) fallDownExponentialBasis,
 
     // max number of unstable frames
     // maxAllowedUnstableFrames - minUnstableFrames are the frames 
@@ -154,7 +130,6 @@ private:
   bool hasProblem(MotionState& motionState, MotionState::MotionStateError motionStateError);
 
   void checkForBrokenJoints(MotionState& motionState);
-  void checkForStandUpProblems(MotionState& motionState);
   void checkForFsrSanity(MotionState& motionState);
   void checkForImuSanity(MotionState& motionState);
   void checkFramerate(MotionState& motionState);
@@ -194,24 +169,6 @@ private:
   // kick problem detection
   unsigned lastEngineKickTime;
   unsigned lastCustomKickTime;
-
-  // stand up problem detection
-  MotionSettings localMotionSettings;
-  SpecialActionRequest::SpecialActionID backA = SpecialActionRequest::none;
-  SpecialActionRequest::SpecialActionID backB = SpecialActionRequest::none;
-  SpecialActionRequest::SpecialActionID backC = SpecialActionRequest::none;
-  SpecialActionRequest::SpecialActionID frontA = SpecialActionRequest::none;
-  SpecialActionRequest::SpecialActionID frontB = SpecialActionRequest::none;
-  SpecialActionRequest::SpecialActionID frontC = SpecialActionRequest::none;
-  int successfulAttempts[SpecialActionRequest::numOfSpecialActionIDs] = {0};
-  int onGroundCount[SpecialActionRequest::numOfSpecialActionIDs] = {0};
-  bool onGround = false;
-  bool upright = true;
-  bool initStandUpChances = true;
-  SpecialActionRequest::SpecialActionID currentMotionID = SpecialActionRequest::none;
-  SpecialActionRequest::SpecialActionID lastMotionID = SpecialActionRequest::none;
-  std::vector<std::tuple<float, int>> standUpPriorityMap;
-  std::vector<int> standUpPriorityList;
 
   // fsr sanity check
   float fsrLeft[FsrSensorData::numOfFsrSensorPositions];

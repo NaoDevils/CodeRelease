@@ -1,4 +1,5 @@
 #include "HoughLineDetector.h"
+#include "Tools/Debugging/DebugDrawings.h"
 
 HoughLineDetector::HoughLineDetector() {}
 

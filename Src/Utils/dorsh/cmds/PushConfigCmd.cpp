@@ -2,14 +2,14 @@
 #include <QString>
 #include <QStringList>
 #include "Platform/File.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/PushConfigCmd.h"
-#include "Utils/dorsh/tools/StringTools.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/tools/Filesystem.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/PushConfigCmd.h"
+#include "tools/StringTools.h"
+#include "tools/Platform.h"
+#include "models/Team.h"
+#include "tools/Filesystem.h"
 #include "Tools/ColorModelConversions.h"
 
 #include <fstream>
@@ -49,8 +49,6 @@ bool PushConfigCmd::PushConfigTask::execute()
     args.push_back(QString("-eo"));
     args.push_back(overlay.c_str());
   }
-  args.push_back(QString("-g"));
-  args.push_back(QString::fromStdString(team->gameMode));
   args.push_back(QString("-w"));
   args.push_back(QString::fromStdString(team->wlanConfig));
   args.push_back(QString("-v"));

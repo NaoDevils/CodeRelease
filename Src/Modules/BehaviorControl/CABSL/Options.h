@@ -39,12 +39,6 @@
 
 /*** MixedTeam Competition ***/
 
-/*** Penalty Shootout ***/
-#include "Options/PenaltyShootout/BodyControlPS.h"
-#include "Options/PenaltyShootout/PenaltyKeeper.h"
-#include "Options/PenaltyShootout/PenaltyStriker.h"
-#include "Options/PenaltyShootout/HeadControlPS.h"
-
 /*** Auto Calibration ***/
 #include "Options/AutoCalibration/AutoCalibrate.h"
 

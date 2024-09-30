@@ -1,5 +1,7 @@
 #include "RANSACLineFitter.h"
 #include "Tools/Math/Random.h"
+#include "Tools/Math/Geometry.h"
+#include "Tools/Debugging/DebugDrawings.h"
 #include <numeric>
 
 RANSACLineFitter::RANSACLineFitter() {}
@@ -67,7 +69,7 @@ bool RANSACLineFitter::execute(const RingBuffer<std::vector<BallPercept>, BALLPE
   float summedDistanceInliers = 0.f;
 
   std::vector<const BallPercept*> outliers;
-  unsigned numOfOutliers = 0;
+  //unsigned numOfOutliers = 0;
   float summedDistanceOutliers = 0.f;
 
   unsigned numOfBPs = static_cast<unsigned>(allBPs.size());
@@ -84,7 +86,7 @@ bool RANSACLineFitter::execute(const RingBuffer<std::vector<BallPercept>, BALLPE
   for (unsigned round = 0; round < numOfBPs; round++)
   {
     numOfInliers = 0;
-    numOfOutliers = 0;
+    //numOfOutliers = 0;
     summedDistanceInliers = 0.f;
     summedDistanceOutliers = 0.f;
     inliers.clear();
@@ -112,7 +114,7 @@ bool RANSACLineFitter::execute(const RingBuffer<std::vector<BallPercept>, BALLPE
       else
       {
         summedDistanceOutliers += distanceToLine;
-        numOfOutliers++;
+        //numOfOutliers++;
         outliers.push_back(allBPs.at(i));
       }
     }

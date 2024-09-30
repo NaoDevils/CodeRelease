@@ -28,10 +28,17 @@
 #include "Logger.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/MotionControl/MotionInfo.h"
+#include "Representations/Infrastructure/GameInfo.h"
+#include "Representations/Infrastructure/RobotInfo.h"
+#include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/SensorData/KeyStates.h"
+#include "Representations/Infrastructure/USBStatus.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
 #include "Platform/SystemCall.h"
 #include "Tools/Build.h"
 
-Logger::Logger(std::initializer_list<char> cycles)
+Logger::Logger(std::initializer_list<char> cycles, const Settings& settings)
 {
   for (const char cycle : cycles)
     this->cycles[cycle];
@@ -60,6 +67,8 @@ Logger::Logger(std::initializer_list<char> cycles)
       freeBuffers.push_back(buf.get());
     }
     writerThread.setPriority(parameters.writePriority);
+
+    this->settings = getSettings(settings);
   }
 }
 
@@ -93,7 +102,7 @@ void Logger::execute(const char processIdentifier)
             for (i = 0; i < numOfDataMessageIDs; ++i)
               if (getName(static_cast<MessageID>(i)) == "id" + representation)
               {
-                loggables.push_back(Loggable(&Blackboard::getInstance()[representation.c_str()], static_cast<MessageID>(i)));
+                loggables.emplace_back(&Blackboard::getInstance()[representation.c_str()], static_cast<MessageID>(i));
                 break;
               }
             if (i == numOfDataMessageIDs)
@@ -130,10 +139,12 @@ void Logger::runStateMachine(char processIdentifier)
       const GameInfo& gameInfo = Blackboard::get<GameInfo>();
       const BehaviorData& behaviorData = Blackboard::get<BehaviorData>();
       const RobotInfo& robotInfo = Blackboard::get<RobotInfo>();
+      const VisualRefereeBehaviorSymbols& visualRefereeBehaviorSymbols = Blackboard::get<VisualRefereeBehaviorSymbols>();
 
       receivedGameControllerPacket |= static_cast<const RoboCup::RoboCupGameControlData&>(gameInfo).packetNumber != 0 || gameInfo.secsRemaining != 0;
 
-      const bool record = gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING || behaviorData.behaviorState >= BehaviorData::BehaviorState::firstCalibrationState;
+      const bool record = gameInfo.state == STATE_STANDBY || gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING
+          || behaviorData.behaviorState >= BehaviorData::BehaviorState::firstCalibrationState || visualRefereeBehaviorSymbols.state != VisualRefereeBehaviorSymbols::State::idle;
 
       const bool transitionToFramework = robotInfo.transitionToFramework > 0.f;
 
@@ -349,6 +360,17 @@ std::vector<char> Logger::getStreamSpecification()
   return ret;
 }
 
+std::vector<char> Logger::getSettings(const Settings& settings)
+{
+  std::vector<char> ret;
+  OutBinarySize size;
+  settings.write(size);
+  ret.resize(size.getSize());
+  OutBinaryMemory stream(ret.data());
+  settings.write(stream);
+  return ret;
+}
+
 void Logger::logFrame(char processIdentifier)
 {
   Cycle& cycle = cycles.at(processIdentifier);
@@ -441,6 +463,9 @@ void Logger::writeThread()
           file = new OutBinaryFile(logFilename);
           if (file->exists())
           {
+            *file << logFileSettings;
+            file->write(settings.data(), settings.size());
+
             *file << logFileMessageIDs;
             queue.writeMessageIDs(*file);
 

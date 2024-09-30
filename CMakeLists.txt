@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(BUILD_ROBOT false CACHE BOOL "Compile code for the Nao robot")
+option(BUILD_ROBOT "Compile code for the Nao robot" false)
+option(ENABLE_CCACHE "Enable ccache support if present" true)
 
 include(Make/CMake/conan_init.cmake)
 

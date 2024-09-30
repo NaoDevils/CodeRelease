@@ -38,12 +38,6 @@ private:
   class CopyEntries;
   CopyEntries& copyEntries;
 
-  /**
-   * Set the blackboard instance of a process.
-   * Only Process::setGlobals calls this method.
-   * @param instance The blackboard of this process.
-   */
-  static void setInstance(Blackboard& instance);
   friend class Process;
   friend class SuperThread;
   friend class SubThread;

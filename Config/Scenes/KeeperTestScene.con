@@ -1,0 +1,8 @@
+call Includes/Fast
+dt on
+gc playing
+sleep 500
+mvb 0 600 0
+sleep 200
+kiba 0 4
+

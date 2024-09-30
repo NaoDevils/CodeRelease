@@ -43,6 +43,9 @@ void BallSearchProvider::update(BallSearch& ballsearch)
       timeStampBallLostForTeam = theFrameInfo.time;
     int timeSinceBallSearchStarted = theFrameInfo.getTimeSince(timeStampBallLostForTeam);
 
+    static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 13, "Missing role!");
+    // TODO: add frontWing / backWing
+
     if (lastBallPositionField.x() < theFieldDimensions.xPosOwnGroundline + defenseSearchStart * 2 * theFieldDimensions.xPosOpponentGroundline)
     {
       for (auto& role : theRoleSelection.selectedRoles)
@@ -104,6 +107,7 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
     break;
   }
   case 2:
+    [[fallthrough]];
   case 3:
   {
     for (size_t i = 0; i < ballsearch.rolesInBallSearch.size(); i++)
@@ -190,7 +194,7 @@ void BallSearchProvider::fillBallSearchPositions(BallSearch& ballsearch)
     for (size_t i = 0; i < ballsearch.rolesInBallSearch.size(); i++)
     {
       const BehaviorData::RoleAssignment& role = ballsearch.rolesInBallSearch[i];
-      if (role == BehaviorData::receiver)
+      if (role == BehaviorData::receiver || role == BehaviorData::leftWing || role == BehaviorData::rightWing)
       {
         ballsearch.ballSearchPositions[i].poses.push_back(
             Pose2f(45_deg, theFieldDimensions.xPosOwnGroundline + (centerSearchStart + 1.f) * theFieldDimensions.xPosOpponentGroundline, theFieldDimensions.yPosLeftSideline * 0.75f));

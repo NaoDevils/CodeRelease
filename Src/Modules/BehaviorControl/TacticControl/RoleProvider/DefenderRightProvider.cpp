@@ -9,24 +9,123 @@
 
 void DefenderRightProvider::update(DefenderRight& positioningSymbols)
 {
+  decide(positioningSymbols, theBallSymbols, theFieldDimensions, theGameInfo, theGameSymbols);
+}
+
+//Generalized set functions ==============================================================================================================
+
+void DefenderRightProvider::setPlayingOrSetThresholds(DefenderRight& positioningSymbols)
+{
+  ThresholdUtils::setThreshholdsCustom(positioningSymbols, 10_deg, 50.f, 100.f, 100.f);
+}
+
+//void DefenderRightProvider::setNotPlayingOrSetThresholds(DefenderRight& positioningSymbols)
+//{
+//  ThresholdUtils::setThreshholdsCustom(positioningSymbols, 10_deg, 50.f, 100.f, 100.f);
+//}
+
+//State functions ====================================================================================================================
+
+void DefenderRightProvider::stateReady_kickOff_own(DefenderRight& positioningSymbols, const Vector2f& ballPosition) //TODO: Can be reached in STATE PLAYING
+{
+  //if (theGameInfo.state == STATE_PLAYING)
+  setPlayingOrSetThresholds(positioningSymbols);
+  //else
+  //setNotPlayingOrSetThresholds(positioningSymbols);
+  //PositionUtils::setPosition(positioningSymbols, coverShortAngleToGoal(true, positioningSymbols));
+  PositionUtils::setPosition(positioningSymbols, 0.8f * theFieldDimensions.xPosOwnGroundline, 0.5f * theFieldDimensions.yPosRightGoal);
+  PositionUtils::turnToPosition(positioningSymbols, ballPosition);
+}
+void DefenderRightProvider::stateReady_kickOff_opponent(DefenderRight& positioningSymbols, const Vector2f& ballPosition)
+{
+  //if (theGameInfo.state == STATE_PLAYING)
+  setPlayingOrSetThresholds(positioningSymbols);
+  //else
+  //setNotPlayingOrSetThresholds(positioningSymbols);
+  //PositionUtils::setPosition(positioningSymbols, coverShortAngleToGoal(true, positioningSymbols));
+  PositionUtils::setPosition(positioningSymbols, 0.8f * theFieldDimensions.xPosOwnGroundline, 0.5f * theFieldDimensions.yPosRightGoal);
+  PositionUtils::turnToPosition(positioningSymbols, ballPosition);
+}
+
+float DefenderRightProvider::goalKick_own(DefenderRight& positioningSymbols, bool left)
+{
+  regularPlay(positioningSymbols);
+  return 1.f;
+}
+
+float DefenderRightProvider::goalKick_opponent(DefenderRight& positioningSymbols, bool left)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 0;
+}
+
+float DefenderRightProvider::pushingFreeKick_own(DefenderRight& positioningSymbols)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 1.f;
+}
+
+float DefenderRightProvider::pushingFreeKick_opponent(DefenderRight& positioningSymbols)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 1.f;
+}
+
+float DefenderRightProvider::cornerKick_own(DefenderRight& positioningSymbols, const Vector2f& cornerKickPosition, bool left)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 1.f;
+}
+
+float DefenderRightProvider::cornerKick_opponent(DefenderRight& positioningSymbols, const Vector2f& cornerKickPosition, bool left)
+{
+  regularPlay(positioningSymbols);
+  return 1.f;
+}
+
+float DefenderRightProvider::kickIn_own(DefenderRight& positioningSymbols, bool left)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 0.f;
+}
+
+float DefenderRightProvider::kickIn_opponent(DefenderRight& positioningSymbols, bool left)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 0.f;
+}
+
+float DefenderRightProvider::stateReady_penaltyKick_own(DefenderRight& positioningSymbols)
+{
+  //Stay back and watch
+  regularPlay(positioningSymbols);
+  return 0.f;
+}
+
+float DefenderRightProvider::stateReady_penaltyKick_opponent(DefenderRight& positioningSymbols)
+{
+  //Get out of own penalty area
+  float targetPosX = theFieldDimensions.xPosOwnPenaltyArea + theFieldDimensions.xPosOwnPenaltyArea / 3;
+  float targetPosY = theFieldDimensions.yPosRightPenaltyArea - 400.f;
+  Angle targetRotation = (Vector2f(theFieldDimensions.xPosOwnGroundline, 0.f) - positioningSymbols.optPosition.translation).angle();
+  positioningSymbols.optPosition.translation = Vector2f(targetPosX, targetPosY);
+  positioningSymbols.optPosition.rotation = targetRotation;
+  setPlayingOrSetThresholds(positioningSymbols);
+  return 1.f;
+}
+
+void DefenderRightProvider::regularPlay(DefenderRight& positioningSymbols)
+{
+  setPlayingOrSetThresholds(positioningSymbols);
+
   // stay in one spot if ball is far away from own goal
   getStandardPosition(positioningSymbols);
-
-  // leave penalty area for penalty kick
-  if (theGameInfo.setPlay == SET_PLAY_PENALTY_KICK && !theGameSymbols.ownKickOff)
-  {
-    positioningSymbols.optPosition.translation.x() = theFieldDimensions.xPosOwnPenaltyArea + theFieldDimensions.xPosOwnPenaltyArea / 3;
-    positioningSymbols.optPosition.translation.y() = theFieldDimensions.yPosRightPenaltyArea - 400.f;
-    positioningSymbols.optPosition.rotation = (Vector2f(theFieldDimensions.xPosOwnGroundline, 0.f) - positioningSymbols.optPosition.translation).angle();
-
-    positioningSymbols.thresholdRotation = 10_deg;
-    positioningSymbols.thresholdXBack = 50.f;
-    positioningSymbols.thresholdXFront = 100.f;
-    positioningSymbols.thresholdY = 100.f;
-    positioningSymbols.stopAtTarget = true;
-    positioningSymbols.previewArrival = true;
-    return;
-  }
 
   // only check for alternative Position when in playing, otherwise keep standard position
   if (theGameInfo.state == STATE_PLAYING)
@@ -52,9 +151,11 @@ void DefenderRightProvider::update(DefenderRight& positioningSymbols)
         positioningSymbols.optPosition.translation = theRobotPoseAfterPreview.translation;
     }
 
-    positioningSymbols.optPosition.rotation = (theBallSymbols.ballPositionField - positioningSymbols.optPosition.translation).angle();
+    PositionUtils::turnTowardsBall(positioningSymbols, theBallSymbols);
   }
 }
+
+// Position calculator functions ==============================================================================================================
 
 void DefenderRightProvider::getStandardPosition(DefenderRight& positioningSymbols)
 {
@@ -79,7 +180,7 @@ bool DefenderRightProvider::calculateSetPlayPosition(DefenderRight& positioningS
 
   // try to keep 800 mm distance
   const float minDistanceToBall = 800.f;
-  // try not to touch penalty area line, since defender right is also supposed to be there
+  // try not to touch penalty area line, since defender left is also supposed to be there
   const float distanceFromPenaltyLine = 250.f;
   Vector2f vectorFromBallPosition = (theRobotPoseAfterPreview.translation - theBallSymbols.ballPositionField);
   float distanceToBallPosition = vectorFromBallPosition.norm();
@@ -110,14 +211,11 @@ bool DefenderRightProvider::calculateSetPlayPosition(DefenderRight& positioningS
     else // wrong side of the ball for default behavior
     {
       useStandardPosition = false;
-      // positioningSymbols.optPosition.translation = theRobotPoseAfterPreview.translation + vectorFromBallPosition.normalize(minDistanceToBall);
+      //positioningSymbols.optPosition.translation = theRobotPoseAfterPreview.translation + vectorFromBallPosition.normalize(minDistanceToBall);
       //positioningSymbols.optPosition.rotation = (positioningSymbols.optPosition.translation - theBallSymbols.ballPositionField).angle();
     }
   }
-  positioningSymbols.thresholdRotation = 10_deg;
-  positioningSymbols.thresholdXBack = 50.f;
-  positioningSymbols.thresholdXFront = 100.f;
-  positioningSymbols.thresholdY = 100.f;
+  setPlayingOrSetThresholds(positioningSymbols);
   positioningSymbols.stopAtTarget = true;
   positioningSymbols.previewArrival = true;
   return !useStandardPosition;

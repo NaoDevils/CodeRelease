@@ -17,6 +17,7 @@
 #include "KalmanPositionHypothesis.h"
 
 #include "Representations/Configuration/FieldDimensions.h" // field dimensions
+#include "Representations/Modeling/RobotPose.h"
 
 /**
  * \class MultiKalmanModel
@@ -43,7 +44,6 @@ STREAMABLE(MultiKalmanModel,
   static_assert(std::is_base_of<KalmanPositionHypothesis, hypothesis_t>::value,
                 "hypothesis_t not derived from class KalmanPositionHypothesis");
   
-public:
   /**
    * The type of hypothesis stored in the kalman model
    */
@@ -61,10 +61,7 @@ public:
    *
    * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
    */
-  MultiKalmanModel(unsigned perceptDuration)
-  {
-    m_perceptDuration = perceptDuration;
-  }
+  MultiKalmanModel(unsigned perceptDuration) : m_perceptDuration (perceptDuration) {}
   
   //MARK: Kalman filter related methods
 
@@ -386,7 +383,6 @@ private:
   /// The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
   unsigned m_perceptDuration = 1000;
 
-public:
   ,
   /// Stores a set of kalman hypotheses.
   (std::vector<hypothesis_t>) m_hypotheses

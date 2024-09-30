@@ -41,5 +41,7 @@ STREAMABLE_WITH_BASE(LeftWing, PositioningSymbols,
   (bool)(false) passDecision,
   (Vector2f)(Vector2f(0.f,0.f))passTarget,
   (bool)(false) kickDecision,
-  (Vector2f)(Vector2f(0.f,0.f))kickTarget
+  (Vector2f)(Vector2f(0.f,0.f))kickTarget,
+  (bool)(false) blockedByRobot,
+  (float)(0.0f) framesSinceLastSideStep
 );

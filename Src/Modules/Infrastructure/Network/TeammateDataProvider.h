@@ -12,9 +12,6 @@
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/TeamCommData.h"
 #include "Representations/Infrastructure/Time.h"
-#include "Representations/MotionControl/MotionRequest.h"
-#include "Representations/MotionControl/SpeedInfo.h"
-#include "Representations/Perception/CameraMatrix.h"
 #include "Tools/Module/Module.h"
 
 
@@ -38,7 +35,6 @@ MODULE(TeammateDataProvider,
 class TeammateDataProvider : public TeammateDataProviderBase
 {
 private:
-  float wlanQuality = 1.f; /**< [0..1] Quality of wifi */
   size_t lastNoOfTeammates = 0;
 
   /** The main function, called every cycle
@@ -51,5 +47,5 @@ private:
    * @param message Received teammate.
    * @return If package is new enough.
   */
-  bool isLatencyOkay(const TeammateReceived& teammate);
+  bool isLatencyOkay(const TeammateReceived& teammate) const;
 };

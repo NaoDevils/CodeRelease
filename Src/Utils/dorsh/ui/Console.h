@@ -4,7 +4,7 @@
 #include <QListWidget>
 #include <QScrollArea>
 #include <QVariant>
-#include "Utils/dorsh/cmdlib/AbstractConsole.h"
+#include "cmdlib/AbstractConsole.h"
 
 class TeamSelector;
 class QLabel;

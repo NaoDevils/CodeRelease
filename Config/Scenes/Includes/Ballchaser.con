@@ -8,18 +8,18 @@ vd representation:Ballchaser
 
 
 vfd worldState representation:RobotMap
+vfd worldState behavior:RecommendedKickProvider:RecommendedKick
 
 
-
-echo Draw HeatMap:
-echo vfd worldState module:HeatMapProvider
+echo Draw PositionInfo:
+echo vfd worldState module:PositionInfoProvider
 
 
 echo Draw Danger-Area:
 echo vfd worldState behavior:BallchaserProvider:KickManager:Danger
 
-echo Draw KickWheel:
-echo vfd worldState behavior:KickWheelProvider:kickWheel
+echo Draw DirectionInfo:
+echo vfd worldState behavior:DirectionInfoProvider:directionInfo
 
 echo Draw KickRange:
 echo worldState behavior:BallchaserProvider:KickManager:KickRange

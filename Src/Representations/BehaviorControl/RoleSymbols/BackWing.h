@@ -10,5 +10,7 @@
 
 STREAMABLE_WITH_BASE(BackWing, PositioningSymbols,
   ,
-  (bool)(false) dummy
+  (bool)(false) dummy,
+  (bool)(false) blockedByRobot,
+  (float)(0.0f) framesSinceLastSideStep
 );

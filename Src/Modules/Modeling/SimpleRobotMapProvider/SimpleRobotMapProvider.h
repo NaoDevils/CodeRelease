@@ -13,22 +13,21 @@
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/TeamInfo.h"
+#include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
+#include "Representations/BehaviorControl/GameSymbols.h"
 
 MODULE(SimpleRobotMapProvider,
-  REQUIRES(CameraInfo),
-  REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
   REQUIRES(FrameInfo),
   REQUIRES(RobotInfo),
-  REQUIRES(OwnTeamInfo),
   REQUIRES(RobotPose),
   REQUIRES(RobotsPercept),
   REQUIRES(TeammateData),
+  REQUIRES(GameInfo),
+  USES(GameSymbols),
   PROVIDES(RobotMap),
   PROVIDES(LocalRobotMap),
   PROVIDES(SimpleRobotsDistributed),
@@ -36,6 +35,7 @@ MODULE(SimpleRobotMapProvider,
   LOADS_PARAMETERS(,
     (bool) global, // use team mate data?
     (bool) useTeamMatePercepts, // use percepts from team mates? PROBLEM: preview!
+    (float)(0.8f) teamMateMinValidity, // use percepts from team mates? PROBLEM: preview!
     (bool) useVelocity,// if false, robot positions will not change without new percepts
 
     (float)(0.5f) mergeLocationFactor,
@@ -91,4 +91,5 @@ private:
 
   std::vector<SimpleRobot> simpleRobots;
   RobotMap internalRobotMap;
+  Pose2f lastRobotPose;
 };

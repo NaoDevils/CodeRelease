@@ -59,6 +59,7 @@ mr off JerseyColorDetector
 mr off RobotOrientationDetector
 mr off RobotClassifier
 mr off CLIPBallPerceptor
+mr off Segmentor
 mr off PenaltyCrossClassifier
 mr off YoloRobotDetector
 mr off CLIPLineFinder

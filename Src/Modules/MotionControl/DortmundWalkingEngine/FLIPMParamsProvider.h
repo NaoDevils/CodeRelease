@@ -2,10 +2,10 @@
 
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/FLIPMParams.h"
-#include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/WalkCalibration.h"
 #include "Tools/Streams/RobotParameters.h"
 #include "Tools/Module/Module.h"
+#include "Tools/Debugging/DebugDrawings.h"
 
 #include <future>
 

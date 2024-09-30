@@ -9,6 +9,7 @@
 #pragma once
 #include "Tools/Debugging/Debugging.h"
 #include "Tools/Math/Geometry.h"
+#include "Representations/Infrastructure/Image.h"
 
 /**
  * Declares a debug image

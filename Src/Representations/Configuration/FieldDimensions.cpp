@@ -13,6 +13,7 @@
 #include "Tools/Math/Eigen.h"
 #include "Representations/Infrastructure/RoboCupGameControlData.h"
 #include "Tools/Debugging/DebugDrawings.h"
+#include "Platform/SystemCall.h"
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include <filesystem>
@@ -145,7 +146,7 @@ bool FieldDimensions::loadFromJsonFile(const std::string& path)
       crossBarRadius = goalPostRadius;
       goalHeight = height;
       ballType = BallType::whiteBlack;
-      ballRadius = 50.f;
+      ballRadius = j.contains("ballRadius") ? j.at("ballRadius").get<float>() * 1000.f : 50.f;
       penaltyMarkSize = penaltyCrossSize;
     };
 
@@ -259,24 +260,6 @@ bool FieldDimensions::isBallInsideField(const Vector2f& ballPos) const
     y = std::min(0.f, ballPos.y() + offset);
 
   return fieldBorder.isInside(Vector2f(x, y));
-}
-
-Pose2f FieldDimensions::randomPoseOnField() const
-{
-  Pose2f pose;
-  do
-    pose = Pose2f::random(boundary.x, boundary.y, Rangef(-pi, pi));
-  while (!isInsideField(pose.translation));
-  return pose;
-}
-
-Pose2f FieldDimensions::randomPoseOnCarpet() const
-{
-  Pose2f pose;
-  do
-    pose = Pose2f::random(boundary.x, boundary.y, Rangef(-pi, pi));
-  while (!isInsideCarpet(pose.translation));
-  return pose;
 }
 
 void FieldDimensions::draw() const

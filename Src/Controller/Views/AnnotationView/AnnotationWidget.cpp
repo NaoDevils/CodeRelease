@@ -8,6 +8,7 @@
 #include "Controller/RobotConsole.h"
 #include "Controller/Representations/AnnotationInfo.h"
 #include "Platform/SystemCall.h"
+#include "LogPlayer.h"
 
 #include <algorithm>
 
@@ -200,6 +201,7 @@ void AnnotationWidget::jumpFrame(int row, int column)
   {
     NumberTableWidgetItem* item = (NumberTableWidgetItem*)table->item(row, 0);
     int frame = item->number;
+    SYNC_WITH(view.console);
     view.logPlayer.gotoFrame(std::max(std::min(frame - 1, view.logPlayer.numberOfFrames - 1), 0));
   }
 }

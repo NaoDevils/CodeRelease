@@ -10,22 +10,6 @@
 #include "Representations/Sensing/RobotModel.h"
 #include <optional>
 
-Pose2f KickUtils::getKickPose(const Angle& robotRotation, const Vector2f& ballPosition, const bool mirror, const float afterRotation_optDistanceToBallX, const float afterRotation_optDistanceToBallY)
-{
-  Pose2f pose(robotRotation, ballPosition);
-  pose = pose.translate(-afterRotation_optDistanceToBallX, (mirror ? +1.f : -1.f) * afterRotation_optDistanceToBallY);
-  return pose;
-}
-
-Pose2f KickUtils::getKickPose(
-    const Vector2f& ballPosition, const Vector2f& targetPosition, const bool rotateLeft, const bool mirror, const Angle optAngle, const float afterRotation_optDistanceToBallX, const float afterRotation_optDistanceToBallY)
-{
-  const Angle ballToTargetAngle = (targetPosition - ballPosition).angle();
-  const Angle field_angleUnnormalized = ballToTargetAngle + (rotateLeft ? 1.f : -1.f) * optAngle;
-  const Angle field_angle = Angle::normalize(field_angleUnnormalized);
-  return getKickPose(field_angle, ballPosition, mirror, afterRotation_optDistanceToBallX, afterRotation_optDistanceToBallY);
-}
-
 Angle KickUtils::getFastestReachableKickAngleBetweenTargets(const Vector2f& playerPosition, const Vector2f& ballPosition, const Vector2f& target1, const Vector2f& target2)
 {
   const Vector2f ballToTarget1 = target1 - ballPosition;
@@ -42,77 +26,6 @@ Angle KickUtils::getFastestReachableKickAngleBetweenTargets(const Vector2f& play
   const Angle playerToBallAngle = (ballPosition - playerPosition).angle();
 
   return kickAngleLimit.limit(playerToBallAngle);
-}
-
-bool KickUtils::fulfillsDistanceRequirements(const Kick& kick, const float targetDistance, const DistanceRequirement distanceRequirement, const bool hysteresis)
-{
-  const int iTargetDistance = (int)targetDistance;
-
-  const int minDistance = (int)kick.getMinDistance(hysteresis, false);
-  const int maxDistance = (int)kick.getMaxDistance(hysteresis, true);
-
-  switch (distanceRequirement)
-  {
-  case onPoint:
-    return minDistance <= iTargetDistance && iTargetDistance <= maxDistance;
-
-  case mayFurther:
-    return iTargetDistance <= maxDistance;
-  case shouldFurther:
-    return iTargetDistance <= (int)kick.getRealisticDistance(targetDistance, hysteresis, true);
-  case mustFurther:
-    return iTargetDistance <= (int)kick.getMinDistance(hysteresis, true);
-
-  case mayShorter:
-    return minDistance <= iTargetDistance;
-  case shouldShorter:
-    return (int)kick.getRealisticDistance(targetDistance, hysteresis, false) <= iTargetDistance;
-  case mustShorter:
-    return (int)kick.getMaxDistance(hysteresis, false) <= iTargetDistance;
-
-  case mayShorterOrFurther:
-    return true;
-
-  default:
-    throw std::logic_error("");
-  }
-}
-
-float KickUtils::getMinKickToObstaclesDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const FieldDimensions& theFieldDimensions, const RobotMap& theRobotMap)
-{
-  const float minToGoalPostDistance = getMinKickToGoalPostDistance(ballPosition, targetPosition, theFieldDimensions);
-  const float minToRobotDistance = getMinRobotToKickDistance(ballPosition, targetPosition, theRobotMap);
-  const float minToFieldBorder = getMinFieldBorderToKickDistance(ballPosition, targetPosition, theFieldDimensions);
-  return std::min(minToGoalPostDistance, std::min(minToRobotDistance, minToFieldBorder));
-}
-
-float KickUtils::getMinKickToGoalPostDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const FieldDimensions& theFieldDimensions)
-{
-  const float goalPostRadius = theFieldDimensions.goalPostRadius;
-
-  const Vector2f ownLeftGoalPost = {theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosLeftGoal};
-  const Vector2f ownRightGoalPost = {theFieldDimensions.xPosOwnGoalPost, theFieldDimensions.yPosRightGoal};
-  const Vector2f opponentLeftGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosLeftGoal};
-  const Vector2f opponentRightGoalPost = {theFieldDimensions.xPosOpponentGoalPost, theFieldDimensions.yPosRightGoal};
-
-  std::vector<Vector2f> goalPostPositions = {};
-  goalPostPositions.push_back(ownLeftGoalPost);
-  goalPostPositions.push_back(ownRightGoalPost);
-  goalPostPositions.push_back(opponentLeftGoalPost);
-  goalPostPositions.push_back(opponentRightGoalPost);
-
-  return getMinDistance(ballPosition, targetPosition, goalPostPositions) - goalPostRadius;
-}
-
-float KickUtils::getMinRobotToKickDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const RobotMap& theRobotMap)
-{
-  const float ROBOT_RADIUS = 140.f / 2.f;
-  std::vector<Vector2f> robotPositions = {};
-  for (auto& robot : theRobotMap.robots)
-  {
-    robotPositions.push_back(robot.pose.translation);
-  }
-  return getMinDistance(ballPosition, targetPosition, robotPositions) - ROBOT_RADIUS;
 }
 
 float KickUtils::getMinDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const std::vector<Vector2f>& obstacles)
@@ -144,27 +57,6 @@ float KickUtils::getMinDistance(const Vector2f& ballPosition, const Vector2f& ta
   }
 
   return minDistance;
-}
-
-float KickUtils::getMinFieldBorderToKickDistance(const Vector2f& ballPosition, const Vector2f& targetPosition, const FieldDimensions& theFieldDimensions)
-{
-  if (FieldUtils::isIntoOpponentsGoal(ballPosition, targetPosition, theFieldDimensions))
-  {
-    return std::numeric_limits<float>::max();
-  }
-
-  const float targetPositionX = targetPosition.x();
-  const float absTargetPositionY = std::abs(targetPosition.y());
-
-  // Is onto opponents goal line
-  if (targetPositionX > 0.f && targetPositionX < theFieldDimensions.xPosOpponentGroundline + 50.f && absTargetPositionY < theFieldDimensions.yPosLeftGoal)
-  {
-    return std::numeric_limits<float>::max();
-  }
-
-  const float yToSides = std::max(0.f, theFieldDimensions.yPosLeftSideline - absTargetPositionY);
-  const float xToGroundLines = std::max(0.f, theFieldDimensions.xPosOpponentGroundline - std::abs(targetPositionX));
-  return std::min(yToSides, xToGroundLines);
 }
 
 std::tuple<Vector2f, Vector2f> KickUtils::getLeftAndRightTarget(const Vector2f& position, const Vector2f& target1, const Vector2f& target2)

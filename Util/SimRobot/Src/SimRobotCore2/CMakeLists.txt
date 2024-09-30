@@ -154,6 +154,11 @@ target_link_libraries(${PROJECT_NAME}
 
 target_optimize(${PROJECT_NAME} FULL RelWithDebInfo Release)
 
+target_precompile_headers(${PROJECT_NAME}
+    PRIVATE
+        "Simulation/SimObject.h"
+)
+
 set_property(TARGET ${PROJECT_NAME} PROPERTY AUTOMOC ON)
 set_property(TARGET ${PROJECT_NAME} PROPERTY AUTORCC ON)
 

@@ -23,9 +23,10 @@ extern "C" DLL_EXPORT SimRobot::Module* createModule(SimRobot::Application& simR
 
 MAKE_PROCESS(LocalRobot);
 
-Robot::Robot(const char* name) : name(name), logger(std::make_unique<Logger>(std::initializer_list<char>{'m', 'c'}))
+Robot::Robot(const std::string& name, const Settings& settings)
+    : name(name), settings(settings), logger(std::make_unique<Logger>(std::initializer_list<char>{'m', 'c'}, this->settings))
 {
-  create(logger.get());
+  create(logger.get(), this->settings);
 
   InMapFile cm("Processes/connect.cfg");
   ASSERT(cm.exists());

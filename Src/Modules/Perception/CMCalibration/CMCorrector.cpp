@@ -5,10 +5,12 @@
 #include "Tools/Debugging/Annotation.h"
 #include "Tools/Math/Transformation.h"
 #include "Tools/Settings.h"
+#include "Platform/SystemCall.h"
 
 #include <numeric>
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
 
 CMCorrector::CMCorrector()
 {
@@ -33,6 +35,20 @@ void CMCorrector::execute(tf::Subflow&)
     {
       ModuleManager::sendModuleRequest(*lastModuleConfig);
       lastModuleConfig.reset();
+      load();
+    }
+
+    if (theRobotInfo.transitionToFramework > 0.f && !localCalibration.calibrated)
+    {
+      if (!saidPleaseCalibrateMe)
+      {
+        SystemCall::text2Speech("Please calibrate me!");
+        saidPleaseCalibrateMe = true;
+      }
+    }
+    else
+    {
+      saidPleaseCalibrateMe = false;
     }
 
     stop();
@@ -122,6 +138,7 @@ void CMCorrector::execute(tf::Subflow&)
     if (optimizeLower())
     {
       save();
+      localCalibration.calibrated = true;
       gotoState(CMCorrectorStatus::CalibrationState::finished);
     }
     else
@@ -216,16 +233,16 @@ void CMCorrector::update(MotionRequest& motionRequest)
     switch (theFallDownState.direction)
     {
     case FallDownState::Direction::back:
-      motionRequest.specialActionRequest.specialAction = theMotionState.standUpStatus.bestStandUpMotionBack;
+      motionRequest.specialActionRequest.specialAction = SpecialActionRequest::standUpBack;
       break;
     case FallDownState::Direction::front:
-      motionRequest.specialActionRequest.specialAction = theMotionState.standUpStatus.bestStandUpMotionFront;
+      motionRequest.specialActionRequest.specialAction = SpecialActionRequest::standUpFront;
       break;
     case FallDownState::Direction::right:
       motionRequest.specialActionRequest.mirror = true;
       [[fallthrough]];
     case FallDownState::Direction::left:
-      motionRequest.specialActionRequest.specialAction = SpecialActionRequest::SpecialActionID::standUpSideNao;
+      motionRequest.specialActionRequest.specialAction = SpecialActionRequest::SpecialActionID::standUpSide;
       break;
     }
   }
@@ -260,7 +277,7 @@ bool CMCorrector::optimizeUpper()
   };
 
   const auto start = std::chrono::steady_clock::now();
-  const auto [optim, bestError] = optimizeFunction<Angle, dim>(VectorDa::Constant(-12_deg),
+  const auto [bestError, optim] = optimizeFunction<Angle, dim>(VectorDa::Constant(-12_deg),
       VectorDa::Constant(12_deg),
       {VectorDa::Constant(6_deg), VectorDa::Constant(3_deg), VectorDa::Constant(1.5_deg), VectorDa::Constant(0.75_deg), VectorDa::Constant(0.375_deg), VectorDa::Constant(0.1875_deg), VectorDa::Constant(0.09375_deg), VectorDa::Constant(0.046875_deg)},
       upperCameraMatrixError);
@@ -306,7 +323,7 @@ bool CMCorrector::optimizeLower()
   };
 
   const auto start = std::chrono::steady_clock::now();
-  const auto [optim, bestError] = optimizeFunction<Angle, dim>(VectorDa::Constant(-12_deg),
+  const auto [bestError, optim] = optimizeFunction<Angle, dim>(VectorDa::Constant(-12_deg),
       VectorDa::Constant(12_deg),
       {VectorDa::Constant(6_deg), VectorDa::Constant(3_deg), VectorDa::Constant(1.5_deg), VectorDa::Constant(0.75_deg), VectorDa::Constant(0.375_deg), VectorDa::Constant(0.1875_deg), VectorDa::Constant(0.09375_deg), VectorDa::Constant(0.046875_deg)},
       lowerCameraMatrixError);
@@ -599,7 +616,7 @@ template <typename T> std::vector<T> CMCorrector::join(std::vector<std::vector<T
 }
 
 template <typename T, int dim>
-std::pair<Eigen::Matrix<T, dim, 1>, float> CMCorrector::optimizeFunction(
+std::pair<float, Eigen::Matrix<T, dim, 1>> CMCorrector::optimizeFunction(
     const Eigen::Matrix<T, dim, 1>& min, const Eigen::Matrix<T, dim, 1>& max, const std::vector<Eigen::Matrix<T, dim, 1>>& stepSizes, std::function<float(const Eigen::Matrix<T, dim, 1>&)> func)
 {
   using Vector = Eigen::Matrix<T, dim, 1>;
@@ -611,17 +628,17 @@ std::pair<Eigen::Matrix<T, dim, 1>, float> CMCorrector::optimizeFunction(
 
   for (const Vector& stepSize : stepSizes)
   {
-    std::tie(bestInput, bestError) = optimizeFunction<T, dim>(stepMin, stepMax, stepSize, func);
+    std::tie(bestError, bestInput) = optimizeFunction<T, dim>(stepMin, stepMax, stepSize, func);
 
     stepMin = bestInput - stepSize;
     stepMax = bestInput + stepSize;
   }
 
-  return {bestInput, bestError};
+  return {bestError, bestInput};
 }
 
 template <typename T, int dim>
-std::pair<Eigen::Matrix<T, dim, 1>, float> CMCorrector::optimizeFunction(
+std::pair<float, Eigen::Matrix<T, dim, 1>> CMCorrector::optimizeFunction(
     const Eigen::Matrix<T, dim, 1>& min, const Eigen::Matrix<T, dim, 1>& max, const Eigen::Matrix<T, dim, 1>& stepSize, std::function<float(const Eigen::Matrix<T, dim, 1>&)> func)
 {
   using Vector = Eigen::Matrix<T, dim, 1>;
@@ -641,7 +658,7 @@ std::pair<Eigen::Matrix<T, dim, 1>, float> CMCorrector::optimizeFunction(
         input.template tail<dim - 1>() = val;
         return func(input);
       };
-      std::tie(retInput, retError) = optimizeFunction<T, dim - 1>(min.template tail<dim - 1>(), max.template tail<dim - 1>(), stepSize.template tail<dim - 1>(), newFunc);
+      std::tie(retError, retInput) = optimizeFunction<T, dim - 1>(min.template tail<dim - 1>(), max.template tail<dim - 1>(), stepSize.template tail<dim - 1>(), newFunc);
     }
     else
     {
@@ -656,7 +673,7 @@ std::pair<Eigen::Matrix<T, dim, 1>, float> CMCorrector::optimizeFunction(
     }
   }
 
-  return {bestInput, bestError};
+  return {bestError, bestInput};
 }
 
 /**
@@ -665,6 +682,7 @@ std::pair<Eigen::Matrix<T, dim, 1>, float> CMCorrector::optimizeFunction(
 void CMCorrector::start()
 {
   startTimestamp = theFrameInfo.time;
+  localCalibration.calibrated = false;
   gotoState(CMCorrectorStatus::CalibrationState::wait, 1);
   samples.clear();
 }
@@ -696,34 +714,45 @@ void CMCorrector::stop()
  */
 void CMCorrector::load()
 {
-  InMapFile stream("./Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/cameraCalibration.cfg");
-  if (stream.exists())
+  const auto loadFile = [](const std::string& file, CameraCalibrationFile& calibration)
   {
-    stream >> localCalibration;
-    annotateCalibration();
-    return;
-  }
+    InMapFile stream(file);
+    if (stream.exists())
+      stream >> calibration;
 
+    return stream.exists();
+  };
+
+  CameraCalibrationFile ccFile;
+  if (Build::targetRobot() && loadFile(File::getPersistentDir() + "cameraCalibration.cfg", ccFile))
+  {
+    static_cast<CameraCalibrationFile&>(localCalibration) = ccFile;
+    localCalibration.calibrated = true;
+  }
+  else if (loadFile(std::string(File::getBHDir()) + "/Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/cameraCalibration.cfg", ccFile))
+  {
+    static_cast<CameraCalibrationFile&>(localCalibration) = ccFile;
+    localCalibration.calibrated = true;
+  }
   // if head-body combination does not exist, combine both configs
-  CameraCalibration head, body;
-  InMapFile streamHead("./Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().robotName + "/cameraCalibration.cfg");
-  InMapFile streamBody("./Config/Robots/" + Global::getSettings().bodyName + "/" + Global::getSettings().bodyName + "/cameraCalibration.cfg");
-  if (streamHead.exists() && streamBody.exists())
+  else if (CameraCalibrationFile ccFileBody;
+           loadFile(std::string(File::getBHDir()) + "/Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().robotName + "/cameraCalibration.cfg", ccFile)
+           && loadFile(std::string(File::getBHDir()) + "/Config/Robots/" + Global::getSettings().bodyName + "/" + Global::getSettings().bodyName + "/cameraCalibration.cfg", ccFileBody))
   {
-    streamHead >> head;
-    streamBody >> body;
+    localCalibration.lowerCameraRotationCorrection = ccFile.lowerCameraRotationCorrection;
+    localCalibration.upperCameraRotationCorrection = ccFile.upperCameraRotationCorrection;
+    localCalibration.bodyRotationCorrection = ccFileBody.bodyRotationCorrection;
 
-    localCalibration.lowerCameraRotationCorrection = head.lowerCameraRotationCorrection;
-    localCalibration.upperCameraRotationCorrection = head.upperCameraRotationCorrection;
-    localCalibration.bodyRotationCorrection = body.bodyRotationCorrection;
-    annotateCalibration();
-    return;
+    localCalibration.calibrated = false;
+  }
+  // fallback to default config (e.g., from V6 folder)
+  else
+  {
+    VERIFY(loadFile("cameraCalibration.cfg", ccFile));
+    static_cast<CameraCalibrationFile&>(localCalibration) = ccFile;
+    localCalibration.calibrated = false;
   }
 
-  // fallback to default config (e.g., from V6 folder)
-  InMapFile streamDefault("cameraCalibration.cfg");
-  if (streamDefault.exists())
-    streamDefault >> localCalibration;
   annotateCalibration();
 }
 
@@ -732,18 +761,22 @@ void CMCorrector::load()
  */
 void CMCorrector::save() const
 {
-  std::string dir = std::string("mkdir -p ") + std::string(File::getBHDir()) + "/Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName;
-  system(dir.c_str());
+  const auto saveFile = [](const std::string& file, const CameraCalibrationFile& calibration)
+  {
+    OutMapFile stream(file);
+    if (stream.exists())
+      stream << calibration;
+    else
+      OUTPUT_ERROR("CMCorrector: Saving to config failed!");
 
-  OutMapFile stream("./Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/cameraCalibration.cfg");
-  if (stream.exists())
-  {
-    stream << localCalibration;
-  }
-  else
-  {
-    OUTPUT_ERROR("Saving to config failed!");
-  }
+    return stream.exists();
+  };
+
+  const CameraCalibrationFile& ccFile = static_cast<const CameraCalibrationFile&>(localCalibration);
+
+  std::filesystem::create_directories(std::string(File::getBHDir()) + "/Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName);
+  saveFile("./Config/Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/cameraCalibration.cfg", ccFile);
+  saveFile(File::getPersistentDir() + "cameraCalibration.cfg", ccFile);
 }
 
 void CMCorrector::reset()

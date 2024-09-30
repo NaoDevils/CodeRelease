@@ -9,11 +9,9 @@
 #include <portaudio.h>
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/AudioData.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include <mutex>
 
 MODULE(PortAudioRecorder,
-  REQUIRES(FrameInfo),
   PROVIDES(AudioData),
   LOADS_PARAMETERS(,
     (std::string)("") deviceName, /**< Name of audio device. */

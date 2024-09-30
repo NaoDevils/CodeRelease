@@ -16,14 +16,7 @@
 #include <algorithm>
 #include <iostream>
 
-FieldDimensions GameController::fieldDimensions;
-Pose2f GameController::lastBallContactPose;
-int GameController::timeOfLastBallContact;
-
-// move to header when MSC supports constexpr
-const float GameController::footLength = 120.f;
-const float GameController::safeDistance = 150.f;
-const float GameController::dropHeight = 350.f;
+GameController* GameController::theInstance = nullptr;
 
 GameController::GameController()
     : timeWhenHalfStarted(0), timeOfLastDropIn(0), timeWhenLastRobotMoved(0), timeWhenStateBegan(0),
@@ -43,11 +36,24 @@ GameController::GameController()
   teamInfos[TEAM_BLUE].goalkeeperColour = TEAM_BLUE;
   teamInfos[TEAM_BLUE].goalkeeper = 1;
   teamInfos[TEAM_BLUE].messageBudget = messageBudget;
+  teamInfos[TEAM_BLUE].teamPort = 10000 + teamInfos[TEAM_BLUE].teamNumber;
+  teamInfos[TEAM_BLUE].onLeftSide = true;
   teamInfos[TEAM_RED].teamNumber = 2;
   teamInfos[TEAM_RED].fieldPlayerColour = TEAM_RED;
   teamInfos[TEAM_RED].goalkeeperColour = TEAM_RED;
   teamInfos[TEAM_RED].goalkeeper = 1;
   teamInfos[TEAM_RED].messageBudget = messageBudget;
+  teamInfos[TEAM_RED].teamPort = 10000 + teamInfos[TEAM_RED].teamNumber;
+  teamInfos[TEAM_RED].onLeftSide = false;
+
+  ASSERT(!theInstance);
+  theInstance = this;
+}
+
+GameController::~GameController()
+{
+  ASSERT(theInstance);
+  theInstance = nullptr;
 }
 
 void GameController::registerSimulatedRobot(int robot, SimulatedRobot& simulatedRobot)
@@ -56,7 +62,7 @@ void GameController::registerSimulatedRobot(int robot, SimulatedRobot& simulated
   robots[robot].simulatedRobot = &simulatedRobot;
   robots[robot].info.number = robot % (numOfRobots / 2) + 1;
   robots[robot].info.penalty = PENALTY_NONE;
-  if (fieldDimensions.xPosOwnPenaltyMark == 0.f)
+  if (fieldDimensions.lastUpdate == 0)
     fieldDimensions.load();
 }
 
@@ -64,17 +70,21 @@ bool GameController::handleGlobalCommand(const std::string& command)
 {
   if (command == "initial")
   {
-    if (Global::getSettings().gameMode != Settings::penaltyShootout)
-      gameInfo.secsRemaining = durationOfHalf;
-    else
-      gameInfo.secsRemaining = durationOfPS;
+    gameInfo.secsRemaining = durationOfHalf;
     gameInfo.state = STATE_INITIAL;
+    timeOfLastDropIn = timeWhenHalfStarted = 0;
+    return true;
+  }
+  else if (command == "standby")
+  {
+    gameInfo.secsRemaining = durationOfHalf;
+    gameInfo.state = STATE_STANDBY;
     timeOfLastDropIn = timeWhenHalfStarted = 0;
     return true;
   }
   else if (command == "ready")
   {
-    if (gameInfo.state == STATE_INITIAL)
+    if (gameInfo.inPreGame())
       gameInfo.timeFirstReadyState = SystemCall::getCurrentSystemTime();
     gameInfo.state = STATE_READY;
     timeWhenStateBegan = SystemCall::getCurrentSystemTime();
@@ -83,68 +93,47 @@ bool GameController::handleGlobalCommand(const std::string& command)
   else if (command == "set")
   {
     // in case ready state is skipped
-    if (gameInfo.state == STATE_INITIAL)
+    if (gameInfo.inPreGame())
       gameInfo.timeFirstReadyState = SystemCall::getCurrentSystemTime();
-    if (Global::getSettings().gameMode != Settings::penaltyShootout)
+    if (gameInfo.setPlay == SET_PLAY_PENALTY_KICK)
     {
-      if (gameInfo.setPlay == SET_PLAY_PENALTY_KICK)
-      {
-        handlePenaltyKickSet();
-      }
-      else
-      {
-        gameInfo.state = STATE_SET;
-
-        if (automatic)
-        {
-          placeGoalie(0);
-          placeGoalie(numOfRobots / 2);
-          placeDefensivePlayers(gameInfo.kickingTeam == 1 ? numOfRobots / 2 + 1 : 1);
-          placeOffensivePlayers(gameInfo.kickingTeam == 1 ? 1 : numOfRobots / 2 + 1);
-          executePlacement();
-        }
-
-        timeWhenStateBegan = SystemCall::getCurrentSystemTime();
-
-        /*if(Global::getSettings().isCornerChallenge)
-          SimulatedRobot::moveBall(Vector3f(-4500.f, -3000.f, 50.f), true);
-        else*/
-        SimulatedRobot::moveBall(Vector3f(0.f, 0.f, 50.f), true);
-      }
+      handlePenaltyKickSet();
     }
     else
     {
       gameInfo.state = STATE_SET;
 
-      gameInfo.secsRemaining = durationOfPS;
-      timeWhenHalfStarted = 0;
+      if (automatic)
+      {
+        placeGoalie(0);
+        placeGoalie(numOfRobots / 2);
+        placeDefensivePlayers(gameInfo.kickingTeam == 1 ? numOfRobots / 2 + 1 : 1);
+        placeOffensivePlayers(gameInfo.kickingTeam == 1 ? 1 : numOfRobots / 2 + 1);
+        executePlacement();
+      }
+
       timeWhenStateBegan = SystemCall::getCurrentSystemTime();
 
-      SimulatedRobot::moveBall(Vector3f(-3200.f, 0.f, 50.f), true);
+      /*if(Global::getSettings().isCornerChallenge)
+          SimulatedRobot::moveBall(Vector3f(-4500.f, -3000.f, 50.f), true);
+        else*/
+      SimulatedRobot::moveBall(Vector3f(0.f, 0.f, 50.f), true);
     }
     return true;
   }
   else if (command == "playing")
   {
     // in case ready state is skipped
-    if (gameInfo.state == STATE_INITIAL)
+    if (gameInfo.inPreGame())
       gameInfo.timeFirstReadyState = SystemCall::getCurrentSystemTime();
-    if (Global::getSettings().gameMode != Settings::penaltyShootout)
-    {
-      gameInfo.state = STATE_PLAYING;
-      if (gameInfo.setPlay != SET_PLAY_PENALTY_KICK)
-        gameInfo.setPlay = SET_PLAY_NONE; // do not reset penelty kicks when switching to playing
-      else
-        timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime(); // 30 secs for penalty kick start at switch to playing
-      if (gameInfo.competitionPhase == COMPETITION_PHASE_PLAYOFF || !timeWhenHalfStarted)
-        timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfHalf - gameInfo.secsRemaining) * 1000;
-    }
+    gameInfo.state = STATE_PLAYING;
+    if (gameInfo.setPlay != SET_PLAY_PENALTY_KICK)
+      gameInfo.setPlay = SET_PLAY_NONE; // do not reset penelty kicks when switching to playing
     else
-    {
-      gameInfo.state = STATE_PLAYING;
-      gameInfo.secsRemaining = durationOfPS;
-      timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfPS - gameInfo.secsRemaining) * 1000;
-    }
+      timeWhenSetPlayStarted = SystemCall::getCurrentSystemTime(); // 30 secs for penalty kick start at switch to playing
+    if (gameInfo.competitionPhase == COMPETITION_PHASE_PLAYOFF || !timeWhenHalfStarted)
+      timeWhenHalfStarted = SystemCall::getCurrentSystemTime() - (durationOfHalf - gameInfo.secsRemaining) * 1000;
+
     return true;
   }
   else if (command == "finished")
@@ -431,11 +420,13 @@ void GameController::placeOffensivePlayers(int minRobot)
       {Pose2f(0, -fieldDimensions.centerCircleRadius - footLength, 0),
           Pose2f(0, fieldDimensions.xPosOwnPenaltyMark, fieldDimensions.yPosRightGoal),
           Pose2f(0, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosLeftPenaltyArea),
-          Pose2f(0, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosRightPenaltyArea)},
+          Pose2f(0, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosRightPenaltyArea),
+          Pose2f(0, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosRightGoal)},
       {Pose2f(-pi, fieldDimensions.centerCircleRadius + footLength, 0),
           Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyMark, fieldDimensions.yPosLeftGoal),
           Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosLeftPenaltyArea),
-          Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosRightPenaltyArea)}};
+          Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosRightPenaltyArea),
+          Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosRightGoal)}};
 
   // Move all field players that are not in their own half.
   for (int i = minRobot; i < minRobot + numOfFieldPlayers; ++i)
@@ -455,14 +446,16 @@ void GameController::placeOffensivePlayers(int minRobot)
 void GameController::placeDefensivePlayers(int minRobot)
 {
   static const Pose2f poses[2][numOfFieldPlayers] = {
-      {Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosLeftGoal / 2.f),
+      {Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + 1000.f, fieldDimensions.yPosLeftGoal / 2.f),
           Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosRightGoal / 2.f),
           Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f),
-          Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f)},
-      {Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosLeftGoal / 2.f),
+          Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f),
+          Pose2f(0.f, fieldDimensions.xPosOwnPenaltyArea + safeDistance, fieldDimensions.yPosLeftGoal)},
+      {Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - 5 * safeDistance, fieldDimensions.yPosLeftGoal / 2.f),
           Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosRightGoal / 2.f),
           Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, (fieldDimensions.yPosRightPenaltyArea + fieldDimensions.yPosRightSideline) / 2.f),
-          Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f)}};
+          Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, (fieldDimensions.yPosLeftPenaltyArea + fieldDimensions.yPosLeftSideline) / 2.f),
+          Pose2f(-pi, fieldDimensions.xPosOpponentPenaltyArea - safeDistance, fieldDimensions.yPosLeftGoal)}};
 
   // Move all field players that are not in their own half or in the center circle.
   for (int i = minRobot; i < minRobot + numOfFieldPlayers; ++i)
@@ -515,7 +508,7 @@ void GameController::executePlacement()
 {
   for (int i = 0; i < numOfRobots; ++i)
   {
-    const Robot& r = robots[i];
+    Robot& r = robots[i];
     if (r.manuallyPlaced)
       r.simulatedRobot->moveRobot(Vector3f(r.lastPose.translation.x(), r.lastPose.translation.y(), dropHeight), Vector3f(0, 0, r.lastPose.rotation), true);
   }
@@ -881,10 +874,7 @@ void GameController::writeGameInfo(Out& stream)
   SYNC;
   if (gameInfo.state == STATE_PLAYING || (gameInfo.competitionPhase != COMPETITION_PHASE_PLAYOFF && timeWhenHalfStarted))
   {
-    if (Global::getSettings().gameMode != Settings::penaltyShootout)
-      gameInfo.secsRemaining = (uint16_t)(durationOfHalf - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
-    else
-      gameInfo.secsRemaining = (uint16_t)(durationOfPS - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
+    gameInfo.secsRemaining = (uint16_t)(durationOfHalf - SystemCall::getTimeSince(timeWhenHalfStarted) / 1000);
   }
   gameInfo.timeLastPackageReceived = SystemCall::getCurrentSystemTime();
   gameInfo.controllerConnected = true;
@@ -895,10 +885,8 @@ void GameController::writeTeamInfo(TeamInfo& teamInfo, Out& stream)
 {
   SYNC;
   // starting value: 1200 packages (see rules and GC 2023)
-  if (gameInfo.state == STATE_INITIAL || gameInfo.state == STATE_FINISHED)
+  if (gameInfo.inPreGame() || gameInfo.state == STATE_FINISHED)
     teamInfo.messageBudget = messageBudget;
-
-  teamInfo.teamPort = Global::getSettings().teamPort;
 
   stream << teamInfo;
 }
@@ -935,14 +923,17 @@ void GameController::setTeamColors(uint8_t firstFieldPlayerColor, uint8_t firstG
   teamInfos[0].teamNumber = 1;
   teamInfos[0].fieldPlayerColour = firstFieldPlayerColor;
   teamInfos[0].goalkeeperColour = firstGoalkeeperColor;
+  teamInfos[0].teamPort = 10000 + teamInfos[0].teamNumber;
   teamInfos[1].teamNumber = 2;
   teamInfos[1].fieldPlayerColour = secondFieldPlayerColor;
   teamInfos[1].goalkeeperColour = secondGoalkeeperColor;
+  teamInfos[1].teamPort = 10000 + teamInfos[1].teamNumber;
 }
 
 void GameController::addCompletion(std::set<std::string>& completion) const
 {
   static const char* commands[] = {"initial",
+      "standby",
       "ready",
       "set",
       "playing",
@@ -968,4 +959,14 @@ void GameController::addCompletion(std::set<std::string>& completion) const
     completion.insert(std::string("gc ") + commands[i]);
   for (int i = 0; i < numOfPenalties; ++i)
     completion.insert(std::string("pr ") + getName((Penalty)i));
+}
+
+const SimulatedRobot* GameController::getSimulatedRobot(int robot)
+{
+  return robots[robot].simulatedRobot;
+}
+
+const RobotInfo& GameController::getRobotInfo(int robot)
+{
+  return robots[robot].info;
 }

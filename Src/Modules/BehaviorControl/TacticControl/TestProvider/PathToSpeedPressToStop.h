@@ -2,45 +2,34 @@
 
 #include "Modules/Modeling/PathProvider/SimplePathProvider.h" // for parameters
 #include "Representations/BehaviorControl/BallSymbols.h"
-#include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
-#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/LiveConfigurationState.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/Path.h"
-#include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionState.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Tools/Module/Module.h"
 
 MODULE(PathToSpeedPressToStop,
   REQUIRES(BallSymbols),
-  REQUIRES(BallModel),
-  REQUIRES(BallModelAfterPreview),
   REQUIRES(BehaviorData),
   REQUIRES(FieldDimensions),
-  REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(LiveConfigurationState),
   REQUIRES(MotionRequest),
-  REQUIRES(RobotInfo),
-  REQUIRES(RobotMap),
   REQUIRES(RoleSymbols),
   REQUIRES(RobotPoseAfterPreview),
-  REQUIRES(PositioningSymbols),
   REQUIRES(Path),
   PROVIDES(SpeedRequest),
   REQUIRES(WalkingEngineParams),
-  REQUIRES(BehaviorConfiguration),
+  REQUIRES(SensorControlParams),
   REQUIRES(GameSymbols),
   REQUIRES(MotionState),
   REQUIRES(TeammateData),
@@ -61,8 +50,7 @@ MODULE(PathToSpeedPressToStop,
     (float)(0.5f) influenceOfObstacleOnTranslation, // [this..0]*<above radius>
     (float)(0.8f) influenceOfObstacleOnTranslationTeammate,
     (float)(0.7f) influenceOfObstacleOnTranslationCenterCircle,
-    (float)(0.7f) influenceOfObstacleOnTranslationSetPlay,
-    (float)(2.0f) emergencyStopFallDownReductionFactorThreshold
+    (float)(0.7f) influenceOfObstacleOnTranslationSetPlay
   )
 );
 

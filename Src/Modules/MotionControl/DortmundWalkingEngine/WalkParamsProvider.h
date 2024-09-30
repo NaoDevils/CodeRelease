@@ -1,16 +1,20 @@
 #pragma once
 
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/FLIPMObserverGains.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/MotionControl/MotionState.h"
+#include "Representations/MotionControl/WalkCalibration.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Streams/RobotParameters.h"
 
 
 MODULE(WalkParamsProvider,
   USES(MotionState),
+  USES(WalkCalibration),
+  REQUIRES(BehaviorData),
   PROVIDES(WalkingEngineParams),
-  PROVIDES(FLIPMObserverGains),
+  PROVIDES(SensorControlParams),
   LOADS_PARAMETERS(,
     (float)(80.f) minXForward,
     (float)(300.f) maxXForward,
@@ -36,13 +40,16 @@ public:
 protected:
   std::string annotation = "";
   bool initializedWP = false;
-  bool initializedFOP = false;
+  bool initializedSCP = false;
   WalkingEngineParams originalParams;
 
   bool lastXForwardUpdated, lastXBackwardUpdated, lastYUpdated = false;
+  bool lastWalkCalibrated = false;
 
   void update(WalkingEngineParams& walkingEngineParams);
-  void update(FLIPMObserverGains& flipmObserverGains);
-  void load(WalkingEngineParams& walkingEngineParams);
-  void load(FLIPMObserverGains& flipmObserverGains);
+  void update(SensorControlParams& sensorControlParams);
+  void load(WalkingEngineParams& walkingEngineParams, bool original = false);
+  void load(SensorControlParams& sensorControlParams);
+
+  void setMinMax(WalkingEngineParams& walkingEngineParams);
 };

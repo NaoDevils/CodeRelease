@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "SimulatedRobot.h"
 #include "GameController.h"
 
 #include <QList>

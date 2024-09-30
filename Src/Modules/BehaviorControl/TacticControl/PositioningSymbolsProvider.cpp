@@ -12,44 +12,38 @@
 void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
 {
   // First check if ball search is active for my role. If it is, use position from my travel point list.
-  bool useBallSearchPosition = false;
-  ballSearchRoleIndex = 0;
-  for (auto& role : theBallSearch.rolesInBallSearch)
+  const auto ballSearchRole = std::find(theBallSearch.rolesInBallSearch.begin(), theBallSearch.rolesInBallSearch.end(), theRoleSymbols.role);
+  if (ballSearchRole != theBallSearch.rolesInBallSearch.end())
   {
-    if (role == theRoleSymbols.role)
+    const BallSearch::BallSearchPositions& ballSearchPositions = theBallSearch.ballSearchPositions[std::distance(theBallSearch.rolesInBallSearch.begin(), ballSearchRole)];
+
+    if (ballSearchPositions.poses.empty())
     {
-      useBallSearchPosition = true;
-      // select closest
-      if (!wasInBallSearch && theBallChaserDecision.playerNumberToBall != theRobotInfo.number)
-        selectClosestBallSearchPosition(positioningSymbols.optPosition);
-      else
-      {
-        // this can happen if the number of search points varies. in this case, select closest available again
-        if (ballSearchPointIndex >= static_cast<int>(theBallSearch.ballSearchPositions[ballSearchRoleIndex].poses.size()))
-          selectClosestBallSearchPosition(positioningSymbols.optPosition);
-        positioningSymbols.optPosition = theBallSearch.ballSearchPositions[ballSearchRoleIndex].poses[ballSearchPointIndex];
-      }
-      // check if target is reached
-      if ((theRobotPoseAfterPreview.translation - theBallSearch.ballSearchPositions[ballSearchRoleIndex].poses[ballSearchPointIndex].translation).norm() < 100
-          && std::abs(Angle::normalize(theRobotPoseAfterPreview.rotation - theBallSearch.ballSearchPositions[ballSearchRoleIndex].poses[ballSearchPointIndex].rotation)) < 10_deg)
-      {
-        // select next point
-        ballSearchPointIndex++;
-        // if last point was reached, reset to first point
-        if (ballSearchPointIndex >= static_cast<int>(theBallSearch.ballSearchPositions[ballSearchRoleIndex].poses.size()))
-          ballSearchPointIndex = 0;
-      }
-
-      wasInBallSearch = true;
+      OUTPUT_ERROR("PositioningSymbolsProvider: ballSearchPositions empty");
+      return;
     }
-    ballSearchRoleIndex++;
-  }
-  positioningSymbols.inBallSearch = wasInBallSearch;
 
-  if (!useBallSearchPosition)
-    wasInBallSearch = false;
-  else
-  {
+    // select closest
+    if (!positioningSymbols.inBallSearch && theBallChaserDecision.playerNumberToBall != theRobotInfo.number)
+      selectClosestBallSearchPosition(ballSearchPositions, positioningSymbols.optPosition);
+    else
+    {
+      // this can happen if the number of search points varies. in this case, select closest available again
+      if (ballSearchPointIndex >= static_cast<int>(ballSearchPositions.poses.size()))
+        selectClosestBallSearchPosition(ballSearchPositions, positioningSymbols.optPosition);
+      positioningSymbols.optPosition = ballSearchPositions.poses[ballSearchPointIndex];
+    }
+    // check if target is reached
+    if ((theRobotPoseAfterPreview.translation - ballSearchPositions.poses[ballSearchPointIndex].translation).norm() < 100
+        && std::abs(Angle::normalize(theRobotPoseAfterPreview.rotation - ballSearchPositions.poses[ballSearchPointIndex].rotation)) < 10_deg)
+    {
+      // select next point
+      ballSearchPointIndex++;
+      // if last point was reached, reset to first point
+      if (ballSearchPointIndex >= static_cast<int>(ballSearchPositions.poses.size()))
+        ballSearchPointIndex = 0;
+    }
+
     // set thresholds and arrival type
     positioningSymbols.thresholdXBack = 30.f;
     positioningSymbols.thresholdXFront = 30.f;
@@ -57,8 +51,15 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
     positioningSymbols.thresholdRotation = 5_deg;
     positioningSymbols.stopAtTarget = false;
     positioningSymbols.previewArrival = true;
+
+    positioningSymbols.inBallSearch = true;
     return;
   }
+  else
+  {
+    positioningSymbols.inBallSearch = false;
+  }
+
   // if not in ball search, use position from specific roles
   switch (theRoleSymbols.role)
   {
@@ -122,12 +123,11 @@ void PositioningSymbolsProvider::update(PositioningAndKickSymbols& positioningAn
   // positioningAndKickSymbols = theKeeper;
 }
 
-void PositioningSymbolsProvider::selectClosestBallSearchPosition(Pose2f& position)
+void PositioningSymbolsProvider::selectClosestBallSearchPosition(const BallSearch::BallSearchPositions& ballSearchPositions, Pose2f& position)
 {
-  ASSERT(ballSearchRoleIndex < static_cast<int>(theBallSearch.ballSearchPositions.size()));
   float closestDistance = std::numeric_limits<float>::max();
   int ballPointIndex = 0;
-  for (const Pose2f& pose : theBallSearch.ballSearchPositions[ballSearchRoleIndex].poses)
+  for (const Pose2f& pose : ballSearchPositions.poses)
   {
     float distance = (pose.translation - theRobotPoseAfterPreview.translation).norm();
     if (distance < closestDistance)

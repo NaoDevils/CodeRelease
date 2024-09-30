@@ -160,12 +160,12 @@ Element* Parser::sceneElement()
   scene->cfm = 1.f / (Kp * scene->stepLength + Kd);
   scene->erp = Kp * scene->stepLength * scene->cfm;
 
-  if (scene->cfm < -1.f || scene->cfm > 1.f)
+  if (scene->cfm <= -1.f || scene->cfm >= 1.f)
   {
     char msg[256];
     sprintf(msg, "Expected a value for CFM between %g and %g instead of %g", -1.f, 1.f, scene->cfm);
   }
-  if (scene->erp < -1.f || scene->erp > 1.f)
+  if (scene->erp <= -1.f || scene->erp >= 1.f)
   {
     char msg[256];
     sprintf(msg, "Expected a value for ERP between %g and %g instead of %g", -1.f, 1.f, scene->erp);
@@ -174,12 +174,12 @@ Element* Parser::sceneElement()
   scene->contactSoftCFM = 1 / (contactKp * scene->stepLength + contactKd);
   scene->contactSoftERP = contactKp * scene->stepLength * scene->contactSoftCFM;
 
-  if (scene->contactSoftCFM < -1.f || scene->contactSoftCFM > 1.f)
+  if (scene->contactSoftCFM <= -1.f || scene->contactSoftCFM >= 1.f)
   {
     char msg[256];
     sprintf(msg, "Expected a value for contactSoftCFM between %g and %g instead of %g", -1.f, 1.f, scene->contactSoftCFM);
   }
-  if (scene->contactSoftERP < -1.f || scene->contactSoftERP > 1.f)
+  if (scene->contactSoftERP <= -1.f || scene->contactSoftERP >= 1.f)
   {
     char msg[256];
     sprintf(msg, "Expected a value for contactSoftERP between %g and %g instead of %g", -1.f, 1.f, scene->contactSoftERP);
@@ -607,7 +607,13 @@ breakThrice:;
 
 Element* Parser::translationElement()
 {
-  Vector3f* translation = new Vector3f(getLength("x", false, 0.f), getLength("y", false, 0.f), getLength("z", false, 0.f));
+  float rndx = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 2)) - 1.0f;
+  float rndy = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 2)) - 1.0f;
+  float rndz = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 2)) - 1.0f;
+  float x = getLength("x", false, 0.f) + getLength("xRandom", false, 0.f) * rndx;
+  float y = getLength("y", false, 0.f) + getLength("yRandom", false, 0.f) * rndy;
+  float z = getLength("z", false, 0.f) + getLength("zRandom", false, 0.f) * rndz;
+  Vector3f* translation = new Vector3f(x, y, z);
 
   SimObject* simObject = dynamic_cast<SimObject*>(element);
   if (simObject)
@@ -627,10 +633,13 @@ Element* Parser::translationElement()
 
 Element* Parser::rotationElement()
 {
+  float rndx = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 2)) - 1.0f;
+  float rndy = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 2)) - 1.0f;
+  float rndz = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 2)) - 1.0f;
   RotationMatrix* rotation = new RotationMatrix;
-  *rotation *= RotationMatrix::aroundZ(getAngle("z", false, 0.f));
-  *rotation *= RotationMatrix::aroundY(getAngle("y", false, 0.f));
-  *rotation *= RotationMatrix::aroundX(getAngle("x", false, 0.f));
+  *rotation *= RotationMatrix::aroundZ(getAngle("z", false, 0.f) + getAngle("zRandom", false, 0.f) * rndz);
+  *rotation *= RotationMatrix::aroundY(getAngle("y", false, 0.f) + getAngle("yRandom", false, 0.f) * rndy);
+  *rotation *= RotationMatrix::aroundX(getAngle("x", false, 0.f) + getAngle("xRandom", false, 0.f) * rndx);
 
   SimObject* simObject = dynamic_cast<SimObject*>(element);
   if (simObject)

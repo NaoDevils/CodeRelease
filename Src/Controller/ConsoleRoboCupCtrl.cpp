@@ -7,14 +7,17 @@
  */
 
 #include "ConsoleRoboCupCtrl.h"
+#include "SimulatedRobot.h"
 
 #include <QDir>
 #include <QDirIterator>
 #include <QInputDialog>
 #include <QFileDialog>
 #include <QSettings>
+#include <QtCore5Compat/QRegExp>
 
 #include <algorithm>
+#include <sol/sol.hpp>
 
 #include "LocalRobot.h"
 #include "Controller/Views/ConsoleView.h"
@@ -26,7 +29,12 @@
 #include "ButtonToolBar.h"
 
 #include "Tools/Module/ModuleManager.h"
+#include "Tools/MessageQueue/LogFileFormat.h"
+#include "Tools/Settings.h"
+#include "Representations/ModuleInfo.h"
+#include "Representations/MotionControl/MotionRequest.h"
 #include <iostream>
+#include <cmath>
 
 #define FRAMES_PER_SECOND 30
 
@@ -53,11 +61,31 @@ ConsoleRoboCupCtrl::ConsoleRoboCupCtrl(SimRobot::Application& application)
   addView(new CABSLGraphViewObject("Docs.BehaviorControl", "CABSL", "Options.h"), documentationCategory);
 
   representationToFile["representation:WalkingEngineParams"] = "walkingParamsFLIPM.cfg";
+
+  initLua();
+}
+
+void ConsoleRoboCupCtrl::initLua()
+{
+  lua = std::make_unique<sol::state>();
+  luaScriptLoaded = false;
+  luaError = false;
+  luaPaused = false;
+  lua->open_libraries(sol::lib::base, sol::lib::debug, sol::lib::math, sol::lib::string, sol::lib::table, sol::lib::os);
+  lua->set_function("printLn", &ConsoleRoboCupCtrl::lua_printLn, this);
+  lua->set_function("gc", &ConsoleRoboCupCtrl::lua_gc, this);
+  lua->set_function("ar", &ConsoleRoboCupCtrl::lua_ar, this);
+  lua->set_function("dt", &ConsoleRoboCupCtrl::lua_dt, this);
+  lua->set_function("moveBall", &ConsoleRoboCupCtrl::lua_moveBall, this);
+  lua->set_function("moveRobot", &ConsoleRoboCupCtrl::lua_moveRobot, this);
+  lua->set_function("kickBallAngle", &ConsoleRoboCupCtrl::lua_kickBallAngle, this);
+  lua->set_function("kickBallTarget", &ConsoleRoboCupCtrl::lua_kickBallTarget, this);
+  lua->set_function("saveTestResult", &ConsoleRoboCupCtrl::lua_saveTestResult, this);
+  lua->set_function("walkSpeed", &ConsoleRoboCupCtrl::lua_walkSpeed, this);
 }
 
 bool ConsoleRoboCupCtrl::compile()
 {
-  Global::theStreamHandler = &streamHandler;
   if (!RoboCupCtrl::compile())
     return false;
 
@@ -65,7 +93,6 @@ bool ConsoleRoboCupCtrl::compile()
     selected.push_back((*robots.begin())->getRobotProcess());
 
   start();
-  Global::theStreamHandler = &streamHandler;
 
   std::string fileName =
       application->getFilePath()
@@ -86,7 +113,6 @@ bool ConsoleRoboCupCtrl::compile()
     (*i)->getRobotProcess()->handleConsole("endOfStartScript");
   for (std::list<RemoteRobot*>::iterator i = remoteRobots.begin(); i != remoteRobots.end(); ++i)
     (*i)->handleConsole("endOfStartScript");
-  Global::theStreamHandler = &streamHandler;
   return true;
 }
 
@@ -111,19 +137,22 @@ void ConsoleRoboCupCtrl::link()
 
 ConsoleRoboCupCtrl::~ConsoleRoboCupCtrl()
 {
-  for (std::list<RemoteRobot*>::iterator i = remoteRobots.begin(); i != remoteRobots.end(); ++i)
+  for (std::list<RemoteRobot*>::reverse_iterator i = remoteRobots.rbegin(); i != remoteRobots.rend(); ++i)
     (*i)->announceStop();
 
-  for (std::list<RemoteRobot*>::iterator i = remoteRobots.begin(); i != remoteRobots.end(); ++i)
+  for (std::list<RemoteRobot*>::reverse_iterator i = remoteRobots.rbegin(); i != remoteRobots.rend(); ++i)
+  {
+    GlobalKeeper k;
     delete *i;
+  }
 
   stop();
   mode = SystemCall::simulatedRobot;
-  Global::theSettings = 0;
 }
 
 void ConsoleRoboCupCtrl::update()
 {
+  GlobalGuard g({.streamHandler = &streamHandler});
   {
     SYNC;
     for (std::list<std::string>::const_iterator i = textMessages.begin(); i != textMessages.end(); ++i)
@@ -146,13 +175,123 @@ void ConsoleRoboCupCtrl::update()
   for (std::list<RemoteRobot*>::iterator i = remoteRobots.begin(); i != remoteRobots.end(); ++i)
     (*i)->update();
 
-  Global::theStreamHandler = &streamHandler;
-  Global::theStreamHandler = &streamHandler;
+  if (luaScriptLoaded && !luaError && !luaPaused)
+  {
+    try
+    {
+      updateLuaData();
+    }
+    catch (const sol::error& e)
+    {
+      printLn("Lua panic (update): " + std::string(e.what()));
+      luaError = true;
+    }
+  }
 
   application->setStatusMessage(statusText.c_str());
 
   if (completion.empty())
     createCompletion();
+}
+
+
+void ConsoleRoboCupCtrl::updateLuaData()
+{
+  luaFrameNumber++;
+  Vector2f ballPos;
+  SimulatedRobot::getAbsoluteBallPosition(ballPos);
+  (*lua)["RoboCupData"]["absoluteBallPosition"]["x"] = ballPos.x();
+  (*lua)["RoboCupData"]["absoluteBallPosition"]["y"] = ballPos.y();
+
+  if (robots.size() > 0)
+  {
+    GroundTruthWorldState worldState;
+    const SimulatedRobot* r = gameController.getSimulatedRobot(0);
+    r->getWorldState(worldState);
+    int ownId = worldState.ownNumber;
+    sol::optional<int> ownElement = (*lua)["RoboCupData"]["robots"][ownId]["number"];
+    if (ownElement == sol::nullopt)
+    {
+      sol::table t = (*lua).create_table_with("number",
+          ownId,
+          "x",
+          worldState.ownPose.translation.x(),
+          "y",
+          worldState.ownPose.translation.y(),
+          "rotation",
+          worldState.ownPose.rotation.toDegrees(),
+          "upright",
+          worldState.ownUpright);
+      (*lua)["RoboCupData"]["robots"][ownId] = t;
+    }
+    else
+    {
+      (*lua)["RoboCupData"]["robots"][ownId]["x"] = worldState.ownPose.translation.x();
+      (*lua)["RoboCupData"]["robots"][ownId]["y"] = worldState.ownPose.translation.y();
+      (*lua)["RoboCupData"]["robots"][ownId]["rotation"] = worldState.ownPose.rotation.toDegrees();
+      (*lua)["RoboCupData"]["robots"][ownId]["upright"] = worldState.ownUpright;
+    }
+
+    GroundTruthWorldState::GroundTruthPlayer player;
+    for (unsigned long i = 0; i < worldState.bluePlayers.size(); ++i)
+    {
+      player = worldState.bluePlayers[i];
+      const std::string blueId = std::to_string(player.number);
+      sol::optional<int> blueElement = (*lua)["RoboCupData"]["robots"][blueId]["number"];
+      if (blueElement == sol::nullopt)
+      {
+        sol::table t = (*lua).create_table_with(
+            "number", blueId, "x", player.pose.translation.x(), "y", player.pose.translation.y(), "rotation", player.pose.rotation.toDegrees(), "upright", player.upright);
+        (*lua)["RoboCupData"]["robots"][blueId] = t;
+      }
+      else
+      {
+        (*lua)["RoboCupData"]["robots"][blueId]["x"] = player.pose.translation.x();
+        (*lua)["RoboCupData"]["robots"][blueId]["y"] = player.pose.translation.y();
+        (*lua)["RoboCupData"]["robots"][blueId]["rotation"] = player.pose.rotation.toDegrees();
+        (*lua)["RoboCupData"]["robots"][blueId]["upright"] = player.upright;
+      }
+    }
+    for (unsigned long i = 0; i < worldState.redPlayers.size(); ++i)
+    {
+      player = worldState.redPlayers[i];
+      const std::string redId = std::to_string(player.number);
+      sol::optional<int> redElement = (*lua)["RoboCupData"]["robots"][redId]["number"];
+      if (redElement == sol::nullopt)
+      {
+        sol::table t = (*lua).create_table_with(
+            "number", redId, "x", player.pose.translation.x(), "y", player.pose.translation.y(), "rotation", player.pose.rotation.toDegrees(), "upright", player.upright);
+        (*lua)["RoboCupData"]["robots"][redId] = t;
+      }
+      else
+      {
+        (*lua)["RoboCupData"]["robots"][redId]["x"] = player.pose.translation.x();
+        (*lua)["RoboCupData"]["robots"][redId]["y"] = player.pose.translation.y();
+        (*lua)["RoboCupData"]["robots"][redId]["rotation"] = player.pose.rotation.toDegrees();
+        (*lua)["RoboCupData"]["robots"][redId]["upright"] = player.upright;
+      }
+    }
+  }
+
+  (*lua)["event_onUpdate"](luaFrameNumber);
+  if (lua_oldBallPos != ballPos)
+  {
+    lua_oldBallPos = ballPos;
+    (*lua)["event_ballMoved"](ballPos.x(), ballPos.y());
+  }
+  //tbd: use fielddimensions
+  if (std::abs(ballPos.x()) > 4500 && std::abs(ballPos.y()) < 800)
+  {
+    if (!lua_ballInsideGoal)
+    {
+      lua_ballInsideGoal = true;
+      (*lua)["event_ballInGoal"](ballPos.x() < 0 ? -1 : 1);
+    }
+  }
+  else
+  {
+    lua_ballInsideGoal = false;
+  }
 }
 
 void ConsoleRoboCupCtrl::executeFile(std::string name, bool printError, RobotConsole* console)
@@ -193,6 +332,174 @@ void ConsoleRoboCupCtrl::executeFile(std::string name, bool printError, RobotCon
     }
     --nesting;
   }
+}
+
+
+void ConsoleRoboCupCtrl::requireLuaLibrary(std::string key, std::string name, bool printError)
+{
+  if (nesting == 10)
+    printLn("Nesting Error");
+  else
+  {
+    ++nesting;
+
+    if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
+      name = name + ".lua";
+    if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+      name = std::string("Scenes/") + name;
+
+    InBinaryFile stream(name.c_str());
+    if (!stream.exists())
+    {
+      if (printError)
+        printLn(name + " not found");
+    }
+    else
+    {
+
+      luaError = false;
+      try
+      {
+        sol::object o = lua->require_file(key, stream.getFullName());
+        if (!o)
+        {
+          printLn("lua lib is null");
+        }
+      }
+      catch (const sol::error& e)
+      {
+        if (printError)
+          printLn("Lua panic: " + std::string(e.what()));
+        luaError = true;
+      }
+    }
+    --nesting;
+  }
+}
+
+void ConsoleRoboCupCtrl::executeLuaFile(std::string name, bool printError)
+{
+  if (nesting == 10)
+    printLn("Nesting Error");
+  else
+  {
+    ++nesting;
+
+    if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
+      name = name + ".lua";
+    if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+      name = std::string("Scenes/") + name;
+
+    InBinaryFile stream(name.c_str());
+    if (!stream.exists())
+    {
+      if (printError)
+        printLn(name + " not found");
+    }
+    else
+    {
+      luaError = false;
+      try
+      {
+        lua->script_file(stream.getFullName());
+        (*lua)["event_scriptLoaded"]();
+      }
+      catch (const sol::error& e)
+      {
+        if (printError)
+          printLn("Lua panic: " + std::string(e.what()));
+        luaError = true;
+      }
+    }
+    --nesting;
+  }
+}
+
+void ConsoleRoboCupCtrl::lua_printLn(std::string line)
+{
+  printLn(line);
+}
+
+void ConsoleRoboCupCtrl::lua_saveTestResult(std::string name, std::string content)
+{
+  if ((int)name.rfind('.') <= (int)name.find_last_of("\\/"))
+    name = name + ".json";
+  if (name[0] != '/' && name[0] != '\\' && (name.size() < 2 || name[1] != ':'))
+    name = std::string("Scenes/Testresults/") + name;
+  OutTextRawFile stream(name.c_str());
+  if (stream.exists())
+  {
+    stream << content;
+  }
+}
+
+void ConsoleRoboCupCtrl::lua_gc(std::string command)
+{
+  if (!gameController.handleGlobalCommand(command))
+    printLn("Syntax Error");
+}
+
+void ConsoleRoboCupCtrl::lua_ar(std::string command)
+{
+  if (command == "on")
+    executeConsoleCommand("ar on");
+  else if (command == "off")
+    executeConsoleCommand("ar off");
+  else
+    printLn("Syntax Error");
+}
+
+void ConsoleRoboCupCtrl::lua_dt(std::string command)
+{
+  std::ostringstream s;
+  s << "dt " << command;
+  executeConsoleCommand(s.str());
+}
+
+void ConsoleRoboCupCtrl::lua_moveBall(float x, float y)
+{
+  std::ostringstream s;
+  s << "mvb " << x << " " << y << " 100";
+  //printLn(s.str());
+  executeConsoleCommand(s.str());
+}
+
+void ConsoleRoboCupCtrl::lua_walkSpeed(float xVelocity, float yVelocity, float rotationVelocity)
+{
+  MotionRequest moReq;
+  moReq.motion = MotionRequest::Motion::walk;
+  moReq.walkRequest.requestType = WalkRequest::RequestType::speed;
+  moReq.walkRequest.request = Pose2f(rotationVelocity, xVelocity, yVelocity);
+
+  setRepresentation("MotionRequest", moReq);
+}
+
+void ConsoleRoboCupCtrl::lua_moveRobot(float x, float y, float z, float rotX, float rotY, float rotZ, std::string robotName)
+{
+  std::ostringstream r;
+  r << "robot " << robotName;
+  //printLn(r.str());
+  executeConsoleCommand(r.str());
+  std::ostringstream s;
+  s << "mv " << x << " " << y << " " << z << " " << rotX << " " << rotY << " " << rotZ;
+  //printLn(s.str());
+  executeConsoleCommand(s.str());
+}
+
+void ConsoleRoboCupCtrl::lua_kickBallAngle(float angleDeg, float velocity)
+{
+  std::ostringstream s;
+  s << "kiba " << angleDeg << " " << velocity;
+  //printLn(s.str());
+  executeConsoleCommand(s.str());
+}
+
+void ConsoleRoboCupCtrl::lua_kickBallTarget(float targetX, float targetY, float velocity)
+{
+  std::ostringstream s;
+  s << "kiba " << targetX << " " << targetY << " " << velocity;
+  //printLn(s.str());
+  executeConsoleCommand(s.str());
 }
 
 void ConsoleRoboCupCtrl::selectedObject(const SimRobot::Object& obj)
@@ -354,6 +661,35 @@ void ConsoleRoboCupCtrl::executeConsoleCommand(std::string command, RobotConsole
     if (!gameController.handleGlobalConsole(stream))
       printLn("Syntax Error");
   }
+  else if (buffer == "lua")
+  {
+    stream >> buffer;
+    if (buffer == "load")
+    {
+      stream >> buffer;
+      if (!luaScriptLoaded)
+      {
+        //init lua environment
+        requireLuaLibrary("JSON", "../Lua/JSON.lua", true);
+        executeLuaFile("../Lua/RoboCupAdapter.lua", true);
+        luaScriptLoaded = true;
+        luaFrameNumber = 0;
+      }
+      executeLuaFile(buffer, true);
+    }
+    else if (buffer == "reset")
+    {
+      initLua();
+    }
+    else if (buffer == "pause")
+    {
+      luaPaused = true;
+    }
+    else if (buffer == "resume")
+    {
+      luaPaused = false;
+    }
+  }
   else if (buffer == "sc")
   {
     if (!startRemote(stream))
@@ -378,13 +714,11 @@ void ConsoleRoboCupCtrl::executeConsoleCommand(std::string command, RobotConsole
   else if (console)
   {
     console->handleConsole(command, fromCall);
-    Global::theStreamHandler = &streamHandler;
   }
   else
   {
     for (std::list<RobotConsole*>::iterator i = selected.begin(); i != selected.end(); ++i)
       (*i)->handleConsole(command, fromCall);
-    Global::theStreamHandler = &streamHandler;
   }
   if (completion.empty())
     createCompletion();
@@ -424,6 +758,10 @@ void ConsoleRoboCupCtrl::help(In& stream)
   list("  echo <text> : Print text into console window. Useful in console.con.", pattern, true);
   list("  gc initial | ready | set | playing | finished | kickOffBlue | kickOffRed | outByBlue | outByRed | gamePlayoff | gameRoundRobin : Set GameController state.", pattern, true);
   list("  help | ? [<pattern>] : Display this text.", pattern, true);
+  list("  lua load <file> : Loads and executes a lua script file.", pattern, true);
+  list("  lua reset : Resets the lua script engine.", pattern, true);
+  list("  lua pause : Pauses the lua script execution.", pattern, true);
+  list("  lua resume : Resumes the lua script execution.", pattern, true);
   list("  robot ? | all | <name> {<name>} : Connect console to a set of active robots. Alternatively, double click on robot.", pattern, true);
   list("  st off | on : Switch simulation of time on or off.", pattern, true);
   list("  # <text> : Comment.", pattern, true);
@@ -453,6 +791,7 @@ void ConsoleRoboCupCtrl::help(In& stream)
   list("  mv <x> <y> <z> [<rotx> <roty> <rotz>] : Move the selected simulated robot to the given position.", pattern, true);
   list("  mvb <x> <y> <z> : Move the ball to the given position.", pattern, true);
   list("  kiba <angle> <velocity>: Kicks the ball in the direction given by angle having the given velocity. ", pattern, true);
+  list("  kiba <xPos> <xPos> <velocity>: Kicks the ball in the direction of xPos, yPos having the given velocity. ", pattern, true);
   list("  poll : Poll for all available debug requests and drawings. ", pattern, true);
   list("  pr none | ballHolding | playerPushing | inactivePlayer | illegalDefender | leavingTheField | playingWithHands | requestForPickup : Penalize robot.", pattern, true);
   list("  qfr queue | replace | reject | collect <seconds> | save [<seconds>] : Send queue fill request.", pattern, true);
@@ -495,6 +834,8 @@ bool ConsoleRoboCupCtrl::startRemote(In& stream)
   this->robotName = robotName.c_str();
 
   mode = SystemCall::remoteRobot;
+
+  GlobalKeeper k;
   RemoteRobot* rr = new RemoteRobot(name.c_str(), ip.c_str());
   this->robotName = 0;
   if (!rr->isClient())
@@ -502,8 +843,6 @@ bool ConsoleRoboCupCtrl::startRemote(In& stream)
     if (ip != "")
     {
       delete rr;
-      Global::theStreamHandler = &streamHandler;
-      Global::theSettings = 0;
       printLn(std::string("No connection to ") + ip + " established!");
       return false;
     }
@@ -526,16 +865,24 @@ bool ConsoleRoboCupCtrl::startLogFile(In& stream)
     fileName = fileName + ".log";
   if (fileName[0] != '\\' && fileName[0] != '/' && (fileName.size() < 2 || fileName[1] != ':'))
     fileName = std::string("Logs/") + fileName;
+
+  Settings settings;
   {
-    InBinaryFile test(fileName);
-    if (!test.exists())
+    InBinaryFile file(fileName);
+    if (!file.exists())
       return false;
+
+    char magicByte;
+    file >> magicByte;
+    if (magicByte == LogFileFormat::logFileSettings)
+      settings.read(file);
   }
   std::string robotName = std::string(".") + name;
   mode = SystemCall::logfileReplay;
   logFile = fileName;
   this->robotName = robotName.c_str();
-  robots.push_back(new Robot(name.c_str()));
+  GlobalKeeper k;
+  robots.push_back(new Robot(name.c_str(), settings));
   this->robotName = 0;
   //logFile = "";
   selected.clear();
@@ -722,6 +1069,7 @@ void ConsoleRoboCupCtrl::createCompletion()
     {
       completion.insert(std::string("mr off ") + m.name);
       completion.insert(std::string("mr default ") + m.name);
+      completion.insert(std::string("mr modules ") + m.name);
     }
   }
 

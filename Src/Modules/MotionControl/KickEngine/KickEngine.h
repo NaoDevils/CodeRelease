@@ -16,13 +16,13 @@
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
+#include "Representations/Modeling/BallModel.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Tools/Module/Module.h"
 #include "Tools/Streams/InStreams.h"
 
 MODULE(KickEngine,
-  USES(RawJointRequest),
   REQUIRES(FrameInfo),
   REQUIRES(HeadJointRequest),
   REQUIRES(JointSensorData),
@@ -36,9 +36,16 @@ MODULE(KickEngine,
   REQUIRES(SpecialActionsOutput),
   REQUIRES(TorsoMatrix),
   REQUIRES(WalkingEngineOutput),
+  REQUIRES(BallModel),
   PROVIDES(KickEngineOutput),
   LOADS_PARAMETERS(,
-    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
+    (bool) (true) adjustLegPosition,
+    (float) (-45.0f) kickMinOffsetX,
+    (float) (45.0f) kickMaxOffsetX,
+    (float) (-25.0f) kickMinOffsetY,
+    (float) (45.0f) kickMaxOffsetY,
+    (float) (1.2f) counterMomentumFactor
   )
 );
 

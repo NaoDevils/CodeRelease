@@ -7,6 +7,7 @@
 
 #include "ModuleGraphView.h"
 #include "Controller/RobotConsole.h"
+#include "Representations/ModuleInfo.h"
 
 #include <sstream>
 #include <algorithm>

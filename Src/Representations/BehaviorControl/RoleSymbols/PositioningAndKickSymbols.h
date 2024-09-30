@@ -28,6 +28,7 @@ STREAMABLE_WITH_BASE(PositioningAndKickSymbols, PositioningSymbols,
   (std::string)("None") log_kickName,
   (std::string)("None") log_toBallDistance,
 
+  (bool)(true) recommendShot,
   ((MotionRequest) KickType)(longKick) kickType, /**< Selected kick type. */
   ((WalkRequest) StepRequest)(kickHack) walkKickType, /**< If walkKick (customSteps) is selected, use this id. */
   ((KickRequest) KickMotionID)(KickRequest::KickMotionID::kickInnerFast) longKickType,

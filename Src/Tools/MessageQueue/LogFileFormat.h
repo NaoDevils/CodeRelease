@@ -13,5 +13,6 @@ ENUM(LogFileFormat,
   logFileUncompressed,
   logFileCompressed,
   logFileMessageIDs,
-  logFileStreamSpecification
+  logFileStreamSpecification,
+  logFileSettings
 );

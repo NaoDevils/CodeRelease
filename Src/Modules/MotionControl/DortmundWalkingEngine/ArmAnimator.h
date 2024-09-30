@@ -7,9 +7,7 @@
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/MotionSelection.h"
-#include "Representations/MotionControl/WalkingInfo.h"
-#include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/BodyTilt.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/ArmContact.h"
 #include <algorithm>
@@ -17,11 +15,10 @@
 MODULE(ArmAnimator,
   REQUIRES(FrameInfo),
   REQUIRES(JointSensorData),
-  REQUIRES(WalkingEngineParams),
+  REQUIRES(SensorControlParams),
   REQUIRES(MotionRequest),
   REQUIRES(MotionSelection),
   REQUIRES(KinematicRequest),
-  REQUIRES(WalkingInfo),
   REQUIRES(JoinedIMUData),
   REQUIRES(ArmContact),
   PROVIDES(ArmMovement),
@@ -38,8 +35,7 @@ MODULE(ArmAnimator,
     (int) timeUntilArmContactActive,
     (bool)(false) useBodyTiltForArmMovement,
     (float)(0.005f) armFactor,
-    (Angle)(10_deg) armsAngle,
-    ((JoinedIMUData)InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource
+    (Angle)(10_deg) armsAngle
   )
 );
 

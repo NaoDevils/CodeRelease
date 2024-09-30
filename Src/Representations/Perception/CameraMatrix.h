@@ -27,7 +27,6 @@ struct RobotCameraMatrix : public Pose3f
 
 struct RobotCameraMatrixUpper : public RobotCameraMatrix
 {
-
 };
 
 /**
@@ -53,7 +52,6 @@ STREAMABLE_WITH_BASE(CameraMatrix, Pose3f,
 protected:
   void drawFieldLines(bool upper) const;
   virtual void drawFieldLines() const;
-public:
   ,
 
   (bool)(true) isValid /**< Matrix is only valid if motion was stable. */
@@ -64,6 +62,5 @@ STREAMABLE_WITH_BASE(CameraMatrixUpper, CameraMatrix,
   void draw() const { CameraMatrix::draw(); }
 protected:
   void drawFieldLines() const;
-public:
 
 );

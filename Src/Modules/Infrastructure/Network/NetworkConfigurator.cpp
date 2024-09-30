@@ -53,7 +53,7 @@ void NetworkConfigurator::update(NetworkStatus& networkStatus)
     const std::string command = "sudo /usr/sbin/configure-network '" + output + "'";
 
     nextStatus = std::async(std::launch::async,
-        [=]()
+        [this, command]()
         {
           NetworkStatus status;
           status.configureTimestamp = theUSBSettings.updateTimestamp;

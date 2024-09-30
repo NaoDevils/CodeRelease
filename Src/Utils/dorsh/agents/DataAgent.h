@@ -9,8 +9,8 @@
 #include <memory>
 #include "Tools/Network/UdpComm.h"
 
-#include "Utils/dorsh/models/Power.h"
-#include "Utils/dorsh/Session.h"
+#include "models/Power.h"
+#include "Session.h"
 #include <nlohmann/json_fwd.hpp>
 
 #include <QFloat16> // see https://github.com/nlohmann/json/issues/2650
@@ -30,7 +30,7 @@ class DataAgent : public QObject
   static constexpr std::string_view keepAliveData = "sendData";
   static constexpr unsigned updateTime = 5000;
   static constexpr unsigned dataTimeout = 10000;
-  static constexpr unsigned gcTimeout = 60000;
+  static constexpr unsigned gcTimeout = 5000;
   unsigned lastGCMessage = 0;
 
 public:

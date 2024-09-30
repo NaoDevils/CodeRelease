@@ -1,11 +1,11 @@
-#include "Utils/dorsh/Initializer.h"
-#include "Utils/dorsh/agents/DataAgent.h"
-#include "Utils/dorsh/bhwrapper/Framework.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/ui/Console.h"
+#include "Initializer.h"
+#include "agents/DataAgent.h"
+#include "bhwrapper/Framework.h"
+#include "cmdlib/ProcessRunner.h"
+#include "models/Robot.h"
+#include "models/Team.h"
+#include "tools/Platform.h"
+#include "ui/Console.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -15,7 +15,7 @@
 #include <QSplashScreen>
 #include <thread>
 #include <chrono>
-#include "Utils/dorsh/ui/MainWindow.h"
+#include "ui/MainWindow.h"
 
 #include <QThread>
 

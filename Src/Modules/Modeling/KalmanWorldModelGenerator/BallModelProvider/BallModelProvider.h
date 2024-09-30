@@ -12,7 +12,7 @@
 
 // ------------- NAO-Framework includes --------------
 #include "Tools/Module/Module.h"
-#include "Tools/RingBuffer.h"
+#include "Tools/RingBufferWithSum.h"
 
 
 // Requires
@@ -25,7 +25,6 @@
 #include "Representations/Infrastructure/TeamInfo.h" // team info used for getting info about kicking team
 #include "Representations/Infrastructure/RobotInfo.h" // robot info used for getting player number and penalty info.
 #include "Representations/Infrastructure/TeammateData.h" // team mates information
-#include "Representations/Sensing/RobotModel.h" // foot positions for detecting kicks
 #include "Representations/Sensing/JoinedIMUData.h"
 
 // - Percepts
@@ -61,7 +60,6 @@ MODULE(BallModelProvider,
   REQUIRES(CameraMatrixUpper),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
-  REQUIRES(RobotModel),
   REQUIRES(JoinedIMUData),
 
   REQUIRES(BallPercept), // Use either single or multiple ball percept.

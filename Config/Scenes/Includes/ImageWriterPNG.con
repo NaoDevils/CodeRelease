@@ -1,0 +1,19 @@
+echo ------- Optional -------
+echo mr PreProcessedBallPatches CLIPBallPerceptor
+echo mr ProcessedBallPatches CombinedBallPerceptor
+echo mr PenaltyCrossPercept CLIPLineFinder
+echo mr PrePenaltyCrossHypothesesScanlines CLIPLineFinder
+echo mr PrePenaltyCrossHypothesesYolo YoloRobotDetector
+echo mr RobotsHypothesesYolo YoloRobotDetector
+echo mr RobotsHypothesesYoloUpper YoloRobotDetector
+echo mr ProcessedRobotsHypotheses RobotClassifier
+echo mr RobotsPerceptClassified RobotClassifier
+echo mr RobotsPerceptTeam JerseyColorDetector
+echo mr RobotsPerceptOrientation RobotOrientationDetector
+echo mr RobotsPercept RobotsPerceptProvider
+echo ------- Needed -------
+echo mr SequenceImageUpper default
+echo mr SequenceImage default
+echo mr PNGImageDummy ImageWriterPNG
+echo vd parameters:ImageWriterPNG
+echo get parameters:ImageWriterPNG

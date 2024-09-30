@@ -1,0 +1,5 @@
+vp audiodata 100000 -1 1
+vpd audiodata representation:AudioData:rearLeft red
+vpd audiodata representation:AudioData:rearRight green
+vpd audiodata representation:AudioData:frontLeft blue
+vpd audiodata representation:AudioData:frontRight black

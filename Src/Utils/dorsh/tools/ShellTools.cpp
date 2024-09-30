@@ -1,6 +1,6 @@
-#include "Utils/dorsh/tools/ShellTools.h"
-#include "Utils/dorsh/tools/StringTools.h"
-#include "Utils/dorsh/tools/Platform.h"
+#include "tools/ShellTools.h"
+#include "tools/StringTools.h"
+#include "tools/Platform.h"
 #include "Platform/File.h"
 #include "Filesystem.h"
 

@@ -1,10 +1,10 @@
 #include <cstdlib>
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/SCPCmd.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/tools/ShellTools.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/SCPCmd.h"
+#include "Session.h"
+#include "tools/ShellTools.h"
 
 SCPCmd SCPCmd::theSCPCmd;
 

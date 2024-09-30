@@ -5,8 +5,13 @@
   <Include href="Includes/Field2020SPL.rsi2"/>
   <Include href="Includes/Boards.rsi2"/>
 
-  <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="35000" Kd="150" contactKp="5300" contactKd="1">
-   <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
+  <!--contactKp -> 1425 for 5.5kg weight-->
+  <!--contactKd -> controls how dampening the floor is, lower is better-->
+
+  <!--Kp -> set so high that the joints are/the nao is not "compressed"-->
+  <!--Kd -> set the dampening of the springing best do be quit high-->
+  <Scene name="RoboCup" controller="SimulatedNao" stepLength="0.012" color="rgb(65%, 65%, 70%)" Kp="12500" Kd="10000" contactKp="1425" contactKd="7.5">
+    <Light z="9m" ambientColor="rgb(50%, 50%, 50%)"/>
 
     <Compound name="robots">
       <Body ref="Nao" name="robot2">
@@ -14,7 +19,7 @@
         <Rotation z="180degree"/>
         <Set name="NaoColor" value="yellow"/>
       </Body>
-<!--
+      <!--
       <Body ref="Nao" name="robot1">
         <Translation x="2.8" y="0" z="330mm"/>
         <Rotation z="180degree"/>

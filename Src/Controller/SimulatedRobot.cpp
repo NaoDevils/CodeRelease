@@ -281,7 +281,8 @@ void SimulatedRobot::getWorldState(GroundTruthWorldState& worldState) const
 
   // Determine the robot's own pose and number
   Pose2f tmp;
-  getPose2f(robot, tmp);
+  worldState.ownNumber = getNumber(robot);
+  worldState.ownUpright = getPose2f(robot, tmp);
   worldState.ownPose = tmp;
   worldState.ownPose.translation = (getPosition(leftFoot) + getPosition(rightFoot)) * 0.5f;
   if (blue)

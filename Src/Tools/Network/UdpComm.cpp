@@ -2,9 +2,23 @@
  * @file Platform/Common/UdpComm.cpp
  * Wrapper for an udp socket.
  * @author Armin
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
  */
 
 #include "UdpComm.h"
+
+#ifdef WINDOWS
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <WinSock2.h>
+#endif
+#include <string>
+
+#ifdef WINDOWS
+#define socket_t SOCKET
+#else
+#define socket_t int
+#endif
+
 
 #include <iostream>
 #ifdef WINDOWS
@@ -27,14 +41,22 @@
 #include <assert.h>
 #endif
 
-UdpComm::UdpComm()
+#include <memory>
+
+struct UdpComm::Pimpl
 {
-  sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-  target = (sockaddr*)(new sockaddr_in);
+  sockaddr target;
+  socket_t sock = static_cast<socket_t>(-1);
+};
+
+UdpComm::UdpComm() : data(std::make_unique<Pimpl>())
+{
+  data->sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  memset(&data->target, 0, sizeof(data->target));
 #ifndef SENSOR_READER
-  ASSERT(-1 != sock);
+  ASSERT(socket_t(-1) != data->sock);
 #else
-  assert(-1 != sock);
+  assert(-1 != data->sock);
 #endif
 }
 
@@ -45,32 +67,29 @@ UdpComm::~UdpComm()
 
 void UdpComm::close()
 {
-  if (sock != -1)
+  if (data->sock != socket_t(-1))
   {
 #ifdef WINDOWS
-    closesocket(sock);
+    closesocket(data->sock);
 #else
-    ::close(sock);
+    ::close(data->sock);
 #endif
   }
-
-  if (target)
-    delete (sockaddr_in*)target;
 }
 
-UdpComm::UdpComm(UdpComm&& other) noexcept : target(other.target), sock(other.sock)
+UdpComm::UdpComm(UdpComm&& other) noexcept : data(std::make_unique<Pimpl>(*other.data))
 {
-  other.target = nullptr;
-  other.sock = static_cast<socket_t>(-1);
+  memset(&other.data->target, 0, sizeof(other.data->target));
+  other.data->sock = static_cast<socket_t>(-1);
 }
 
 UdpComm& UdpComm::operator=(UdpComm&& other) noexcept
 {
   this->close();
-  this->target = other.target;
-  this->sock = other.sock;
-  other.target = nullptr;
-  other.sock = static_cast<socket_t>(-1);
+  this->data->target = other.data->target;
+  this->data->sock = other.data->sock;
+  memset(&other.data->target, 0, sizeof(other.data->target));
+  other.data->sock = static_cast<socket_t>(-1);
   return *this;
 }
 
@@ -90,15 +109,20 @@ bool UdpComm::resolve(const char* addrStr, int port, sockaddr_in* addr)
 
 bool UdpComm::setTarget(const char* addrStr, int port)
 {
-  sockaddr_in* addr = (sockaddr_in*)target;
+  sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(&data->target);
   return resolve(addrStr, port, addr);
+}
+
+void UdpComm::setTarget(const sockaddr& target)
+{
+  this->data->target = target;
 }
 
 bool UdpComm::setBlocking(bool block)
 {
 #ifdef WINDOWS
   int yes = block ? 0 : 1;
-  if (ioctlsocket(sock, FIONBIO, (u_long*)&yes))
+  if (ioctlsocket(data->sock, FIONBIO, (u_long*)&yes))
     return false;
   else
     return true;
@@ -106,12 +130,12 @@ bool UdpComm::setBlocking(bool block)
   bool result(false);
   if (block)
   {
-    if (-1 != fcntl(sock, F_SETFL, 0))
+    if (-1 != fcntl(data->sock, F_SETFL, 0))
       result = true;
   }
   else
   {
-    if (-1 != fcntl(sock, F_SETFL, O_NONBLOCK))
+    if (-1 != fcntl(data->sock, F_SETFL, O_NONBLOCK))
       result = true;
   }
   return result;
@@ -120,7 +144,7 @@ bool UdpComm::setBlocking(bool block)
 
 bool UdpComm::setTTL(const char ttl)
 {
-  if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(unsigned char)) < 0)
+  if (setsockopt(data->sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(unsigned char)) < 0)
   {
     std::cerr << "could not set TTL to " << ttl << std::endl;
     return false;
@@ -131,7 +155,7 @@ bool UdpComm::setTTL(const char ttl)
 bool UdpComm::setLoopback(bool yesno)
 {
   const char val = yesno ? 1 : 0;
-  if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(char)) < 0)
+  if (setsockopt(data->sock, IPPROTO_IP, IP_MULTICAST_LOOP, &val, sizeof(char)) < 0)
   {
     std::cerr << "could not set ip_multicast_loop to " << val << std::endl;
     return false;
@@ -156,7 +180,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
 
     ifc.ifc_len = sizeof(buf);
     ifc.ifc_buf = buf;
-    if (ioctl(sock, SIOCGIFCONF, &ifc) < 0)
+    if (ioctl(data->sock, SIOCGIFCONF, &ifc) < 0)
     {
       std::cerr << "cannot get interface list" << std::endl;
       return false;
@@ -169,7 +193,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
         item = &ifc.ifc_req[i];
         mreq.imr_multiaddr = group.sin_addr;
         mreq.imr_interface = ((sockaddr_in*)&item->ifr_addr)->sin_addr;
-        if (0 == setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq)))
+        if (0 == setsockopt(data->sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mreq, sizeof(mreq)))
           could_join = true;
       }
       if (!could_join)
@@ -198,7 +222,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
     {
       mreq.imr_multiaddr = group.sin_addr;
       mreq.imr_interface = *((in_addr*)pHost->h_addr_list[i]);
-      if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) == 0)
+      if (setsockopt(data->sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) == 0)
         couldJoin = true;
     }
     if (!couldJoin)
@@ -217,7 +241,7 @@ bool UdpComm::joinMulticast(const char* addrStr)
 bool UdpComm::setBroadcast(bool enable)
 {
   int yes = enable ? 1 : 0;
-  if (0 == setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(yes)))
+  if (0 == setsockopt(data->sock, SOL_SOCKET, SO_BROADCAST, (const char*)&yes, sizeof(yes)))
     return true;
   else
   {
@@ -228,7 +252,7 @@ bool UdpComm::setBroadcast(bool enable)
 
 bool UdpComm::setRcvBufSize(unsigned int rcvbuf)
 {
-  if (0 == setsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&rcvbuf, sizeof(rcvbuf)))
+  if (0 == setsockopt(data->sock, SOL_SOCKET, SO_RCVBUF, (char*)&rcvbuf, sizeof(rcvbuf)))
   {
     std::cerr << "multicast-socket: setsockopt for SO_RCVBUF failed: " << strerror(errno) << std::endl;
     return false;
@@ -236,7 +260,7 @@ bool UdpComm::setRcvBufSize(unsigned int rcvbuf)
 
   int result;
   socklen_t result_len = sizeof(result);
-  if (0 == getsockopt(sock, SOL_SOCKET, SO_RCVBUF, (char*)&result, &result_len))
+  if (0 == getsockopt(data->sock, SOL_SOCKET, SO_RCVBUF, (char*)&result, &result_len))
   {
     std::cerr << "multicast-socket: receive buffer set to " << result << " Bytes." << std::endl;
     return true;
@@ -265,14 +289,14 @@ bool UdpComm::bind(const char* addr_str, int port)
 #endif
 
 #ifdef SO_REUSEADDR
-  if (-1 == setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)))
+  if (-1 == setsockopt(data->sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes)))
     std::cerr << "UdpComm: could not set SO_REUSEADDR" << std::endl;
 #endif
 #ifdef SO_REUSEPORT
-  if (-1 == setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&yes, sizeof(yes)))
+  if (-1 == setsockopt(data->sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&yes, sizeof(yes)))
     std::cerr << "UdpComm: could not set SO_REUSEPORT" << std::endl;
 #endif
-  if (-1 == ::bind(sock, (sockaddr*)&addr, sizeof(sockaddr_in)))
+  if (-1 == ::bind(data->sock, (sockaddr*)&addr, sizeof(sockaddr_in)))
   {
     std::cout << "UdpComm::bind() failed: " << strerror(errno) << std::endl;
     return false;
@@ -289,7 +313,7 @@ int UdpComm::read(char* data, int len, unsigned int& ip)
 #else
   unsigned size = sizeof(senderAddr);
 #endif
-  const int result = (int)::recvfrom(sock, data, len, 0, (sockaddr*)&senderAddr, &size);
+  const int result = (int)::recvfrom(this->data->sock, data, len, 0, (sockaddr*)&senderAddr, &size);
   if (result > 0)
     ip = ntohl(senderAddr.sin_addr.s_addr);
   return result;
@@ -297,13 +321,13 @@ int UdpComm::read(char* data, int len, unsigned int& ip)
 
 int UdpComm::read(char* data, int len)
 {
-  return (int)::recv(sock, data, len, 0);
+  return (int)::recv(this->data->sock, data, len, 0);
 }
 
 int UdpComm::read(char* data, int len, sockaddr_in& from)
 {
   socklen_t fromLen = sizeof(from);
-  return static_cast<int>(::recvfrom(sock, data, len, 0, (sockaddr*)&from, &fromLen));
+  return static_cast<int>(::recvfrom(this->data->sock, data, len, 0, (sockaddr*)&from, &fromLen));
 }
 
 int UdpComm::readLocal(char* data, int len)
@@ -315,7 +339,7 @@ int UdpComm::readLocal(char* data, int len)
   unsigned size = sizeof(senderAddr);
   bool found = false;
 #endif
-  int result = (int)::recvfrom(sock, data, len, 0, (sockaddr*)&senderAddr, &size);
+  int result = (int)::recvfrom(this->data->sock, data, len, 0, (sockaddr*)&senderAddr, &size);
   if (result <= 0)
     return result;
   else
@@ -347,7 +371,7 @@ int UdpComm::readLocal(char* data, int len)
 
 bool UdpComm::write(const char* data, const int len)
 {
-  return ::sendto(sock, data, len, 0, target, sizeof(sockaddr_in)) == len;
+  return ::sendto(this->data->sock, data, len, 0, &this->data->target, sizeof(sockaddr_in)) == len;
 }
 
 std::string UdpComm::getWifiBroadcastAddress()

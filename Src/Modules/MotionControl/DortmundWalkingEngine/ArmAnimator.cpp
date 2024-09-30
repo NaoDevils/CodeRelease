@@ -15,8 +15,6 @@ ArmAnimator::~ArmAnimator() {}
 
 void ArmAnimator::update(ArmMovement& armMovement)
 {
-  WalkingEngineParams curparams = (WalkingEngineParams&)theWalkingEngineParams;
-
   armMovement.angles[Joints::lShoulderPitch] = 0;
   armMovement.angles[Joints::lShoulderRoll] = armsAngle;
   armMovement.angles[Joints::lElbowRoll] = 0;
@@ -44,11 +42,12 @@ void ArmAnimator::update(ArmMovement& armMovement)
   armMovement.angles[Joints::lShoulderPitch] = leftArm;
   armMovement.angles[Joints::rShoulderPitch] = rightArm;
 
-  if (useBodyTiltForArmMovement && theJoinedIMUData.imuData[anglesource].angle.y() < curparams.walkTransition.fallDownAngleMinMaxY[1]
-      && theJoinedIMUData.imuData[anglesource].angle.y() > curparams.walkTransition.fallDownAngleMinMaxY[0])
+  if (useBodyTiltForArmMovement && theSensorControlParams.sensorControlActivation.activateSpeedReduction
+      && theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.y() < theSensorControlParams.speedReduction.angleY.max
+      && theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.y() > theSensorControlParams.speedReduction.angleY.min)
   {
-    armMovement.angles[Joints::lShoulderPitch] -= theJoinedIMUData.imuData[anglesource].angle.y();
-    armMovement.angles[Joints::rShoulderPitch] -= theJoinedIMUData.imuData[anglesource].angle.y();
+    armMovement.angles[Joints::lShoulderPitch] -= theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.y();
+    armMovement.angles[Joints::rShoulderPitch] -= theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.y();
   }
 
   armMovement.usearms = true;

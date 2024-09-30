@@ -7,30 +7,34 @@ authors:
     given-names: Leon
   - family-names: Brämer
     given-names: Dominik
+  - family-names: Cloodt
+    given-names: Alexandra
   - family-names: Dasmann
     given-names: Lisa
   - family-names: Gayda
     given-names: Alicia
-  - family-names: Hatwar
-    given-names: Mrunal
+  - family-names: Huber
+    given-names: Robert
   - family-names: Kleingarn
     given-names: Diana
   - family-names: Klute
     given-names: Thomas
+  - family-names: Koch
+    given-names: Angelina
   - family-names: Larisch
     given-names: Aaron
   - family-names: Mohammadi
     given-names: Mahdokht
   - family-names: Moos
     given-names: Arne
-  - family-names: Pieper
-    given-names: Steven
+  - family-names: Plotzki
+    given-names: Tim
   - family-names: Schwarz
     given-names: Ingmar
   - family-names: Voß
     given-names: Alexander
-repository-code: "https://github.com/NaoDevils/CodeRelease/tree/CodeRelease2023"
-license-url: "https://github.com/NaoDevils/CodeRelease/blob/CodeRelease2023/License.txt"
+repository-code: "https://github.com/NaoDevils/CodeRelease/tree/CodeRelease2024"
+license-url: "https://github.com/NaoDevils/CodeRelease/blob/CodeRelease2024/License.txt"
 url: "https://naodevils.de"
-version: "2023"
-date-released: "2023-10-15"
+version: "2024"
+date-released: "2024-10-15"

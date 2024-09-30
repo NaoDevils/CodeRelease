@@ -3,6 +3,7 @@
 #include "Tools/Math/Transformation.h"
 #include "Tools/Debugging/Stopwatch.h"
 #include "Modules/Perception/CNNs/CLIPBallPerceptorCNNs.h"
+#include "Modules/Perception/TFlite.h"
 
 std::vector<t_cnn_fp> BallPerceptTools::cnns = {cnn_qball::cnn};
 

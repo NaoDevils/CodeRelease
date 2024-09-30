@@ -11,7 +11,41 @@
 * \class GameSymbols
 * A class that containts data about the current behavior state.
 */
-STREAMABLE(GameSymbols,,
+STREAMABLE(GameSymbols,
+  ENUM(GameSituation,
+      none, // initial, standby, timeout, finished, ...
+
+      kickOff_own_ready,
+      kickOff_own_set,
+      kickOff_own_playing_ballNotFree,
+
+      kickOff_opponent_ready,
+      kickOff_opponent_set,
+      kickOff_opponent_playing_ballNotFree,
+
+      goalKick_own,
+      goalKick_opponent,
+
+      pushingFreeKick_own,
+      pushingFreeKick_opponent,
+
+      cornerKick_own,
+      cornerKick_opponent,
+
+      kickIn_own,
+      kickIn_opponent,
+
+      penaltyKick_own_ready,
+      penaltyKick_own_set,
+      penaltyKick_own_playing,
+
+      penaltyKick_opponent_ready,
+      penaltyKick_opponent_set,
+      penaltyKick_opponent_playing,
+
+      regularPlay
+  )
+  ,
   (bool)(false) avoidCenterCircle,
   (bool)(false) allowedInGoalArea,
   (bool)(false) kickoffInProgress,
@@ -25,4 +59,9 @@ STREAMABLE(GameSymbols,,
   (int)(-1) lastBallOutTeam, // number of team that caused last ball out (-1 before first ball out)
   (int)(100000) timeSincePlayingState,
   (int)(100000) timeSinceLastPenalty,
-  (uint8_t)(0) lastGameState,  (int)(0) timeSinceGameState);
+  (int)(1) lastKickTime,
+  (bool)(false) kickedThisFrame,
+  (uint8_t)(0) lastGameState,
+  (int)(0) timeSinceGameState,
+  (GameSituation) gameSituation
+);

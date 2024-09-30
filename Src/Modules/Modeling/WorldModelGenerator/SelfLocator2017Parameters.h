@@ -159,10 +159,7 @@ STREAMABLE(SelfLocator2017Parameters,
 );
 
 STREAMABLE(PositionsByRules,,
-  (std::vector<Vector2f>) fieldPlayerPositionsOwnKickoff,
-  (std::vector<Vector2f>) fieldPlayerPositionsOppKickoff,
   (std::vector<Pose2f>) penaltyPositions,
-  (Vector2f) goaliePosition,
   (Vector2f) penaltyShootoutGoaliePosition,
   (float)(0.f) penaltyShootStartingRadius,
   (std::vector<int>) penaltyShootAngles

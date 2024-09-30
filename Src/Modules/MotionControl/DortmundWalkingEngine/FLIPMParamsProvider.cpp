@@ -1,4 +1,5 @@
 #include "FLIPMParamsProvider.h"
+#include "Platform/SystemCall.h"
 #include <iostream>
 
 FLIPMParamsProvider::FLIPMParamsProvider()
@@ -50,7 +51,7 @@ void FLIPMParamsProvider::recalculate(Dimension dim)
   {
     if (!xLQRParamsFuture.valid())
       xLQRParamsFuture = std::async(std::launch::async,
-          [=]
+          [this]
           {
             return executeX();
           });
@@ -59,7 +60,7 @@ void FLIPMParamsProvider::recalculate(Dimension dim)
   {
     if (!yLQRParamsFuture.valid())
       yLQRParamsFuture = std::async(std::launch::async,
-          [=]
+          [this]
           {
             return executeY();
           });

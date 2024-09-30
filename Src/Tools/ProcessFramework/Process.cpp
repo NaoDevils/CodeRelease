@@ -9,9 +9,8 @@
 
 bool MultiDebugSenderBase::terminating = false;
 
-Process::Process(MessageQueue& debugIn, MessageQueue& debugOut) : debugIn(debugIn), debugOut(debugOut)
+Process::Process(MessageQueue& debugIn, MessageQueue& debugOut, Settings& settings) : debugIn(debugIn), debugOut(debugOut), settings(settings)
 {
-  setGlobals();
   initialized = false;
 }
 
@@ -44,19 +43,18 @@ void Process::handleAllMessages(MessageQueue& messageQueue)
   debugIn.handleAllMessages(*this);
 }
 
-void Process::setGlobals()
+Global Process::getGlobals()
 {
-  Global::theAnnotationManager = &annotationManager;
-  Global::theDebugOut = &debugOut.out;
-  Global::theSettings = &settings;
-  Global::theDebugRequestTable = &debugRequestTable;
-  Global::theDebugDataTable = &debugDataTable;
-  Global::theStreamHandler = &streamHandler;
-  Global::theDrawingManager = &drawingManager;
-  Global::theDrawingManager3D = &drawingManager3D;
-  Global::theTimingManager = &timingManager;
-
-  Blackboard::setInstance(blackboard); // blackboard is NOT globally accessible
+  return {.annotationManager = &annotationManager,
+      .debugOut = &debugOut.out,
+      .settings = &settings,
+      .debugRequestTable = &debugRequestTable,
+      .debugDataTable = &debugDataTable,
+      .streamHandler = &streamHandler,
+      .drawingManager = &drawingManager,
+      .drawingManager3D = &drawingManager3D,
+      .timingManager = &timingManager,
+      .blackboard = &blackboard};
 }
 
 std::string Process::getThreadName() const

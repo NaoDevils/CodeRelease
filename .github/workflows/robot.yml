@@ -15,9 +15,9 @@ on:
 jobs:
   build_nao:
     name: Build framework
-    runs-on: self-hosted
+    runs-on: Linux
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: compile
-      run: bash -l -c "Make/Linux/compile.sh nao-develop"
+      run: Make/Linux/compile.sh nao-develop

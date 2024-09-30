@@ -15,57 +15,57 @@ JointError::JointError() : JointAngles() {}
 
 void JointError::draw() const
 {
-  PLOT("motionControl:JointError:headYaw:angle", angles[Joints::headYaw].toDegrees());
+  PLOT("representation:JointError:headYaw:angle", angles[Joints::headYaw].toDegrees());
 
-  PLOT("motionControl:JointError:headPitch:angle", angles[Joints::headPitch].toDegrees());
+  PLOT("representation:JointError:headPitch:angle", angles[Joints::headPitch].toDegrees());
 
-  PLOT("motionControl:JointError:lShoulderPitch:angle", angles[Joints::lShoulderPitch].toDegrees());
+  PLOT("representation:JointError:lShoulderPitch:angle", angles[Joints::lShoulderPitch].toDegrees());
 
-  PLOT("motionControl:JointError:lShoulderRoll:angle", angles[Joints::lShoulderRoll].toDegrees());
+  PLOT("representation:JointError:lShoulderRoll:angle", angles[Joints::lShoulderRoll].toDegrees());
 
-  PLOT("motionControl:JointError:lElbowYaw:angle", angles[Joints::lElbowYaw].toDegrees());
+  PLOT("representation:JointError:lElbowYaw:angle", angles[Joints::lElbowYaw].toDegrees());
 
-  PLOT("motionControl:JointError:lElbowRoll:angle", angles[Joints::lElbowRoll].toDegrees());
+  PLOT("representation:JointError:lElbowRoll:angle", angles[Joints::lElbowRoll].toDegrees());
 
-  PLOT("motionControl:JointError:lWristYaw:angle", angles[Joints::lWristYaw].toDegrees());
+  PLOT("representation:JointError:lWristYaw:angle", angles[Joints::lWristYaw].toDegrees());
 
-  PLOT("motionControl:JointError:lHand:angle", angles[Joints::lHand].toDegrees());
+  PLOT("representation:JointError:lHand:angle", angles[Joints::lHand].toDegrees());
 
-  PLOT("motionControl:JointError:rShoulderPitch:angle", angles[Joints::rShoulderPitch].toDegrees());
+  PLOT("representation:JointError:rShoulderPitch:angle", angles[Joints::rShoulderPitch].toDegrees());
 
-  PLOT("motionControl:JointError:rShoulderRoll:angle", angles[Joints::rShoulderRoll].toDegrees());
+  PLOT("representation:JointError:rShoulderRoll:angle", angles[Joints::rShoulderRoll].toDegrees());
 
-  PLOT("motionControl:JointError:rElbowYaw:angle", angles[Joints::rElbowYaw].toDegrees());
+  PLOT("representation:JointError:rElbowYaw:angle", angles[Joints::rElbowYaw].toDegrees());
 
-  PLOT("motionControl:JointError:rElbowRoll:angle", angles[Joints::rElbowRoll].toDegrees());
+  PLOT("representation:JointError:rElbowRoll:angle", angles[Joints::rElbowRoll].toDegrees());
 
-  PLOT("motionControl:JointError:rWristYaw:angle", angles[Joints::rWristYaw].toDegrees());
+  PLOT("representation:JointError:rWristYaw:angle", angles[Joints::rWristYaw].toDegrees());
 
-  PLOT("motionControl:JointError:rHand:angle", angles[Joints::rHand].toDegrees());
+  PLOT("representation:JointError:rHand:angle", angles[Joints::rHand].toDegrees());
 
-  PLOT("motionControl:JointError:lHipYawPitch:angle", angles[Joints::lHipYawPitch].toDegrees());
+  PLOT("representation:JointError:lHipYawPitch:angle", angles[Joints::lHipYawPitch].toDegrees());
 
-  PLOT("motionControl:JointError:lHipRoll:angle", angles[Joints::lHipRoll].toDegrees());
+  PLOT("representation:JointError:lHipRoll:angle", angles[Joints::lHipRoll].toDegrees());
 
-  PLOT("motionControl:JointError:lHipPitch:angle", angles[Joints::lHipPitch].toDegrees());
+  PLOT("representation:JointError:lHipPitch:angle", angles[Joints::lHipPitch].toDegrees());
 
-  PLOT("motionControl:JointError:lKneePitch:angle", angles[Joints::lKneePitch].toDegrees());
+  PLOT("representation:JointError:lKneePitch:angle", angles[Joints::lKneePitch].toDegrees());
 
-  PLOT("motionControl:JointError:lAnklePitch:angle", angles[Joints::lAnklePitch].toDegrees());
+  PLOT("representation:JointError:lAnklePitch:angle", angles[Joints::lAnklePitch].toDegrees());
 
-  PLOT("motionControl:JointError:lAnkleRoll:angle", angles[Joints::lAnkleRoll].toDegrees());
+  PLOT("representation:JointError:lAnkleRoll:angle", angles[Joints::lAnkleRoll].toDegrees());
 
-  PLOT("motionControl:JointError:rHipYawPitch:angle", angles[Joints::rHipYawPitch].toDegrees());
+  PLOT("representation:JointError:rHipYawPitch:angle", angles[Joints::rHipYawPitch].toDegrees());
 
-  PLOT("motionControl:JointError:rHipRoll:angle", angles[Joints::rHipRoll].toDegrees());
+  PLOT("representation:JointError:rHipRoll:angle", angles[Joints::rHipRoll].toDegrees());
 
-  PLOT("motionControl:JointError:rHipPitch:angle", angles[Joints::rHipPitch].toDegrees());
+  PLOT("representation:JointError:rHipPitch:angle", angles[Joints::rHipPitch].toDegrees());
 
-  PLOT("motionControl:JointError:rKneePitch:angle", angles[Joints::rKneePitch].toDegrees());
+  PLOT("representation:JointError:rKneePitch:angle", angles[Joints::rKneePitch].toDegrees());
 
-  PLOT("motionControl:JointError:rAnklePitch:angle", angles[Joints::rAnklePitch].toDegrees());
+  PLOT("representation:JointError:rAnklePitch:angle", angles[Joints::rAnklePitch].toDegrees());
 
-  PLOT("motionControl:JointError:rAnkleRoll:angle", angles[Joints::rAnkleRoll].toDegrees());
+  PLOT("representation:JointError:rAnkleRoll:angle", angles[Joints::rAnkleRoll].toDegrees());
 
   //#ifdef LOGGING
   //  DEBUG_RESPONSE("representation:JointError:CSVLog")

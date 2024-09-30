@@ -15,20 +15,16 @@
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/Modeling/RobotMap.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Tools/Settings.h"
 
 MODULE(TacticProvider,
   REQUIRES(BallSymbols),
   REQUIRES(BehaviorConfiguration),
-  REQUIRES(FrameInfo),
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(GameSymbols),
@@ -36,8 +32,6 @@ MODULE(TacticProvider,
   REQUIRES(OpponentTeamInfo),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
-  REQUIRES(RobotPose),
-  REQUIRES(RobotPoseAfterPreview),
   REQUIRES(TeammateData),
   PROVIDES(TacticSymbols),
   LOADS_PARAMETERS(,
@@ -60,6 +54,9 @@ public:
     lastOpponentScore = 0;
   }
 
+  static void decideFightForBall(TacticSymbols& tacticSymbols, const Vector2f& ballPosition, const RobotMap& theRobotMap);
+  static void decideDefensiveCone(TacticSymbols& theTacticSymbols, const Vector2f& ballPosition, const FieldDimensions& theFieldDimensions);
+
 private:
   /** Updates some of the symbols */
   void update(TacticSymbols& tacticSymbols);
@@ -71,14 +68,15 @@ private:
   void getBallDirection();
   void getBallSide();
   bool decideKickoffDirection(TacticSymbols& tacticSymbols);
-  void decideFightForBall(TacticSymbols& tacticSymbols);
-  void decideDefensiveCone(TacticSymbols& theTacticSymbols);
+  void updateDanger(TacticSymbols& tacticSymbols);
+  [[nodiscard]] bool isDanger(float dangerDistance, bool hysteresis) const;
 
   enum class BallSide
   {
-    front,
-    center,
-    back
+    back,
+    centerback,
+    centerfront,
+    front
   };
 
   enum class BallDirection
@@ -88,8 +86,8 @@ private:
   };
 
   // vvv--- Attributes used to keep track of calculation results over several frames. ---vvv
-  BallSide lastSide = BallSide::center;
-  BallSide currentSide = BallSide::center;
+  BallSide lastSide = BallSide::centerback;
+  BallSide currentSide = BallSide::centerfront;
   BallDirection lastDirection = BallDirection::towardsEnemySide;
   BallDirection currentDirection = BallDirection::towardsEnemySide;
   bool defensiveBehavior = false;

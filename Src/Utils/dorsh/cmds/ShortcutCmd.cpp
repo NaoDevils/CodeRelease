@@ -1,6 +1,6 @@
-#include "Utils/dorsh/cmds/ShortcutCmd.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
+#include "cmds/ShortcutCmd.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
 
 ShortcutCmd ShortcutCmd::theShortcutCmd;
 

@@ -6,8 +6,6 @@
 #pragma once
 #include <list>
 #include "Representations/MotionControl/ActualCoM.h"
-#include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "StepData.h"
 #include "Representations/MotionControl/FootSteps.h"
@@ -25,7 +23,6 @@
 MODULE(IMUCoMProvider,
   REQUIRES(FootSteps),
   REQUIRES(JoinedIMUData),
-  REQUIRES(WalkingEngineParams),
   USES(WalkingInfo),
   USES(TargetCoM),
   PROVIDES(ActualCoM),

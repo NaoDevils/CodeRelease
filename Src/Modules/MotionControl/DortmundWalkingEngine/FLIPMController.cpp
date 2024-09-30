@@ -170,7 +170,7 @@ Point FLIPMController::controllerStep()
     //float direction = kElement_RCS->direction;
     //targetCOM.rotate2D(direction);
 
-    float yLimit = (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedLimits.speedFactor) / 1000.f;
+    float yLimit = (theWalkingEngineParams.speedLimits.y * theWalkingEngineParams.speedFactor) / 1000.f;
     float factorY = std::abs(yLimit - std::abs(theSpeedInfo.speed.translation.y())) / yLimit;
     float desired_z_h = factorY * max_z_h + (1.f - factorY) * min_z_h;
     float diffToDynamic = desired_z_h - dynamic_z_h;

@@ -14,9 +14,8 @@
 
 #include "Tools/Module/Module.h"
 #include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/Objective.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/ObjectivesManager.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/BallUtils.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/ObjectivesManager/Objective.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/ObjectivesManager/ObjectivesManager.h"
 #include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/PositionUtils.h>
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
@@ -24,43 +23,32 @@
 #include "Representations/BehaviorControl/RoleSymbols/Keeper.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Sensing/FallDownState.h"
-#include "Representations/MotionControl/MotionSelection.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/GoalSymbols.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/Logs/BehaviorLogger.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/Logs/BehaviorLogger.h"
 #include "Tools/Settings.h"
 #include "Modules/BehaviorControl/CABSL/Libraries/HelperFunctions.h"
 #include "RoleProvider.h"
-
-
 MODULE(KeeperProvider,
-  REQUIRES(BallModelAfterPreview),
   REQUIRES(BallSymbols),
   REQUIRES(BehaviorConfiguration),
   REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
-  REQUIRES(RobotInfo),
-  REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(TeammateData),
   REQUIRES(RobotMap),
-  REQUIRES(MotionSelection),
   REQUIRES(MotionInfo),
   REQUIRES(BallChaserDecision),
   REQUIRES(GameSymbols),
   REQUIRES(GoalSymbols),
-  USES(PositioningSymbols),
   PROVIDES(Keeper),
   LOADS_PARAMETERS(,
     (float)(250.f) minBallDistanceForBlock,
@@ -124,6 +112,7 @@ private:
   Vector2f ballPositionSupporter = Vector2f::Zero();
   //unsigned lastBlockTimeStamp = 0;
   bool kickLeft = false;
+  unsigned lastInPrepareDive = 0;
 
 private:
   void stateReady_kickOff_own(Keeper& positioningSymbols, const Vector2f& ballPosition) override;

@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/Image.h"
-#include "Representations/Infrastructure/JPEGImage.h"
 #include "Tools/MessageQueue/MessageQueue.h"
-#include "Tools/Streams/StreamHandler.h"
 #include <list>
+#include <memory>
+
+struct Image;
+class StreamHandler;
 
 /**
 * @class LogPlayer
@@ -31,13 +31,6 @@ public:
   * @param targetQueue The queue into that messages from played logfiles shall be stored.
   */
   LogPlayer(MessageQueue& targetQueue);
-
-  /** Destructor. */
-  ~LogPlayer()
-  {
-    if (streamHandler)
-      delete streamHandler;
-  }
 
   /** Deletes all messages from the queue */
   void init();
@@ -218,7 +211,7 @@ private:
   int lastImageFrameNumber; /**< The number of the last frame that contained an image. */
   int replayOffset;
   std::vector<int> frameIndex; /**< The message numbers the frames start at. */
-  StreamHandler* streamHandler; /**< The stream specification of the log file entries. */
+  std::unique_ptr<StreamHandler> streamHandler; /**< The stream specification of the log file entries. */
 
   /**
    * Writes selected audio data in the log player queue to a single wav file.

@@ -11,7 +11,7 @@
 #include "Platform/BHAssert.h"
 #include "Tools/Settings.h"
 
-Cognition::Cognition()
+Cognition::Cognition(Settings& settings)
     : INIT_SUPERTHREAD_DEBUGGING("cognition.cfg"), INIT_RECEIVER(MotionToCognition), INIT_SENDER(CognitionToMotion),
       moduleManager({ModuleBase::cognitionInfrastructure, ModuleBase::perception, ModuleBase::pathPlanning, ModuleBase::modeling, ModuleBase::behaviorControl}, this)
 {

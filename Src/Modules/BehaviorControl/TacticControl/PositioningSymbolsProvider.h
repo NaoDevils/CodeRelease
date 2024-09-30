@@ -15,7 +15,6 @@
 #include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackupBallchaser.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
-#include "Representations/BehaviorControl/RoleSymbols/BallchaserKeeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/Center.h"
 #include "Representations/BehaviorControl/RoleSymbols/DefenderLeft.h"
 #include "Representations/BehaviorControl/RoleSymbols/DefenderRight.h"
@@ -29,7 +28,6 @@
 #include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/FrontWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackWing.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/GameInfo.h"
@@ -51,13 +49,11 @@ MODULE(PositioningSymbolsProvider,
   REQUIRES(DefenderSingle),
   REQUIRES(Receiver),
   REQUIRES(BackupBallchaser),
-  REQUIRES(BallchaserKeeper),
   REQUIRES(ReplacementKeeper),
   REQUIRES(LeftWing),
   REQUIRES(RightWing),
   REQUIRES(BackWing),
   REQUIRES(FrontWing),
-  REQUIRES(TacticSymbols),
   REQUIRES(GameInfo),
   REQUIRES(BallChaserDecision),
   REQUIRES(RobotInfo),
@@ -83,9 +79,7 @@ public:
   void update(PositioningAndKickSymbols& positioningAndKickSymbols) override;
 
 private:
-  void selectClosestBallSearchPosition(Pose2f& position);
+  void selectClosestBallSearchPosition(const BallSearch::BallSearchPositions& ballSearchPositions, Pose2f& position);
 
-  bool wasInBallSearch = false;
   int ballSearchPointIndex = 0;
-  int ballSearchRoleIndex = 0;
 };

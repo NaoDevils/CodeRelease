@@ -11,7 +11,6 @@
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/StandEngineOutput.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/RobotInfo.h"
@@ -20,7 +19,6 @@
 MODULE(StandEngine,
   REQUIRES(FrameInfo),
   REQUIRES(MotionSelection),
-  REQUIRES(StiffnessSettings),
   REQUIRES(JoinedIMUData),
   REQUIRES(FsrSensorData),
   REQUIRES(RobotInfo),

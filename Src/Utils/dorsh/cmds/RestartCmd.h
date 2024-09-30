@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utils/dorsh/cmdlib/RobotCommand.h"
+#include "cmdlib/RobotCommand.h"
 
 class RestartCmd;
 class ProcessRunner;

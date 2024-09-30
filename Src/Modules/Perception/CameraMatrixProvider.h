@@ -8,12 +8,10 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/Configuration/CameraCalibration.h"
-#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Representations/MotionControl/MotionInfo.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Sensing/FallDownState.h"

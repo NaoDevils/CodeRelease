@@ -10,6 +10,8 @@
 #include "Tools/Module/ModulePackage.h"
 #include "Tools/Module/Logger.h"
 
+struct Settings;
+
 /**
  * @class Cognition
  * A class that represents a process that receives data from the robot at about 30 Hz.
@@ -24,7 +26,7 @@ private:
   ModuleManager moduleManager; /**< The solution manager handles the execution of modules. */
 
 public:
-  Cognition();
+  Cognition(Settings& settings);
 
   /**
    * The method is called from the framework once in every frame.

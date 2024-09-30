@@ -6,8 +6,8 @@
  * @author <a href="mailto::ojlr@informatik.uni-bremen.de">Ole Jan Lars Riemann</a>
  */
 
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmdlib/Context.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmdlib/Context.h"
 #include <iostream>
 
 ProcessRunner::ProcessRunner(const QString& command) : process(0), program(command), arguments(0), context(0) {}

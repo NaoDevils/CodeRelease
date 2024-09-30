@@ -22,6 +22,7 @@
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Tools/RingBufferWithSum.h"
 
+#include <limits>
 #include <vector>
 
 class KickEngineData
@@ -98,7 +99,8 @@ public:
 
   bool getMotionIDByName(const MotionRequest& motionRequest, const std::vector<KickEngineParameters>& params);
   void calculateOrigins(const KickRequest& kr, const JointAngles& ja, const TorsoMatrix& to);
-  bool checkPhaseTime(const FrameInfo& frame, const JointAngles& ja, const TorsoMatrix& torsoMatrix);
+  bool checkPhaseTime(
+      const FrameInfo& frame, const JointAngles& ja, const TorsoMatrix& torsoMatrix, const Vector2f ballPositionRelative, bool adjustLegPosition, float minOffsetX, float maxOffsetX, float minOffsetY, float maxOffsetY, float counterMomentumFactor);
   void balanceCOM(JointRequest& joints, const RobotDimensions& rd, const MassCalibration& mc, const InertialSensorData& isd);
   void calculatePreviewCom(Vector3f& ref, Vector2f& origin);
   void setStandLeg(const float& originY);

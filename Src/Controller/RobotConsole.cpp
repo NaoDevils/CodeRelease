@@ -7,6 +7,9 @@
 */
 
 #include "RobotConsole.h"
+#include "SimulatedRobot.h"
+
+#include "LogPlayer.h"
 
 #include <algorithm>
 #include <fstream>
@@ -18,6 +21,8 @@
 #include "Tools/Settings.h"
 #include "Tools/Debugging/DebugDataStreamer.h"
 #include "Tools/Debugging/QueueFillRequest.h"
+#include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/Debugging/DebugImages.h"
 #include "Tools/Module/Module.h"
 #include "Modules/MotionControl/KeyFrameEngine/KeyFrameEngine.h"
 
@@ -34,7 +39,34 @@
 #include "Views/SensorView.h"
 #include "Views/CABSLBehaviorView.h"
 #include "Views/TimeView/TimeView.h"
+#include "Views/DataView/DataView.h"
 #include <nlohmann/json.hpp>
+
+#include "Visualization/DebugDrawing.h"
+#include "Visualization/DebugDrawing3D.h"
+
+
+#include "Representations/BehaviorControl/ActivationGraph.h"
+#include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/Configuration/JointCalibration.h"
+#include "Representations/Configuration/RobotDimensions.h"
+#include "Representations/Infrastructure/JointRequest.h"
+#include "Representations/Infrastructure/RobotHealth.h"
+#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
+#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
+#include "Representations/Infrastructure/SensorData/KeyStates.h"
+#include "Representations/Infrastructure/SensorData/SystemSensorData.h"
+#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
+#include "Representations/Modeling/BallModel.h"
+#include "Representations/Modeling/TeamBallModel.h"
+#include "Representations/Modeling/RobotPose.h"
+#include "Representations/MotionControl/MotionRequest.h"
+#include "Representations/Perception/GoalPercept.h"
+
+#include "Representations/AnnotationInfo.h"
+#include "Representations/TimeInfo.h"
+#include "Representations/ModuleInfo.h"
 
 #include <chrono>
 #include <ctime>
@@ -48,6 +80,37 @@ using namespace std;
   pollingFor = #p;      \
   if (!poll(p))         \
     return false;
+
+struct RobotConsole::Pimpl
+{
+  JointRequest jointRequest; /**< The joint angles request received from the robot code. */
+  JointSensorData jointSensorData; /**< The most current set of joint angles received from the robot code. */
+  FsrSensorData fsrSensorData; /**< The most current set of fsr sensor data received from the robot code. */
+  InertialSensorData inertialSensorData; /**< The most current set of inertial sensor data received from the robot code. */
+  KeyStates keyStates; /**< The most current set of key states received from the robot code. */
+  SystemSensorData systemSensorData; /**< The most current set of system sensor data received from the robot code. */
+  SonarSensorData sonarSensorData; /**< The most current set of sonar sensor data received from the robot code. */
+  RobotPose robotPose; /**< Robot pose from team communication. */
+  BallModel ballModel; /**< Ball model from team communication. */
+  TeamBallModel teamBallModel; /**< combined ball information from team communication */
+  GoalPercept goalPercept; /**< Goal percept from team communication. */
+  BehaviorData behaviorData; /**< Behavior data from team communication. */
+  RobotHealth robotHealth; /**< Robot Health from team communication. */
+  MotionRequest motionRequest; /**< Motion Request from team communication. */
+  JointCalibration jointCalibration; /**< The joint calibration received from the robot code. */
+  RobotDimensions robotDimensions; /**< The robotDimensions received from the robot code. */
+  ActivationGraph activationGraph; /**< Graph of active options and states. */
+
+  std::unordered_map<char, AnnotationInfo> annotationInfos;
+  Drawings camImageDrawings, motionImageDrawings; /**< Buffers for image drawings from the debug queue. */
+  Drawings camFieldDrawings, motionFieldDrawings; /**< Buffers for field drawings from the debug queue. */
+  Drawings3D camDrawings3D, motionDrawings3D; /**< Buffers for 3d drawings from the debug queue. */
+  TimeInfos timeInfos; /**< Information about the timing of modules per process. */
+
+  Drawings incompleteImageDrawings; /**< Buffers incomplete image drawings from the debug queue. */
+  Drawings incompleteFieldDrawings; /**< Buffers incomplete field drawings from the debug queue. */
+  Drawings3D incompleteDrawings3D; /**< Buffers incomplete 3d drawings from the debug queue. */
+};
 
 bool RobotConsole::MapWriter::handleMessage(InMessage& message)
 {
@@ -66,7 +129,11 @@ bool RobotConsole::Printer::handleMessage(InMessage& message)
   return true;
 }
 
-RobotConsole::RobotConsole(MessageQueue& in, MessageQueue& out) : Process(in, out), logPlayer(out), debugOut(out), repViewWriter(&representationViews)
+RobotConsole::RobotConsole(MessageQueue& in, MessageQueue& out, Settings& settings)
+    : Process(in, out, settings), data(std::make_unique<Pimpl>()), logPlayerPtr(std::make_unique<LogPlayer>(out)), debugOut(out), annotationInfos(data->annotationInfos),
+      camImageDrawings(data->camImageDrawings), motionImageDrawings(data->motionImageDrawings), camFieldDrawings(data->camFieldDrawings), motionFieldDrawings(data->motionFieldDrawings),
+      camDrawings3D(data->camDrawings3D), motionDrawings3D(data->motionDrawings3D), moduleInfoPtr(std::make_unique<ModuleInfo>()), repViewWriter(&representationViews),
+      incompleteImageDrawings(data->incompleteImageDrawings), incompleteFieldDrawings(data->incompleteFieldDrawings), incompleteDrawings3D(data->incompleteDrawings3D), timeInfos(data->timeInfos)
 {
   // this is a hack: call global functions to get parameters
   ctrl = (ConsoleRoboCupCtrl*)RoboCupCtrl::controller;
@@ -120,16 +187,16 @@ void RobotConsole::addViews()
   if (mode != SystemCall::teamRobot)
   {
     SimRobot::Object* annotationCategory = ctrl->addCategory("annotations", category);
-    ctrl->addView(new AnnotationView(robotName + ".annotations.cognition", annotationInfos['c'], logPlayer, ctrl->application), annotationCategory);
-    ctrl->addView(new AnnotationView(robotName + ".annotations.motion", annotationInfos['m'], logPlayer, ctrl->application), annotationCategory);
+    ctrl->addView(new AnnotationView(robotName + ".annotations.cognition", annotationInfos['c'], logPlayer, *this, ctrl->application), annotationCategory);
+    ctrl->addView(new AnnotationView(robotName + ".annotations.motion", annotationInfos['m'], logPlayer, *this, ctrl->application), annotationCategory);
 
-    ctrl->addView(new CABSLBehaviorView(robotName + ".behavior", *this, activationGraph, activationGraphReceived), category);
+    ctrl->addView(new CABSLBehaviorView(robotName + ".behavior", *this, data->activationGraph, activationGraphReceived), category);
 
     ctrl->addCategory("colorSpace", ctrl->application->resolveObject(robotName));
     ctrl->addCategory("data", ctrl->application->resolveObject(robotName));
     ctrl->addCategory("field", ctrl->application->resolveObject(robotName));
     ctrl->addCategory("image", ctrl->application->resolveObject(robotName));
-    ctrl->addView(new JointView(robotName + ".jointData", *this, jointSensorData, jointRequest), category);
+    ctrl->addView(new JointView(robotName + ".jointData", *this, data->jointSensorData, data->jointRequest), category);
     SimRobot::Object* modulesCategory = ctrl->addCategory("modules", category);
     SimRobot::Object* cognitionCategory = ctrl->addCategory("cognition", modulesCategory);
     ctrl->addView(new ModuleGraphViewObject(robotName + ".modules.cognition.all", *this, 'c'), cognitionCategory);
@@ -147,7 +214,7 @@ void RobotConsole::addViews()
     ctrl->addCategory("plot", ctrl->application->resolveObject(robotName));
   }
 
-  ctrl->addView(new SensorView(robotName + ".sensorData", *this, fsrSensorData, inertialSensorData, keyStates, systemSensorData), category);
+  ctrl->addView(new SensorView(robotName + ".sensorData", *this, data->fsrSensorData, data->inertialSensorData, data->keyStates, data->systemSensorData), category);
 
   if (mode != SystemCall::teamRobot)
   {
@@ -248,129 +315,129 @@ bool RobotConsole::handleMessage(InMessage& message)
     commands.push_back(message.text.readAll());
     return true;
   case idImage:
-    if (!incompleteImages["raw image"].image)
-      incompleteImages["raw image"].image = new Image(false);
-    message.bin >> *incompleteImages["raw image"].image;
+    if (!incompleteImages["raw image"])
+      incompleteImages["raw image"] = std::make_unique<Image>(false);
+    message.bin >> *incompleteImages["raw image"].get();
     return true;
   case idImageUpper:
-    if (!incompleteImages["raw imageUpper"].image)
-      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
-    message.bin >> *incompleteImages["raw imageUpper"].image;
+    if (!incompleteImages["raw imageUpper"])
+      incompleteImages["raw imageUpper"] = std::make_unique<ImageUpper>(false);
+    message.bin >> *incompleteImages["raw imageUpper"].get();
     return true;
   case idJPEGImage:
   {
-    if (!incompleteImages["raw image"].image)
-      incompleteImages["raw image"].image = new Image(false);
+    if (!incompleteImages["raw image"])
+      incompleteImages["raw image"] = std::make_unique<Image>(false);
     JPEGImage jpi;
     message.bin >> jpi;
-    jpi.toImage(*incompleteImages["raw image"].image);
+    jpi.toImage(*incompleteImages["raw image"].get());
     return true;
   }
   case idJPEGImageUpper:
   {
-    if (!incompleteImages["raw imageUpper"].image)
-      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    if (!incompleteImages["raw imageUpper"])
+      incompleteImages["raw imageUpper"] = std::make_unique<ImageUpper>(false);
     JPEGImage jpi;
     message.bin >> jpi;
-    jpi.toImage(*incompleteImages["raw imageUpper"].image);
+    jpi.toImage(*incompleteImages["raw imageUpper"].get());
     return true;
   }
   case idThumbnail:
   {
-    if (!incompleteImages["raw image"].image)
-      incompleteImages["raw image"].image = new Image(false);
+    if (!incompleteImages["raw image"])
+      incompleteImages["raw image"] = std::make_unique<Image>(false);
     Thumbnail thumbnail;
     message.bin >> thumbnail;
-    thumbnail.toImage(*incompleteImages["raw image"].image);
-    incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    thumbnail.toImage(*incompleteImages["raw image"].get());
+    incompleteImages["raw image"]->timeStamp = SystemCall::getCurrentSystemTime();
     return true;
   }
   case idThumbnailUpper:
   {
-    if (!incompleteImages["raw imageUpper"].image)
-      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    if (!incompleteImages["raw imageUpper"])
+      incompleteImages["raw imageUpper"] = std::make_unique<ImageUpper>(false);
     ThumbnailUpper thumbnail;
     message.bin >> thumbnail;
-    thumbnail.toImage(*incompleteImages["raw imageUpper"].image);
-    incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    thumbnail.toImage(*incompleteImages["raw imageUpper"].get());
+    incompleteImages["raw imageUpper"]->timeStamp = SystemCall::getCurrentSystemTime();
     return true;
   }
   case idYoloInput:
   {
-    if (!incompleteImages["raw image"].image)
-      incompleteImages["raw image"].image = new Image(false);
+    if (!incompleteImages["raw image"])
+      incompleteImages["raw image"] = std::make_unique<Image>(false);
     YoloInput yoloInput;
     message.bin >> yoloInput;
-    yoloInput.toImage(*incompleteImages["raw image"].image);
-    incompleteImages["raw image"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    yoloInput.toImage(*incompleteImages["raw image"]);
+    incompleteImages["raw image"]->timeStamp = SystemCall::getCurrentSystemTime();
     return true;
   }
   case idYoloInputUpper:
   {
-    if (!incompleteImages["raw imageUpper"].image)
-      incompleteImages["raw imageUpper"].image = new ImageUpper(false);
+    if (!incompleteImages["raw imageUpper"])
+      incompleteImages["raw imageUpper"] = std::make_unique<ImageUpper>(false);
     YoloInputUpper yoloInputUpper;
     message.bin >> yoloInputUpper;
-    yoloInputUpper.toImage(*incompleteImages["raw imageUpper"].image);
-    incompleteImages["raw imageUpper"].image->timeStamp = SystemCall::getCurrentSystemTime();
+    yoloInputUpper.toImage(*incompleteImages["raw imageUpper"].get());
+    incompleteImages["raw imageUpper"]->timeStamp = SystemCall::getCurrentSystemTime();
     return true;
   }
   case idDebugImage:
   {
     std::string id;
     message.bin >> id;
-    if (!incompleteImages[id].image)
-      incompleteImages[id].image = new Image(false);
-    message.bin >> *incompleteImages[id].image;
-    incompleteImages[id].image->timeStamp = SystemCall::getCurrentSystemTime();
+    if (!incompleteImages[id])
+      incompleteImages[id] = std::make_unique<Image>(false);
+    message.bin >> *incompleteImages[id].get();
+    incompleteImages[id]->timeStamp = SystemCall::getCurrentSystemTime();
     break;
   }
   case idDebugJPEGImage:
   {
     std::string id;
     message.bin >> id;
-    if (!incompleteImages[id].image)
-      incompleteImages[id].image = new Image(false);
+    if (!incompleteImages[id])
+      incompleteImages[id] = std::make_unique<Image>(false);
     JPEGImage jpi;
     message.bin >> jpi;
-    jpi.toImage(*incompleteImages[id].image);
-    incompleteImages[id].image->timeStamp = SystemCall::getCurrentSystemTime();
+    jpi.toImage(*incompleteImages[id].get());
+    incompleteImages[id]->timeStamp = SystemCall::getCurrentSystemTime();
     break;
   }
   case idFsrSensorData:
   {
-    message.bin >> fsrSensorData;
+    message.bin >> data->fsrSensorData;
     return true;
   }
   case idInertialSensorData:
   {
-    message.bin >> inertialSensorData;
+    message.bin >> data->inertialSensorData;
     return true;
   }
   case idJointRequest:
   {
-    message.bin >> jointRequest;
-    jointRequest.angles[Joints::rHipYawPitch] = jointRequest.angles[Joints::lHipYawPitch];
+    message.bin >> data->jointRequest;
+    data->jointRequest.angles[Joints::rHipYawPitch] = data->jointRequest.angles[Joints::lHipYawPitch];
     return true;
   }
   case idJointSensorData:
   {
-    message.bin >> jointSensorData;
+    message.bin >> data->jointSensorData;
     return true;
   }
   case idKeyStates:
   {
-    message.bin >> keyStates;
+    message.bin >> data->keyStates;
     return true;
   }
   case idSystemSensorData:
   {
-    message.bin >> systemSensorData;
+    message.bin >> data->systemSensorData;
     return true;
   }
   case idSonarSensorData:
   {
-    message.bin >> sonarSensorData;
+    message.bin >> data->sonarSensorData;
     return true;
   }
   case idAudioData:
@@ -440,10 +507,8 @@ bool RobotConsole::handleMessage(InMessage& message)
       camImages.clear();
       for (Images::iterator i = incompleteImages.begin(); i != incompleteImages.end(); ++i)
       {
-        ImagePtr& imagePtr = (camImages)[i->first];
-        imagePtr.image = i->second.image;
-        imagePtr.processIdentifier = processIdentifier;
-        i->second.image = nullptr;
+        auto& imagePtr = (camImages)[i->first];
+        imagePtr = std::move(i->second);
       }
     }
     else //processIdentifier == 'm'
@@ -535,7 +600,7 @@ bool RobotConsole::handleMessage(InMessage& message)
     return true;
   }
   case idActivationGraph:
-    message.bin >> activationGraph;
+    message.bin >> data->activationGraph;
     activationGraphReceived = SystemCall::getCurrentSystemTime();
     return true;
   case idAnnotation:
@@ -632,7 +697,7 @@ bool RobotConsole::handleMessage(InMessage& message)
     logAcknowledged = true;
     return true;
   case idTeamBallModel:
-    message.bin >> teamBallModel;
+    message.bin >> data->teamBallModel;
     teamBallModelReceived = SystemCall::getCurrentSystemTime();
     return true;
   case idTeammateHasGroundContact:
@@ -644,29 +709,27 @@ bool RobotConsole::handleMessage(InMessage& message)
     isUprightReceived = SystemCall::getCurrentSystemTime();
     return true;
   case idBehaviorData:
-    message.bin >> behaviorData;
+    message.bin >> data->behaviorData;
     return true;
   case idRobotHealth:
-    message.bin >> robotHealth;
+    message.bin >> data->robotHealth;
     robotHealthReceived = SystemCall::getCurrentSystemTime();
     return true;
   case idMotionRequest:
-    message.bin >> motionRequest;
+    message.bin >> data->motionRequest;
     motionRequestReceived = SystemCall::getCurrentSystemTime();
     return true;
   case idRobotname:
   {
-    message.bin >> Global::getSettings().robotName >> Global::getSettings().bodyName;
-    STREAM_EXT(message.bin, Global::getSettings().overlays);
-    message.bin >> Global::getSettings().naoVersion;
+    Global::theInstance.settings->read(message.bin);
     --waitingFor[idRobotname];
     return true;
   }
   case idRobotDimensions:
-    message.bin >> robotDimensions;
+    message.bin >> data->robotDimensions;
     return true;
   case idJointCalibration:
-    message.bin >> jointCalibration;
+    message.bin >> data->jointCalibration;
     return true;
   case idExecutorObservings:
   {
@@ -729,7 +792,7 @@ bool RobotConsole::handleMessage(InMessage& message)
 
 void RobotConsole::update()
 {
-  setGlobals(); // this is called in GUI thread -> set globals for this process
+  GlobalGuard g(getGlobals()); // this is called in GUI thread -> set globals for this process
   handleJoystick();
 
   while (!lines.empty())
@@ -779,7 +842,7 @@ void RobotConsole::update()
 
 void RobotConsole::handleConsole(const std::string& line, bool fromCall)
 {
-  setGlobals(); // this is called in GUI thread -> set globals for this process
+  GlobalGuard g(getGlobals()); // this is called in GUI thread -> set globals for this process
   lines.push_back(line);
   while (!lines.empty())
   {
@@ -814,6 +877,11 @@ void RobotConsole::triggerProcesses()
     debugOut.out.bin << 'm';
     debugOut.out.finishMessage(idProcessFinished);
   }
+}
+
+JointRequest& RobotConsole::getJointRequest()
+{
+  return data->jointRequest;
 }
 
 bool RobotConsole::poll(MessageID id)
@@ -1775,7 +1843,7 @@ bool RobotConsole::set(In& stream)
               if (singleValue)
                 line = "value = " + line + ";";
               MessageQueue errors;
-              Global::theDebugOut = &errors.out;
+              GlobalGuard g({.debugOut = &errors.out});
               InMapMemory lineStream(line.c_str(), line.size());
               if (!lineStream.eof())
               {
@@ -1785,13 +1853,11 @@ bool RobotConsole::set(In& stream)
                 if (errors.isEmpty())
                 {
                   debugOut.out.finishMessage(idDebugDataChangeRequest);
-                  setGlobals();
                   return true;
                 }
                 else
                   debugOut.out.cancelMessage();
               }
-              setGlobals();
               Printer printer(ctrl);
               errors.handleAllMessages(printer);
               return !errors.isEmpty(); // return true if error was already printed
@@ -1964,18 +2030,29 @@ bool RobotConsole::moduleRequest(In& stream)
   {
     for (const auto& m : moduleInfo.modules)
     {
-      std::string text = m.name + " (" + ModuleBase::getName(m.category) + "): ";
-      for (const auto& r : m.requirements)
-        text += r + " ";
-      text += "-> ";
-      for (const auto& r : m.representations)
+      if (m.name == module)
       {
-        bool selected = false;
-        for (const auto& rp : moduleInfo.config.representationProviders)
-          selected |= rp.provider == m.name;
-        text += r + (selected ? "* " : " ");
+        std::string text = m.name + " (" + ModuleBase::getName(m.category) + "):\n";
+        for (const auto& r : m.requirements)
+        {
+          for (const auto& rp : moduleInfo.config.representationProviders)
+            if (rp.representation == r)
+            {
+              text += "     " + r + " (" + rp.provider + ")\n";
+              break;
+            }
+        }
+
+        text += "-> ";
+        for (const auto& r : m.representations)
+        {
+          bool selected = false;
+          for (const auto& rp : moduleInfo.config.representationProviders)
+            selected |= rp.provider == m.name;
+          text += r + (selected ? "* " : " ");
+        }
+        ctrl->list(text, pattern);
       }
-      ctrl->list(text, module, true);
     }
 
     return true;
@@ -2120,10 +2197,30 @@ bool RobotConsole::moveBall(In& stream)
 bool RobotConsole::kickBall(In& stream)
 {
   SYNC;
-  float kickAngleDeg;
-  stream >> kickAngleDeg >> kickVelocity;
-  kickAngle = Angle::fromDegrees(kickAngleDeg);
-  moveOp = kickBallVelocity;
+  float arg1, arg2;
+  stream >> arg1 >> arg2;
+  if (stream.eof())
+  {
+    //2 parameters variant (float kickAngleDeg, float kickVelocity)
+    float kickAngleDeg = arg1;
+    kickVelocity = arg2;
+    kickAngle = Angle::fromDegrees(kickAngleDeg);
+    moveOp = kickBallVelocity;
+  }
+  else
+  {
+    //3 parameters variant (float targetX, float targetY, float kickVelocity)
+    Vector2f targetPos = Vector2f(arg1, arg2);
+    stream >> kickVelocity;
+    Vector2f ballPos;
+    SimulatedRobot::getAbsoluteBallPosition(ballPos);
+    Vector2f diff = targetPos - ballPos;
+    if (diff.norm() > 0.001)
+    {
+      kickAngle = diff.angle();
+      moveOp = kickBallVelocity;
+    }
+  }
   return true;
 }
 
@@ -2471,7 +2568,8 @@ bool RobotConsole::kickView()
     {
       kickViewSet = true;
       ctrl->addView(
-          new KickView(robotName + ".KickView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, (SimRobotCore2::Body*)ctrl->application->resolveObject(robotFullName, SimRobotCore2::body)),
+          new KickView(
+              robotName + ".KickView", *this, data->motionRequest, data->jointSensorData, data->jointCalibration, data->robotDimensions, (SimRobotCore2::Body*)ctrl->application->resolveObject(robotFullName, SimRobotCore2::body)),
           robotName);
       return true;
     }
@@ -2481,7 +2579,8 @@ bool RobotConsole::kickView()
       QString puppetName("RoboCup.puppets." + robotName);
 
       ctrl->addView(
-          new KickView(robotName + ".KickView", *this, motionRequest, jointSensorData, jointCalibration, robotDimensions, (SimRobotCore2::Body*)ctrl->application->resolveObject(puppetName, SimRobotCore2::body)),
+          new KickView(
+              robotName + ".KickView", *this, data->motionRequest, data->jointSensorData, data->jointCalibration, data->robotDimensions, (SimRobotCore2::Body*)ctrl->application->resolveObject(puppetName, SimRobotCore2::body)),
           robotName);
       return true;
     }
@@ -2929,9 +3028,9 @@ bool RobotConsole::saveImage(In& stream)
     SYNC;
     Image* srcImage;
     if (useUpperCam)
-      srcImage = camImages["raw imageUpper"].image;
+      srcImage = camImages["raw imageUpper"].get();
     else
-      srcImage = camImages["raw image"].image;
+      srcImage = camImages["raw image"].get();
 
     return srcImage && LogPlayer::saveImage(*srcImage, filename.c_str(), number);
   }

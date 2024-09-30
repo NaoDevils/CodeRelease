@@ -2,6 +2,17 @@
 
 MAKE_MODULE(EventManager, cognitionInfrastructure);
 
+const EventManagerBase::Parameters::EventInterval* EventManagerBase::Parameters::getInterval(TeamCommEvents::SendReason reason, bool perTeam) const
+{
+  const auto it = std::find_if(eventIntervals.begin(),
+      eventIntervals.end(),
+      [=](const EventInterval& interval)
+      {
+        return interval.reason == reason && interval.perTeam == perTeam;
+      });
+  return it != eventIntervals.end() ? &*it : nullptr;
+}
+
 void EventManager::update(TeamCommEvents& events)
 {
   events.sendReasons = getSendReasons();
@@ -11,7 +22,7 @@ void EventManager::update(TeamCommEvents& events)
   const float messageBudgetFactor = std::min(1.f, 0.9f + static_cast<float>(theFrameInfo.getTimeSince(theGameInfo.timeFirstReadyState)) / 900000.f);
 
   const bool isPenalized = theRobotInfo.penalty != PENALTY_NONE;
-  const bool eventOldEnough = isTeamEventOldEnough(events.sendReasons) || isLocalEventOldEnough(events.sendReasons);
+  const bool eventOldEnough = isEventOldEnough(events.sendReasons);
 
   bool active = !isPenalized && eventOldEnough;
 
@@ -36,7 +47,25 @@ void EventManager::update(TeamCommEvents& events)
 
   if (events.sendThisFrame)
     for (const auto sendReason : events.sendReasons)
-      newestLocalUpdate[sendReason] = theFrameInfo.time;
+      newestLocalUpdates[sendReason].push_back(theFrameInfo.time);
+
+  for (int reason = 0; reason < TeamCommEvents::SendReason::numOfSendReasons; ++reason)
+  {
+    const TeammateReceived* mate = theTeammateData.getNewestEventMessage(static_cast<TeamCommEvents::SendReason>(reason));
+    if (mate && (newestTeamUpdates[reason].empty() || mate->sendTimestamp > newestTeamUpdates[reason].back()))
+      newestTeamUpdates[reason].push_back(mate->sendTimestamp);
+  }
+
+  for (const bool perTeam : {false, true})
+  {
+    auto& newestUpdates = perTeam ? newestTeamUpdates : newestLocalUpdates;
+    for (int reason = 0; reason < TeamCommEvents::SendReason::numOfSendReasons; ++reason)
+    {
+      const EventInterval* interval = getInterval(static_cast<TeamCommEvents::SendReason>(reason), perTeam);
+      while (!newestUpdates[reason].empty() && (!interval || theFrameInfo.getTimeSince(newestUpdates[reason].front()) > static_cast<int>(interval->interval)))
+        newestUpdates[reason].pop_front();
+    }
+  }
 }
 
 std::vector<TeamCommEvents::SendReason> EventManager::getSendReasons()
@@ -72,6 +101,12 @@ std::vector<TeamCommEvents::SendReason> EventManager::getSendReasons()
 
   if (checkForTimeResponses())
     sendReasons.push_back(TeamCommEvents::SendReason::timeResponse);
+
+  if (checkForRefereeGesture())
+    sendReasons.push_back(TeamCommEvents::SendReason::refereeGestureDetected);
+
+  if (checkForUprightAgain())
+    sendReasons.push_back(TeamCommEvents::SendReason::uprightAgain);
 
 
   // remember states for next frame
@@ -118,8 +153,7 @@ bool EventManager::checkForNewRoleAssignment()
 
 bool EventManager::checkForPlayerMoved()
 {
-  const bool positionUpdateInitial = theGameInfo.state == STATE_INITIAL
-      && theFrameInfo.getTimeSince(theTeamCommSenderOutput.dataSentTimestamp) > static_cast<int>(eventConfig.playerMovedEventIntervalInitial);
+  const bool positionUpdateInitial = theGameInfo.inPreGame() && theFrameInfo.getTimeSince(theTeamCommSenderOutput.dataSentTimestamp) > static_cast<int>(eventConfig.playerMovedEventIntervalInitial);
 
   if (theTeamCommSenderOutput.dataSent)
     lastSendPosition = theRobotPose;
@@ -130,9 +164,16 @@ bool EventManager::checkForPlayerMoved()
 
   const float distanceMoved = (theRobotPose.translation - lastSendPosition.translation).norm();
   const float ballDistance = theBehaviorData.ballPositionRelative.norm();
-  const float movedThreshold = (theBehaviorData.playerNumberToBall == theRobotInfo.number)
-      ? eventConfig.playerMovedEventDistanceForBallchaser
-      : ((ballDistance > eventConfig.playerMovedNearBallDistance) ? eventConfig.playerMovedEventDistance : eventConfig.playerMovedEventDistanceForBallchaser);
+
+  float movedThreshold;
+  if (theSpeedInfo.speed.translation.norm() * 1000.f < eventConfig.playerMovedEventSlowTransSpeed && std::abs(theSpeedInfo.speed.rotation) < eventConfig.playerMovedEventSlowRotSpeed)
+    movedThreshold = eventConfig.playerMovedEventDistanceWhenSlow;
+  else if (theBehaviorData.playerNumberToBall == theRobotInfo.number)
+    movedThreshold = eventConfig.playerMovedEventDistanceForBallchaser;
+  else if (ballDistance < eventConfig.playerMovedNearBallDistance)
+    movedThreshold = eventConfig.playerMovedEventDistanceForNearBall;
+  else
+    movedThreshold = eventConfig.playerMovedEventDistance;
 
   Vector2f goalAreaBottomLeft(theFieldDimensions.xPosOwnGroundline, theFieldDimensions.yPosRightGoalArea);
   Vector2f goalAreaTopRight(theFieldDimensions.xPosOwnGoalArea, theFieldDimensions.yPosLeftGoalArea);
@@ -143,7 +184,7 @@ bool EventManager::checkForPlayerMoved()
 
   if ((positionUpdateInitial || playerMoved || positionUpdateByAllowedInGoalArea)
       && (theRobotPose.validity > eventConfig.playerMovedEventMinPoseValidity || theTeammateData.myself.sendTimestamp == 0
-          || (theRobotPose.validity > eventConfig.playerMovedEventMinPoseValidityInitial && theGameInfo.state == STATE_INITIAL)))
+          || (theRobotPose.validity > eventConfig.playerMovedEventMinPoseValidityInitial && theGameInfo.inPreGame())))
     return true;
 
   return false;
@@ -197,7 +238,8 @@ bool EventManager::checkForBallMoved()
 
 bool EventManager::checkForBallchaserFallDown()
 {
-  if (theBehaviorData.playerNumberToBall == theRobotInfo.number && theFallDownState.state != FallDownState::State::upright && !theTeammateData.myself.fallen)
+  const TeammateReceived* mate = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::newBallchaser);
+  if (mate && mate->behaviorData.playerNumberToBall == theRobotInfo.number && theFallDownState.state != FallDownState::State::upright && !theTeammateData.myself.fallen)
     return true;
   else
     return false;
@@ -218,36 +260,34 @@ bool EventManager::checkForTimeResponses()
   return false;
 }
 
-bool EventManager::isTeamEventOldEnough(const std::vector<TeamCommEvents::SendReason>& sendReasons) const
+bool EventManager::checkForRefereeGesture()
 {
-  for (const TeamCommEvents::SendReason sendReason : sendReasons)
-  {
-    for (const auto& eventInterval : eventIntervals)
-    {
-      if (eventInterval.reason == sendReason && eventInterval.perTeam)
-      {
-        const Teammate* teammate = theTeammateData.getNewestEventMessage(sendReason);
+  const Teammate* mate = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::refereeGestureDetected);
+  if (mate && theFrameInfo.getTimeSince(mate->sendTimestamp) < 30000)
+    return false;
 
-        if (!teammate || theFrameInfo.getTimeSince(teammate->sendTimestamp) > static_cast<int>(eventInterval.interval))
-          return true;
-      }
-    }
-  }
-
-  return false;
+  return theRawGameInfo.state == STATE_STANDBY && theVisualRefereeBehaviorSymbols.state == VisualRefereeBehaviorSymbols::State::capture
+      && theRefereeGesture.gesture != RefereeGesture::Gesture::NONE && theRawGameInfo.controllerConnected;
 }
 
-bool EventManager::isLocalEventOldEnough(const std::vector<TeamCommEvents::SendReason>& sendReasons) const
+bool EventManager::checkForUprightAgain()
+{
+  return theTeammateData.myself.fallen && theFallDownState.state == FallDownState::State::upright;
+}
+
+
+bool EventManager::isEventOldEnough(const std::vector<TeamCommEvents::SendReason>& sendReasons) const
 {
   for (const TeamCommEvents::SendReason sendReason : sendReasons)
   {
-    for (const auto& eventInterval : eventIntervals)
-    {
-      if (eventInterval.reason == sendReason && !eventInterval.perTeam && theFrameInfo.getTimeSince(newestLocalUpdate[sendReason]) > static_cast<int>(eventInterval.interval))
-      {
-        return true;
-      }
-    }
+    const EventInterval* localInterval = getInterval(sendReason, false);
+    const EventInterval* teamInterval = getInterval(sendReason, true);
+    const bool inLocalInterval = !localInterval || newestLocalUpdates[sendReason].size() < localInterval->limit;
+    const bool inTeamInterval = !teamInterval || newestTeamUpdates[sendReason].size() < teamInterval->limit;
+
+    // do not send if number of events is above limit or not configured at all
+    if ((inLocalInterval && inTeamInterval) && (localInterval || teamInterval))
+      return true;
   }
 
   return false;

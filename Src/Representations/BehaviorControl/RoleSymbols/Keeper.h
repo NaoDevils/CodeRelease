@@ -38,5 +38,6 @@ STREAMABLE_WITH_BASE(Keeper, PositioningSymbols,
   (bool)(false) isBallchaser,
   (bool)(false) useLongKick,
   ((WalkRequest) StepRequest)(WalkRequest::StepRequest::any) walkKick,
-  ((KickRequest) KickMotionID)(KickRequest::KickMotionID::kickMiddle) longKick
+  ((KickRequest) KickMotionID)(KickRequest::KickMotionID::kickMiddle) longKick,
+  (bool)(false) isInPrepareDive
 );

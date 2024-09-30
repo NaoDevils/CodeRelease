@@ -7,6 +7,7 @@
 #include <limits>
 #include "Modules/MotionControl/DortmundWalkingEngine/Point.h"
 #include "Representations/MotionControl/WalkRequest.h"
+#include "Tools/Debugging/DebugDrawings.h"
 #ifndef WALKING_SIMULATOR
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Streams/Compressed.h"
@@ -18,7 +19,13 @@
  * @class SpeedInfo
  * Contains information about the actual speed.
  */
-STREAMABLE(SpeedInfo,,
+STREAMABLE(SpeedInfo,
+  void draw() const {
+    PLOT("representation:SpeedInfo:speed.x", speed.translation.x() * 1000);
+    PLOT("representation:SpeedInfo:speed.y", speed.translation.y() * 1000);
+    PLOT("representation:SpeedInfo:speed.r", speed.rotation * 1000);
+  };
+  ,
   (Pose2f) speed, /**< The< actual speed. */
   (Pose2f) speedAfterPreview, /**< Future speed in ControllerParams::N frames */
   (bool)(false) deceleratedByAcc, /** Decelerated due to limited acceleration */

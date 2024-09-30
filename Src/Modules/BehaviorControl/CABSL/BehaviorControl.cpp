@@ -138,9 +138,6 @@ class BehaviorControl : public BehaviorControlBase
     lastSoccerState = behaviorData.soccerState;
   }
 
-  /** Update the behavior led request by copying it from the behavior */
-  void update(BehaviorLEDRequest& behaviorLEDRequest) { behaviorLEDRequest = theBehaviorLEDRequest; }
-
   /** Updates the motion request by copying it from the behavior */
   void update(MotionRequest& motionRequest) { motionRequest = theMotionRequest; }
 
@@ -149,7 +146,6 @@ class BehaviorControl : public BehaviorControlBase
 
   Parameters parameters; /**< The root options. */
   BehaviorData theBehaviorData;
-  BehaviorLEDRequest theBehaviorLEDRequest;
   HeadControlRequest theHeadControlRequest;
   MotionRequest theMotionRequest;
   BehaviorOutput behaviorOutput; /**< References to the representations above. */
@@ -161,7 +157,7 @@ class BehaviorControl : public BehaviorControlBase
 
 public:
   BehaviorControl()
-      : behaviorOutput(const_cast<ActivationGraph&>(theActivationGraph), theBehaviorData, theBehaviorLEDRequest, theHeadControlRequest, theMotionRequest),
+      : behaviorOutput(const_cast<ActivationGraph&>(theActivationGraph), theBehaviorData, theHeadControlRequest, theMotionRequest),
         theBehavior(new Behavior(*this, behaviorOutput)), lastBehaviorState(BehaviorData::BehaviorState::frameworkInactive), lastSoccerState(BehaviorData::SoccerState::penalized)
   {
     InMapFile stream("behaviorControl.cfg");

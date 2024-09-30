@@ -15,13 +15,14 @@ class LogPlayer;
 class AnnotationView : public SimRobot::Object
 {
 public:
-  AnnotationView(const QString& fullName, AnnotationInfo& info, LogPlayer& logPlayer, SimRobot::Application* application);
+  AnnotationView(const QString& fullName, AnnotationInfo& info, LogPlayer& logPlayer, RobotConsole& console, SimRobot::Application* application);
 
 private:
   const QString fullName; /**< The path to this view in the scene graph */
   const QIcon icon; /**< The icon used for listing this view in the scene graph */
   AnnotationInfo& info;
   LogPlayer& logPlayer; /**< Used to jump to frames */
+  RobotConsole& console;
   SimRobot::Application* application;
 
   /**

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <algorithm>
 #include <cstdlib>
 #include <cmath>
 #include "Tools/Math/BHMath.h"
@@ -242,37 +241,51 @@ public:
    */
   static void fromHSVToRGB(short int H, float S, float V, unsigned char& R, unsigned char& G, unsigned char& B)
   {
-    float C = S * V;
-    float X = C * (1 - std::abs(fmodf(static_cast<float>(H) / 60.0f, 2) - 1));
-    float m = V - C;
     float r, g, b;
+    fromHSVToRGB(H, S, V, r, g, b);
+    R = static_cast<unsigned char>(std::round(r * 255.f));
+    G = static_cast<unsigned char>(std::round(g * 255.f));
+    B = static_cast<unsigned char>(std::round(b * 255.f));
+  }
+
+  /**
+   * @brief Converts a HSV Pixel into an RGB Pixel.
+   * @param H The H channel of the source pixel in interval [0°, 360°].
+   * @param S The S channel of the source pixel in interval [0, 1].
+   * @param V The V channel of the source pixel in interval [0, 1].
+   * @param R The R channel of the target pixel in interval [0, 1].
+   * @param G The G channel of the target pixel in interval [0, 1].
+   * @param B The B channel of the target pixel in interval [0, 1].
+   */
+  static void fromHSVToRGB(short int H, float S, float V, float& r, float& g, float& b)
+  {
+    const float C = S * V;
+    const float X = C * (1 - std::abs(fmodf(static_cast<float>(H) / 60.0f, 2) - 1));
+    const float m = V - C;
     if (H < 60)
     {
-      r = C, g = X, b = 0;
+      r = C + m, g = X + m, b = m;
     }
     else if (H < 120)
     {
-      r = X, g = C, b = 0;
+      r = X + m, g = C + m, b = m;
     }
     else if (H < 180)
     {
-      r = 0, g = C, b = X;
+      r = m, g = C + m, b = X + m;
     }
     else if (H < 240)
     {
-      r = 0, g = X, b = C;
+      r = m, g = X + m, b = C + m;
     }
     else if (H < 300)
     {
-      r = X, g = 0, b = C;
+      r = X + m, g = m, b = C + m;
     }
     else
     {
-      r = C, g = 0, b = X;
+      r = C + m, g = m, b = X + m;
     }
-    R = static_cast<unsigned char>(std::round((r + m) * 255));
-    G = static_cast<unsigned char>(std::round((g + m) * 255));
-    B = static_cast<unsigned char>(std::round((b + m) * 255));
   }
 
   /**

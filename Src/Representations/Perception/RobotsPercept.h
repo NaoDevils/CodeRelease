@@ -5,8 +5,6 @@
 #include "Tools/Enum.h"
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Math/Pose2f.h"
-#include <algorithm>
-#include <iomanip>
 
 STREAMABLE(ObstacleBasePoints,
   STREAMABLE(ObstacleBasePoint,
@@ -36,7 +34,8 @@ STREAMABLE(RobotEstimate,
   ENUM(DetectionSource,
     yoloHypothesis,
     recallAcceptance,
-    closeRobotDetection
+    closeRobotDetection,
+    segmentor
   );
   void getUpperImageCoordinates(Vector2i& ulRes, Vector2i& lrRes) const;,
   (bool)(false) keeper,
@@ -51,7 +50,8 @@ STREAMABLE(RobotEstimate,
   (unsigned int) timestampFromImage,
   (std::vector<unsigned char>) patch,
   (DetectionSource)(DetectionSource::yoloHypothesis) source,
-  (int)(0) trackingAge
+  (int)(0) trackingAge,
+  (std::vector<Vector2f>)() convexHull
 );
 
 STREAMABLE(RobotsPercept,
@@ -70,6 +70,8 @@ STREAMABLE_WITH_BASE(ProcessedRobotsHypotheses, RobotsPercept, );
 
 STREAMABLE_WITH_BASE(RobotsHypothesesYolo, RobotsPercept, );
 STREAMABLE_WITH_BASE(RobotsHypothesesYoloUpper, RobotsPercept, );
+
+STREAMABLE_WITH_BASE(RobotsHypothesesSegmentor, RobotsPercept, );
 
 STREAMABLE(RobotsPerceptCompressed,
   RobotsPerceptCompressed() = default;

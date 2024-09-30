@@ -53,27 +53,30 @@ private:
     requestForPickup,
     manual
   );
+
+  static GameController* theInstance;
+
   static const int numOfPenalties = numOfPenaltys; /**< Correct typo. */
 
   DECLARE_SYNC;
-  static const int numOfRobots = MAX_NUM_PLAYERS * 2;
-  static const int numOfFieldPlayers = numOfRobots / 2 - 2; // Keeper, Substitute
+  static constexpr int numOfRobots = MAX_NUM_PLAYERS * 2;
+  static constexpr int numOfFieldPlayers = numOfRobots / 2 - 2; // Keeper, Substitute
   static constexpr uint16_t messageBudget = 1200;
-  static const int durationOfHalf = 600;
-  static const int durationOfPS = 45; /**< duration of one penalty shootout attemp. */
-  static const float footLength; /**< foot length for position check and manual placement at center circle. */
-  static const float safeDistance; /**< safe distance from penalty areas for manual placement. */
-  static const float dropHeight; /**< height at which robots are manually placed so the fall a little bit and recognize it. */
-  static Pose2f lastBallContactPose; /**< Position were the last ball contact of a robot took place, orientation is toward opponent goal (0/180 degress). */
-  static int timeOfLastBallContact; /**Time when the last ball contact occured*/
-  static FieldDimensions fieldDimensions;
+  static constexpr int durationOfHalf = 600;
+  static constexpr int durationOfPS = 45; /**< duration of one penalty shootout attemp. */
+  static constexpr float footLength = 120.f; /**< foot length for position check and manual placement at center circle. */
+  static constexpr float safeDistance = 150.f; /**< safe distance from penalty areas for manual placement. */
+  static constexpr float dropHeight = 320.f; /**< height at which robots are manually placed so the fall a little bit and recognize it. */
+  Pose2f lastBallContactPose; /**< Position were the last ball contact of a robot took place, orientation is toward opponent goal (0/180 degress). */
+  int timeOfLastBallContact = 0; /**Time when the last ball contact occured*/
+  FieldDimensions fieldDimensions;
+
   RawGameInfo gameInfo;
   TeamInfo teamInfos[2];
   unsigned timeWhenHalfStarted;
   unsigned timeOfLastDropIn;
   unsigned timeWhenLastRobotMoved;
   unsigned timeWhenStateBegan;
-  int minNextMessageCountIncrease = 0;
   int timeWhenSetPlayStarted = -1; /**Time when the current set play started (-1 during SET_PLAY_NONE)*/
   Robot robots[numOfRobots];
 
@@ -90,12 +93,6 @@ private:
     CORNER_KICK_FOR_RED,
     CORNER_KICK_FOR_BLUE
   };
-
-  /**
-   * Handles the command "gc".
-   * @param command The second part of the command (without "gc").
-   */
-  bool handleGlobalCommand(const std::string& command);
 
   /**
    * Handles the command "pr".
@@ -168,10 +165,10 @@ private:
   void executePlacement();
 
   /** Check if the ball left the field and which action should follow. */
-  static BallOut updateBall();
+  BallOut updateBall();
 
   /** Place the ball in the correct position based on how it left the field. */
-  static void placeBallAfterLeavingField(BallOut typeOfBallOut);
+  void placeBallAfterLeavingField(BallOut typeOfBallOut);
 
   /** Checks if current set play ended because time ran out or offensive team touched the ball. */
   void checkForSetPlayCompletion();
@@ -204,6 +201,9 @@ public:
 
   /** Constructor */
   GameController();
+  ~GameController();
+
+  static GameController& getInstance() { return *theInstance; }
 
   /**
    * Each simulated robot must be registered.
@@ -220,6 +220,12 @@ public:
   bool handleGlobalConsole(In& stream);
 
   /**
+   * Handles the command "gc".
+   * @param command The second part of the command (without "gc").
+   */
+  bool handleGlobalCommand(const std::string& command);
+
+  /**
    * Handles the parameters of the console command "pr".
    * @param robot The number of the robot that received the command.
    * @param stream The stream that provides the parameters.
@@ -234,7 +240,7 @@ public:
   * Proclaims which robot touched the ball at last
   * @param robot The robot
   */
-  static void setLastBallContactRobot(SimRobot::Object* robot);
+  void setLastBallContactRobot(SimRobot::Object* robot);
 
   /**
    * @brief Decreases message budget counter by one.
@@ -280,4 +286,16 @@ public:
    * @param completion The set of tab completion strings.
    */
   void addCompletion(std::set<std::string>& completion) const;
+
+  /**
+   * Retrieves the SimulatedRobot object of the given robot id
+   * @param robot The number of the robot 
+   */
+  const SimulatedRobot* getSimulatedRobot(int robot);
+
+  /**
+   * Retrieves the RobotInfo object of the given robot id
+   * @param robot The number of the robot 
+   */
+  const RobotInfo& getRobotInfo(int robot);
 };

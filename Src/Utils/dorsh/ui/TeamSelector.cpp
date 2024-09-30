@@ -3,11 +3,11 @@
 #include <QAction>
 
 #include "Tools/Streams/OutStreams.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
-#include "Utils/dorsh/ui/TeamView.h"
-#include "Utils/dorsh/ui/RobotView.h"
+#include "models/Team.h"
+#include "models/Robot.h"
+#include "ui/TeamSelector.h"
+#include "ui/TeamView.h"
+#include "ui/RobotView.h"
 
 TeamSelector::TeamSelector() : teams(), teamsMap(), teamPages(), teamViews()
 {

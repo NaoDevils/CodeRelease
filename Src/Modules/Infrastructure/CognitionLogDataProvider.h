@@ -14,20 +14,21 @@
 #include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
 #include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
+#include "Representations/BehaviorControl/JoystickControl/JoystickState.h"
+#include "Representations/Modeling/RecommendedKick/RecommendedKick.h"
+#include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/GroundTruthWorldState.h"
 #include "Representations/Infrastructure/Image.h"
-#include "Representations/Infrastructure/JPEGImage.h"
-#include "Representations/Infrastructure/LowFrameRateImage.h"
 #include "Representations/Infrastructure/RobotHealth.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/SequenceImage.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/Infrastructure/YoloInput.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Modeling/RobotMap.h"
@@ -45,6 +46,7 @@
 #include "Representations/Perception/CenterCirclePercept.h"
 #include "Representations/Perception/ImageCoordinateSystem.h"
 #include "Representations/Perception/PenaltyCrossPercept.h"
+#include "Representations/Perception/RefereeKeypoints.h"
 #include "Representations/Perception/RobotsPercept.h"
 #include "Representations/Sensing/GroundContactState.h"
 #include "Tools/Debugging/DebugImages.h"
@@ -56,7 +58,6 @@
 MODULE(CognitionLogDataProvider,
   USES(CameraInfo),
   USES(CameraInfoUpper),
-  USES(FrameInfo),
   PROVIDES_CONCURRENT(ActivationGraph),
   PROVIDES_CONCURRENT(AudioData),
   PROVIDES_CONCURRENT(BallModel),
@@ -66,6 +67,7 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(BallSymbols),
   PROVIDES_CONCURRENT(BehaviorData),
   PROVIDES_CONCURRENT(BodyContour),
+  PROVIDES_CONCURRENT(CameraCalibration),
   PROVIDES_CONCURRENT(CameraInfo),
   PROVIDES_CONCURRENT(CameraInfoUpper),
   PROVIDES_CONCURRENT(CameraMatrix),
@@ -86,6 +88,7 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(ImageCoordinateSystem),
   PROVIDES_CONCURRENT(ImageCoordinateSystemUpper),
   PROVIDES_CONCURRENT(JointSensorData),
+  PROVIDES_CONCURRENT(JoystickState),
   PROVIDES_CONCURRENT(MotionInfo),
   PROVIDES_CONCURRENT(MotionRequest),
   PROVIDES_CONCURRENT(OdometryData),
@@ -96,6 +99,8 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(ProcessedRobotsHypotheses),
   PROVIDES_CONCURRENT(PositioningSymbols),
   PROVIDES_CONCURRENT(RawGameInfo),
+  PROVIDES_CONCURRENT(RecommendedKick),
+  PROVIDES_CONCURRENT(RefereeKeypoints),
   PROVIDES_CONCURRENT(RemoteBallModel),
   PROVIDES_CONCURRENT(RobotHealth),
   PROVIDES_CONCURRENT(RobotInfo),
@@ -105,9 +110,13 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT_WITHOUT_MODIFY(RobotPoseHypotheses),
   PROVIDES_CONCURRENT(SideConfidence),
   PROVIDES_CONCURRENT(TeamBallModel),
-  PROVIDES_CONCURRENT(TeammateData)
+  PROVIDES_CONCURRENT(TeammateData),
+  PROVIDES_CONCURRENT(VisualRefereeBehaviorSymbols)
 );
 
+
+struct LowFrameRateImage;
+struct LowFrameRateImageUpper;
 class CognitionLogDataProvider : public CognitionLogDataProviderBase, public LogDataProvider
 {
 private:
@@ -134,6 +143,7 @@ private:
   void update(BallSymbols&) override {}
   void update(BehaviorData&) override {}
   void update(BodyContour&) override {}
+  void update(CameraCalibration&) override {}
   void update(CameraInfo& cameraInfo) override {}
   void update(CameraInfoUpper& cameraInfoUpper) override {}
   void update(CameraMatrix&) override {}
@@ -148,6 +158,7 @@ private:
   void update(HeadAngleRequest&) override {}
   void update(HeadControlRequest&) override {}
   void update(JointSensorData&) override {}
+  void update(JoystickState&) override {}
   void update(MotionInfo&) override {}
   void update(MotionRequest&) override {}
   void update(OdometryData&) override {}
@@ -158,6 +169,8 @@ private:
   void update(ProcessedRobotsHypotheses&) override {}
   void update(PositioningSymbols&) override {}
   void update(RawGameInfo&) override {}
+  void update(RecommendedKick&) override {}
+  void update(RefereeKeypoints&) override {}
   void update(RemoteBallModel&) override {}
   void update(RobotHealth&) override {}
   void update(RobotInfo&) override {}
@@ -167,6 +180,7 @@ private:
   void update(SideConfidence&) override {}
   void update(TeamBallModel&) override {}
   void update(TeammateData&) override {}
+  void update(VisualRefereeBehaviorSymbols&) override {}
 
   // Updates with data
   void update(Image& image) override;

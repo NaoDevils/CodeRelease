@@ -7,7 +7,7 @@ STREAMABLE(USBSettings,,
   (std::string)("") wifiSSID,
   (std::string)("") wifiPassword,
   (std::string)("") ip,
-  (int)(0) robotNumber,
-  (int)(0) teamNumber,
-  (int)(0) teamPort
+  (uint8_t)(0) robotNumber,
+  (uint8_t)(0) teamNumber,
+  (uint16_t)(0) teamPort
 );

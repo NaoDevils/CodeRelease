@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/ObjectivesManager/Objective.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserProvider.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h"
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/KickManager.h>
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/ObjectivesManager/ObjectivesManager.h>
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/ObjectivesManager/Objective.h>
 
 class BallchaserProvider;
 struct Ballchaser;
@@ -18,6 +18,6 @@ public:
   void postprocess() override;
 
 private:
-  KickManager kickManager = {};
+  CurrentKickManager currentKickManager = {};
   std::vector<std::unique_ptr<Kick>> kicks = {};
 };

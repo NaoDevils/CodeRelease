@@ -10,15 +10,15 @@
 #include <QSplitter>
 #include <QCheckBox>
 #include <vector>
-#include "Utils/dorsh/ui/Console.h"
-#include "Utils/dorsh/ui/MainWindow.h"
-#include "Utils/dorsh/ui/RobotPool.h"
-#include "Utils/dorsh/ui/ShortcutBar.h"
+#include "ui/Console.h"
+#include "ui/MainWindow.h"
+#include "ui/RobotPool.h"
+#include "ui/ShortcutBar.h"
 
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/tools/Filesystem.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/models/Team.h"
+#include "cmdlib/ProcessRunner.h"
+#include "tools/Filesystem.h"
+#include "tools/Platform.h"
+#include "models/Team.h"
 #include <algorithm>
 
 MainWindow::MainWindow()
@@ -85,7 +85,7 @@ MainWindow::MainWindow()
   shortcutBar->addShortcut("naodevils stop", "ssh systemctl --user stop naodevils");
   shortcutBar->addShortcut("base start", "ssh systemctl --user start naodevilsbase");
   shortcutBar->addShortcut("base stop", "ssh systemctl --user stop naodevilsbase");
-  shortcutBar->addShortcut("clear speedLimits", "ssh \"systemctl --user stop naodevils && rm -r /home/nao/Persistent/*/speedLimits.value && systemctl --user start naodevils\"");
+  shortcutBar->addShortcut("clear speedLimits", "ssh \"systemctl --user stop naodevils && rm -r /home/nao/Persistent/*/speedLimits.* && systemctl --user start naodevils\"");
   shortcutBar->addShortcut("clear persistent", "ssh \"systemctl --user stop naodevils && rm -r /home/nao/Persistent/ && systemctl --user start naodevils\"");
   shortcutBar->setContextMenuPolicy(Qt::PreventContextMenu);
 

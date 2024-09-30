@@ -1,0 +1,64 @@
+keyFrameID = standUpBackSpreadLegs;
+initialKeyFrame = false;
+nextMotionConditions = [useStandUpStatistic, useStandUpStatistic, execute];
+nextKeyFrameMotionIDs = [standUpBackSlide, standUpBackLean, rip];
+YstabilizationP = -0.05;
+YstabilizationI = 0;
+YstabilizationD = -0.6;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+errorMultiplier = 100;
+reductionRate = 0.25;
+maxCompensation = 10deg;
+compensationThreshold = 8deg;
+hipYawCorrectionFactors = [1, 0.2, 0.2];
+hipCorrectionFactors = [2, 2];
+kneeCorrectionFactors = [1];
+ankleCorrectionFactors = [0.25, 0.25];
+localArmAngleReachedThreshold = 10deg;
+keyFrames = [
+  { // spread legs 1
+  //0,22deg, 123deg,8deg,17deg,-30deg,-90deg,0deg, 123deg,-8deg,-17deg,30deg,90deg,0deg, -65deg,42deg,-80deg,76.5deg,49deg,-7deg, -65deg,-32.5deg,-84deg,82deg,47deg,1deg
+    headAngles = [0,22deg];
+    armsAngles = [123deg,8deg,17deg,-30deg,-90deg,0deg, 123deg,-8deg,-17deg,30deg,90deg,0deg];
+    legsAngles = [-65deg,42deg,-80deg,76.5deg,49deg,-7deg, -65deg,-32.5deg,-84deg,82deg,47deg,1deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 450;
+    intType = linear;
+    angleAtKeyFrameTarget = -15deg;
+    angleAtKeyFrameError = [30deg,30deg];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = playDead;
+    holdFallDownProtection = 12;
+  },
+
+  { // spread legs 2
+  //0,22deg, 120deg,-5deg,-85deg,-19deg,-90deg,0, 121deg,-1deg,87deg,-22deg,90deg,0, -65deg,42deg,-80deg,76.5deg,49deg,-7deg, -65deg,-32.5deg,-84deg,82deg,47deg,1deg
+    headAngles = [0,22deg];
+    armsAngles = [120deg,-5deg,-85deg,-19deg,-90deg,0, 121deg,-1deg,87deg,-22deg,90deg,0];
+    legsAngles = [-65deg,42deg,-80deg,76.5deg,49deg,-7deg, -65deg,-32.5deg,-84deg,82deg,47deg,1deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 200;
+    intType = linear;
+    angleAtKeyFrameTarget = -6deg;
+    angleAtKeyFrameError = [30deg,30deg];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = playDead;
+    holdFallDownProtection = 12;
+  }
+];

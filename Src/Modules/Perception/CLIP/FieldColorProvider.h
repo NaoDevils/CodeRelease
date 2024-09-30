@@ -33,6 +33,7 @@ MODULE(FieldColorProvider,
     (int) maxDiffOptCb,
     (int) maxDiffOptY,
     (int) maxDiffCbCrRatio,
+    (int)(65) fieldColorMaxDistY,
     (int)(30) minLineToFieldColorThresholdUpper,
     (int)(30) minLineToFieldColorThresholdLower
   )

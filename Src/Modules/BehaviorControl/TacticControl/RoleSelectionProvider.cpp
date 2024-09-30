@@ -81,7 +81,7 @@ bool RoleSelectionProvider::isKeeperAvailable()
   if (theRobotInfo.number == 1)
     return theRobotInfo.penalty == PENALTY_NONE;
 
-  if (theTeammateData.wlanOK)
+  if (theTeammateData.commEnabled)
   {
     for (auto& mate : theTeammateData.teammates)
     {

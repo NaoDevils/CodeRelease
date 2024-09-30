@@ -9,7 +9,6 @@
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Streams/Compressed.h"
 #include "Tools/Math/Pose2f.h"
-#include "Tools/Math/Pose3f.h"
 #include <vector>
 
 /**

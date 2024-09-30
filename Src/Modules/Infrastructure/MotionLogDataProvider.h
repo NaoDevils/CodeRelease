@@ -7,7 +7,6 @@
 #pragma once
 
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"

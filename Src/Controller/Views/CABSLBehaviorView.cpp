@@ -17,6 +17,7 @@
 #include "Controller/RoboCupCtrl.h"
 #include "Platform/Thread.h"
 #include "CABSLBehaviorView.h"
+#include "Representations/BehaviorControl/ActivationGraph.h"
 
 class CABSLBehaviorWidget : public QWidget
 {

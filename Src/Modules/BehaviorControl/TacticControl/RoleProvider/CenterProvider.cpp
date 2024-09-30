@@ -26,9 +26,9 @@ void CenterProvider::stateReady_kickOff_own(Center& role, const Vector2f& ballPo
 void CenterProvider::stateReady_kickOff_opponent(Center& role, const Vector2f& ballPosition)
 {
   ThresholdUtils::setThreshholdsHeigh(role);
-  const float x = -theFieldDimensions.xPosOpponentPenaltyArea / 1.2f;
-  const float y = 500.f;
-  PositionUtils::setPosition(role, x, y);
+  const float xPos = -theFieldDimensions.xPosOpponentPenaltyArea / 1.2f;
+  const float yPos = 500.f;
+  PositionUtils::setPosition(role, xPos, yPos);
   PositionUtils::turnTowardsBall(role, theBallSymbols);
 }
 
@@ -110,9 +110,16 @@ void CenterProvider::regularPlay(Center& role)
 
   PositionUtils::turnTowardsBall(role, theBallSymbols);
 
-  const float x = MathUtils::clamp_f(theBallSymbols.ballPositionField.x() - 1000.f, theFieldDimensions.xPosOwnPenaltyArea + 500.f, theFieldDimensions.xPosOpponentPenaltyArea);
-  const float y = 500.f;
-  PositionUtils::setPosition(role, x, y);
+  float xPos = MathUtils::clamp_f(theBallSymbols.ballPositionField.x() - 1000.f, theFieldDimensions.xPosOwnPenaltyArea + 500.f, theFieldDimensions.xPosOpponentPenaltyArea);
+  //translates the ball Y position to -1..1
+  float relativeYBallPosition = MathUtils::clamp_f(theBallSymbols.ballPositionField.y() / theFieldDimensions.yPosLeftSideline, -1.0f, 1.0f);
+  //max y deviation = half of field width
+  float maxYDeviation = theFieldDimensions.yPosLeftSideline;
+  //deviate from planned y pos based on the ball position
+  float yDeviation = relativeYBallPosition * maxYDeviation;
+
+  float yPos = MathUtils::clamp_f(500.f + yDeviation, theFieldDimensions.yPosRightSideline * 0.7f, theFieldDimensions.yPosLeftSideline * 0.7f);
+  PositionUtils::setPosition(role, xPos, yPos);
 }
 
 MAKE_MODULE(CenterProvider, behaviorControl)

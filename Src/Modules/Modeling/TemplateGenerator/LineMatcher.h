@@ -12,11 +12,9 @@
 #include <vector>
 
 #include "Tools/Module/Module.h"
-#include "Representations/Perception/CenterCirclePercept.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Modeling/LineMatchingResult.h"
 #include "Tools/Math/Pose2f.h"
 #include "stdint.h"
@@ -26,8 +24,6 @@
 
 MODULE(LineMatcher,
   REQUIRES(FieldDimensions),
-  REQUIRES(FrameInfo),
-  REQUIRES(CLIPCenterCirclePercept),
   REQUIRES(CLIPFieldLinesPercept),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),

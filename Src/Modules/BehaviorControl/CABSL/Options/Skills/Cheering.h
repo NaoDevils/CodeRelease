@@ -22,16 +22,20 @@ option(Cheering)
     }
     action
     {
-      // TODO start fire eyes
-
       // Choose a random cheering motion
       float r = randomFloat();
       if (r < 0.20f)
+      {
         SpecialAction(SpecialActionRequest::cheering4);
+      }
       else if (r < 0.50f)
+      {
         SpecialAction(SpecialActionRequest::cheering3);
+      }
       else
+      {
         SpecialAction(SpecialActionRequest::cheering2);
+      }
     }
   }
 

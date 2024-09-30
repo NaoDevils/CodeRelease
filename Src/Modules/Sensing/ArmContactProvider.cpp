@@ -55,7 +55,7 @@ void ArmContactProvider::update(ArmContact& armContact)
   // Only when in standard walk (not in kicking, not in special actions etc)
   if (enableAvoidArmContact && (theGameInfo.state == STATE_READY || theGameInfo.state == STATE_PLAYING) && lastMotionType == MotionRequest::walk
       && theFrameInfo.getTimeSince(timeWhenWalkStarted) > 2000 && // a little time to get started here to not move arms immediately on walk start
-      theFallDownState.state == FallDownState::upright && Global::getSettings().gameMode != Settings::penaltyShootout && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT) // no robots to contact in penalty shootout
+      theFallDownState.state == FallDownState::upright && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT) // no robots to contact in penalty shootout
   {
     bool wasContactLeft = localArmContact.armContactStateLeft != ArmContact::ArmContactState::None;
     bool wasContactRight = localArmContact.armContactStateRight != ArmContact::ArmContactState::None;

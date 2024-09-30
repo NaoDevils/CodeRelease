@@ -309,6 +309,7 @@
 #define _STREAM_STREAMABLE_II(n, name, base, streamBase, header, ...)  \
   struct name : public base {\
     _STREAM_UNWRAP header; \
+  public: \
     _STREAM_ATTR_##n (_STREAM_DECL, __VA_ARGS__) \
     Streamable& operator=(const Streamable& other) noexcept { \
       return *this = dynamic_cast<const name&>(other); \

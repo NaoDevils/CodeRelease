@@ -11,23 +11,19 @@
 
 #include "Tools/Module/Module.h"
 #include "Tools/Math/Eigen.h"
-#include "Representations/MotionControl/SpecialActionRequest.h"
 // REQUIRES
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/MotionControl/KickEngineOutput.h"
-#include "Representations/Configuration/MotionSettings.h"
-#include "Representations/MotionControl/MotionState.h"
+#include "Representations/BehaviorControl/JoystickControl/JoystickState.h"
+#include "Representations/BehaviorControl/JoystickControl/JoystickControlParameters.h"
+#include "Representations/BehaviorControl/JoystickControl/JoystickDeviceParameters.h"
+
 // PROVIDES
 #include "Representations/Sensing/ArmContact.h"
 #include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/MotionControl/MotionRequest.h"
-
-#include "JoystickControlParameters.h"
-#include "JoystickLib.h"
-#include "JoystickState.h"
 
 
 // Send debug messages for received joystick events.
@@ -38,15 +34,25 @@ MODULE(JoystickControl,
   REQUIRES(FallDownState),
   REQUIRES(FrameInfo),
   REQUIRES(RobotInfo),
-  REQUIRES(KeyStates),
-  REQUIRES(MotionSettings),
-  REQUIRES(MotionState),
   USES(KickEngineOutput),
+
+  REQUIRES(JoystickState),
+  REQUIRES(JoystickControlParameters),
+  REQUIRES(JoystickDeviceParameters),
 
   PROVIDES(ArmContact), // Provide ArmContact to prevent moving arms in front of obstacles.
   PROVIDES(HeadControlRequest),
   PROVIDES(MotionRequest),
-  HAS_PREEXECUTION
+  HAS_PREEXECUTION,
+  LOADS_PARAMETERS(
+    ,
+    (unsigned)(10000) continueWalkingTime,
+    (unsigned)(3500) standTime,
+    (unsigned)(2500) sitDownTime,
+    (unsigned)(5000) standUpBackTime,
+    (unsigned)(2800) standUpFrontTime,
+    (unsigned)(2000) kickTime
+  )
 );
 
 
@@ -58,11 +64,6 @@ public:
    * Invokes method \c initialize().
    */
   JoystickControl();
-
-  /**
-   * Destructor.
-   */
-  ~JoystickControl();
 
   /**
    * The update method to provide the representation ArmContact. This is done 
@@ -93,15 +94,10 @@ private:
   void execute(tf::Subflow&);
 
   /**
-   * Reads all pending joystick events.
-   */
-  void parseJoystickEvents();
-
-  /**
    * Process the state of the chest button. Stand up / sit down when
    * chest button is pressed.
    */
-  void processChestButton();
+  void processStartButton();
 
   /**
   * Process current joystick events and set \c localHeadControlRequest.
@@ -143,6 +139,10 @@ private:
    */
   void generateCustomStep();
 
+  /**
+   * Checks if a button or axis is set in the config
+   */
+  void checkButtonOrAxisAvailability();
 
   // --- Actions ---
 
@@ -164,7 +164,7 @@ private:
    * @param specialAction Choose the special action including option to mirror.
    * @param duration The duration time of the given special action.
    */
-  void specialAction(SpecialActionRequest& specialAction, unsigned duration);
+  void specialAction(const SpecialActionRequest& specialAction, unsigned duration);
 
   /**
    * Run the special action 'playDead'.
@@ -193,15 +193,6 @@ private:
   void kick(bool kickLeft);
 
 private:
-  /// Parameters loaded from locations config file "joystickControl.cfg".
-  JoystickControlParameters parameters;
-
-  /// Joystick object is used to receive joystick events.
-  JoystickLib joystick;
-  /// The current state (after execution of \c parseJoystickEvents) of
-  /// all buttons and axes of the joystick.
-  JoystickState state;
-
   /// The \c HeadControlequest is saved in this class member.
   HeadControlRequest localHeadControlRequest;
 
@@ -212,14 +203,17 @@ private:
   /// Only standing the robot is able to do all the other actions.
   bool m_standing;
 
-  // True while the execution of a button event endures.
+  /// True while the execution of a button event endures.
   bool m_actionRunning;
 
-  // True while walkin on spot for testing CustomStep
-  bool m_inCustomStepTest;
+  /// True while walkin on spot for testing
+  bool m_walkOnSpot;
 
   /// Time stamp when the execution of a button event will be finished.
   unsigned m_actionEndTime;
+
+  /// Time stamp when last movement happend.
+  unsigned int m_timestampOfLastWalkMovement = 0;
 
   /// TODO
   unsigned int startOfCustomStep = 0;
@@ -228,5 +222,9 @@ private:
   WalkRequest::StepRequest currentExecutedCustomStep = WalkRequest::StepRequest::none;
 
   /// TODO
-  bool currentExecutedCustomStepMirror = false;
+  bool currentExecutedCustomStepMirror;
+
+  bool startButtonAvailable, headPanAxisAvailable, headTiltAxisAvailable, backButtonAvailable, rightKickButtonAvailable, leftKickButtonAvailable;
+  std::vector<bool> specialActionsButtonAvailable;
+  bool walkXAxisAvailable, additionalWalkXAxisAvailable, walkYAxisAvailable, walkRotAxisAvailable, customStepXAxisAvailable, customStepYAxisAvailable;
 };

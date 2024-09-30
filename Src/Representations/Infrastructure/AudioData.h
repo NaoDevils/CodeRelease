@@ -1,32 +1,29 @@
 /**
  * @file AudioData.h
  * The file declares a struct that stores audio data of up to four channels.
- * On a V4, the four channels are:
- * 0: left microphone
- * 1: right microphone
- * 2: front microphone
- * 3: rear microphone
- * @author <a href="mailto:Thomas.Roefer@dfki.de">Thomas RÃ¶fer</a>
+
+ * On a V6, the four channels are:
+ * 0: back left microphone
+ * 1: back right microphone
+ * 2: front left microphone
+ * 3: front right microphone
+
+ * @author <a href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</a>
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
  */
 
 #pragma once
 
 #include "Tools/Streams/AutoStreamable.h"
 
-// deprecated!
-//STREAMABLE(AudioData,
-//{,
-//  (unsigned)(2) channels,
-//  (unsigned)(48000) sampleRate,
-//  (std::vector<short>) samples, /**< Samples are interleaved. */
-//);
-
-STREAMABLE(AudioData,,
-  (unsigned)(0) channels, /**< will be overwritten by AudioProviderDortmund*/
-  (unsigned)(0) sampleRate, /**< will be overwritten by AudioProviderDortmund*/
+STREAMABLE(AudioData,
+  void draw() const;
+  ,
+  (unsigned)(0) channels, /** Number of channels */
+  (unsigned)(0) sampleRate, /** Chosen sample rate */
   (std::string)("") device, /** Selected audio device name */
   (std::string)("") api, /** Selected audio device API */
   (double)(0.0) latency, /** Chosen suggested stream latency */
-  (bool)(false) isValid, /** set by AudioProviderDortmund to indicate the record state*/
-  (std::vector<float>) samples /**< Samples are interleaved. */
+  (bool)(false) isValid, /** Record state */
+  (std::vector<float>) samples /** Interleaved samples */
 );

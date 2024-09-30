@@ -13,9 +13,6 @@ void DefenderSingleProvider::update(DefenderSingle& positioningSymbols)
   // We know that we are the lone defender so we help the keeper but try not to impede his vision.
   // We keep the position near our own penalty area and cover the short angle to the goal.
   // This module's position should be synchronized with the keeper/replacement keeper positioning module!
-  bool isStateSetOrPlaying = theGameInfo.state == STATE_SET || theGameInfo.state == STATE_PLAYING;
-  Vector2f ballPosition = isStateSetOrPlaying ? theBallSymbols.ballPositionFieldPredicted : Vector2f::Zero();
-  updateBallIsLeft(ballPosition);
 
   positioningSymbols.stopAtTarget = true;
   positioningSymbols.previewArrival = true;
@@ -51,7 +48,7 @@ void DefenderSingleProvider::stateReady_kickOff_own(DefenderSingle& positioningS
   else
     setNotPlayingOrSetThresholds(positioningSymbols);
   //PositionUtils::setPosition(positioningSymbols, coverShortAngleToGoal(true, positioningSymbols));
-  PositionUtils::setPosition(positioningSymbols, theFieldDimensions.xPosOwnGoalArea + 100.f, (theFieldDimensions.yPosLeftGoal + theFieldDimensions.yPosCenterGoal) / 2.f);
+  PositionUtils::setPosition(positioningSymbols, theFieldDimensions.xPosOwnGoalArea + 100.f, (theFieldDimensions.yPosRightGoal + theFieldDimensions.yPosCenterGoal) / 2.f);
   PositionUtils::turnToPosition(positioningSymbols, ballPosition);
 }
 
@@ -169,19 +166,6 @@ void DefenderSingleProvider::regularPlay(DefenderSingle& positioningSymbols)
   //AvoidUtils::avoidBallChaser(positioningSymbols, theBallchaser, theBallChaserDecision, theBehaviorConfiguration, theTeammateData, !ballIsLeft);
 }
 
-// hysteresis helper functions ===============================================================================================================
-
-/**
- * @brief Avoids constant changes of the value
-*/
-void DefenderSingleProvider::updateBallIsLeft(const Vector2f& ballPosition)
-{
-  if (ballIsLeft && ballPosition.y() < -250.f)
-    ballIsLeft = false;
-  if (!ballIsLeft && ballPosition.y() > 250.f)
-    ballIsLeft = true;
-}
-
 // Position calculator functions ==============================================================================================================
 
 Vector2f DefenderSingleProvider::coverShortAngleToGoal(bool usePredictedBallLocation, DefenderSingle& positioningSymbols)
@@ -192,7 +176,7 @@ Vector2f DefenderSingleProvider::coverShortAngleToGoal(bool usePredictedBallLoca
   // Note: own goal center/post should always be in front of ball for this calculation,
   // otherwise we run into strange singularities if ball is near own ground line in our goal.
   float xPosToCover = std::min(theFieldDimensions.xPosOwnGroundline, ballPositionField.x() - 200.f);
-  float yPostOfPoast = ballIsLeft ? theFieldDimensions.yPosLeftGoal : theFieldDimensions.yPosRightGoal;
+  float yPostOfPoast = theBallSymbols.ballOnLeftSide ? theFieldDimensions.yPosLeftGoal : theFieldDimensions.yPosRightGoal;
   float yPosToCover = (theFieldDimensions.yPosCenterGoal + yPostOfPoast * 2) / 3;
   Vector2f positionToCover = Vector2f(xPosToCover, yPosToCover); // At or left of ground line and between goal post and goal center
   Vector2f vectorShortAngleToBall = ballPositionField - positionToCover; // Vector from cover position to ball position
@@ -241,7 +225,8 @@ Vector2f DefenderSingleProvider::coverShortAngleToGoal(bool usePredictedBallLoca
 
 void DefenderSingleProvider::guardPassOpportunities(DefenderSingle& positioningSymbols)
 {
-  PositionUtils::setPosition(positioningSymbols, theFieldDimensions.xPosOwnGoalArea, ballIsLeft ? theFieldDimensions.yPosLeftGoalArea - 250 : theFieldDimensions.yPosRightGoalArea + 250);
+  PositionUtils::setPosition(
+      positioningSymbols, theFieldDimensions.xPosOwnGoalArea, theBallSymbols.ballOnLeftSide ? theFieldDimensions.yPosLeftGoalArea - 250 : theFieldDimensions.yPosRightGoalArea + 250);
 }
 
 Vector2f DefenderSingleProvider::calculateSetPlayPosition(DefenderSingle& positioningSymbols)
@@ -266,7 +251,7 @@ Vector2f DefenderSingleProvider::calculateSetPlayPosition(DefenderSingle& positi
     else
     {
       // use ballIsLeft as a helper for hysteresis
-      bool firstIntersectionIsCloserToCenter = std::abs(firstIntersection.y()) < std::abs(secondIntersection.y() + (ballIsLeft ? 100.f : 0.f));
+      bool firstIntersectionIsCloserToCenter = std::abs(firstIntersection.y()) < std::abs(secondIntersection.y() + (theBallSymbols.ballOnLeftSide ? 100.f : 0.f));
       optPosition = firstIntersectionIsCloserToCenter ? firstIntersection : secondIntersection;
     }
   }

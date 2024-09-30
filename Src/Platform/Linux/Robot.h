@@ -7,6 +7,8 @@
 #pragma once
 
 #include "Tools/ProcessFramework/ProcessFramework.h"
+#include "Platform/Common/Text2Speech.h"
+#include "Tools/Settings.h"
 #include <memory>
 
 class Logger;
@@ -20,7 +22,7 @@ public:
   /**
   * Default constructor.
   */
-  Robot();
+  Robot(const Settings& settings);
   ~Robot();
 
   /**
@@ -47,5 +49,7 @@ private:
   */
   ReceiverList* getReceiver(const std::string& receiverName);
 
+  Settings settings;
   std::unique_ptr<Logger> logger;
+  Text2SpeechSetup tts;
 };

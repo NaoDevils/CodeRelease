@@ -14,10 +14,8 @@
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Configuration/FieldDimensions.h"
 
-#include <cstdio>
 #include <optional>
 #include <tuple>
-#include "Modules/Perception/TFlite.h"
 
 typedef void (*t_cnn_fp)(float* in_0, float* out_0);
 

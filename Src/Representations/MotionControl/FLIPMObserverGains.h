@@ -15,7 +15,7 @@ STREAMABLE(FLIPMObserverGains,
 	  targetAcc,
 	  ZMPAcc,
 	  ZMPCoM1Acc,
-      ZMPTargetAcc,
+    ZMPTargetAcc,
 	  IMUAcc
 	);
 	,

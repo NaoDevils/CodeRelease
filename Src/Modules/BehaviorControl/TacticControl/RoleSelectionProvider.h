@@ -10,48 +10,23 @@
 #include "Tools/Module/Module.h"
 #include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/GoalSymbols.h"
-#include "Representations/BehaviorControl/BehaviorConfiguration.h"
-#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/RoleSelection.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/DangerMap.h"
-#include "Representations/Modeling/RemoteBallModel.h"
-#include "Representations/Modeling/RobotMap.h"
-#include "Representations/Modeling/RobotPose.h"
-#include "Representations/Sensing/FallDownState.h"
 #include "Tools/Settings.h"
 
 MODULE(RoleSelectionProvider,
-  REQUIRES(BallModel),
-  REQUIRES(BallModelAfterPreview),
-  REQUIRES(BallChaserDecision),
   REQUIRES(BallSymbols),
-  REQUIRES(BehaviorConfiguration),
-  REQUIRES(DangerMap),
-  REQUIRES(FallDownState),
-  REQUIRES(FrameInfo),
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(GameSymbols),
-  REQUIRES(GoalSymbols),
   REQUIRES(OwnTeamInfo),
-  REQUIRES(OpponentTeamInfo),
-  REQUIRES(RemoteBallModel),
   REQUIRES(RobotInfo),
-  REQUIRES(RobotMap),
-  REQUIRES(RobotPose),
-  REQUIRES(RobotPoseAfterPreview),
   REQUIRES(TacticSymbols),
   REQUIRES(TeammateData),
   PROVIDES(RoleSelection),

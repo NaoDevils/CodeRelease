@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Utils/dorsh/cmdlib/CommandAdapter.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/cmdlib/Context.h"
+#include "cmdlib/CommandAdapter.h"
+#include "models/Robot.h"
+#include "cmdlib/Context.h"
 
 class Context;
 

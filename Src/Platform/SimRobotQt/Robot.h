@@ -9,6 +9,7 @@
 #pragma once
 
 #include "Tools/ProcessFramework/ProcessFramework.h"
+#include "Tools/Settings.h"
 #include <memory>
 
 class RobotConsole;
@@ -22,13 +23,15 @@ class Robot : public ProcessList
 private:
   RobotConsole* robotProcess; /**< A pointer to the process that simulates the physical robots. */
   std::string name; /**< The name of the robot. */
+  Settings settings;
+  std::unique_ptr<Logger> logger;
 
 public:
   /**
   * Constructor.
   * @param name The name of the robot.
   */
-  Robot(const char* name);
+  Robot(const std::string& name, const Settings& settings);
 
   ~Robot();
 
@@ -72,6 +75,4 @@ private:
   * @return A pointer to the receiver or 0 if no receiver exists with the specified name.
   */
   ReceiverList* getReceiver(const std::string& receiverName);
-
-  std::unique_ptr<Logger> logger;
 };

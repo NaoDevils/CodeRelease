@@ -16,10 +16,8 @@
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/RefZMP.h"
 #include "Representations/MotionControl/WalkingInfo.h"
-#include "Representations/Sensing/FallDownState.h"
 #include "Representations/MotionControl/TargetCoM.h"
 #include "Representations/MotionControl/WalkingInfo.h"
-#include "Representations/MotionControl/FootSteps.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Tools/Math/Eigen.h"
@@ -32,12 +30,10 @@
 
 MODULE(FLIPMController,
   REQUIRES(WalkingEngineParams),
-  REQUIRES(FLIPMParameter),
   REQUIRES(FLIPMControllerParameter),
   REQUIRES(ObservedFLIPMError),
   REQUIRES(RefZMP2018),
   REQUIRES(ZMPModel),
-  REQUIRES(FootSteps),
   REQUIRES(Footpositions),
   REQUIRES(SpeedInfo),
   USES(WalkingInfo),

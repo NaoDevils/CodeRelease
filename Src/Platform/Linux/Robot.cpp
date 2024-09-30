@@ -8,9 +8,9 @@
 #include "Tools/Streams/InStreams.h"
 #include "Tools/Module/Logger.h"
 
-Robot::Robot() : logger(std::make_unique<Logger>(std::initializer_list<char>{'m', 'c'}))
+Robot::Robot(const Settings& settings) : settings(settings), logger(std::make_unique<Logger>(std::initializer_list<char>{'m', 'c'}, this->settings))
 {
-  create(logger.get());
+  create(logger.get(), this->settings);
 
   InMapFile cm("Processes/connect.cfg");
   ASSERT(cm.exists());

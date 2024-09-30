@@ -37,8 +37,6 @@
 #include "Representations/Perception/PenaltyCrossPercept.h"
 #include "Representations/Perception/PNGImage.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/Infrastructure/GroundTruthWorldState.h"
-
 #define ROBOT_IMAGE_WIDTH 100
 #define ROBOT_IMAGE_HEIGHT 255
 #define ROBOT_IMAGE_SIZE ROBOT_IMAGE_WIDTH* ROBOT_IMAGE_HEIGHT

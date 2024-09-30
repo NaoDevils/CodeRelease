@@ -6,79 +6,25 @@
 * @author <a href="mailto:oliver.urbann@tu-dortmund.de> Oliver Urbann</a>
 */
 
-#ifndef __NaoKinematic_h_
-#define __NaoKinematic_h_
+#pragma once
 
 #include <fstream>
 
+#include "Tools/Module/Module.h"
 #include "Representations/MotionControl/KinematicOutput.h"
 #include "Representations/MotionControl/KinematicRequest.h"
-#include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Configuration/RobotDimensions.h"
-
-#ifndef WALKING_SIMULATOR
-#include "Tools/Module/Module.h"
-#include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/MotionControl/MotionSelection.h"
-#include "Representations/Sensing/RobotModel.h"
 #include "Tools/RingBufferWithSum.h"
 
 
 MODULE(NaoKinematic,
   REQUIRES(RobotDimensions),
-  REQUIRES(JointSensorData),
   REQUIRES(KinematicRequest),
   PROVIDES(KinematicOutput),
   LOADS_PARAMETERS(,
     (bool) useBHKinematics
   )
 );
-
-class CombinedIterativeNaoKinematic;
-
-STREAMABLE(RCXPKinematicInterface,
-  RCXPKinematicInterface()
-  {
-	  calculated = false;
-
-	  for (int i=0;i<12;i++)
-	  {
-		  kinematicRequest[i] = 0;
-	  }
-  }
-	,
-	(JointRequest) jointRequest,
-	(double[12]) kinematicRequest,
-	(bool)(false) calculated
-);
-
-#else
-#include "math/Vector3_D.h"
-#include "bhumanstub.h"
-#include "Representations/MotionControl/KinematicRequest.h"
-#include "Representations/Infrastructure/JointData.h"
-#include "Representations/Configuration/RobotDimensions.h"
-
-/**
- * @class Robot
- * Base class for NaoKinematic. This is just a stub to be compatible to
- * BHuman framework, where the data members are defined in the blackboard.
- */
-class NaoKinematicBase
-{
-public:
-  /** The desired foot positions. */
-  KinematicRequest theKinematicRequest;
-
-  /** Actual angles. */
-  JointData theJointData;
-
-  /** Dimensions of the robot. */
-  RobotDimensions theRobotDimensions;
-};
-
-
-#endif
 
 /**
  * @class Robot
@@ -87,8 +33,6 @@ public:
 class NaoKinematic : public NaoKinematicBase
 {
 public:
-  friend class CombinedIterativeNaoKinematic;
-
   /** Constructor */
   NaoKinematic();
   /** Desctructor */
@@ -120,14 +64,8 @@ public:
    * \param walkingEngineOutput Filled with the angles.
    */
   void update(KinematicOutput& walkingEngineOutput);
-#if 0
-   void update(RawKinematicOutput& rawKinematicOutput);
-	
-   RCXPKinematicInterface rcxpKinematic;
-#endif
+
 private:
   Vector3f checkConstraints(Vector3f lf, float lfr, Vector3f rf, float rfr, bool left);
   std::ofstream logfile;
 };
-
-#endif

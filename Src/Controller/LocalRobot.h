@@ -17,6 +17,7 @@
 #include "Representations/Infrastructure/SensorData/SonarSensorData.h"
 #include "Representations/MotionControl/OdometryData.h"
 #include "SimulatedRobot.h"
+struct Settings;
 
 /**
  * @class LocalRobot
@@ -53,7 +54,7 @@ public:
   /**
    * Constructor.
    */
-  LocalRobot();
+  LocalRobot(Settings& settings);
 
   /**
    * The function is called from the framework once in every frame

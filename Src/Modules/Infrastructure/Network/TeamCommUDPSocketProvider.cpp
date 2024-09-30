@@ -3,6 +3,7 @@
 #include "Tools/Build.h"
 #include "Tools/Settings.h"
 #include "Tools/Debugging/DebugDrawings.h"
+#include "Platform/SystemCall.h"
 
 MAKE_MODULE(TeamCommUDPSocketProvider, cognitionInfrastructure);
 
@@ -13,32 +14,26 @@ void TeamCommUDPSocketProvider::update(TeamCommSocket& teamCommSocket)
   bool local = Build::targetSimulator();
   MODIFY("module:TeamCommUDPSocketProvider:local", local);
 
-  int teamPort = 0;
-  if (local)
-    teamPort = Global::getSettings().teamPort;
-  else
-    teamPort = theOwnTeamInfo.teamPort;
-
-  if (this->port != teamPort || this->local != local)
+  if (this->port != theOwnTeamInfo.teamPort || this->local != local)
   {
     if (this->port)
     {
       stop();
-      OUTPUT_TEXT("TeamCommUDPSocketProvider: Set port to " << teamPort);
+      OUTPUT_TEXT("TeamCommUDPSocketProvider: Set port to " << theOwnTeamInfo.teamPort);
     }
 
     if (local)
-      startLocal(teamPort);
+      startLocal(theOwnTeamInfo.teamPort);
     else
-      start(teamPort, "10.0.255.255");
+      start(theOwnTeamInfo.teamPort, "10.0.255.255");
   }
 
-  teamCommSocket.send = [=](const TeamCommData& msg)
+  teamCommSocket.send = [this](const TeamCommData& msg)
   {
     return this->send(msg);
   };
 
-  teamCommSocket.receive = [=]()
+  teamCommSocket.receive = [this]()
   {
     return this->receive();
   };

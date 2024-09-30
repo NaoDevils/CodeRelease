@@ -1242,7 +1242,7 @@ void CLIPPreprocessor::findFieldBorders()
   int indexBase = 0;
   int indexDirection = 0;
   int inliers = 0;
-  int outliers = 0;
+  //int outliers = 0;
   bool foundLine = true;
   while ((int)fieldEndPoints.size() >= fieldBorderMinPoints && foundLine)
   {
@@ -1251,7 +1251,7 @@ void CLIPPreprocessor::findFieldBorders()
     for (int round = 0; round < 20; round++)
     {
       inliers = 0;
-      outliers = 0;
+      //outliers = 0;
       indexBase = random(fieldEndPointNo);
       int tries = 0;
       while (fieldEndPoints[indexBase].imageCoordinates.y() == 0 && tries < fieldEndPointNo / 2)
@@ -1279,7 +1279,7 @@ void CLIPPreprocessor::findFieldBorders()
         }
         else
         {
-          outliers++;
+          //outliers++;
           fieldEndPoints[i].inlier = false;
         }
       }

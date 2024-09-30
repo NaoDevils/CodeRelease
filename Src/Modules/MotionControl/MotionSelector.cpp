@@ -9,6 +9,8 @@
 #include <algorithm>
 #include "MotionSelector.h"
 #include "Tools/Debugging/DebugDrawings.h"
+#include "Tools/Range.h"
+#include "Platform/SystemCall.h"
 
 MAKE_MODULE(MotionSelector, motionControl)
 

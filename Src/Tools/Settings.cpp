@@ -6,10 +6,6 @@
 
 #include "Settings.h"
 #include "Tools/Streams/InStreams.h"
-#include "Representations/Infrastructure/RoboCupGameControlData.h"
-#ifdef TARGET_SIM
-#include "Controller/ConsoleRoboCupCtrl.h"
-#endif
 #ifdef TARGET_ROBOT
 #include "Platform/Linux/NaoBodyV6.h"
 #include <iostream>
@@ -21,78 +17,37 @@
 #include "Platform/File.h"
 #include "Platform/SystemCall.h"
 #include "Tools/Global.h"
-#include "Tools/Streams/StreamHandler.h"
 #include "Tools/Streams/AutoStreamable.h"
-#include "Utils/dorsh/models/Robot.h"
+#include <stdexcept>
 
 STREAMABLE(Robots,,
   (std::vector<RobotConfig>) robotsIds
 );
 
-bool Settings::recover = false;
-
-Settings Settings::settings(true);
-bool Settings::loaded = false;
-
-Settings::Settings(bool master)
+void Settings::read(In& in)
 {
-  ASSERT(master);
+  unsigned char version;
+  in >> version;
+  if (version != this->version)
+    throw std::runtime_error("unexpected settings version");
+
+  unsigned char overlaysSize;
+  in >> robotName >> bodyName >> naoVersion >> overlaysSize;
+
+  overlays.resize(overlaysSize);
+  for (std::string& overlay : overlays)
+    in >> overlay;
 }
 
-Settings::Settings()
+void Settings::write(Out& out) const
 {
-  static_assert(TEAM_BLUE == blue && TEAM_RED == red && TEAM_YELLOW == yellow && TEAM_BLACK == black, "These macros and enums have to match!");
-  if (!loaded)
-  {
-    VERIFY(settings.load());
-    loaded = true;
-  }
-  *this = settings;
-
-#ifdef TARGET_SIM
-  if (SystemCall::getMode() == SystemCall::simulatedRobot)
-  {
-    int index = atoi(RoboCupCtrl::controller->getRobotName().c_str() + 5) - 1;
-    teamNumber = index < MAX_NUM_PLAYERS ? 1 : 2;
-    teamPort = 10000 + teamNumber;
-    teamColor = index < MAX_NUM_PLAYERS ? blue : red;
-    playerNumber = index % MAX_NUM_PLAYERS + 1;
-  }
-
-  robotName = "Nao";
-
-  ConsoleRoboCupCtrl* ctrl = dynamic_cast<ConsoleRoboCupCtrl*>(RoboCupCtrl::controller);
-  if (ctrl)
-  {
-    std::string logFileName = ctrl->getLogFile();
-    if (logFileName != "")
-    {
-      QRegExp re("[0-9]_[A-Za-z]*_[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]_[0-9][0-9]-[0-9][0-9]-[0-9][0-9].log", Qt::CaseSensitive, QRegExp::RegExp2);
-      int pos = re.indexIn(logFileName.c_str());
-      if (pos != -1)
-      {
-        robotName = logFileName.substr(pos + 2);
-        robotName = robotName.substr(0, robotName.find("_"));
-      }
-      else
-        robotName = "Default";
-    }
-  }
-
-  bodyName = robotName.c_str();
-
-#endif
+  out << version << robotName << bodyName << naoVersion << static_cast<unsigned char>(overlays.size());
+  for (const std::string& overlay : overlays)
+    out << overlay;
 }
 
 bool Settings::load()
 {
-
-  if (!Global::theStreamHandler)
-  {
-    static StreamHandler streamHandler;
-    Global::theStreamHandler = &streamHandler;
-  }
-
   std::string bhdir = File::getBHDir();
 #ifdef TARGET_ROBOT
   InMapFile robotsStream(bhdir + "/Config/Robots/robots.cfg");
@@ -155,10 +110,6 @@ bool Settings::load()
       TRACE("Could not find headId in robots.cfg.");
     }
   }
-#else
-  robotName = "Nao";
-  bodyName = "Nao";
-  naoVersion = RobotConfig::V6;
 #endif
 
   // the default config hierarchy does not work here because
@@ -180,11 +131,6 @@ bool Settings::load()
   else
     std::cout << " (using body of " << bodyName << ").\n";
 
-  std::cout << "teamNumber: " << teamNumber << "\n";
-  std::cout << "teamPort: " << teamPort << "\n";
-  std::cout << "teamColor: " << getName(teamColor) << "\n";
-  std::cout << "playerNumber: " << playerNumber << "\n";
-  std::cout << "gameMode: " << getName(gameMode) << "\n";
   std::cout << "overlays:";
   for (const std::string& overlay : overlays)
     std::cout << " " << overlay;

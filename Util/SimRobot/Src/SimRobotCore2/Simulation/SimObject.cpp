@@ -14,6 +14,7 @@
 #include "CoreModule.h"
 #include "SimObjectWidget.h"
 #include "SimObjectRenderer.h"
+#include "Tools/Math/RotationMatrix.h"
 
 SimObject::SimObject() : translation(0), rotation(0) {}
 

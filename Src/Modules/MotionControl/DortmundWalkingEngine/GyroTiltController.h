@@ -9,14 +9,12 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/MotionControl/BodyTilt.h"
-#include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 
 MODULE(GyroTiltController,
   REQUIRES(JoinedIMUData),
-  REQUIRES(WalkingEngineParams),
   REQUIRES(Footpositions),
   USES(WalkingInfo),
   PROVIDES(BodyTilt),

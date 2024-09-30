@@ -1,6 +1,6 @@
-# Nao Devils Code Release 2023
+# Nao Devils Code Release 2024
 
-This is the Nao Devils Code Release 2023, originally based on [B-Human Code Release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
+This is the Nao Devils Code Release 2024, originally based on [B-Human Code Release 2015](https://github.com/bhuman/BHumanCodeRelease/tree/coderelease2015).
 
 ## Installation
 

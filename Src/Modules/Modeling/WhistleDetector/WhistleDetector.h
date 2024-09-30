@@ -5,100 +5,125 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Modeling/WhistleDortmund.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/SensorData/JointSensorData.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include <cstdio>
-#include "Representations/Infrastructure/Image.h"
+//#include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/AudioData.h"
-#include "Representations/MotionControl/MotionInfo.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugImages.h"
 #include "Platform/SystemCall.h"
 #include <string>
+#include <float.h>
 #include "Tools/Math/Constants.h"
 #include "Tools/RingBufferWithSum.h"
-
 #include "Modules/Perception/TFlite.h"
+
+#include "Tools/AudioBuffer.h"
 
 MODULE(WhistleDetector,
   REQUIRES(FrameInfo),
   REQUIRES(AudioData),
-  REQUIRES(MotionInfo),
+  REQUIRES(JointSensorData),
+  REQUIRES(RobotInfo),
+  HAS_PREEXECUTION,
   PROVIDES(WhistleDortmund),
   LOADS_PARAMETERS(,
+    //-------------[General]----------------
+    (unsigned int) windowSize,
+    (unsigned int) audioBufferSize,
     (std::string) whistleNetPath,
+    (std::string) whistleDistanceNetPath,
+    (std::string) whistleDirectionNetPath,
+    //-----------[Check Mics]---------------
+    (float) noiseLimit,
     (unsigned int) micBrokenThreshold,
-    (float) limit,
-    (float) threshold,
-    (bool) useAdaptiveThreshold,
-    (int) adaptiveWindowSize,
+    (float) micBrokenMagSumThreshold,
+    //----------[Whistle Candidate Detection]----------
     (float) nnWeight,
     (float) pmWeight,
-    (float) limitWeight,
-    (bool) useWeightedPMConfidence,
-    (int) release,
-    (int) attack,
-    (int) attackTimeout, // in ms
-    (bool) useHannWindowing,
-    (bool) useNuttallWindowing,
+    (float) noiseWeight,
+    (unsigned int) confidenceType,
+    (unsigned int) minWhistleFrames,
+    (float) attentionMultiplier,
+    (float) overtoneBorderMultiplier,
+    (float) whistleCandidateThreshold,
+    //----------[Whistle Calibration]----------
     (int) minFreq, 
     (int) maxFreq,
+    (int) minFreqBorder,
+    (int) maxFreqBorder,
     (bool) freqCalibration,
-    (bool) eval
+    //----------[Whistle Detection]----------
+    (float) threshold,
+    (float) attackFactor,
+    (unsigned int) whistleSequenceLengthThreshold,
+    //----------[Whistle Direction Detection]----------
+    (int) directionIdxOffset,
+    (unsigned int) numOfDirectionDetectionFrames,
+    //----------[Whistle Distance Detection]----------
+    (unsigned int) whistleLength,
+    (int) distanceIdxOffset,
+    (std::vector<std::string>) readableDistance
   )
 );
 
 class WhistleDetector : public WhistleDetectorBase
 {
-  DECLARE_DEBUG_IMAGE(FFT);
-  DECLARE_DEBUG_IMAGE(CHROMA);
-
-  std::string oldWhistleNetPath;
-
-  std::unique_ptr<tflite::Interpreter> interpreter;
-
-  std::unique_ptr<tflite::FlatBufferModel> model;
-  tflite::ops::builtin::BuiltinOpResolver resolver;
-  int input_tensor, output_tensor;
-
-  int chromaPos = 0;
-
-  int windowSize = 0;
-  int ampSize = 0;
-
-  float pmConfidence = 0.f;
-  float nnConfidence = 0.f;
-  float relLimitCount = 0.f;
-
-  RingBufferWithSum<float, 20> thresholdBuffer;
-  RingBufferWithSum<float, 10> confidenceBuffer;
-  int prevAdaptiveWindowSize = 20;
-
-  unsigned int currentMic = 0;
-  unsigned int micBrokenCount = 0;
-  bool alert = false;
-
-  unsigned int ringPos, samplesLeft;
-  unsigned int releaseCount, attackCount;
-  int detectedWhistleFrequency = 0;
-  RingBufferWithSum<int, 10> whistleFreqBuffer;
-  int currentMinFreq = 0;
-  int currentMaxFreq = 0;
-  int oldMinFreq = 0;
-  int oldMaxFreq = 0;
-  std::vector<float> buffer;
-  std::vector<kiss_fft_cpx> in, out;
-  std::vector<float> amplitudes;
-  std::vector<float> gradients;
-  RingBufferWithSum<float, 200> maxAmpHist;
-
-  unsigned lastAttackTime = 0;
-  bool detectionProcessed = false;
-  bool evaluationStarted = false;
 
 public:
   WhistleDetector();
+  void execute(tf::Subflow&);
   void update(WhistleDortmund& whistle);
-  void kissFFT(kiss_fft_cpx in[], kiss_fft_cpx out[]);
+  void detectWhistle(WhistleDortmund& whistle);
+  void detectDirection(WhistleDortmund& whistle, unsigned int minIDX, unsigned int maxIDX);
+  void detectDistance(WhistleDortmund& whistle, unsigned int minIDX, unsigned int maxIDX);
+  void resizeBuffer(auto& buffer, unsigned int size1, unsigned int size2 = 0);
+  void checkMics();
 
 private:
+  DECLARE_DEBUG_IMAGE(SPECTROGRAM);
+  float spectrogramMin = FLT_MAX;
+  float spectrogramMax = -FLT_MAX;
+  std::vector<bool> markWhistleIdx();
+
   void setup();
+  void init();
+  bool initialize = false;
+  bool speechToggle = true;
+
+  AudioBuffer audioBuffer;
+  unsigned int channels = 4;
+
+  WhistleDortmund localWhistle;
+
+  std::vector<bool> micStatus;
+  int micIdx[4] = {0, 1, 2, 3};
+  std::vector<bool> sayMicBroken;
+
+
+  std::vector<bool> detectedWhistleCandidates;
+  std::vector<std::vector<unsigned int>> whistleCandiates;
+  std::vector<unsigned int> whistleSequenceLength;
+  bool isWhistleLongEnough(int idxCandidate);
+
+  std::string oldWhistleDistanceNetPath;
+  std::string oldWhistleDirectionNetPath;
+  unsigned int oldDirectionIdx;
+  unsigned int oldDistanceIdx;
+
+  unsigned lastAttackTime = 0;
+  unsigned int releaseCount, attackCount;
+
+  std::unique_ptr<tflite::Interpreter> directionInterpreter;
+  std::unique_ptr<tflite::Interpreter> distanceInterpreter;
+
+  std::unique_ptr<tflite::FlatBufferModel> directionModel;
+  std::unique_ptr<tflite::FlatBufferModel> distanceModel;
+  tflite::ops::builtin::BuiltinOpResolver directionResolver;
+  tflite::ops::builtin::BuiltinOpResolver distanceResolver;
+  int inputTensorSlice, inputTensorLevel, inputTensorDrr, inputTensorDistance, directionOutputTensor, distanceOutputTensor;
+
+  Angle directionHeadAngleSnapshot;
+  std::vector<float> distanceBuffer;
 };

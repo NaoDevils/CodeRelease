@@ -8,9 +8,9 @@
 #include <QAbstractItemView>
 #include <QStringListModel>
 #include <QKeyEvent>
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/tools/StringTools.h"
-#include "Utils/dorsh/ui/CommandLineCompleter.h"
+#include "cmdlib/Commands.h"
+#include "tools/StringTools.h"
+#include "ui/CommandLineCompleter.h"
 
 static const size_t QLINEEDIT_MAX_LENGTH = 32767;
 

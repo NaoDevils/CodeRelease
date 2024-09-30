@@ -26,7 +26,6 @@ public:
   int colorOwn;
   int colorOpp;
   std::vector<std::string> overlays;
-  std::string gameMode;
   std::string wlanConfig;
   std::string logConfig;
   std::string buildConfig;

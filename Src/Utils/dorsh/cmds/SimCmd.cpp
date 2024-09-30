@@ -2,13 +2,13 @@
 #include <algorithm>
 
 #include "Platform/File.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/SimCmd.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/tools/Filesystem.h"
-#include "Utils/dorsh/tools/Platform.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/SimCmd.h"
+#include "models/Team.h"
+#include "tools/Filesystem.h"
+#include "tools/Platform.h"
 #include "Tools/Build.h"
 
 SimCmd SimCmd::theSimCmd;

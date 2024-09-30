@@ -4,7 +4,6 @@
 #include <functional>
 
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Perception/CameraMatrix.h"
@@ -25,7 +24,6 @@
   }
 
 MODULE(PenaltyCrossClassifier,
-  REQUIRES(FrameInfo),
   REQUIRES(ImageUpper),
   REQUIRES(Image),
   REQUIRES(CameraMatrixUpper),

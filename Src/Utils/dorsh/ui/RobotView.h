@@ -3,8 +3,8 @@
 #include <map>
 #include <QGroupBox>
 
-#include "Utils/dorsh/models/Power.h"
-#include "Utils/dorsh/Session.h"
+#include "models/Power.h"
+#include "Session.h"
 #include <nlohmann/json.hpp>
 
 #include <QFloat16> // see https://github.com/nlohmann/json/issues/2650

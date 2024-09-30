@@ -1,25 +1,17 @@
 /**
  * @file Platform/Common/UdpComm.h
  * Wrapper for an udp socket.
- * \author Armin
+ * @author Armin
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
  */
 
 #pragma once
 
-struct sockaddr;
-struct sockaddr_in;
-
-#ifdef WINDOWS
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <WinSock2.h>
-#endif
+#include <memory>
 #include <string>
 
-#ifdef WINDOWS
-#define socket_t SOCKET
-#else
-#define socket_t int
-#endif
+struct sockaddr;
+struct sockaddr_in;
 
 /**
  * @class UdpComm
@@ -27,8 +19,8 @@ struct sockaddr_in;
 class UdpComm
 {
 private:
-  sockaddr* target = nullptr;
-  socket_t sock = static_cast<socket_t>(-1);
+  struct Pimpl;
+  std::unique_ptr<Pimpl> data;
 
 public:
   UdpComm();
@@ -47,6 +39,7 @@ public:
    * \return Does a connection exist?
    */
   bool setTarget(const char* ip, int port);
+  void setTarget(const sockaddr& target);
 
   /**
    * Set broadcast mode.

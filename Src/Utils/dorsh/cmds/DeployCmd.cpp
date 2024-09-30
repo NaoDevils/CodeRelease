@@ -3,16 +3,16 @@
 #include <QString>
 #include <QColor>
 #include <QStringList>
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/DeployCmd.h"
-#include "Utils/dorsh/tools/StringTools.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/models/Team.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/DeployCmd.h"
+#include "tools/StringTools.h"
+#include "tools/Platform.h"
+#include "Session.h"
+#include "models/Team.h"
 #include "Tools/ColorModelConversions.h"
-#include "Utils/dorsh/tools/Filesystem.h"
+#include "tools/Filesystem.h"
 
 #include <fstream>
 #include <sstream>
@@ -57,8 +57,6 @@ bool DeployCmd::DeployTask::execute()
     args.push_back(QString("-eo"));
     args.push_back(overlay.c_str());
   }
-  args.push_back(QString("-g"));
-  args.push_back(QString::fromStdString(team->gameMode));
   args.push_back(QString("-w"));
   args.push_back(QString::fromStdString(team->wlanConfig));
   args.push_back(QString("-v"));

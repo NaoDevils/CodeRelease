@@ -42,8 +42,6 @@
 #include <atomic>
 #include <array>
 
-using namespace std;
-
 template <typename T> class TripleBuffer
 {
 
@@ -71,7 +69,7 @@ private:
   // dirtyIndex = (flags & 0x30) >> 4
   // cleanIndex = (flags & 0xC) >> 2
   // snapIndex  = (flags & 0x3)
-  mutable atomic_uint_fast8_t flags;
+  mutable std::atomic_uint_fast8_t flags;
 
   std::array<T, 3> buffer;
 };
@@ -114,7 +112,7 @@ template <typename T> bool TripleBuffer<T>::beginRead()
   {
     if (!isNewWrite(flagsNow)) // nothing new, no need to swap
       return false;
-  } while (!flags.compare_exchange_weak(flagsNow, swapSnapWithClean(flagsNow), memory_order_release, memory_order_consume));
+  } while (!flags.compare_exchange_weak(flagsNow, swapSnapWithClean(flagsNow), std::memory_order_release, std::memory_order_consume));
 
   return true;
 }
@@ -122,7 +120,7 @@ template <typename T> bool TripleBuffer<T>::beginRead()
 template <typename T> void TripleBuffer<T>::finishWrite()
 {
   uint_fast8_t flagsNow(flags.load(std::memory_order_consume));
-  while (!flags.compare_exchange_weak(flagsNow, newWriteSwapCleanWithDirty(flagsNow), memory_order_release, memory_order_consume))
+  while (!flags.compare_exchange_weak(flagsNow, newWriteSwapCleanWithDirty(flagsNow), std::memory_order_release, std::memory_order_consume))
     ;
 }
 

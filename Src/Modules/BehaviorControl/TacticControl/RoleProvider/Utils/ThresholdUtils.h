@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h>
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningAndKickSymbols.h"
 
 class ThresholdUtils
 {
@@ -49,9 +50,9 @@ public:
   static void setThresholdsForAnyKick(PositioningAndKickSymbols& pakSymbols)
   {
     pakSymbols.thresholdXFront = 100.f; // 50.f; // todo changed for gore2023 in commit "higher any kick thresholds"
-    pakSymbols.thresholdXBack = 300.f; // 200.f;
-    pakSymbols.thresholdY = 200.f; // 150.f;
-    pakSymbols.thresholdRotation = 40_deg; // 30_deg;
+    pakSymbols.thresholdXBack = 500.f; // 200.f;
+    pakSymbols.thresholdY = 300.f; // 150.f;
+    pakSymbols.thresholdRotation = 50_deg; // 30_deg;
   }
 
   static void setThresholdsForDribble(PositioningAndKickSymbols& pakSymbols)

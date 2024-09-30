@@ -8,7 +8,7 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
   if (!initializedWP)
   {
     load(walkingEngineParams);
-    load(originalParams);
+    load(originalParams, true);
 
     if (speakOutChanges)
     {
@@ -21,16 +21,29 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
     }
   }
 
+  if (theBehaviorData.behaviorState == BehaviorData::calibrationStarted)
+    walkingEngineParams.speedLimits = originalParams.speedLimits;
+
+  if (!lastWalkCalibrated && theWalkCalibration.walkCalibrated)
+    setMinMax(walkingEngineParams);
+
   for (int i = 0; i < 12; i++)
     walkingEngineParams.jointCalibration.jointCalibration[i] = originalParams.jointCalibration.jointCalibration[i];
 
+  lastXForwardUpdated = false;
+  lastXBackwardUpdated = false;
+  lastYUpdated = false;
+
   if (theMotionState.walkingStatus.speedFactorForward != 1.f)
   {
-    walkingEngineParams.speedLimits.xForward = std::max<float>(minXForward, std::min<float>(maxXForward, walkingEngineParams.speedLimits.xForward * theMotionState.walkingStatus.speedFactorForward));
-    walkingEngineParams.speedLimits.xForwardOmni =
-        std::max<float>(minXForwardOmni, std::min<float>(maxXForwardOmni, walkingEngineParams.speedLimits.xForwardOmni * theMotionState.walkingStatus.speedFactorForward));
-    walkingEngineParams.speedLimits.xForwardArmContact = std::max<float>(
-        minXForwardArmContact, std::min<float>(maxXForwardArmContact, walkingEngineParams.speedLimits.xForwardArmContact * theMotionState.walkingStatus.speedFactorForward));
+    walkingEngineParams.speedLimits.xForward = std::clamp(
+        walkingEngineParams.speedLimits.xForward * theMotionState.walkingStatus.speedFactorForward, walkingEngineParams.minSpeedLimits.xForward, walkingEngineParams.maxSpeedLimits.xForward);
+    walkingEngineParams.speedLimits.xForwardOmni = std::clamp(walkingEngineParams.speedLimits.xForwardOmni * theMotionState.walkingStatus.speedFactorForward,
+        walkingEngineParams.minSpeedLimits.xForwardOmni,
+        walkingEngineParams.maxSpeedLimits.xForwardOmni);
+    walkingEngineParams.speedLimits.xForwardArmContact = std::clamp(walkingEngineParams.speedLimits.xForwardArmContact * theMotionState.walkingStatus.speedFactorForward,
+        walkingEngineParams.minSpeedLimits.xForwardArmContact,
+        walkingEngineParams.maxSpeedLimits.xForwardArmContact);
 
     if (!lastXForwardUpdated)
     {
@@ -45,15 +58,12 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
     }
     lastXForwardUpdated = true;
   }
-  else
-  {
-    lastXForwardUpdated = false;
-  }
 
   if (theMotionState.walkingStatus.speedFactorBackward != 1.f)
   {
-    walkingEngineParams.speedLimits.xBackward =
-        std::max<float>(minXBackward, std::min<float>(maxXBackward, walkingEngineParams.speedLimits.xBackward * theMotionState.walkingStatus.speedFactorBackward));
+    walkingEngineParams.speedLimits.xBackward = std::clamp(walkingEngineParams.speedLimits.xBackward * theMotionState.walkingStatus.speedFactorBackward,
+        walkingEngineParams.minSpeedLimits.xBackward,
+        walkingEngineParams.maxSpeedLimits.xBackward);
     if (!lastXBackwardUpdated)
     {
       ANNOTATION("MotionState", "xBackward updated to " << walkingEngineParams.speedLimits.xBackward);
@@ -67,17 +77,13 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
     }
     lastXBackwardUpdated = true;
   }
-  else
-  {
-    lastXBackwardUpdated = false;
-  }
 
   if (theMotionState.walkingStatus.speedFactorLeft != 1.f || theMotionState.walkingStatus.speedFactorRight != 1.f)
   {
-    walkingEngineParams.speedLimits.y = std::max<float>(minY,
-        std::min<float>(maxY, walkingEngineParams.speedLimits.y * std::max<float>(theMotionState.walkingStatus.speedFactorLeft, theMotionState.walkingStatus.speedFactorRight)));
-    walkingEngineParams.speedLimits.yArmContact = std::max<float>(minY,
-        std::min<float>(maxY, walkingEngineParams.speedLimits.yArmContact * std::max<float>(theMotionState.walkingStatus.speedFactorLeft, theMotionState.walkingStatus.speedFactorRight)));
+    float maxSpeedFactor = std::max<float>(theMotionState.walkingStatus.speedFactorLeft, theMotionState.walkingStatus.speedFactorRight);
+    walkingEngineParams.speedLimits.y = std::clamp(walkingEngineParams.speedLimits.y * maxSpeedFactor, walkingEngineParams.minSpeedLimits.y, walkingEngineParams.maxSpeedLimits.y);
+    walkingEngineParams.speedLimits.yArmContact =
+        std::clamp(walkingEngineParams.speedLimits.yArmContact * maxSpeedFactor, walkingEngineParams.minSpeedLimits.yArmContact, walkingEngineParams.maxSpeedLimits.yArmContact);
     if (!lastYUpdated)
     {
       ANNOTATION("MotionState", "y updated to " << walkingEngineParams.speedLimits.y);
@@ -91,10 +97,8 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
     }
     lastYUpdated = true;
   }
-  else
-  {
-    lastYUpdated = false;
-  }
+
+  lastWalkCalibrated = theWalkCalibration.walkCalibrated;
 
   MODIFY("annotation:motion:text", annotation);
   DEBUG_RESPONSE_ONCE("annotation:motion")
@@ -103,15 +107,15 @@ void WalkParamsProvider::update(WalkingEngineParams& walkingEngineParams)
   }
 }
 
-void WalkParamsProvider::update(FLIPMObserverGains& flipmObserverGains)
+void WalkParamsProvider::update(SensorControlParams& sensorControlParams)
 {
-  if (!initializedFOP)
+  if (!initializedSCP)
   {
-    load(flipmObserverGains);
+    load(sensorControlParams);
   }
 }
 
-void WalkParamsProvider::load(WalkingEngineParams& walkingEngineParams)
+void WalkParamsProvider::load(WalkingEngineParams& walkingEngineParams, bool original)
 {
   InMapFile file("walkingParamsFLIPM.cfg");
   if (file.exists())
@@ -123,34 +127,62 @@ void WalkParamsProvider::load(WalkingEngineParams& walkingEngineParams)
 
   if constexpr (Build::targetRobot())
   {
-    InTextFile motionMindfulnessSpeedLimitsFile(File::getPersistentDir() + "speedLimits.value");
-    if (motionMindfulnessSpeedLimitsFile.exists())
+    InMapFile motionMindfulnessSpeedLimitsFile(File::getPersistentDir() + "speedLimits.cfg");
+    if (motionMindfulnessSpeedLimitsFile.exists() && !original)
     {
       motionMindfulnessSpeedLimitsFile >> walkingEngineParams.speedLimits;
-      ANNOTATION("MotionState", "Loaded " << File::getPersistentDir() << "speedLimits.value");
+      ANNOTATION("MotionState", "Loaded " << File::getPersistentDir() << "speedLimits.cfg");
     }
   }
-
-  walkingEngineParams.speedLimits.xBackward = std::max<float>(minXBackward, std::min<float>(maxXBackward, walkingEngineParams.speedLimits.xBackward));
-  walkingEngineParams.speedLimits.xForward = std::max<float>(minXForward, std::min<float>(maxXForward, walkingEngineParams.speedLimits.xForward));
-  walkingEngineParams.speedLimits.xForwardArmContact = std::max<float>(minXForwardArmContact, std::min<float>(maxXForwardArmContact, walkingEngineParams.speedLimits.xForwardArmContact));
-  walkingEngineParams.speedLimits.xForwardOmni = std::max<float>(minXForwardOmni, std::min<float>(maxXForwardOmni, walkingEngineParams.speedLimits.xForwardOmni));
-  walkingEngineParams.speedLimits.y = std::max<float>(minY, std::min<float>(maxY, walkingEngineParams.speedLimits.y));
-  walkingEngineParams.speedLimits.yArmContact = std::max<float>(minYArmContact, std::min<float>(maxYArmContact, walkingEngineParams.speedLimits.yArmContact));
-
+  setMinMax(walkingEngineParams);
   initializedWP = true;
 }
 
-void WalkParamsProvider::load(FLIPMObserverGains& flipmObserverGains)
+void WalkParamsProvider::setMinMax(WalkingEngineParams& walkingEngineParams)
 {
-  InMapFile file("flipmObserverGains.cfg");
+  // clang-format off
+  walkingEngineParams.minSpeedLimits.r = walkingEngineParams.speedLimits.r;
+  walkingEngineParams.maxSpeedLimits.r = walkingEngineParams.speedLimits.r;
+
+  walkingEngineParams.minSpeedLimits.rOnly = walkingEngineParams.speedLimits.rOnly;
+  walkingEngineParams.maxSpeedLimits.rOnly = walkingEngineParams.speedLimits.rOnly;
+
+  walkingEngineParams.minSpeedLimits.xBackward = minXBackward;
+  walkingEngineParams.maxSpeedLimits.xBackward = minXBackward + (maxXBackward - minXBackward) * std::abs(theWalkCalibration.qualityOfRobotHardware);
+  walkingEngineParams.speedLimits.xBackward = std::clamp(walkingEngineParams.speedLimits.xBackward,  walkingEngineParams.minSpeedLimits.xBackward, walkingEngineParams.maxSpeedLimits.xBackward);
+
+  walkingEngineParams.minSpeedLimits.xForward = minXForward;
+  walkingEngineParams.maxSpeedLimits.xForward = minXForward + (maxXForward - minXForward) * std::abs(theWalkCalibration.qualityOfRobotHardware);
+  walkingEngineParams.speedLimits.xForward = std::clamp(walkingEngineParams.speedLimits.xForward, walkingEngineParams.minSpeedLimits.xForward, walkingEngineParams.maxSpeedLimits.xForward);
+
+  walkingEngineParams.minSpeedLimits.xForwardArmContact = minXForwardArmContact;
+  walkingEngineParams.maxSpeedLimits.xForwardArmContact = minXForwardArmContact + (maxXForwardArmContact - minXForwardArmContact) * std::abs(theWalkCalibration.qualityOfRobotHardware);
+  walkingEngineParams.speedLimits.xForwardArmContact = std::clamp(walkingEngineParams.speedLimits.xForwardArmContact, walkingEngineParams.minSpeedLimits.xForwardArmContact, walkingEngineParams.maxSpeedLimits.xForwardArmContact);
+
+  walkingEngineParams.minSpeedLimits.xForwardOmni = minXForwardOmni;
+  walkingEngineParams.maxSpeedLimits.xForwardOmni = minXForwardOmni + (maxXForwardOmni - minXForwardOmni) * std::abs(theWalkCalibration.qualityOfRobotHardware);
+  walkingEngineParams.speedLimits.xForwardOmni = std::clamp(walkingEngineParams.speedLimits.xForwardOmni,walkingEngineParams.minSpeedLimits.xForwardOmni, walkingEngineParams.maxSpeedLimits.xForwardOmni);
+
+  walkingEngineParams.minSpeedLimits.y = minY;
+  walkingEngineParams.maxSpeedLimits.y = minY + (maxY - minY) * std::abs(theWalkCalibration.qualityOfRobotHardware) ;
+  walkingEngineParams.speedLimits.y = std::clamp(walkingEngineParams.speedLimits.y, walkingEngineParams.minSpeedLimits.y, walkingEngineParams.maxSpeedLimits.y);
+
+  walkingEngineParams.minSpeedLimits.yArmContact = minYArmContact;
+  walkingEngineParams.maxSpeedLimits.yArmContact = minYArmContact + (maxYArmContact - minYArmContact) * std::abs(theWalkCalibration.qualityOfRobotHardware);
+  walkingEngineParams.speedLimits.yArmContact = std::clamp(walkingEngineParams.speedLimits.yArmContact, walkingEngineParams.minSpeedLimits.yArmContact, walkingEngineParams.maxSpeedLimits.yArmContact);
+  // clang-format on
+}
+
+void WalkParamsProvider::load(SensorControlParams& sensorControlParams)
+{
+  InMapFile file("sensorControlParams.cfg");
   if (file.exists())
-    file >> flipmObserverGains;
+    file >> sensorControlParams;
   else
   {
     ASSERT(false);
   }
-  initializedFOP = true;
+  initializedSCP = true;
 }
 
 MAKE_MODULE(WalkParamsProvider, dortmundWalkingEngine)

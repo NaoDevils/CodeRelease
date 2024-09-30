@@ -1,7 +1,7 @@
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/Command.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/tools/StringTools.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/Command.h"
+#include "cmdlib/Context.h"
+#include "tools/StringTools.h"
 
 Commands& Commands::getInstance()
 {

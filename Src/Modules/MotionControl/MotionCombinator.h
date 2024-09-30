@@ -9,7 +9,6 @@
 
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Configuration/OdometryCorrectionTable.h"
-#include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
@@ -23,22 +22,17 @@
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/StandEngineOutput.h"
 #include "Representations/MotionControl/WalkingEngineOutput.h"
-#include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/MotionControl/JointError.h"
-#include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/JoinedIMUData.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/Modeling/IMUModel.h"
 #include "Tools/Module/Module.h"
 
 
 MODULE(MotionCombinator,
   REQUIRES(OdometryCorrectionTables),
-  REQUIRES(FallDownState),
   REQUIRES(Footpositions),
   REQUIRES(FrameInfo),
-  REQUIRES(BehaviorData),
   REQUIRES(HeadJointRequest),
   REQUIRES(JoinedIMUData),
   REQUIRES(IMUModel),
@@ -49,7 +43,6 @@ MODULE(MotionCombinator,
   REQUIRES(SpecialActionsOutput),
   REQUIRES(StandEngineOutput),
   REQUIRES(StiffnessSettings),
-  REQUIRES(MotionSettings),
   REQUIRES(JointCalibration),
   REQUIRES(JointError),
   REQUIRES(WalkingEngineOutput),

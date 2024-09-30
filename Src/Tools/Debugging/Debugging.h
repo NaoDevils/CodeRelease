@@ -83,7 +83,8 @@
 #define OUTPUT_WARNING(message)                 \
   do                                            \
   {                                             \
-    OUTPUT_TEXT("Warning: " << message);        \
+    if (Global::hasDebugOut())                  \
+      OUTPUT_TEXT("Warning: " << message);      \
     OutTextSize _size;                          \
     _size << "Warning: " << message;            \
     char* _buf = new char[_size.getSize() + 1]; \
@@ -104,7 +105,8 @@
 #define OUTPUT_ERROR(message)                   \
   do                                            \
   {                                             \
-    OUTPUT_TEXT("Error: " << message);          \
+    if (Global::hasDebugOut())                  \
+      OUTPUT_TEXT("Error: " << message);        \
     OutTextSize _size;                          \
     _size << "Error: " << message;              \
     char* _buf = new char[_size.getSize() + 1]; \

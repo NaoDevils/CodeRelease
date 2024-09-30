@@ -10,28 +10,21 @@
 #include "Tools/Module/Module.h"
 #include "Representations/BehaviorControl/BallSearch.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
-#include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSelection.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Modeling/RobotPose.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Modeling/RobotMap.h"
-
 MODULE(BallSearchProvider,
   REQUIRES(BallSymbols),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
-  REQUIRES(GameSymbols),
-  REQUIRES(RobotPoseAfterPreview),
   REQUIRES(RoleSelection),
   REQUIRES(TeammateData),
-  REQUIRES(RobotMap),
   REQUIRES(RoleSymbols),
   REQUIRES(BallChaserDecision),
   REQUIRES(RobotInfo),

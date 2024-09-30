@@ -1,7 +1,7 @@
 /**
 * @file BrokenJointDetector.cpp
 *
-* This file implements a module that provides information about the current status of the robot's joints inspired by B-Humans "checkMotorMalfunction".
+* This file implements a module that provides information about the current status of the robot's joints based on B-Humans "checkMotorMalfunction" by Philip Reichenberg.
 *
 * @author Diana Kleingarn
 */
@@ -10,6 +10,7 @@
 #include "Representations/Infrastructure/JointAngles.h"
 #include "Tools/Debugging/Annotation.h"
 #include "Tools/Build.h"
+#include "Tools/Settings.h"
 #include <cmath>
 
 BrokenJointDetector::BrokenJointDetector()
@@ -43,6 +44,9 @@ void BrokenJointDetector::update(BrokenJointState& brokenJointState)
 
 void BrokenJointDetector::detectBrokenJoints(BrokenJointState& brokenJointState)
 {
+  if (stuckJointMalfunction)
+    return;
+
   if (theFrameInfo.getTimeSince(timestampLastCheckBroken) > checkWaitTime)
   {
     timestampLastCheckBroken = theFrameInfo.time;
@@ -77,13 +81,22 @@ void BrokenJointDetector::detectBrokenJoints(BrokenJointState& brokenJointState)
         brokenJointState.brokenJointStatus[i] = false;
     }
     if (brokenJointCounter > 0)
+    {
       brokenJointState.jointState = BrokenJointState::malfunction;
+      brokenJointMalfunction = true;
+    }
     else
+    {
       brokenJointState.jointState = BrokenJointState::alright;
+      brokenJointMalfunction = false;
+    }
   }
 }
 void BrokenJointDetector::detectStuckJoints(BrokenJointState& brokenJointState)
 {
+  if (brokenJointMalfunction)
+    return;
+
   if (theFrameInfo.getTimeSince(timestampLastCheckStuck) > checkWaitTime)
   {
     timestampLastCheckStuck = theFrameInfo.time;
@@ -118,9 +131,13 @@ void BrokenJointDetector::detectStuckJoints(BrokenJointState& brokenJointState)
     if (stuckJointCounter > 0)
     {
       brokenJointState.jointState = BrokenJointState::malfunction;
+      stuckJointMalfunction = true;
     }
     else
+    {
       brokenJointState.jointState = BrokenJointState::alright;
+      stuckJointMalfunction = false;
+    }
   }
 }
 

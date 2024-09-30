@@ -10,10 +10,10 @@
 #include <QUdpSocket>
 #include <Utils/dorsh/models/Team.h>
 #include "Platform/SystemCall.h"
-#include "Utils/dorsh/agents/DataAgent.h"
-#include "Utils/dorsh/models/Robot.h"
+#include "agents/DataAgent.h"
+#include "models/Robot.h"
 #include "Tools/Network/UdpComm.h"
-#include "Utils/dorsh/ui/MainWindow.h"
+#include "ui/MainWindow.h"
 #include <nlohmann/json.hpp>
 
 DataAgent::DataAgent()

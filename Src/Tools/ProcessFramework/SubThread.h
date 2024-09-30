@@ -7,15 +7,21 @@
 
 #pragma once
 
-#include "ExecutorObserver.h"
-
 #include "Process.h"
 #include <memory>
 #include "Tools/Streams/AutoStreamable.h"
 #include <future>
 
+struct Settings;
+class ExecutorObserver;
+namespace tf
+{
+  class Taskflow;
+  class Executor;
+} // namespace tf
+
 #define INIT_SUPERTHREAD_DEBUGGING(configFile) \
-  SuperThread(theDebugReceiver, theDebugSender, configFile), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S")
+  SuperThread(theDebugReceiver, theDebugSender, settings, configFile), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S")
 
 class SubThread;
 
@@ -26,9 +32,10 @@ public:
       (unsigned)(0) numWorkers
   );
 
-  SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, std::string configFile);
+  SuperThread(MessageQueue& debugIn, MessageQueue& debugOut, Settings& settings, std::string configFile);
   SuperThread(const SuperThread&) = delete;
   SuperThread& operator=(const SuperThread&) = delete;
+  ~SuperThread();
 
   void run(tf::Taskflow&);
   void moveMessages(MessageQueue&);
@@ -38,13 +45,7 @@ public:
 protected:
   virtual bool handleMessage(InMessage&);
 
-  template <typename F> inline auto observeFunction(std::string name, F f)
-  {
-    if (observer)
-      return observer->observeFunction(std::move(name), f);
-    else
-      return f();
-  }
+  void observeFunction(std::string name, std::function<void()> f);
 
 private:
   void setNumOfSubthreads(unsigned);
@@ -77,13 +78,17 @@ public:
   void afterRun();
 
 private:
+  Global getGlobals();
+
+  SuperThread* superThread;
+  GlobalGuard g{getGlobals()};
+
   TimingManager timingManager;
   DebugRequestTable debugRequestTable;
   StreamHandler streamHandler;
 
   std::string threadName;
 
-  SuperThread* superThread;
   MessageQueue sender;
   MessageQueue receiver;
 };

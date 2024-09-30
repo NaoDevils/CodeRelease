@@ -7,8 +7,10 @@
 
 #pragma once
 
+#include <vector>
 #include "Tools/Math/Eigen.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Representations/Infrastructure/CameraInfo.h"
 
 /**
  * @struct BodyContour

@@ -7,20 +7,27 @@
 */
 
 #pragma once
+#define SOL_ALL_SAFETIES_ON 1
+#define SOL_PRINT_ERRORS 1
 
 #include <set>
 #include <memory>
 
 #include "RobotConsole.h" // This must be included first to prevent errors, since windows.h is included in one of the following headers.
 #include "RoboCupCtrl.h"
-#include "Tools/Settings.h"
 #include "ButtonToolBar.h"
 #include "StdInConsole.h"
+#include "Platform/Common/Text2Speech.h"
+#include "Tools/Global.h"
 
 class ConsoleView;
 class RemoteRobot;
 class RemoteRobotWithPuppet;
 class TeamRobot;
+namespace sol
+{
+  class state;
+}
 
 /**
 * The class implements the SimRobot controller for RoboCup.
@@ -29,6 +36,7 @@ class ConsoleRoboCupCtrl : public RoboCupCtrl, public MessageHandler
 {
 public:
   DECLARE_SYNC;
+  GlobalGuard g{{.streamHandler = &streamHandler}};
   std::unordered_map<std::string, std::string> representationToFile;
   bool calculateImage; /**< Decides whether images are calculated by the simulator. */
   unsigned calculateImageFps; /**< Declares the simulated image framerate. */
@@ -185,7 +193,6 @@ private:
   int nesting; /**< The number of recursion level during the execution of console files. */
   std::set<std::string> completion; /**< A list for command completion. */
   std::set<std::string>::const_iterator currentCompletionIndex; /** Points to the last string that was used for auto completion */
-  Settings settings; /**< The current location. */
   StreamHandler streamHandler; /**< The handler used by streams in this thread. */
   unsigned timeStamp; /**< The time when the messages currently processed were received. */
   int robotNumber; /**< The number of the robot the messages of which are currently processed. */
@@ -198,6 +205,12 @@ private:
   const RobotConsole::PlotViews* plotViews; /**< Points to the map of plot views used for tab-completion. */
   ButtonToolBar toolBar; /**< The toolbar shown for this controller. */
   std::unique_ptr<StdInConsole> stdInConsole = std::make_unique<StdInConsole>(this);
+  Text2SpeechSetup tts;
+  std::unique_ptr<sol::state> lua;
+  bool luaScriptLoaded;
+  bool luaError;
+  bool luaPaused;
+  int luaFrameNumber;
 
   /**
   * The function executes the specified file.
@@ -206,6 +219,24 @@ private:
   * @param console Use this console to execute all commands in the file.
   */
   void executeFile(std::string name, bool printError, RobotConsole* console);
+
+  /**
+  * The function executes the specified lua file.
+  * @param name The file to execute.
+  * @param printError Print error message if file is not found.
+  */
+  void executeLuaFile(std::string name, bool printError);
+  void requireLuaLibrary(std::string key, std::string name, bool printError);
+
+  /**
+  * The function updates some lua-internal datastructures.
+  */
+  void updateLuaData();
+
+  /**
+  * The function initializes the lua scripting.
+  */
+  void initLua();
 
   /**
   * The function adds a robot with a certain name to the set of selected robots.
@@ -317,4 +348,21 @@ private:
   * ${Robot:,Rajesh Sheldon} for selection.
   */
   void showInputDialog(std::string& command);
+
+  /**
+  * Functiona callable from Lua 
+  */
+  void lua_printLn(std::string line);
+  void lua_gc(std::string command);
+  void lua_ar(std::string command);
+  void lua_dt(std::string command);
+  void lua_moveBall(float x, float y);
+  void lua_moveRobot(float x, float y, float z, float rotX, float rotY, float rotZ, std::string robotName);
+  void lua_kickBallAngle(float angleDeg, float velocity);
+  void lua_kickBallTarget(float targetX, float targetY, float velocity);
+  void lua_saveTestResult(std::string name, std::string content);
+  void lua_walkSpeed(float xVelocity, float yVelocity, float rotationVelocity);
+
+  Vector2f lua_oldBallPos;
+  bool lua_ballInsideGoal;
 };

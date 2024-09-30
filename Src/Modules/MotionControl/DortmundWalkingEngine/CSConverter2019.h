@@ -26,36 +26,31 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/MotionControl/TargetCoM.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
-#include "Representations/MotionControl/FLIPMParams.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/MotionControl/ActualCoM.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Representations/Sensing/RobotModel.h"
-#include "Representations/Sensing/ZMPModel.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/MotionControl/Footpositions.h"
 #include "Representations/MotionControl/FootSteps.h"
 #include "Representations/Sensing/ArmContact.h"
-#include "Representations/Configuration/RobotDimensions.h"
 
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/KinematicRequest.h"
 #include "Representations/MotionControl/JointError.h"
 #include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/WalkingInfo.h"
-#include "Representations/Modeling/RobotPose.h"
-
 MODULE(CSConverter2019,
   REQUIRES(FrameInfo),
-  REQUIRES(TargetCoM),
   REQUIRES(WalkingEngineParams),
+  REQUIRES(SensorControlParams),
+  REQUIRES(TargetCoM),
   REQUIRES(WalkCalibration),
   REQUIRES(ActualCoMRCS),
   REQUIRES(TorsoMatrix),
   REQUIRES(RobotModel),
-  REQUIRES(RobotInfo),
   REQUIRES(FsrSensorData),
   REQUIRES(JoinedIMUData),
   USES(JointError),
@@ -63,9 +58,6 @@ MODULE(CSConverter2019,
   REQUIRES(Footpositions),
   REQUIRES(FootSteps),
   REQUIRES(ArmContact),
-  REQUIRES(RobotDimensions),
-  REQUIRES(ZMPModel),
-  //REQUIRES(MotionRequest),
   REQUIRES(SpeedRequest),
   PROVIDES(KinematicRequest),
   PROVIDES(WalkingInfo),
@@ -76,14 +68,7 @@ MODULE(CSConverter2019,
       ODOMETRY_FROM_WALKING_ENGINE
     ),
     (OdometryVariant) odometryVariant,
-    ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
-    (bool)(false) useLegJointBalancing,
-    (bool)(true) balanceSupportLegOnly,
-    (bool)(true) determineSupportFootByFSR,
-    (BalanceParameters) legJointBalanceParams,
-    (JointControlParameters) jointErrorInfluenceParams,
-    (COMShiftParameters) comShiftParameters,
-    (bool)(false) rotateLegWithBody
+    (bool)(true) determineSupportFootByFSR
   )
 );
 
@@ -156,8 +141,6 @@ private:
 
   // AccXAlpha //
   RingBufferWithSum<float, 3> accXBuffer;
-  float gyroX = 0.f, gyroY = 0.f;
-  Angle angleX = 0_deg, angleY = 0_deg;
 
   float lastSpeedX = 0.f;
   float lastStepAccX = 0.f;
@@ -172,6 +155,9 @@ private:
 
   JointAngles jointError_sum, jointError_last;
   float lastComX = 0.f;
+
+  std::vector<float> offsetSpline;
+  unsigned lastPolygonHash = 0;
 
   //typedef std::list<Footposition *> FootList;
 

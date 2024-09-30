@@ -10,13 +10,11 @@
 #define _Predictor_H_
 
 #include "Tools/Module/Module.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/MotionControl/MotionInfo.h"
 
 MODULE(Predictor,
-  REQUIRES(FrameInfo),
   REQUIRES(MotionInfo),
   REQUIRES(RobotPose),
   REQUIRES(BallModel),

@@ -4,22 +4,12 @@
  * Declaration of class TcpComm.
  *
  * @author <a href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</a>
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
  */
 
 #pragma once
 
-#ifdef WINDOWS
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include <WinSock2.h>
-#else
-#include <netinet/in.h>
-#endif
-
-#ifdef WINDOWS
-#define socket_t SOCKET
-#else
-#define socket_t int
-#endif
+#include <memory>
 
 /**
   * @class TcpComm
@@ -28,9 +18,9 @@
 class TcpComm
 {
 private:
-  socket_t createSocket = 0; /**< The handle of the basic socket. */
-  socket_t transferSocket = 0; /**< The handle of the actual transfer socket. */
-  sockaddr_in address; /**< The socket address. */
+  struct Pimpl;
+  std::unique_ptr<Pimpl> data;
+
   int overallBytesSent = 0; /**< The overall number of bytes sent so far. */
   int overallBytesReceived = 0; /**< The overall number of bytes received so far. */
   int maxPackageSendSize; /**< The maximum size of an outgoing package. If 0, this setting is ignored. */
@@ -107,5 +97,5 @@ public:
    * The function return whether the connection was successful.
    * @return Was the connection established?
    */
-  bool connected() const { return transferSocket > 0; }
+  bool connected() const;
 };

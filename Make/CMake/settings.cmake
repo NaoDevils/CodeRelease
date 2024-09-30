@@ -27,16 +27,29 @@ endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+# enable ccache if present
+if(ENABLE_CCACHE)
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM)
+        message(STATUS "Ccache found")
+        set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}")
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    endif()
+endif()
+
 # general and optimization settings
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pipe")
     if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mssse3")
     endif()
 
-    # Use DWARFv4 as long as we are using Ubuntu 20.04 with gdb 9 on Nao
     if(BUILD_ROBOT)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4")
+        # Use DWARFv4 as long as we are using Ubuntu 20.04 with gdb 9 on Nao
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4")
+    else()
+        # optimize for this architecture
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
     endif()
 
     set(COMPILER_NO_OPTIMIZATION_FLAGS
@@ -50,10 +63,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         -O3 # optimize for speed
         -g1 # create minimal debug information
     )
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GF") # string pooling
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /permissive-") # strict C++ conformance
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:preprocessor") # enable preprocessor conformance mode
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:preprocessor") # enable preprocessor conformance mode
+    elseif(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native") # optimize for this architecture
+    endif()
 
     if (CMAKE_GENERATOR MATCHES "Visual Studio")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP") # multiple processes
@@ -63,6 +80,13 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /DEBUG")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
+
+    # Ccache needs debug symbols integrated into obj files
+    if(CCACHE_PROGRAM)
+        set(DEBUG_FLAG /Z7)
+    else()
+        set(DEBUG_FLAG /Zi)
+    endif()
     
     set(COMPILER_NO_OPTIMIZATION_FLAGS
         /Od   # disable optimization
@@ -71,12 +95,12 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     )
     set(COMPILER_MODERATE_OPTIMIZATION_FLAGS
         /Od   # disable optimization
-        /Zi   # create debugging information 
+        ${DEBUG_FLAG}  # create debugging information 
         /Ob1  # allows expansion of functions marked inline (e.g., speeds up Eigen significantly)
     )
     set(COMPILER_FULL_OPTIMIZATION_FLAGS
         /O2   # optimize for speed
-        /Zi   # create debugging information
+        ${DEBUG_FLAG}   # create debugging information
     )
 else()
     message(FATAL_ERROR "Unsupported compiler!")
@@ -138,21 +162,10 @@ if(WIN32)
 elseif(APPLE)
     set(PLATFORM macOS)
     add_compile_definitions(MACOS)
-
-    find_program(CCACHE_PROGRAM ccache)
-    if(CCACHE_PROGRAM)
-        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
-    endif()
 else()
     set(PLATFORM Linux)
     
     add_compile_definitions(LINUX)
-    
-    # enable ccache if present
-    find_program(CCACHE_PROGRAM ccache)
-    if(CCACHE_PROGRAM)
-        set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
-    endif()
 endif()
 
 # replace RelWithDebInfo with Develop

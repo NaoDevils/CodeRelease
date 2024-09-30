@@ -5,11 +5,11 @@
 
 #include "DeleteLogsCmd.h"
 #include "Platform/File.h"
-#include "Utils/dorsh/Initializer.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/tools/ShellTools.h"
+#include "Initializer.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/ProcessRunner.h"
+#include "tools/Platform.h"
+#include "tools/ShellTools.h"
 
 
 #include <QMessageBox>

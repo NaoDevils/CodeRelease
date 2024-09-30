@@ -2,6 +2,7 @@
 
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/Module/Blackboard.h"
 
 void BallChaserDecision::draw() const
 {

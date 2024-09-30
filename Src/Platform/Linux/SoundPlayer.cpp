@@ -74,7 +74,7 @@ void SoundPlayer::flush()
     }
     if (first.substr(0, 4).compare("t2s:") == 0)
     {
-      Text2Speech::getInstance().text2Speech(first.substr(3));
+      Text2Speech::getInstance().text2Speech(first.substr(4));
     }
     else
     {

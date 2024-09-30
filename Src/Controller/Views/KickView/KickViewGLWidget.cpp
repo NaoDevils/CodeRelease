@@ -12,6 +12,7 @@
 #include "KickViewWidget.h"
 #include "Tools/Streams/InStreams.h"
 #include "Tools/Math/Eigen.h"
+#include "Representations/Configuration/JointCalibration.h"
 
 #include "KickView.h"
 #include "KickViewMath.h"

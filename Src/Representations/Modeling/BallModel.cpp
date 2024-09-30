@@ -4,11 +4,27 @@
  */
 
 #include "BallModel.h"
-#include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/Modeling/RobotPose.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
+#include "Tools/Math/Transformation.h"
 #include "Tools/Modeling/BallPhysics.h"
-#include "Tools/Module/Blackboard.h"
+#include "Platform/SystemCall.h"
+
+Vector2f BallState::getVelocityInFieldCoordinates(const RobotPose& rp) const
+{
+  float c(std::cos(rp.rotation));
+  float s(std::sin(rp.rotation));
+  return Vector2f(velocity.x() * c - velocity.y() * s, velocity.x() * s + velocity.y() * c);
+}
+
+void BallState::setPositionAndVelocityFromFieldCoordinates(const Vector2f& positionOnField, const Vector2f& velocityOnField, const RobotPose& rp)
+{
+  position = Transformation::fieldToRobot(rp, positionOnField);
+  float c(std::cos(rp.rotation));
+  float s(std::sin(rp.rotation));
+  velocity = Vector2f(velocityOnField.x() * c + velocityOnField.y() * s, -velocityOnField.x() * s + velocityOnField.y() * c);
+}
 
 void BallModel::draw() const
 {

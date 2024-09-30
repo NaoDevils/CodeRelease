@@ -12,34 +12,24 @@
 #include "Tools/Module/Module.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/RoleProvider.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/PositionUtils.h"
-#include "Representations/Modeling/RobotMap.h"
-#include "Representations/Modeling/HeatMapCollection.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/FieldUtils.h"
+#include "Representations/Modeling/RecommendedKick/PositionInfo/PositionInfo.h"
 
 MODULE(ReceiverProvider,
   REQUIRES(BallSymbols),
-  REQUIRES(RobotMap),
-  REQUIRES(HeatMapCollection),
   REQUIRES(FieldDimensions),
-  REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
-  REQUIRES(RobotInfo),
   REQUIRES(GameSymbols),
+  REQUIRES(PositionInfo),
   REQUIRES(RobotPoseAfterPreview),
-  REQUIRES(TacticSymbols),
-  REQUIRES(OwnTeamInfo),
   REQUIRES(TeammateData),
   REQUIRES(BallChaserDecision),
   PROVIDES(Receiver),
@@ -50,8 +40,8 @@ MODULE(ReceiverProvider,
     (float)(800.f) evadeDistanceToBallchaser,
     (float)(1350.f) wantedYSpaceBorderToBC,
     (bool)(true) useHeatMap,
-    (float)(1.f) sidesHeatFactor,
-    (float)(1.f) opponentsHeatFactor
+    (float)(1.f) sidesHeatParameter,
+    (float)(1.f) opponentsHeatParameter
   )
 );
 

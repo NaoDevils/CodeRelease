@@ -16,8 +16,6 @@
 #include "Tools/Debugging/Debugging.h"
 #include "Tools/Math/BHMath.h"
 #include "Representations/BehaviorControl/KeySymbols.h"
-#include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Perception/FieldColor.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/YoloInput.h"
 #include "Representations/Perception/BallSpots.h"
@@ -58,7 +56,6 @@ MODULE(YoloRobotDetector,
   REQUIRES(CameraMatrixUpper),
   REQUIRES(FallDownState),
   REQUIRES(KeySymbols),
-  REQUIRES(FrameInfo),
   REQUIRES(FieldDimensions),
   //USES(RobotPose),
 

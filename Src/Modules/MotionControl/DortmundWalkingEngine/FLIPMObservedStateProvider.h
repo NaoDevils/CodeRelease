@@ -8,7 +8,6 @@
 #include "Representations/MotionControl/FLIPMObservedState.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/Sensing/RobotModel.h"
-#include "Representations/MotionControl/FLIPMParams.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Tools/Module/Module.h"
 
@@ -18,7 +17,6 @@
 */
 
 MODULE(FLIPMObservedStateProvider,
-  REQUIRES(FLIPMObserverParameter),
   REQUIRES(JoinedIMUData),
   REQUIRES(RobotModel),
   USES(WalkingInfo),

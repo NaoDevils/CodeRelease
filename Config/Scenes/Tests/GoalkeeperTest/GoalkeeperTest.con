@@ -1,0 +1,6 @@
+call Includes/Normal
+dr debugDrawing3d:representation:RobotPose
+call Includes/Behavior3D
+
+# call lua script to run the test
+lua load Tests/GoalkeeperTest/GoalkeeperTest.lua

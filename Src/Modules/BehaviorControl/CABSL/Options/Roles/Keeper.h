@@ -105,6 +105,13 @@ option(Keeper)
       {
         theMotionRequest.kickRequest.kickTarget = theKeeper.optKickTarget;
         theMotionRequest.kickRequest.mirror = theBallSymbols.ballPositionRelative.y() < 0;
+
+
+        theMotionRequest.kickRequest.kickPose.rotation = (theKeeper.optKickTarget - theRobotPose.translation).angle();
+        theMotionRequest.kickRequest.kickPose.translation = theBallSymbols.ballPositionField;
+
+        theMotionRequest.kickRequest.kickPose.translate(-theBehaviorConfiguration.optDistanceToBallX, (theMotionRequest.kickRequest.mirror ? +1.f : -1.f) * theBehaviorConfiguration.optDistanceToBallY);
+
         if (!theKeeper.useLongKick)
         {
           theMotionRequest.walkRequest.stepRequest = theKeeper.walkKick;

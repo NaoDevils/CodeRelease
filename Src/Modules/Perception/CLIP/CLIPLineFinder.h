@@ -11,7 +11,6 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/Image.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/Perception/CLIPPointsPercept.h"
 #include "Representations/Perception/CenterCirclePercept.h"
@@ -36,7 +35,6 @@ MODULE(CLIPLineFinder,
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
   REQUIRES(CLIPPointsPercept),
-  REQUIRES(FrameInfo),
   REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
   PROVIDES(CLIPFieldLinesPercept),

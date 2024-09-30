@@ -11,11 +11,7 @@
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/JointAngles.h"
-#include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/Infrastructure/LEDRequest.h"
-#include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/SensorData/InertialSensorData.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
@@ -46,7 +42,9 @@ MODULE(NaoProviderV6,
   PROVIDES(SystemSensorData),
   PROVIDES(SonarSensorData),
   USES(WalkCalibration),
-  USES(JointRequest), // Will be accessed in send()
+
+  // Would create circular dependency, will be accessed directly in send()
+  // REQUIRES(JointRequest),
   LOADS_PARAMETERS(,
     (Angle)(0.00125_deg) gyroBiasMaxErrorPerFrame,
     (Angle)(0.25_deg) gyroBiasThresholdForTTS
@@ -101,7 +99,6 @@ private:
       NDData::Joint::rKneePitch,
       NDData::Joint::rAnklePitch,
       NDData::Joint::rAnkleRoll};
-
   static_assert(jointsToBase.size() - 1 == static_cast<size_t>(NDData::Joint::numOfJoints), "Unexpected number of joints");
 
   static constexpr std::array<NDData::Touch, KeyStates::Key::numOfKeys> keysToBase = {NDData::Touch::headFront,
@@ -118,106 +115,70 @@ private:
       NDData::Touch::rBumperLeft,
       NDData::Touch::rBumperRight,
       NDData::Touch::chestButton};
-
   static_assert(keysToBase.size() == static_cast<size_t>(NDData::Touch::numOfTouchs), "Unexpected number of keys");
 
   static constexpr std::array<NDData::FSR, FsrSensorData::FsrSensorPosition::numOfFsrSensorPositions> lFsrToBase = {
       NDData::FSR::lFrontLeft, NDData::FSR::lFrontRight, NDData::FSR::lRearLeft, NDData::FSR::lRearRight};
   static constexpr std::array<NDData::FSR, FsrSensorData::FsrSensorPosition::numOfFsrSensorPositions> rFsrToBase = {
       NDData::FSR::rFrontLeft, NDData::FSR::rFrontRight, NDData::FSR::rRearLeft, NDData::FSR::rRearRight};
-
   static_assert(lFsrToBase.size() + rFsrToBase.size() == static_cast<size_t>(NDData::FSR::numOfFsrs), "Unexpected number of FSR positions");
 
-  static constexpr std::array<LEDRequest::LED, NDData::RGBLED::numOfRGBLEDs> chestLEDsFromBase = {LEDRequest::LED::chestRed, LEDRequest::LED::chestGreen, LEDRequest::LED::chestBlue};
-  static constexpr std::array<LEDRequest::LED, NDData::LEarLED::numOfLEarLEDs> lEarLEDsFromBase = {LEDRequest::LED::earsLeft0Deg,
-      LEDRequest::LED::earsLeft36Deg,
-      LEDRequest::LED::earsLeft72Deg,
-      LEDRequest::LED::earsLeft108Deg,
-      LEDRequest::LED::earsLeft144Deg,
-      LEDRequest::LED::earsLeft180Deg,
-      LEDRequest::LED::earsLeft216Deg,
-      LEDRequest::LED::earsLeft252Deg,
-      LEDRequest::LED::earsLeft288Deg,
-      LEDRequest::LED::earsLeft324Deg};
-  static constexpr std::array<std::array<LEDRequest::LED, NDData::LEyeLED::numOfLEyeLEDs>, NDData::RGBLED::numOfRGBLEDs> lEyeLEDsFromBase = {
-      {{LEDRequest::LED::faceLeftRed45Deg,
-           LEDRequest::LED::faceLeftRed0Deg,
-           LEDRequest::LED::faceLeftRed315Deg,
-           LEDRequest::LED::faceLeftRed270Deg,
-           LEDRequest::LED::faceLeftRed225Deg,
-           LEDRequest::LED::faceLeftRed180Deg,
-           LEDRequest::LED::faceLeftRed135Deg,
-           LEDRequest::LED::faceLeftRed90Deg},
-          {LEDRequest::LED::faceLeftGreen45Deg,
-              LEDRequest::LED::faceLeftGreen0Deg,
-              LEDRequest::LED::faceLeftGreen315Deg,
-              LEDRequest::LED::faceLeftGreen270Deg,
-              LEDRequest::LED::faceLeftGreen225Deg,
-              LEDRequest::LED::faceLeftGreen180Deg,
-              LEDRequest::LED::faceLeftGreen135Deg,
-              LEDRequest::LED::faceLeftGreen90Deg},
-          {LEDRequest::LED::faceLeftBlue45Deg,
-              LEDRequest::LED::faceLeftBlue0Deg,
-              LEDRequest::LED::faceLeftBlue315Deg,
-              LEDRequest::LED::faceLeftBlue270Deg,
-              LEDRequest::LED::faceLeftBlue225Deg,
-              LEDRequest::LED::faceLeftBlue180Deg,
-              LEDRequest::LED::faceLeftBlue135Deg,
-              LEDRequest::LED::faceLeftBlue90Deg}}};
-  static constexpr std::array<LEDRequest::LED, NDData::RGBLED::numOfRGBLEDs> lFootLEDsFromBase = {LEDRequest::LED::footLeftRed, LEDRequest::LED::footLeftGreen, LEDRequest::LED::footLeftBlue};
-  static constexpr std::array<LEDRequest::LED, NDData::REarLED::numOfREarLEDs> rEarLEDsFromBase = {LEDRequest::LED::earsRight324Deg,
-      LEDRequest::LED::earsRight288Deg,
-      LEDRequest::LED::earsRight252Deg,
-      LEDRequest::LED::earsRight216Deg,
-      LEDRequest::LED::earsRight180Deg,
-      LEDRequest::LED::earsRight144Deg,
-      LEDRequest::LED::earsRight108Deg,
-      LEDRequest::LED::earsRight72Deg,
-      LEDRequest::LED::earsRight36Deg,
-      LEDRequest::LED::earsRight0Deg};
-  static constexpr std::array<std::array<LEDRequest::LED, NDData::REyeLED::numOfREyeLEDs>, NDData::RGBLED::numOfRGBLEDs> rEyeLEDsFromBase = {
-      {{LEDRequest::LED::faceRightRed0Deg,
-           LEDRequest::LED::faceRightRed45Deg,
-           LEDRequest::LED::faceRightRed90Deg,
-           LEDRequest::LED::faceRightRed135Deg,
-           LEDRequest::LED::faceRightRed180Deg,
-           LEDRequest::LED::faceRightRed225Deg,
-           LEDRequest::LED::faceRightRed270Deg,
-           LEDRequest::LED::faceRightRed315Deg},
-          {LEDRequest::LED::faceRightGreen0Deg,
-              LEDRequest::LED::faceRightGreen45Deg,
-              LEDRequest::LED::faceRightGreen90Deg,
-              LEDRequest::LED::faceRightGreen135Deg,
-              LEDRequest::LED::faceRightGreen180Deg,
-              LEDRequest::LED::faceRightGreen225Deg,
-              LEDRequest::LED::faceRightGreen270Deg,
-              LEDRequest::LED::faceRightGreen315Deg},
-          {LEDRequest::LED::faceRightBlue0Deg,
-              LEDRequest::LED::faceRightBlue45Deg,
-              LEDRequest::LED::faceRightBlue90Deg,
-              LEDRequest::LED::faceRightBlue135Deg,
-              LEDRequest::LED::faceRightBlue180Deg,
-              LEDRequest::LED::faceRightBlue225Deg,
-              LEDRequest::LED::faceRightBlue270Deg,
-              LEDRequest::LED::faceRightBlue315Deg}}};
-  static constexpr std::array<LEDRequest::LED, NDData::RGBLED::numOfRGBLEDs> rFootLEDsFromBase = {LEDRequest::LED::footRightRed, LEDRequest::LED::footRightGreen, LEDRequest::LED::footRightBlue};
-  static constexpr std::array<LEDRequest::LED, NDData::SkullLED::numOfSkullLEDs> skullLEDsFromBase = {LEDRequest::LED::headLedFrontLeft0,
-      LEDRequest::LED::headLedFrontLeft1,
-      LEDRequest::LED::headLedMiddleLeft0,
-      LEDRequest::LED::headLedRearLeft0,
-      LEDRequest::LED::headLedRearLeft1,
-      LEDRequest::LED::headLedRearLeft2,
-      LEDRequest::LED::headLedRearRight0,
-      LEDRequest::LED::headLedRearRight1,
-      LEDRequest::LED::headLedRearRight2,
-      LEDRequest::LED::headLedMiddleRight0,
-      LEDRequest::LED::headLedFrontRight0,
-      LEDRequest::LED::headLedFrontRight1};
+  static constexpr std::array<LEDRequest::EyeLED, NDData::LEyeLED::numOfLEyeLEDs> lEyeLEDsFromBase = {LEDRequest::EyeLED::eye45Deg,
+      LEDRequest::EyeLED::eye0Deg,
+      LEDRequest::EyeLED::eye315Deg,
+      LEDRequest::EyeLED::eye270Deg,
+      LEDRequest::EyeLED::eye225Deg,
+      LEDRequest::EyeLED::eye180Deg,
+      LEDRequest::EyeLED::eye135Deg,
+      LEDRequest::EyeLED::eye90Deg};
+  static constexpr std::array<LEDRequest::EyeLED, NDData::REyeLED::numOfREyeLEDs> rEyeLEDsFromBase = {LEDRequest::EyeLED::eye0Deg,
+      LEDRequest::EyeLED::eye45Deg,
+      LEDRequest::EyeLED::eye90Deg,
+      LEDRequest::EyeLED::eye135Deg,
+      LEDRequest::EyeLED::eye180Deg,
+      LEDRequest::EyeLED::eye225Deg,
+      LEDRequest::EyeLED::eye270Deg,
+      LEDRequest::EyeLED::eye315Deg};
+  static_assert(static_cast<size_t>(NDData::LEyeLED::numOfLEyeLEDs) == static_cast<size_t>(LEDRequest::EyeLED::numOfEyeLEDs));
+  static_assert(static_cast<size_t>(NDData::REyeLED::numOfREyeLEDs) == static_cast<size_t>(LEDRequest::EyeLED::numOfEyeLEDs));
 
-  static_assert(chestLEDsFromBase.size() + lEarLEDsFromBase.size() + lEyeLEDsFromBase.size() * lEyeLEDsFromBase[0].size() + lFootLEDsFromBase.size() + rEarLEDsFromBase.size()
-              + rEyeLEDsFromBase.size() * rEyeLEDsFromBase[0].size() + rFootLEDsFromBase.size() + skullLEDsFromBase.size()
-          == static_cast<size_t>(LEDRequest::LED::numOfLEDs),
-      "Unexpected number of LEDs");
+  static constexpr std::array<LEDRequest::EarLED, NDData::LEarLED::numOfLEarLEDs> lEarLEDsFromBase = {LEDRequest::EarLED::ear0Deg,
+      LEDRequest::EarLED::ear36Deg,
+      LEDRequest::EarLED::ear72Deg,
+      LEDRequest::EarLED::ear108Deg,
+      LEDRequest::EarLED::ear144Deg,
+      LEDRequest::EarLED::ear180Deg,
+      LEDRequest::EarLED::ear216Deg,
+      LEDRequest::EarLED::ear252Deg,
+      LEDRequest::EarLED::ear288Deg,
+      LEDRequest::EarLED::ear324Deg};
+  static constexpr std::array<LEDRequest::EarLED, NDData::REarLED::numOfREarLEDs> rEarLEDsFromBase = {LEDRequest::EarLED::ear324Deg,
+      LEDRequest::EarLED::ear288Deg,
+      LEDRequest::EarLED::ear252Deg,
+      LEDRequest::EarLED::ear216Deg,
+      LEDRequest::EarLED::ear180Deg,
+      LEDRequest::EarLED::ear144Deg,
+      LEDRequest::EarLED::ear108Deg,
+      LEDRequest::EarLED::ear72Deg,
+      LEDRequest::EarLED::ear36Deg,
+      LEDRequest::EarLED::ear0Deg};
+  static_assert(static_cast<size_t>(NDData::LEarLED::numOfLEarLEDs) == static_cast<size_t>(LEDRequest::EarLED::numOfEarLEDs));
+  static_assert(static_cast<size_t>(NDData::REarLED::numOfREarLEDs) == static_cast<size_t>(LEDRequest::EarLED::numOfEarLEDs));
+
+  static constexpr std::array<LEDRequest::HeadLED, NDData::SkullLED::numOfSkullLEDs> skullLEDsFromBase = {LEDRequest::HeadLED::frontLeft0,
+      LEDRequest::HeadLED::frontLeft1,
+      LEDRequest::HeadLED::middleLeft0,
+      LEDRequest::HeadLED::rearLeft0,
+      LEDRequest::HeadLED::rearLeft1,
+      LEDRequest::HeadLED::rearLeft2,
+      LEDRequest::HeadLED::rearRight0,
+      LEDRequest::HeadLED::rearRight1,
+      LEDRequest::HeadLED::rearRight2,
+      LEDRequest::HeadLED::middleRight0,
+      LEDRequest::HeadLED::frontRight0,
+      LEDRequest::HeadLED::frontRight1};
+  static_assert(static_cast<size_t>(NDData::SkullLED::numOfSkullLEDs) == static_cast<size_t>(LEDRequest::HeadLED::numOfHeadLEDs));
+
 
 public:
   NaoProviderV6();

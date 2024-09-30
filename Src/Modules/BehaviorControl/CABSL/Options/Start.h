@@ -5,7 +5,10 @@ option(Start)
     // check for malfunctions
     if (theBehaviorData.soccerState == BehaviorData::safetyShutdown)
     {
-      goto malfunction;
+      if (theRobotInfo.transitionToFramework == 0.f)
+        goto sitDown;
+      else
+        goto malfunction;
     }
   }
 
@@ -14,7 +17,6 @@ option(Start)
     transition
     {
       if ((SystemCall::getMode() == SystemCall::simulatedRobot) // Don't wait for the button in SimRobot
-          || (Global::getSettings().recover) // Skip playDead state at a restart after a crash
           || (theRobotInfo.transitionToFramework > 0.f)) // ndevilsbase starts transition to framework (chest button was pressed once)
         goto startBehavior;
     }
@@ -48,9 +50,6 @@ option(Start)
         SystemCall::text2Speech("Testing Joints unstiff");
         goto testingUnstiff;
       }
-      // Penalty shootout and robot is penalized
-      if ((Global::getSettings().gameMode == Settings::GameMode::penaltyShootout) && (theRobotInfo.penalty != PENALTY_NONE))
-        goto sitDownPenalty;
 
       // ndevilsbase stopped framework (chest button was pressed three times or all head buttons pressed 1 sec)
       if (theRobotInfo.transitionToFramework == 0.f)
@@ -58,21 +57,12 @@ option(Start)
     }
     action
     {
-      if (Global::getSettings().gameMode == Settings::GameMode::penaltyShootout)
-      {
-        HeadControlPS();
-        BodyControlPS();
-        theBehaviorData.behaviorState = BehaviorData::BehaviorState::penaltyShootout;
-      }
-      else
-      {
-        HeadControl(); // Does only: theHeadControlRequest.controlType = HeadControlRequest::soccer;
-        SoundControl(); // Does nothing yet but tells the role
-        BodyControl(); // Handles all other parts of the game
-        StandUpControl(); // Triggers stand up motions when robot falls
-        RobotSafetyControl(); // Triggers safety motion when robot has a broken leg joint
-        theBehaviorData.behaviorState = BehaviorData::BehaviorState::game;
-      }
+      HeadControl(); // Does only: theHeadControlRequest.controlType = HeadControlRequest::soccer;
+      SoundControl(); // Does nothing yet but tells the role
+      BodyControl(); // Handles all other parts of the game
+      StandUpControl(); // Triggers stand up motions when robot falls
+      RobotSafetyControl(); // Triggers safety motion when robot has a broken leg joint
+      theBehaviorData.behaviorState = BehaviorData::BehaviorState::game;
     }
   }
 
@@ -153,42 +143,6 @@ option(Start)
       SpecialAction(SpecialActionRequest::sitDown);
       theBehaviorData.soccerState = BehaviorData::waiting;
       theBehaviorData.behaviorState = BehaviorData::game;
-    }
-  }
-
-  state(sitDownPenalty)
-  {
-    transition
-    {
-      if (state_time > 4000)
-        goto waitForNewStatePenalty;
-    }
-    action
-    {
-      if (theRobotInfo.penalty == PENALTY_MANUAL)
-        SpecialAction(SpecialActionRequest::stand);
-      else
-        SpecialAction(SpecialActionRequest::sitDown);
-      theBehaviorData.soccerState = BehaviorData::penalized;
-      theBehaviorData.behaviorState = BehaviorData::BehaviorState::penaltyShootout;
-    }
-  }
-
-  state(waitForNewStatePenalty)
-  {
-    transition
-    {
-      if (state_time > 500 && theRobotInfo.penalty == PENALTY_NONE)
-        goto startBehavior;
-    }
-    action
-    {
-      if (theRobotInfo.penalty == PENALTY_MANUAL)
-        SpecialAction(SpecialActionRequest::stand);
-      else
-        SpecialAction(SpecialActionRequest::sitDown);
-      theBehaviorData.soccerState = BehaviorData::SoccerState::waiting;
-      theBehaviorData.behaviorState = BehaviorData::BehaviorState::penaltyShootout;
     }
   }
 

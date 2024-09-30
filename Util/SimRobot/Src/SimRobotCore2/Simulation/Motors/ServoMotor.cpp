@@ -105,8 +105,8 @@ void ServoMotor::setStiffness(int value)
     stiffness = value;
     if (stiffness > 100)
       stiffness = 100;
-    else if (stiffness < 20)
-      stiffness = 20;
+    else if (stiffness < 22)
+      stiffness = 22;
   }
 }
 

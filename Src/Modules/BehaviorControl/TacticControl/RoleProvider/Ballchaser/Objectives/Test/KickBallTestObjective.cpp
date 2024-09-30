@@ -1,11 +1,7 @@
 #include "KickBallTestObjective.h"
 
 #include <Modules/BehaviorControl/TacticControl/KicksProvider/KicksProvider.h>
-#include <Modules/BehaviorControl/TacticControl/KicksProvider/Types/Dribble.h>
 #include <Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Functions/SelectFunctions.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Factors.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Filterer/Filterer.h>
 
 KickBallTestObjective::KickBallTestObjective(BallchaserProvider* role, BehaviorLogger& logger, const std::string& kickName) : Objective("TestObjective", role, logger)
 {
@@ -16,18 +12,28 @@ KickBallTestObjective::KickBallTestObjective(BallchaserProvider* role, BehaviorL
 
 bool KickBallTestObjective::perform(Ballchaser& ballchaser)
 {
-  const Filterer filterer = Filterer();
-  const Factors factors = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f};
-  const auto currentKick = kickManager.getCurrentKick(role->ballPosition);
-  const auto kickPlanOptional = SelectFunctions::createAndFilterAndSelect(
-      role->theRobotPoseAfterPreview, role->ballPosition, KickUtils::unpack(kicks), currentKick, filterer, factors, role->theFieldDimensions, role->theHeatMapCollection, role->theKickWheel, role->theRobotMap, role->theTacticSymbols);
-  if (kickPlanOptional.has_value())
+  Kick* kick = KickUtils::unpack(kicks).at(0);
+  const bool kickWithLeft = true;
+  const Vector2f ballPosition = role->theBallSymbols.ballPositionFieldPredicted;
+  const Vector2f playerPosition = role->theRobotPoseAfterPreview.translation;
+
+  const float playerToBallDistance = (ballPosition - playerPosition).norm();
+  Vector2f targetDirectionVector = {};
+  if (playerToBallDistance < 1000.f && targetDirectionVectorOptional.has_value())
   {
-    kickManager.kickTo(ballchaser, kickPlanOptional.value(), role->theFrameInfo);
+    targetDirectionVector = targetDirectionVectorOptional.value();
   }
   else
   {
-    OUTPUT_WARNING("Kick not possible!");
+    targetDirectionVector = ballPosition - playerPosition;
+    if (targetDirectionVector.x() == 0.f && targetDirectionVector.y() == 0.f)
+    {
+      targetDirectionVector = Vector2f(1.f, 0.f);
+    }
+    targetDirectionVectorOptional = targetDirectionVector;
   }
+  const Pose2f kickPose = kick->getKickPose(ballPosition, targetDirectionVector.angle(), kickWithLeft);
+  const Vector2f target = ballPosition + targetDirectionVector.normalize(1000.f);
+  currentKickManager.setCurrentKick(ballchaser, kick, kickPose, kickWithLeft, target, role->theBallSymbols, role->theFrameInfo);
   return true;
 }

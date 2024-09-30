@@ -117,17 +117,13 @@ void OracledWorldModelProvider::update(RobotMap& robotMap)
 {
   computeRobotPose();
   robotMap.robots.clear();
-  if (!Global::settingsExist())
+  if (!Global::hasSettings())
     return;
 
-  // Simulation scene should only use blue and red for now
-  //ASSERT(Global::getSettings().teamColor == Settings::blue || Global::getSettings().teamColor == Settings::red);
-
-  const bool teammate = Global::getSettings().teamNumber == 1;
-  for (unsigned int i = 0; i < theGroundTruthWorldState.bluePlayers.size(); ++i)
-    playerToRobotMapEntry(theGroundTruthWorldState.bluePlayers[i], robotMap, teammate);
-  for (unsigned int i = 0; i < theGroundTruthWorldState.redPlayers.size(); ++i)
-    playerToRobotMapEntry(theGroundTruthWorldState.redPlayers[i], robotMap, !teammate);
+  for (const auto& bluePlayer : theGroundTruthWorldState.bluePlayers)
+    playerToRobotMapEntry(bluePlayer, robotMap, theOwnTeamInfo.teamNumber == 1);
+  for (const auto& redPlayer : theGroundTruthWorldState.redPlayers)
+    playerToRobotMapEntry(redPlayer, robotMap, theOwnTeamInfo.teamNumber == 2);
 }
 
 void OracledWorldModelProvider::playerToRobotMapEntry(const GroundTruthWorldState::GroundTruthPlayer& player, RobotMap& robotMap, const bool isTeammate) const

@@ -236,8 +236,8 @@ void ReceiverProvider::checkHeat(Vector2f positionToTry, Receiver& positioningSy
       Vector2f positionToCheck = positionToTry + Vector2f(stepSize * xStep, stepSize * yStep);
       if (!FieldUtils::isIllegal(positionToCheck, theFieldDimensions))
       {
-        const auto sidesHeatScore = (-sidesHeatFactor * theHeatMapCollection.sidesHeatMap.getHeat(positionToCheck, theFieldDimensions));
-        const auto opponentsHeatScore = (-opponentsHeatFactor * theHeatMapCollection.opponentKickHeatMap.getHeat(positionToCheck, theFieldDimensions));
+        const auto sidesHeatScore = (-sidesHeatParameter * thePositionInfo.sidesHeatMap.getHeat(positionToCheck, theFieldDimensions));
+        const auto opponentsHeatScore = (-opponentsHeatParameter * thePositionInfo.opponentHeatMap.getHeat(positionToCheck, theFieldDimensions));
         float stepScore = sidesHeatScore + opponentsHeatScore;
         if (stepScore > maxStepScore)
         {

@@ -10,12 +10,12 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QtConcurrent>
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/ui/CommandLineEdit.h"
-#include "Utils/dorsh/ui/Console.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
-#include "Utils/dorsh/ui/VisualContext.h"
-#include "Utils/dorsh/models/Robot.h"
+#include "cmdlib/Context.h"
+#include "ui/CommandLineEdit.h"
+#include "ui/Console.h"
+#include "ui/TeamSelector.h"
+#include "ui/VisualContext.h"
+#include "models/Robot.h"
 
 Icons Icons::theIcons;
 

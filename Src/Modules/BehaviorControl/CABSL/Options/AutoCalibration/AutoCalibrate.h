@@ -1,4 +1,5 @@
 // Auto Calibration of Walk and Camera Matrix
+Vector2f walkInPosition = Vector2f::Zero();
 
 option(AutoCalibrate)
 {
@@ -15,6 +16,7 @@ option(AutoCalibrate)
     action
     {
       theBehaviorData.behaviorState = BehaviorData::calibrationStarted; // something other than calibrate
+      walkInPosition = Vector2f::Zero();
       Walk(WalkRequest::speed, 0, 0, 0, WalkRequest::none);
     }
   }
@@ -62,29 +64,53 @@ option(AutoCalibrate)
       if (theCMCorrectorStatus.state == CMCorrectorStatus::CalibrationState::finished)
       {
         SystemCall::text2Speech("finished calibration...");
-        goto finishedAutoCalibration;
+        goto calibrateWalk;
       }
     }
     action
     {
       theBehaviorData.behaviorState = BehaviorData::calibrateCameraMatrix;
       Walk(WalkRequest::speed, 0, 0, 0, WalkRequest::none);
+      if (theCMCorrectorStatus.stage == 2 && walkInPosition.isZero() && theRobotPose.validity > 0.8f)
+      {
+        walkInPosition = theRobotPose.translation;
+      }
     }
   }
 
-  //state(calibrateWalk)
-  //{
-  //  transition
-  //  {
-  //    if (theWalkCalibration.walkCalibrated)
-  //      goto finishedAutoCalibration;
-  //  }
-  //  action
-  //  {
-  //    theBehaviorData.behaviorState = BehaviorData::calibrateWalk;
-  //    Walk(WalkRequest::speed, 0, 0, 0, WalkRequest::none);
-  //  }
-  //}
+  state(calibrateWalk)
+  {
+    transition
+    {
+      if (action_done || state_time > 5000)
+      {
+        goto goToWalkInPosition;
+      }
+    }
+    action
+    {
+      theBehaviorData.behaviorState = BehaviorData::calibrateWalk;
+      theHeadControlRequest.controlType = HeadControlRequest::localize;
+      Walk(WalkRequest::speed, 10, 10, 2_deg, WalkRequest::none);
+    }
+  }
+
+  state(goToWalkInPosition)
+  {
+    transition
+    {
+      if (action_done || state_time > 25000)
+      {
+        goto finishedAutoCalibration;
+      }
+    }
+    action
+    {
+      theBehaviorData.behaviorState = BehaviorData::calibrateWalk;
+      GoToFieldCoordinates(Pose2f(theRobotPose.rotation, walkInPosition), 100, 100, 100, 10_deg, true, true);
+    }
+  }
+
 
   target_state(finishedAutoCalibration)
   {

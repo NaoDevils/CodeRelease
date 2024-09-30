@@ -106,7 +106,7 @@ void YoloRobotDetector::execute(tf::Subflow& subflow)
 {
   subflow
       .emplace(
-          [=]()
+          [this]()
           {
             execute(true);
           })
@@ -115,7 +115,7 @@ void YoloRobotDetector::execute(tf::Subflow& subflow)
 
   subflow
       .emplace(
-          [=]()
+          [this]()
           {
             execute(false);
           })

@@ -7,6 +7,7 @@
 * @author Ingmar Schwarz
 */
 
+#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h>
 #include "GameSymbolsProvider.h"
 #include "stdint.h"
 
@@ -128,6 +129,18 @@ void GameSymbolsProvider::update(GameSymbols& gameSymbols)
   {
     gameSymbols.timeSinceLastBallOut = (int)(theFrameInfo.getTimeSince(timeOfLastBallout) / 1000);
   }
+
+  decideGameSituation(gameSymbols);
+
+  if (KickUtils::isBallKicked(theMotionInfo))
+  {
+    gameSymbols.lastKickTime = theFrameInfo.time;
+    gameSymbols.kickedThisFrame = true;
+  }
+  else
+  {
+    gameSymbols.kickedThisFrame = false;
+  }
 }
 
 /**
@@ -156,6 +169,212 @@ bool GameSymbolsProvider::calcAllowedInOwnGoalArea()
   bool goalAreaIsOccupied = numOfTeammatesInGoalArea >= 3;
   bool robotIsInGoalArea = Geometry::isPointInsideRectangle(goalAreaBottomLeft, goalAreaTopRight, theRobotPoseAfterPreview.translation);
   return hasPrivilegedRole && (!goalAreaIsOccupied || robotIsInGoalArea);
+}
+
+void GameSymbolsProvider::decideGameSituation(GameSymbols& theGameSymbols)
+{
+  switch (theGameInfo.gamePhase)
+  {
+  case GAME_PHASE_TIMEOUT:
+    theGameSymbols.gameSituation = GameSymbols::GameSituation::none;
+    return;
+  case GAME_PHASE_PENALTYSHOOT:
+    switch (theGameInfo.state)
+    {
+    case STATE_SET:
+      if (theGameSymbols.ownKickOff)
+      {
+        theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_own_set;
+      }
+      else
+      {
+        theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_set;
+      }
+      return;
+    case STATE_PLAYING:
+      if (theGameSymbols.ownKickOff)
+      {
+        theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_own_playing;
+      }
+      else
+      {
+        theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_playing;
+      }
+      return;
+    default:
+      OUTPUT_ERROR("Unknown GameSituation!");
+    }
+    return;
+  case GAME_PHASE_NORMAL:
+  case GAME_PHASE_OVERTIME:
+    switch (theGameInfo.state)
+    {
+    case STATE_INITIAL:
+    case STATE_STANDBY:
+    {
+      if (theGameSymbols.ownKickOff)
+      {
+        theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_own_playing_ballNotFree;
+      }
+      else
+      {
+        theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_opponent_playing_ballNotFree;
+      }
+      return;
+    }
+    case STATE_READY:
+    {
+      if (theGameInfo.setPlay == SET_PLAY_PENALTY_KICK)
+      {
+        // penalty kick
+        if (theGameSymbols.ownKickOff)
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_own_ready;
+        }
+        else
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_ready;
+        }
+      }
+      else
+      {
+        // kick off
+        if (theGameSymbols.ownKickOff)
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_own_ready;
+        }
+        else
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_opponent_ready;
+        }
+      }
+      return;
+    }
+    case STATE_SET:
+      if (theGameInfo.setPlay == SET_PLAY_PENALTY_KICK)
+      {
+        // penalty kick
+        if (theGameSymbols.ownKickOff)
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_own_set;
+        }
+        else
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_set;
+        }
+      }
+      else
+      {
+        // kick off
+        if (theGameSymbols.ownKickOff)
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_own_set;
+        }
+        else
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_opponent_set;
+        }
+      }
+      return;
+    case STATE_PLAYING:
+    {
+      if (theGameSymbols.kickoffInProgress && theGameSymbols.timeSincePlayingState < 10000 && theGameInfo.setPlay == SET_PLAY_NONE) // TODO KickOff time constant
+      {
+        if (theGameSymbols.ownKickOff)
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_own_playing_ballNotFree;
+          return;
+        }
+        else if (theGameSymbols.avoidCenterCircle)
+        {
+          theGameSymbols.gameSituation = GameSymbols::GameSituation::kickOff_opponent_playing_ballNotFree;
+          return;
+        }
+        else
+        {
+          // TODO This happens quiet regularly: OUTPUT_ERROR("Unknown game situation! Something is wrong with kickOff variables!");
+        }
+      }
+
+      if (theGameInfo.isSetPlay())
+      {
+        switch (getSetPlay())
+        {
+        case SET_PLAY_GOAL_KICK:
+          if (theGameSymbols.ownKickOff)
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::goalKick_own;
+          }
+          else
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::goalKick_opponent;
+          }
+          return;
+        case SET_PLAY_PUSHING_FREE_KICK:
+          if (theGameSymbols.ownKickOff)
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::pushingFreeKick_own;
+          }
+          else
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::pushingFreeKick_opponent;
+          }
+          return;
+        case SET_PLAY_CORNER_KICK:
+        {
+          if (theGameSymbols.ownKickOff)
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::cornerKick_own;
+          }
+          else
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::cornerKick_opponent;
+          }
+          return;
+        }
+        case SET_PLAY_KICK_IN:
+          if (theGameSymbols.ownKickOff)
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::kickIn_own;
+          }
+          else
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::kickIn_opponent;
+          }
+          return;
+        case SET_PLAY_PENALTY_KICK:
+          if (theGameSymbols.ownKickOff)
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_own_playing;
+          }
+          else
+          {
+            theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_playing;
+          }
+          return;
+        default:
+          throw std::invalid_argument("Unknown Setplay!");
+        }
+      }
+
+      theGameSymbols.gameSituation = GameSymbols::GameSituation::regularPlay;
+
+      return;
+    }
+    case STATE_FINISHED:
+      theGameSymbols.gameSituation = GameSymbols::GameSituation::none;
+      return;
+    default:
+      OUTPUT_ERROR("Unknown GameSituation!");
+      theGameSymbols.gameSituation = GameSymbols::GameSituation::none;
+      return;
+    }
+  }
+}
+
+int GameSymbolsProvider::getSetPlay()
+{
+  return theGameInfo.setPlay != SET_PLAY_NONE ? theGameInfo.setPlay : lastSetPlay; // todo is this actually required?
 }
 
 MAKE_MODULE(GameSymbolsProvider, behaviorControl)

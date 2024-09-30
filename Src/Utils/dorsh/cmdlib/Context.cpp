@@ -1,7 +1,7 @@
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/Command.h"
-#include "Utils/dorsh/ui/Console.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/Command.h"
+#include "ui/Console.h"
 
 ContextRunnable::ContextRunnable(QObject* parent) : QThread(parent) {}
 

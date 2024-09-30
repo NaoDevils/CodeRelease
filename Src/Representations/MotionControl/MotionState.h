@@ -66,16 +66,6 @@ STREAMABLE(WalkingStatus,,
   (Vector2f)(Vector2f::Ones()) fallDownSpeedReductionFactor
 );
 
-STREAMABLE(StandUpStatus,,
-  (std::array<float,SpecialActionRequest::numOfSpecialActionIDs>) standUpChance,
-  (std::vector<int>) standUpPriority,
-  ((FallDownState) State) fallDownState,
-  ((SpecialActionRequest) SpecialActionID) currentStandUpMotion,
-  ((SpecialActionRequest) SpecialActionID) lastStandUpMotion,
-  ((SpecialActionRequest) SpecialActionID) bestStandUpMotionBack,
-  ((SpecialActionRequest) SpecialActionID) bestStandUpMotionFront
-);
-
 STREAMABLE(HeatStatus,,
   (unsigned char) kneePitchLeftStat,
   (unsigned char) kneePitchRightStat,
@@ -107,7 +97,6 @@ STREAMABLE(MotionState,
   (JointStatus) jointStatus,
   (FrameRateStatus) frameRateStatus,
   (WalkingStatus) walkingStatus,
-  (StandUpStatus) standUpStatus,
   (HeatStatus) heatStatus,
   (std::vector<MotionStateError>) motionProblems
 );

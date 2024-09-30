@@ -23,7 +23,6 @@ CognitionConfigurationDataProvider::CognitionConfigurationDataProvider()
   theInstance = this;
 
   readFieldDimensions();
-  readCameraCalibration();
   readRobotDimensions();
   readHeadLimits();
   readOdometryCorrectionTables();
@@ -65,8 +64,8 @@ void CognitionConfigurationDataProvider::update(USBSettings& usbSettings)
       if (j.contains("team"))
       {
         const json& team = j["team"];
-        usbSettings.teamNumber = team.value("number", 0);
-        usbSettings.teamPort = team.value("port", 0);
+        usbSettings.teamNumber = team.value("number", uint8_t(0));
+        usbSettings.teamPort = team.value("port", uint16_t(0));
       }
 
       const std::string headName = Global::getSettings().robotName;
@@ -89,7 +88,7 @@ void CognitionConfigurationDataProvider::update(USBSettings& usbSettings)
       }();
 
       usbSettings.ip = robot.value("ip", "");
-      usbSettings.robotNumber = robot.value("number", 0);
+      usbSettings.robotNumber = robot.value("number", uint8_t(0));
     }
     catch (const std::exception& e)
     {
@@ -114,15 +113,6 @@ void CognitionConfigurationDataProvider::update(FieldDimensions& fieldDimensions
   }
 
   fieldDimensions.drawPolygons(theOwnTeamInfo.fieldPlayerColour);
-}
-
-void CognitionConfigurationDataProvider::update(CameraCalibration& cameraCalibration)
-{
-  if (theCameraCalibration)
-  {
-    cameraCalibration = *theCameraCalibration;
-    theCameraCalibration.reset();
-  }
 }
 
 void CognitionConfigurationDataProvider::update(RobotDimensions& robotDimensions)
@@ -159,20 +149,16 @@ void CognitionConfigurationDataProvider::readFieldDimensions()
   theFieldDimensions = std::make_unique<FieldDimensions>();
 
   // try .json first, fallback to .cfg
-  if (!theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/field_dimensions.json"))
-    theFieldDimensions->load();
-}
+  if (theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/field_dimensions.json"))
+    return;
 
-void CognitionConfigurationDataProvider::readCameraCalibration()
-{
-  ASSERT(!theCameraCalibration);
-
-  InMapFile stream("cameraCalibration.cfg");
-  if (stream.exists())
+  for (const std::string& overlay : Global::getSettings().overlays)
   {
-    theCameraCalibration = std::make_unique<CameraCalibration>();
-    stream >> *theCameraCalibration;
+    if (theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/Overlays/" + overlay + "/field_dimensions.json"))
+      return;
   }
+
+  theFieldDimensions->load();
 }
 
 void CognitionConfigurationDataProvider::readRobotDimensions()

@@ -9,6 +9,7 @@
 #include "Tools/Debugging/TcpConnection.h"
 #include "RobotConsole.h"
 #include "SimulatedRobot.h"
+#include "Tools/Settings.h"
 
 /**
 * @class RemoteRobot
@@ -26,6 +27,7 @@ private:
   unsigned timeStamp; /**< The time when the transfer speed was measured. */
   SimulatedRobot simulatedRobot; /**< The interface to simulated objects. */
   SimRobotCore2::Body* puppet; /**< A pointer to the puppet when there is one. Otherwise 0. */
+  Settings settings;
 
   /**
   * The main loop of the process.
@@ -53,11 +55,7 @@ public:
   /**
    * Destructor.
    */
-  ~RemoteRobot()
-  {
-    Thread<RemoteRobot>::stop();
-    setGlobals();
-  }
+  ~RemoteRobot() { Thread<RemoteRobot>::stop(); }
 
   /**
   * The function starts the process.

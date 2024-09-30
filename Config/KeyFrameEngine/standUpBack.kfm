@@ -1,0 +1,105 @@
+keyFrameID = standUpBack;
+initialKeyFrame = true;
+nextMotionConditions = [execute];
+nextKeyFrameMotionIDs = [standUpBackSpreadLegs];
+YstabilizationP = -0.05;
+YstabilizationI = 0;
+YstabilizationD = -0.6;
+XstabilizationP = 0;
+XstabilizationI = 0;
+XstabilizationD = 0;
+errorMultiplier = 100;
+reductionRate = 0.25;
+maxCompensation = 10deg;
+compensationThreshold = 8deg;
+hipYawCorrectionFactors = [0, 0, 0];
+hipCorrectionFactors = [0, 0];
+kneeCorrectionFactors = [0];
+ankleCorrectionFactors = [0, 0];
+localArmAngleReachedThreshold = 10deg;
+keyFrames = [
+  { // push hip up, to get arms under body
+  //0deg,30deg, 123deg,8deg,17deg,-88deg,-90deg,0deg, 123deg,-8deg,-17deg,88deg,90deg,0deg, 0deg,0deg,30deg,90deg,0deg,0deg, 0deg,0deg,30deg,90deg,0deg,0deg
+    headAngles = [0,30deg];
+    armsAngles = [123deg,8deg,17deg,-88deg,-90deg,0deg, 123deg,-8deg,-17deg,88deg,90deg,0deg];
+    legsAngles = [0deg,0deg,30deg,90deg,0deg,0deg, 0deg,0deg,30deg,90deg,0deg,0deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 400;
+    intType = linear;
+    angleAtKeyFrameTarget = -115deg;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [true,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  { // strech legs 1
+  //0,30deg, 123deg,8deg,17deg,-88deg,-90deg,0deg, 123deg,-8deg,-17deg,88deg,90deg,0deg, 0deg,0deg,15deg,20deg,53deg,0deg, 0deg,0deg,15deg,20deg,53deg,0deg
+    headAngles = [0,30deg];
+    armsAngles = [123deg,8deg,17deg,-88deg,-90deg,0deg, 123deg,-8deg,-17deg,88deg,90deg,0deg];
+    legsAngles = [0deg,0deg,15deg,20deg,53deg,0deg, 0deg,0deg,15deg,20deg,53deg,0deg];
+    stiffnesses = [40,40, 50,50,50,50,50,50, 50,50,50,50,50,50, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 355;
+    intType = linear;
+    angleAtKeyFrameTarget = -95deg;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+    { // strech legs 2
+  //0,30deg, 123deg,8deg,17deg,-88deg,-90deg,0deg, 123deg,-8deg,-17deg,88deg,90deg,0deg, 0deg,0deg,-20deg,20deg,55deg,0deg, 0deg,0deg,-20deg,20deg,55deg,0deg
+    headAngles = [0,30deg];
+    armsAngles = [123deg,8deg,17deg,-88deg,-90deg,0deg, 123deg,-8deg,-17deg,88deg,90deg,0deg];
+    legsAngles = [0deg,0deg,-20deg,20deg,55deg,0deg, 0deg,0deg,-20deg,20deg,55deg,0deg];
+    stiffnesses = [40,40, 50,50,50,50,50,50, 50,50,50,50,50,50, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 200;
+    intType = linear;
+    angleAtKeyFrameTarget = -70deg;
+    angleAtKeyFrameError = [20deg,40deg];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  },
+  { // ninja move -> legs down and upper body up
+  //0,22deg, 123deg,8deg,17deg,-60deg,-90deg,0deg, 123deg,-8deg,-17deg,60deg,90deg,0deg, 0deg,0deg,-65deg,60deg,50deg,0deg, 0deg,0deg,-65deg,60deg,50deg,0deg
+    headAngles = [0,22deg];
+    armsAngles = [123deg,8deg,17deg,-60deg,-90deg,0deg, 123deg,-8deg,-17deg,60deg,90deg,0deg];
+    legsAngles = [0deg,0deg,-65deg,60deg,50deg,0deg, 0deg,0deg,-65deg,60deg,50deg,0deg];
+    stiffnesses = [40,40, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100, 100,100,100,100,100,100];
+    duration = 500;
+    intType = linear;
+    angleAtKeyFrameTarget = -45deg;
+    angleAtKeyFrameError = [35deg,35deg];
+    stabilize = false;
+    waitForStable = false;
+    leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
+    fallDownProtection = none;
+    holdFallDownProtection = 12;
+  }
+];

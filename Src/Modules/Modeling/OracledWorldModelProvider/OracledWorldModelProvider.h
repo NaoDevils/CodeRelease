@@ -9,9 +9,9 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
-#include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GroundTruthWorldState.h"
+#include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotMap.h"
@@ -19,8 +19,8 @@
 
 MODULE(OracledWorldModelProvider,
   REQUIRES(GroundTruthWorldState),
-  REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
+  REQUIRES(OwnTeamInfo),
   PROVIDES(BallModel),
   PROVIDES(MultipleBallModel),
   PROVIDES(GroundTruthBallModel),

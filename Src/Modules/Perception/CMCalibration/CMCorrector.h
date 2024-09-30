@@ -9,15 +9,14 @@
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
 #include "Representations/Infrastructure/CMCorrectorStatus.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Perception/CLIPFieldLinesPercept.h"
 #include "Representations/Sensing/TorsoMatrix.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Infrastructure/SensorData/KeyStates.h"
 #include "Representations/MotionControl/MotionRequest.h"
-#include "Representations/MotionControl/MotionState.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Configuration/MotionSettings.h"
 #include "Representations/Configuration/FieldDimensions.h"
 
 #include "Tools/Module/ModuleManager.h"
@@ -33,9 +32,8 @@ MODULE(CMCorrector,
   REQUIRES(KeyStates),
   REQUIRES(FieldDimensions),
   REQUIRES(FallDownState),
-  REQUIRES(MotionSettings),
-  REQUIRES(MotionState),
   REQUIRES(CameraCalibration),
+  REQUIRES(RobotInfo),
   USES(JointSensorData), // consistency with USES(CLIPFieldLinesPercept)
   USES(TorsoMatrix), // consistency with USES(CLIPFieldLinesPercept)
   USES(CLIPFieldLinesPercept),
@@ -104,10 +102,10 @@ private:
   template <typename T> static std::vector<T> join(std::vector<std::vector<T>>& vec);
 
   template <typename T, int dim>
-  std::pair<Eigen::Matrix<T, dim, 1>, float> optimizeFunction(
+  std::pair<float, Eigen::Matrix<T, dim, 1>> optimizeFunction(
       const Eigen::Matrix<T, dim, 1>& min, const Eigen::Matrix<T, dim, 1>& max, const std::vector<Eigen::Matrix<T, dim, 1>>& stepSizes, std::function<float(const Eigen::Matrix<T, dim, 1>&)> func);
   template <typename T, int dim>
-  std::pair<Eigen::Matrix<T, dim, 1>, float> optimizeFunction(
+  std::pair<float, Eigen::Matrix<T, dim, 1>> optimizeFunction(
       const Eigen::Matrix<T, dim, 1>& min, const Eigen::Matrix<T, dim, 1>& max, const Eigen::Matrix<T, dim, 1>& stepSize, std::function<float(const Eigen::Matrix<T, dim, 1>&)> func);
 
   void start();
@@ -132,6 +130,7 @@ private:
   Vector2a lastHeadSensor = Vector2a::Zero();
   unsigned char captureHeadPosition = 0;
 
+  bool saidPleaseCalibrateMe = false;
   std::optional<ModuleManager::Configuration> lastModuleConfig;
 
   CameraCalibration localCalibration;

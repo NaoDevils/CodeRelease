@@ -2,7 +2,6 @@
 
 #include <Modules/BehaviorControl/TacticControl/KicksProvider/KicksProvider.h>
 #include <Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserUtils.h>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/KickManager/Models/Factors.h>
 
 KickInPositionTestObjective::KickInPositionTestObjective(BallchaserProvider* role, BehaviorLogger& logger, const std::string& kickName) : Objective("TestObjective", role, logger)
 {
@@ -27,12 +26,8 @@ bool KickInPositionTestObjective::perform(Ballchaser& ballchaser)
   }
   else
   {
-    const SelectableKick selectableKick = {kicks.at(0).get()};
     const Vector2f target = {0, 0};
-    const SelectableTarget selectableTarget = {selectableKick, role->ballPosition, target};
-    const SelectablePose selectablePose = {role->theRobotPoseAfterPreview, selectableTarget, littleOffCurrentPose, true};
-    const KickPlan kickPlan = {selectablePose, true};
-    kickManager.kickTo(ballchaser, kickPlan, role->theFrameInfo);
+    currentKickManager.setCurrentKick(ballchaser, kicks.at(0).get(), role->theRobotPoseAfterPreview, true, target, role->theBallSymbols, role->theFrameInfo);
   }
   return true;
 }

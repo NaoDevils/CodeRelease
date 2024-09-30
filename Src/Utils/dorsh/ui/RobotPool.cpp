@@ -1,9 +1,9 @@
-#include "Utils/dorsh/ui/RobotPool.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
-#include "Utils/dorsh/ui/RobotView.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/Session.h"
+#include "ui/RobotPool.h"
+#include "ui/TeamSelector.h"
+#include "ui/RobotView.h"
+#include "models/Robot.h"
+#include "models/Team.h"
+#include "Session.h"
 
 #include <QGridLayout>
 #include <QDrag>

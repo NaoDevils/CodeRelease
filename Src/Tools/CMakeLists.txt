@@ -1,6 +1,8 @@
 target_sources(${PROJECT_NAME}
     PRIVATE
         Arms.h
+        AudioBuffer.h
+        AudioBuffer.cpp
         Boundary.h
         Build.h
         Cabsl.h
@@ -79,6 +81,7 @@ target_sources(${PROJECT_NAME}
         Math/Probabilistics.h
         Math/RadialBasisFunctionApproximator.cpp
         Math/RadialBasisFunctionApproximator.h
+        Math/Random.cpp
         Math/Random.h
         Math/Rotation.h
         Math/RotationMatrix.cpp
@@ -163,6 +166,7 @@ target_sources(${PROJECT_NAME}
         SensorData.h
         Settings.cpp
         Settings.h
+        SortingNetworks.h
         Streams/AutoStreamable.h
         Streams/Compressed.cpp
         Streams/Compressed.h
@@ -183,4 +187,4 @@ target_sources(${PROJECT_NAME}
         Streams/Streamable.h
         TripleBuffer.h
         date.h
-)
+ )

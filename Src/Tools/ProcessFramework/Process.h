@@ -8,7 +8,6 @@
 
 #include "ProcessFramework.h"
 #include "Tools/Module/Blackboard.h"
-#include "Tools/Settings.h"
 #include "Tools/Streams/StreamHandler.h"
 #include "Tools/Debugging/AnnotationManager.h"
 #include "Tools/Debugging/DebugRequest.h"
@@ -20,6 +19,7 @@
 
 class SubThread;
 class Logger;
+struct Settings;
 
 /**
  * @class Process
@@ -33,16 +33,19 @@ class Process : public PlatformProcess, public MessageHandler
   friend class SubThread;
   friend class SuperThread;
 
+private:
+  MessageQueue& debugIn; /**< A queue for incoming debug messages. */
+  MessageQueue& debugOut; /**< A queue for outgoing debug messages. */
+  Settings& settings;
+  GlobalGuard g{getGlobals()};
+
 protected:
   AnnotationManager annotationManager; /**< keeps track of the annotations in this process */
   TimingManager timingManager; /**< keeps track of the module timing in this process */
 
 private:
-  MessageQueue& debugIn; /**< A queue for incoming debug messages. */
-  MessageQueue& debugOut; /**< A queue for outgoing debug messages. */
   bool initialized; /**< A helper to determine whether the process is already initialized. */
   Blackboard blackboard; /**< The blackboard of this process. */
-  Settings settings;
   DebugRequestTable debugRequestTable;
   DebugDataTable debugDataTable;
   StreamHandler streamHandler;
@@ -56,7 +59,7 @@ public:
    * @param debugIn A reference to an incoming debug queue
    * @param debugOut A reference to an outgoing debug queue
    */
-  Process(MessageQueue& debugIn, MessageQueue& debugOut);
+  Process(MessageQueue& debugIn, MessageQueue& debugOut, Settings& settings);
 
   /**
    * The main function is called from the process framework once in each frame.
@@ -68,7 +71,7 @@ public:
   /**
    * The method initializes the pointers in class Global.
    */
-  virtual void setGlobals();
+  Global getGlobals();
 
   std::string getThreadName() const;
   void setThreadName(const std::string&);
@@ -185,7 +188,7 @@ public:
  * The macro shall be the first entry after the colon in constructor
  * of the process.
  */
-#define INIT_DEBUGGING Process(theDebugReceiver, theDebugSender), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S")
+#define INIT_DEBUGGING Process(theDebugReceiver, theDebugSender, settings), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S")
 
 /**
  * The macro declares a receiver.

@@ -6,6 +6,7 @@
  */
 
 #include "DataWidget.h"
+#include "Controller/RobotConsole.h"
 #include <QSettings>
 
 DataWidget::DataWidget(DataView& view, QtVariantPropertyManager& manager)

@@ -16,7 +16,7 @@
   MessageQueue theDebugSender;   \
   DebugHandler debugHandler;
 
-#define INIT_EXTERNAL_DEBUGGING Process(theDebugReceiver, theDebugSender), debugHandler(theDebugReceiver, theDebugSender, MAX_PACKAGE_SEND_SIZE, 0)
+#define INIT_EXTERNAL_DEBUGGING Process(theDebugReceiver, theDebugSender, settings), debugHandler(theDebugReceiver, theDebugSender, MAX_PACKAGE_SEND_SIZE, 0)
 
 #define DO_EXTERNAL_DEBUGGING(s) debugHandler.communicate(s)
 

@@ -52,7 +52,8 @@ void KickEngineData::calculateOrigins(const KickRequest& kr, const JointAngles& 
   //}
 }
 
-bool KickEngineData::checkPhaseTime(const FrameInfo& frame, const JointAngles& ja, const TorsoMatrix& torsoMatrix)
+bool KickEngineData::checkPhaseTime(
+    const FrameInfo& frame, const JointAngles& ja, const TorsoMatrix& torsoMatrix, const Vector2f ballPositionRelative, bool adjustLegPosition, float minOffsetX, float maxOffsetX, float minOffsetY, float maxOffsetY, float counterMomentumFactor)
 {
   timeSinceTimeStamp = frame.getTimeSince(timeStamp);
 
@@ -68,6 +69,46 @@ bool KickEngineData::checkPhaseTime(const FrameInfo& frame, const JointAngles& j
       timeSinceTimeStamp = frame.getTimeSince(timeStamp);
       if (phaseNumber < currentParameters.numberOfPhases)
       {
+        if (adjustLegPosition && currentParameters.phaseParameters[phaseNumber].kick)
+        {
+          // Only use Y-offset if kick forward or backwards. Only use X-offset when kicking sideways. Use a mix of both if kicking diagonal.
+          // Subtract offset because 0 = ball between feet. We're shifting the relative ball position to the left foot (in mm)
+          float offsetXVal = (abs(ballPositionRelative.x()) - currentParameters.ballOffset.x() * 1000.0f) * sinf(currentParameters.kickAngle);
+          float offsetYVal = (abs(ballPositionRelative.y()) - currentParameters.ballOffset.y() * 1000.0f) * cosf(currentParameters.kickAngle);
+
+          // Kicking foot
+          // Clamp value to avoid kicking oneself or try to kick beyond the foot length
+          float clampedXOffset = std::clamp(offsetXVal, minOffsetX, maxOffsetX);
+          float clampedYOffset = std::clamp(offsetYVal, minOffsetY, maxOffsetY);
+
+          // Arm on opposite side
+          // Adding counter-momentum to prevent falling over when overextending leg compared to the normal kick
+          float oppositeArmXOffset = std::clamp(clampedXOffset, 0.0f, maxOffsetX) * counterMomentumFactor;
+          float oppositeArmYOffset = std::clamp(clampedYOffset, 0.0f, maxOffsetY) * counterMomentumFactor;
+
+          // Kicking foot
+          if (std::abs(clampedXOffset) > 5.f)
+          {
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::leftFootTra][1].x() += clampedXOffset;
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::leftFootTra][2].x() += clampedXOffset;
+            // Arm on opposite side
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::rightArmTra][1].x() += oppositeArmXOffset;
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::rightArmTra][2].x() += oppositeArmXOffset;
+          }
+
+          if (std::abs(clampedYOffset) > 5.f)
+          {
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::leftFootTra][1].y() += clampedYOffset;
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::leftFootTra][2].y() += clampedYOffset;
+            // Arm on opposite side
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::rightArmTra][1].y() += oppositeArmYOffset;
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::rightArmTra][2].y() += oppositeArmYOffset;
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::rightArmTra][1].z() += oppositeArmXOffset + oppositeArmYOffset;
+            currentParameters.phaseParameters[phaseNumber].controlPoints[Phase::rightArmTra][2].z() += oppositeArmXOffset + oppositeArmYOffset;
+          }
+        }
+
+
         if (currentKickRequest.armsBackFix)
         {
           if (lElbowFront)

@@ -118,23 +118,21 @@ copy()
   ssh $sshoptions nao@$REMOTE "amixer set 'Analog Rear mics' $MIC_VOLUME% unmute > /dev/null"
 
   # set settings on robot
-  if [ ! -z $TEAM ] || [ ! -z $PORT ] || [ ! -z $PLAYER ] || [ ! -z $NUMBER ] || [ ! -z $GAMEMODE ]; then
+  if [ ! -z $NAOVERSION ] || [ ! -z $OVERLAYS ] ; then
     echo "updating settings"
     SEDFLAGS=""
     [ ! -z $NAOVERSION ] && SEDFLAGS="$SEDFLAGS -e 's/naoVersion.*/naoVersion = $NAOVERSION;/'"
     [ ! -z $OVERLAYS ] && SEDFLAGS="$SEDFLAGS -e 's/overlays.*/overlays = [$OVERLAYS];/'"
-    [ ! -z $TEAM ] && SEDFLAGS="$SEDFLAGS -e 's/teamColor.*/teamColor = $TEAM;/'"
-    [ ! -z $PLAYER ] && SEDFLAGS="$SEDFLAGS -e 's/playerNumber.*/playerNumber = $PLAYER;/'"
-    [ ! -z $NUMBER ] && SEDFLAGS="$SEDFLAGS -e 's/teamNumber.*/teamNumber = $NUMBER;/'"
-    [ ! -z $PORT ] && SEDFLAGS="$SEDFLAGS -e 's/teamPort.*/teamPort = $PORT;/'"
-	  [ ! -z $GAMEMODE ] && SEDFLAGS="$SEDFLAGS -e 's/gameMode.*/gameMode = $GAMEMODE;/'"
     ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/settings.cfg"
   fi
 
   # set color settings on robot
-  if [ ! -z "$COLOR_OWN" ] || [ ! -z "$COLOR_OPP" ]; then
-    echo "updating color settings"
+  if [ ! -z $PLAYER ] || [ ! -z $NUMBER ] || [ ! -z $PORT ] || [ ! -z "$COLOR_OWN" ] || [ ! -z "$COLOR_OPP" ]; then
+    echo "updating rawGameInfoProvider"
     SEDFLAGS=""
+    [ ! -z $PLAYER ] && SEDFLAGS="$SEDFLAGS -e 's/playerNumber.*/playerNumber = $PLAYER;/'"
+    [ ! -z $NUMBER ] && SEDFLAGS="$SEDFLAGS -e 's/teamNumber.*/teamNumber = $NUMBER;/'"
+    [ ! -z $PORT ] && SEDFLAGS="$SEDFLAGS -e 's/teamPort.*/teamPort = $PORT;/'"
     [ ! -z "$COLOR_OWN" ] && SEDFLAGS="$SEDFLAGS -e 's/\(ownColor = \)[0-9ycbcr=; ]\+\(;\)/\1$COLOR_OWN\2/'"
     [ ! -z "$COLOR_OPP" ] && SEDFLAGS="$SEDFLAGS -e 's/\(oppColor = \)[0-9ycbcr=; ]\+\(;\)/\1$COLOR_OPP\2/'"
     ssh $sshoptions nao@$REMOTE "sed -i $SEDFLAGS /home/nao/Config/rawGameInfoProvider.cfg"
@@ -232,10 +230,6 @@ while true; do
     "-o" | "/o")
       shift
       PORT=$1
-      ;;
-	"-g" | "/g")
-      shift
-      GAMEMODE=$1
       ;;
     "-sn" | "/sn")
       SKIP_NTP=1

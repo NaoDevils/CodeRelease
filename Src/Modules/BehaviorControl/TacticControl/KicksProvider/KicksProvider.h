@@ -1,10 +1,11 @@
 #pragma once
 
+#include "Tools/Module/Module.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/StepData.h"
 #include "Modules/MotionControl/KickEngine/KickEngineParameters.h"
 #include "Representations/Modeling/Kicks.h"
 
-#include <Platform/File.h>
+#include "Platform/File.h"
 #include <cerrno>
 #include <cstdio>
 #include <cstring>

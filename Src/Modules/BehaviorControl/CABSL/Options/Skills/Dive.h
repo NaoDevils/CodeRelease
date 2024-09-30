@@ -4,8 +4,7 @@ option(Dive)
   {
     transition
     {
-      bool isPenaltyKick = theGameSymbols.currentSetPlay == SET_PLAY_PENALTY_KICK || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT
-          || (theGameInfo.state == STATE_PLAYING && theBehaviorConfiguration.behaviorParameters.goalieForEvents);
+      bool isPenaltyKick = theGameSymbols.currentSetPlay == SET_PLAY_PENALTY_KICK || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT;
 
       if (isPenaltyKick)
       {
@@ -14,9 +13,11 @@ option(Dive)
       }
       else
       {
-        if (theBehaviorConfiguration.behaviorParameters.useDive && std::abs(theBallSymbols.yPosWhenBallReachesOwnYAxis) > 300
+        if (theGameInfo.state == STATE_PLAYING && theBehaviorConfiguration.behaviorParameters.goalieForEvents)
+          goto sitPlay;
+        else if (theBehaviorConfiguration.behaviorParameters.useDive && std::abs(theBallSymbols.yPosWhenBallReachesOwnYAxis) > 300
             && std::abs(theRobotPoseAfterPreview.rotation) < 30_deg && theRobotInfo.number == 1)
-          goto dive;
+          goto standPlay;
         //else
         //goto block;
       }
@@ -24,7 +25,7 @@ option(Dive)
     action {}
   }
 
-  state(dive)
+  state(standPlay)
   {
     transition
     {
@@ -93,7 +94,6 @@ option(Dive)
 
       }
    }*/
-
   state(penalty)
   {
     transition
@@ -112,7 +112,7 @@ option(Dive)
         }
         else if (theMotionInfo.motion == MotionRequest::Motion::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::penaltyGoaliePrepareDive)
         {
-          SpecialAction(SpecialActionRequest::penaltyGoalieDiveLeft, false);
+          SpecialAction(SpecialActionRequest::penaltySpeedDiveLeft, false);
           theMotionRequest.GoalieIsDiving = true;
         }
         else
@@ -129,6 +129,53 @@ option(Dive)
             SystemCall::text2Speech("Penalty right");
         }
         else if (theMotionInfo.motion == MotionRequest::Motion::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::penaltyGoaliePrepareDive)
+        {
+          SpecialAction(SpecialActionRequest::penaltySpeedDiveLeft, true);
+          theMotionRequest.GoalieIsDiving = true;
+        }
+        else
+        {
+          SpecialAction(SpecialActionRequest::goalkeeperDefendLeft, true);
+          theMotionRequest.GoalieIsDiving = true;
+        }
+      }
+    }
+  }
+  state(sitPlay)
+  {
+    transition
+    {
+      if (state_time > 2000 || theMotionInfo.inBlockMotion())
+        goto finished;
+    }
+    action
+    {
+      if (theBallSymbols.yPosWhenBallReachesOwnYAxis > 0)
+      {
+        if (theBehaviorConfiguration.behaviorParameters.behaviorTestmode) // Use save motions for testing
+        {
+          if (state_time == 0)
+            SystemCall::text2Speech("Penalty left");
+        }
+        else if (theKeeper.isInPrepareDive)
+        {
+          SpecialAction(SpecialActionRequest::penaltyGoalieDiveLeft, false);
+          theMotionRequest.GoalieIsDiving = true;
+        }
+        else
+        {
+          SpecialAction(SpecialActionRequest::goalkeeperDefendLeft, false);
+          theMotionRequest.GoalieIsDiving = true;
+        }
+      }
+      else
+      {
+        if (theBehaviorConfiguration.behaviorParameters.behaviorTestmode) // Use save motions for testing
+        {
+          if (state_time == 0)
+            SystemCall::text2Speech("Penalty right");
+        }
+        else if (theKeeper.isInPrepareDive)
         {
           SpecialAction(SpecialActionRequest::penaltyGoalieDiveLeft, true);
           theMotionRequest.GoalieIsDiving = true;

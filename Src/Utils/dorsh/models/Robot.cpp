@@ -1,6 +1,6 @@
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/tools/Platform.h"
+#include "models/Robot.h"
+#include "Session.h"
+#include "tools/Platform.h"
 #include <iostream>
 
 #include "Tools/Streams/InStreams.h"

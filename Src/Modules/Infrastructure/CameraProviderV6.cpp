@@ -102,6 +102,36 @@ void CameraProviderV6::update(ImageUpper& imageUpper)
   DEBUG_RESPONSE_ONCE("module:CameraProviderV6:lag600") SystemCall::sleep(600);
   DEBUG_RESPONSE_ONCE("module:CameraProviderV6:segfault") * (volatile char*)0 = 0;
 
+  if (theVisualRefereeBehaviorSymbols.state == VisualRefereeBehaviorSymbols::State::look || theVisualRefereeBehaviorSymbols.state == VisualRefereeBehaviorSymbols::State::capture)
+  {
+    if (oldWindowPosition.isZero())
+      oldWindowPosition = upperCameraSettings.windowPosition;
+    if (oldWindowSize.isZero())
+      oldWindowSize = upperCameraSettings.windowSize;
+
+    upperCameraSettings.windowPosition =
+        (theVisualRefereeBehaviorSymbols.refereePositionInImage[1] * 2).cwiseMax(0).cwiseMin(Vector2i(upperCameraInfo.width * 2, upperCameraInfo.height * 2)).cast<short>();
+    upperCameraSettings.windowSize =
+        ((theVisualRefereeBehaviorSymbols.refereePositionInImage[3] - theVisualRefereeBehaviorSymbols.refereePositionInImage[1]) * 2)
+            .cwiseMax(0)
+            .cwiseMin(Vector2i(upperCameraInfo.width * 2, upperCameraInfo.height * 2))
+            .cast<short>();
+  }
+  else
+  {
+    if (!oldWindowPosition.isZero())
+    {
+      upperCameraSettings.windowPosition = oldWindowPosition;
+      oldWindowPosition.setConstant(0);
+    }
+    if (!oldWindowSize.isZero())
+    {
+      upperCameraSettings.windowSize = oldWindowSize;
+      oldWindowSize.setConstant(0);
+    }
+  }
+
+
   //DEBUG_RESPONSE_ONCE("module:CameraProviderV6:LoadCameraSettingsUpperV6") readCameraSettings();
 #ifdef CAMERA_INCLUDED
   static uint16_t addr, value;

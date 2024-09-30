@@ -4,16 +4,16 @@
 #include <QInputDialog>
 #include <QDir>
 #include "Platform/File.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/AddRobotCmd.h"
-#include "Utils/dorsh/tools/StringTools.h"
-#include "Utils/dorsh/tools/Platform.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/tools/Filesystem.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/AddRobotCmd.h"
+#include "tools/StringTools.h"
+#include "tools/Platform.h"
+#include "models/Team.h"
+#include "models/Robot.h"
+#include "Session.h"
+#include "tools/Filesystem.h"
 
 #include <fstream>
 #include <sstream>

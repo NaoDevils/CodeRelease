@@ -9,6 +9,10 @@
 #include "DebugRequest.h"
 #include "Platform/BHAssert.h"
 
+#ifdef WINDOWS
+#include <Windows.h>
+#endif
+
 DebugRequest::DebugRequest(const std::string& description, bool enable) : description(description), enable(enable) {}
 
 void DebugRequestTable::addRequest(const DebugRequest& debugRequest, bool force)
@@ -89,5 +93,11 @@ Out& operator<<(Out& stream, const DebugRequest& debugRequest)
 
 void DebugRequestTable::print(const char* message)
 {
+#ifdef WINDOWS
+  char s[256];
+  snprintf(s, sizeof(s), "%.254s\n", message);
+  OutputDebugString(s);
+#else
   fprintf(stderr, "%s\n", message);
+#endif
 }

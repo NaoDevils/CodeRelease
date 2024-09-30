@@ -7,36 +7,52 @@
 #pragma once
 
 #include "Tools/Module/Module.h"
-#include "Representations/Configuration/JointCalibration.h"
 #include "Representations/MotionControl/MotionSelection.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/SpecialActionsOutput.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/MotionControl/JointError.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/Sensing/InertialData.h"
-#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/RobotModel.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Tools/ProcessFramework/CycleLocal.h"
 #include "Tools/MessageQueue/InMessage.h"
+#include "Tools/Joints.h"
 #include <array>
+#include <vector>
 #include <queue>
+#include <tuple>
+#include <map>
 
 // tools
 #include "Tools/RingBufferWithSum.h"
 
 
 STREAMABLE(KeyFrameMotion,
+  
+
   STREAMABLE(KeyFrame,
     ENUM(KeyFrameInterpolationType,
       linear,
       sine
     )
-
+    ENUM(Conditions,
+        execute,
+        lyingOnFront,
+        lyingOnBack,
+        lyingOnSide,
+        notOnGround,
+        mightUpright,
+        notLying,
+        useStandUpStatistic,
+        none
+    )
+    using ConditionVector = std::vector<Conditions>;
     void mirror();
     ,
 
@@ -47,55 +63,68 @@ STREAMABLE(KeyFrameMotion,
     (unsigned int)(100) duration,
     (KeyFrameInterpolationType)(linear) intType,
     (Angle)(0_deg) angleAtKeyFrameTarget,
-    (Angle)(30_deg) angleAtKeyFrameErrorFront,
-    (Angle)(30_deg) angleAtKeyFrameErrorBack,
-    (bool)(false) useAngleAtKeyFrameTarget,
-    (bool)(false) activateFallDownProtection,
+    (std::array<Angle, 2>) angleAtKeyFrameError,
     (bool)(false) stabilize,
     (bool)(false) waitForStable,
+    (bool)(false) armAngleReached,
     (bool)(false) leavingPossible,
+    (std::array<bool,2>) useArmProblemDetection,
+    (unsigned int)(0) holdFrame, 
+    ((KeyFrame) ConditionVector) nextKeyFrameConditions,
+    ((SpecialActionRequest) MotionIDVector) nextKeyFrameIDs,
     ((SpecialActionRequest) SpecialActionID)(none) fallDownProtection,
-    (unsigned)(2000) holdFallDownProtection
+    (unsigned int)(2000) holdFallDownProtection
   ),
   ((SpecialActionRequest) SpecialActionID)(playDead) keyFrameID,
   (bool) (false) initialKeyFrame,
-  ((SpecialActionRequest) SpecialActionID)(none) nextKeyFrameID,
+  ((KeyFrame) ConditionVector) nextMotionConditions,
+  ((SpecialActionRequest) MotionIDVector) nextKeyFrameMotionIDs,
   (float) (0.f) YstabilizationP,
   (float) (0.f) YstabilizationI,
   (float) (0.f) YstabilizationD,
   (float) (0.f) XstabilizationP,
   (float) (0.f) XstabilizationI,
   (float) (0.f) XstabilizationD,
+  (float) (2.f) errorMultiplier,
+  (float) (.05f) reductionRate,
+  (Angle) (10_deg) maxCompensation,
+  (Angle) (4_deg) compensationThreshold,
+  (std::vector<float>) hipYawCorrectionFactors,
+  (std::vector<float>) hipCorrectionFactors,
+  (std::vector<float>) kneeCorrectionFactors,
+  (std::vector<float>) ankleCorrectionFactors,
+  (Angle) (10_deg) localArmAngleReachedThreshold,
   (std::vector<KeyFrame>) keyFrames
 );
 
 MODULE(KeyFrameEngine,
   REQUIRES(FrameInfo),
-  REQUIRES(JointCalibration),
+  REQUIRES(GameInfo),
   REQUIRES(JointError),
   REQUIRES(JointSensorData),
   REQUIRES(MotionSelection),
   REQUIRES(MotionRequest),
-  REQUIRES(StiffnessSettings),
   REQUIRES(JoinedIMUData),
-  REQUIRES(FsrSensorData),
   REQUIRES(RobotInfo),
   REQUIRES(FallDownState),
   REQUIRES(RobotModel),
   REQUIRES(RobotDimensions),
   REQUIRES(MassCalibration),
   REQUIRES(WalkingEngineParams),
+  REQUIRES(SensorControlParams),
   PROVIDES(SpecialActionsOutput),
   LOADS_PARAMETERS(,
     ((JoinedIMUData) InertialDataSource)(JoinedIMUData::inertialSensorData) anglesource,
     (int) maxWaitForStableTime, /* After this time, the KeyFrameMotion does not waitForStable gyro anymore. */
     (int) maxWaitForArmsTime, /* After this time, the KeyFrameMotion does not waitForArms anymore. */
+    (int) (500) maxWaitForArmAngleTime,
     (Angle) maxAvgGyroForStable, /* If avg gyro exceeds this, waitForStable KeyFrames are not finished. */
-    (bool) (false) useStuckArmsDetection,
     (Angle) (15_deg) maxAngleXForStable, 
-    (Angle) (30_deg) maxArmError, 
-    (Angle) (90_deg) bodyAngleOnGround, 
-    (Angle) (5_deg) angleDiffOnGround, 
+    (Angle) (30_deg) maxShoulderRollError,
+    (Angle) (15_deg) maxShoulderPitchError,
+    (Angle) (15_deg) maxElbowError,
+    (float) (0.75f) standUpPossibleThreshold,
+    (int) (3) minStandUpTries,
     (std::array<int, Joints::numOfJoints>) defaultStiffnesses, /* Stiffness values are initialized with this. */
     (Angle)(10_deg) maxAngleDifference, /**< Maximum angle difference of body y to the motion's 'angleAtKeyFrameTarget'. Motion can be stopped if exceeded. */
     (std::array<Angle, Joints::numOfJoints>) degPerFrame, /**< Maximum allowed degree change per frame. */
@@ -109,6 +138,10 @@ MODULE(KeyFrameEngine,
     (int) (750) saveFallBackTime,
     (int) (750) saveFallTime,
     (int) (1000) lyingTime,
+    (Angle) (15_deg) sitAbortThreshold,
+    (int) (1000) mightUprightTime,
+    ((SpecialActionRequest) MotionIDVector) ignoreInitialKeyFrameIfChained,
+    (bool) (true) ignoreStandUpNotWorkingInSimulator,
     (bool)(false) textOutput /* True to print if Joint moves faster*/
   )
 );
@@ -116,16 +149,39 @@ MODULE(KeyFrameEngine,
 class KeyFrameEngine : public KeyFrameEngineBase
 {
 private:
+  enum ArmsStuckState
+  {
+    fine,
+    stuck,
+    lyingOnArm
+  };
   void update(SpecialActionsOutput& specialActionsOutput);
 
+  void plotAngleAtKeyframeTarget(SpecialActionsOutput& specialActionsOutput);
 
   void init(SpecialActionsOutput& specialActionsOutput); // reset data when not initialized
   void initEngineData(SpecialActionsOutput& specialActionsOutput); // reset engine data at start/end of activation
   bool interpolate(SpecialActionsOutput& specialActionsOutput); // interpolate last key frame to current key frame with intType
   void stabilize(SpecialActionsOutput& specialActionsOutput); // if keyFrame wants stabilization, use leg pitches to stablize
   bool isStable(); // checks if gyro values are stable
-  bool armsStuck(); // check if arms get stuck
+  bool checkCondition(KeyFrameMotion::KeyFrame::Conditions condition); // is condition true or false
+  SpecialActionRequest::SpecialActionID selectNextMotionID(std::vector<SpecialActionRequest::SpecialActionID> nextMotionIDs, std::vector<KeyFrameMotion::KeyFrame::Conditions> conditions); // select next keyFrame / keyFrameMotionID
+  ArmsStuckState armsStuck(); // check if arms get stuck
+  bool armAngleReached(SpecialActionsOutput& specialActionsOutput);
   KeyFrameMotion::KeyFrame setKeyFrameAngles(const KeyFrameMotion::KeyFrame& keyFrame); // sets key frame angles for \c keyFrame.
+
+  bool standUpMotionActive();
+  bool inStandUpMotion();
+  void calculateStandUpStatistic(SpecialActionsOutput& specialActionsOutput);
+  std::vector<std::vector<int>> countStandUpStarts;
+  std::vector<std::vector<int>> countStandUpAborts;
+  std::vector<std::vector<float>> standUpStatistic;
+  int lastStandUpMotionIndex = 0;
+  bool standUpStarted = false;
+  bool standUpNotWorking = false;
+  bool standUpSideLegit = false;
+  bool ignoreInitialKeyFrame = false;
+  int armsStuckCount = 0;
 
   // select specific KeyFrameMotion, fall back to default (stand) if not found
   void selectActiveMotion(SpecialActionRequest::SpecialActionID id, bool mirror, SpecialActionsOutput& specialActionsOutput);
@@ -145,9 +201,15 @@ private:
   bool isMotionStable(SpecialActionsOutput& specialActionsOutput);
   void handleTransitions(SpecialActionsOutput& specialActionsOutput);
   bool resetFallDownProtectionNeeded(SpecialActionsOutput& specialActionsOutput);
-  void handleInitialFallDownProtection();
-  void chooseFallDownProtection(SpecialActionRequest::SpecialActionID id = SpecialActionRequest::none, unsigned timer = 12, bool advancedProtection = true);
+  void handleInitialFallDownProtection(SpecialActionsOutput& specialActionsOutput);
+  void chooseFallDownProtection(SpecialActionsOutput& specialActionsOutput, SpecialActionRequest::SpecialActionID id = SpecialActionRequest::none, unsigned timer = 12);
   bool initialFallDownProtectionActive = false;
+
+  static bool sortJoints(std::tuple<Angle, Joints::Joint>& a, std::tuple<Angle, Joints::Joint>& b) { return std::abs(std::get<0>(a)) > std::abs(std::get<0>(b)); }
+  void gatherRequestDiff(SpecialActionsOutput& specialActionsOutput, bool afterInterpolation);
+  void compensateJointError(SpecialActionsOutput& specialActionsOutput);
+  bool compensateHipError(SpecialActionsOutput& specialActionsOutput);
+  void compensateLegError(SpecialActionsOutput& specialActionsOutput, bool leftLeg);
 
   bool handleMessage2(InMessage& message);
 
@@ -172,10 +234,31 @@ private:
   // remember the specific KeyFrameMotion and KeyFrame for the above timestamp
   int lastFinishedKeyFrameMotionIndex = 0;
   int lastFinishedKeyFrameIndex = -1;
+  unsigned int globalFrontBackIdx = 0;
   bool prevArmsStuck = true;
   bool prevFlying = false;
+  bool standTransitionActive = false;
+  bool stabilizeWarningActive = false;
+
+  unsigned lastPhaseUpdateTimestamp = 0;
+  unsigned currentCycleTime = 0;
 
   SpecialActionRequest::SpecialActionID initialKeyFrameMotionID = SpecialActionRequest::none;
+  SpecialActionRequest::SpecialActionID lastStandUpStartMotion = SpecialActionRequest::none;
+
+  float lCompensationReductionFactor = 1.f;
+  float rCompensationReductionFactor = 1.f;
+  std::map<Joints::Joint, Angle> jointRequestDiff{{Joints::lHipYawPitch, 0_deg},
+      {Joints::lHipPitch, 0_deg},
+      {Joints::lKneePitch, 0_deg},
+      {Joints::lAnklePitch, 0_deg},
+      {Joints::rHipYawPitch, 0_deg},
+      {Joints::rHipPitch, 0_deg},
+      {Joints::rKneePitch, 0_deg},
+      {Joints::rAnklePitch, 0_deg}};
+  RingBufferWithSum<float, 3> lJointErrorBuffer;
+  RingBufferWithSum<float, 3> rJointErrorBuffer;
+  RingBufferWithSum<float, 3> jointErrorBuffer;
 
   // for sensor control
   RingBufferWithSum<Angle, 5> angleYBuffer;

@@ -12,8 +12,6 @@
 #include <typeinfo>
 #include <vector>
 #include <array>
-#include <limits>
-#include <cmath>
 #include "InOut.h"
 
 #define STREAM_REGISTER_FINISH Streaming::finishRegistration();

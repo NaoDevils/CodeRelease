@@ -14,29 +14,12 @@
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GoalSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/DangerMap.h"
-#include "Representations/Modeling/RobotPose.h"
-#include "Representations/MotionControl/MotionInfo.h"
-#include "Representations/Sensing/FallDownState.h"
-
 MODULE(BallchaserKeeperProvider,
-  REQUIRES(BallModel),
   REQUIRES(BallSymbols),
   REQUIRES(BehaviorConfiguration),
-  REQUIRES(DangerMap),
-  REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
-  REQUIRES(FrameInfo),
-  REQUIRES(GameInfo),
   REQUIRES(GoalSymbols),
-  REQUIRES(MotionInfo),
-  REQUIRES(RobotPoseAfterPreview),
-  REQUIRES(TacticSymbols),
   PROVIDES(BallchaserKeeper)
 );
 

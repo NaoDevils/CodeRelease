@@ -1,5 +1,12 @@
 #pragma once
+
+#include <algorithm>
 #include "TeamUtils.h"
+#include "Tools/Math/Geometry.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
+#include "Representations/BehaviorControl/BehaviorConfiguration.h"
+#include "Representations/Configuration/FieldDimensions.h"
 
 class AvoidUtils
 {

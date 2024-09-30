@@ -1,7 +1,7 @@
-#include "Utils/dorsh/ui/ShortcutBar.h"
-#include "Utils/dorsh/ui/Console.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/Session.h"
+#include "ui/ShortcutBar.h"
+#include "ui/Console.h"
+#include "cmdlib/Commands.h"
+#include "Session.h"
 
 #include <QIcon>
 #include <QAction>

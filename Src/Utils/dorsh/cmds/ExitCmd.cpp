@@ -1,6 +1,6 @@
-#include "Utils/dorsh/cmds/ExitCmd.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/Commands.h"
+#include "cmds/ExitCmd.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/Commands.h"
 
 ExitCmd ExitCmd::theExitCmd;
 

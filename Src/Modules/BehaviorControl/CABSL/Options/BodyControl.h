@@ -3,7 +3,7 @@ option(BodyControl)
 {
   common_transition
   {
-    if (theGameInfo.state == STATE_INITIAL)
+    if (theGameInfo.inPreGame())
       goto initial;
     else if (theGameInfo.state == STATE_FINISHED)
       goto finished;
@@ -33,7 +33,21 @@ option(BodyControl)
     action
     {
       lastGameState = STATE_INITIAL;
-      SpecialAction(SpecialActionRequest::sitDown);
+      if (theVisualRefereeBehaviorSymbols.state != VisualRefereeBehaviorSymbols::State::idle)
+      {
+        Stand();
+
+        if (theVisualRefereeBehaviorSymbols.state == VisualRefereeBehaviorSymbols::State::localize)
+          theHeadControlRequest.controlType = HeadControlRequest::localize;
+        else
+        {
+          theHeadControlRequest.controlType = HeadControlRequest::direct;
+          theHeadControlRequest.pan = theVisualRefereeBehaviorSymbols.targetHeadAngle.x();
+          theHeadControlRequest.tilt = theVisualRefereeBehaviorSymbols.targetHeadAngle.y();
+        }
+      }
+      else
+        SpecialAction(SpecialActionRequest::sitDown);
     }
   }
 
@@ -104,8 +118,10 @@ option(BodyControl)
       // Our defense does not move instantly if not alone, to make sure no false whistle was detected (WhistleHandlerDortmund changes state back)
       // This give the ref/gc 10 seconds to apply penalty, otherwise this does not help
       if (theGameSymbols.timeSincePlayingState < 10000 && theGameSymbols.lastGameState == STATE_SET && theTeammateData.numberOfActiveTeammates > 1
-          && (theRoleSymbols.role == BehaviorData::keeper || theRoleSymbols.role == BehaviorData::defenderLeft || theRoleSymbols.role == BehaviorData::defenderRight) //TODO Is this right with the new roles?
-          && theGameSymbols.kickoffInProgress && !(theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT || theGameInfo.setPlay == SET_PLAY_PENALTY_KICK))
+          && (theRoleSymbols.role == BehaviorData::keeper || theRoleSymbols.role == BehaviorData::replacementKeeper || theRoleSymbols.role == BehaviorData::defenderLeft
+              || theRoleSymbols.role == BehaviorData::defenderRight || theRoleSymbols.role == BehaviorData::defenderSingle || theRoleSymbols.role == BehaviorData::backWing)
+          && (theRobotPose.translation - thePositioningSymbols.optPosition.translation).norm() < 400.f && theGameSymbols.kickoffInProgress
+          && !(theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT || theGameInfo.setPlay == SET_PLAY_PENALTY_KICK))
       {
         Walk(WalkRequest::speed, 0, 0, 0);
       }

@@ -9,7 +9,6 @@
 #pragma once
 
 #include "Representations/BehaviorControl/BallSymbols.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/Infrastructure/RobotInfo.h"
@@ -18,16 +17,14 @@
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Modeling/BallModel.h"
 #include "Tools/Module/Module.h"
 
 MODULE(GameSymbolsProvider,
-  REQUIRES(BallModel),
   REQUIRES(BallSymbols),
-  USES(BehaviorData),
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
+  REQUIRES(MotionInfo),
   REQUIRES(RawGameInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
@@ -74,4 +71,7 @@ private:
   bool ownTeamScoredGoal = false;
   Vector2f ballAtStart = Vector2f::Zero();
   float ballStartCounter = 0.f;
+
+  void decideGameSituation(GameSymbols& theGameSymbols);
+  int getSetPlay();
 };

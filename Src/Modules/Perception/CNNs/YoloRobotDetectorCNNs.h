@@ -1,5 +1,4 @@
 #include <vector>
-#include "Tools/SIMD.h"
 
 namespace YoloRobotDetectorCNNLower
 {

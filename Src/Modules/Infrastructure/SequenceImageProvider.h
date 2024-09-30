@@ -10,20 +10,15 @@
 #include "Tools/Module/Module.h"
 #include "Representations/Infrastructure/SequenceImage.h"
 #include "Representations/Infrastructure/Image.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/Perception/CameraMatrix.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 MODULE(SequenceImageProvider,
   REQUIRES(Image),
   REQUIRES(ImageUpper),
-  REQUIRES(CameraInfo),
-  REQUIRES(CameraInfoUpper),
   REQUIRES(CameraMatrix),
   REQUIRES(CameraMatrixUpper),
   REQUIRES(BallSymbols),
-  REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   PROVIDES_WITHOUT_MODIFY(SequenceImage),
   PROVIDES_WITHOUT_MODIFY(SequenceImageUpper),

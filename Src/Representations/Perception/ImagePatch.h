@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Tools/Math/Eigen.h"
 #include "Tools/Streams/Streamable.h"
 
 struct Image;

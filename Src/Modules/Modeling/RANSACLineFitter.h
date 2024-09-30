@@ -1,4 +1,5 @@
 #include "Tools/Math/Angle.h"
+#include "Tools/RingBuffer.h"
 #include "Representations/Perception/BallPercept.h"
 #include "Representations/Perception/CameraMatrix.h"
 

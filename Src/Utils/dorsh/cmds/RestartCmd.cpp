@@ -1,11 +1,11 @@
 #include <cstdlib>
-#include "Utils/dorsh/cmdlib/Commands.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/cmdlib/ProcessRunner.h"
-#include "Utils/dorsh/cmds/RestartCmd.h"
-#include "Utils/dorsh/tools/ShellTools.h"
-#include "Utils/dorsh/tools/Sleeper.h"
-#include "Utils/dorsh/tools/StringTools.h"
+#include "cmdlib/Commands.h"
+#include "cmdlib/Context.h"
+#include "cmdlib/ProcessRunner.h"
+#include "cmds/RestartCmd.h"
+#include "tools/ShellTools.h"
+#include "tools/Sleeper.h"
+#include "tools/StringTools.h"
 #include <iostream>
 RestartCmd RestartCmd::theRestartCmd;
 

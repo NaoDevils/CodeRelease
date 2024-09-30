@@ -10,22 +10,19 @@
 
 #include <cstdint>
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/Modeling/RefereeGesture.h"
 #include "Representations/Infrastructure/TeamCommEvents.h"
 #include "Representations/Infrastructure/TeamCommData.h"
 #include "Representations/Infrastructure/Time.h"
-#include "Representations/MotionControl/WalkRequest.h"
 #include "Representations/MotionControl/SpeedInfo.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
-#include "Representations/Perception/RobotsPercept.h"
-#include "Representations/Modeling/SimpleRobotsDistributed.h"
-#include "Representations/Modeling/SideConfidence.h"
 #include "Representations/Modeling/WhistleDortmund.h"
 
 STREAMABLE(Teammate,
   // Increase version number whenever something changes!
-  static constexpr unsigned char thisVersion = 0;
+  static constexpr unsigned char thisVersion = 1;
 
   // Sum version numbers of all streamables
   static constexpr unsigned char totalVersion = thisVersion
@@ -52,6 +49,7 @@ STREAMABLE(Teammate,
   (BehaviorDataCompressed) behaviorData,
   (TeamCommEventsCompressed) teamCommEvents,
   (WhistleDortmundCompressed) whistle,
+  ((RefereeGesture) Gesture) refereeGesture,
   (SpeedInfoCompressed) speedInfo,
   (RobotMapCompressed) localRobotMap
 );
@@ -116,7 +114,7 @@ STREAMABLE(TeammateData,
   (int)(0) numberOfActiveTeammates,         /**< The number of teammates (in the list) that are at not INACTIVE */
   (int)(1200) messageBudget,                /**< The remaining message budget, updated by GC. */
   (float)(1.f) messageBudgetFactor,
-  (bool)(true) wlanOK,                      /**< Is the wireless ok (if not, use behavior w/o wireless) */
+  (bool)(true) commEnabled,                      /**< Is the communication enabled, i.e. in message budget (if not, use static behavior) */
   (std::vector<TeammateEvent>) newestEventMessages,
   (Statistic) statistic
 );

@@ -1,6 +1,11 @@
 #include "TfliteInterpreter.h"
 #include <taskflow/taskflow.hpp>
+#include "Modules/Perception/TFlite.h"
 #include "Platform/File.h"
+
+TfliteInterpreter::TfliteInterpreter() = default;
+TfliteInterpreter::TfliteInterpreter(TfliteInterpreter&&) noexcept = default;
+TfliteInterpreter::~TfliteInterpreter() = default;
 
 void TfliteInterpreter::updateInterpreters(const tf::Executor& executor, const std::function<std::unique_ptr<tflite::Interpreter>(const tflite::FlatBufferModel&, size_t thread)>& func)
 {

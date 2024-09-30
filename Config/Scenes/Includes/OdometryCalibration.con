@@ -1,14 +1,16 @@
 call Includes/FieldViewsCreate
 mr RobotPose OdometryOnlySelfLocator
+vd module:OdometryOnlySelfLocator:basePose
+vd module:OdometryOnlySelfLocator:offset
+
 echo
-echo set module:OdometryOnlySelfLocator:basePose rotation = 0deg; translation = { x = -4500; y = -1100; };
+echo set representation:MotionRequest motion = stand; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; accLimits = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; kickPose = { rotation = 0deg; translation = { x = 0; y = 0; }; }; }; GoalieIsDiving = false;
 echo 
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
 echo set module:OdometryOnlySelfLocator:basePose rotation = 0deg; translation = { x = -4500; y = -1100; };
 echo dr module:OdometrOnlySelfLocator:resetReferenceOdometry
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 25; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 10; y = 0; }; }; accLimits = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; kickPose = { rotation = 0deg; translation = { x = 0; y = 0; }; }; }; GoalieIsDiving = false;
 echo 
-echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; };
+echo set representation:MotionRequest motion = walk; specialActionRequest = { specialAction = sitDown; mirror = false; }; walkRequest = { requestType = speed; rotationType = irrelevant; request = { rotation = 0deg; translation = { x = 0; y = 0; }; }; accLimits = { rotation = 0deg; translation = { x = 0; y = 0; }; }; stepRequest = none; }; kickRequest = { kickMotionType = none; mirror = false; dynamical = false; armsBackFix = true; dynPoints = []; kickTarget = { x = 1000; y = 0; }; kickPose = { rotation = 0deg; translation = { x = 0; y = 0; }; }; }; GoalieIsDiving = false;
 echo dr module:OdometrOnlySelfLocator:getDistance
 
 

@@ -3,7 +3,6 @@
 #include <optional>
 #include <functional>
 
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Perception/FieldColor.h"
@@ -45,9 +44,7 @@ STREAMABLE(ColorDistribution,, // the three values are corresponding to h,s,l re
 );
 
 MODULE(JerseyColorDetector,
-  REQUIRES(FieldColors),
   REQUIRES(FieldColorsUpper),
-  REQUIRES(Image),
   REQUIRES(ImageUpper),
   REQUIRES(OwnTeamInfo),
   REQUIRES(OpponentTeamInfo),

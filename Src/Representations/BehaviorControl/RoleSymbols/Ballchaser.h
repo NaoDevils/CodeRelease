@@ -16,11 +16,5 @@
  * the ballchaser.
  */
 STREAMABLE_WITH_BASE(Ballchaser, PositioningAndKickSymbols,
-  /** debug drawings, in world coordinate system. */
-  void draw() const
-  {
-  }
   ,
-
-  (std::string)("None") dummy
 );

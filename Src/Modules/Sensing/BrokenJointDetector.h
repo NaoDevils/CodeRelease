@@ -12,31 +12,19 @@
 #include "Tools/RingBufferWithSum.h"
 
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/MotionControl/MotionInfo.h"
-#include "Representations/MotionControl/SpecialActionsOutput.h"
-#include "Representations/MotionControl/WalkingEngineParams.h"
+#include "Representations/Infrastructure/JointRequest.h"
 #include "Representations/MotionControl/JointError.h"
-#include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/BrokenJointState.h"
 #include "Representations/Sensing/GroundContactState.h"
 
 
 MODULE(BrokenJointDetector,
-  USES(MotionInfo),
-  USES(SpecialActionsOutput),
   REQUIRES(FrameInfo),
-  REQUIRES(GameInfo),
-  REQUIRES(FsrSensorData),
   REQUIRES(GroundContactState),
-  REQUIRES(RobotInfo),
   REQUIRES(JointSensorData),
   REQUIRES(RawJointRequest),
   REQUIRES(JointError),
-  REQUIRES(WalkingEngineParams), 
   PROVIDES(BrokenJointState),
   LOADS_PARAMETERS(,
     (bool)(true) enableName,
@@ -77,6 +65,8 @@ private:
   std::vector<int> averageCurrents;
   std::vector<RingBufferWithSum<int, 20>> currents;
   std::string robotName;
+  bool brokenJointMalfunction = false;
+  bool stuckJointMalfunction = false;
   unsigned int timestampLastCheckBroken;
   unsigned int timestampLastCheckStuck;
 };

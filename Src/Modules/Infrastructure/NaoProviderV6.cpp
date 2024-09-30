@@ -14,6 +14,8 @@ MAKE_MODULE(NaoProviderV6, motionInfrastructure)
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/Annotation.h"
 #include "Tools/Settings.h"
+#include "Tools/Module/Blackboard.h"
+#include "Representations/Infrastructure/JointRequest.h"
 
 #include "naodevilsbase/naodevilsbase.h"
 
@@ -57,9 +59,8 @@ void NaoProviderV6::waitForFrameData()
     else
       OUTPUT_TEXT("Hi, I am " << Global::getSettings().robotName << " (using " << Global::getSettings().bodyName << "s Body).");
 
-    Global::getDebugOut().bin << Global::getSettings().robotName << Global::getSettings().bodyName;
-    STREAM_EXT(Global::getDebugOut().bin, Global::getSettings().overlays);
-    OUTPUT(idRobotname, bin, Global::getSettings().naoVersion);
+    Global::getSettings().write(Global::getDebugOut().bin);
+    Global::getDebugOut().finishMessage(idRobotname);
   }
 
   const int oldSensorTimestamp = (*theInstance)->naoBody.getSensors().timestamp;
@@ -93,6 +94,7 @@ void NaoProviderV6::send()
   DEBUG_RESPONSE_ONCE("module:NaoProviderV6:segfault") * (volatile char*)0 = 0;
 
   NDData::ActuatorData& actuators = naoBody.openActuators();
+  const JointRequest& theJointRequest = Blackboard::get<JointRequest>();
 
   /* POSITION */
   // apply joint decalibration and calibration
@@ -123,29 +125,21 @@ void NaoProviderV6::send()
   }
 
   /* LEDs */
-  std::array<float, LEDRequest::LED::numOfLEDs> leds;
-  const bool on = (theFrameInfo.time / 50 & 8) != 0;
-  const bool fastOn = (theFrameInfo.time / 10 & 8) != 0;
+  actuators.chestLEDs = theLEDRequest.chest;
+  actuators.lFootLEDs = theLEDRequest.leftFoot;
+  actuators.rFootLEDs = theLEDRequest.rightFoot;
 
-  for (size_t i = 0; i < leds.size(); ++i)
-  {
-    const auto state = theLEDRequest.ledStates[i];
+  for (size_t color = 0; color < NDData::RGBLED::numOfRGBLEDs; ++color)
+    for (size_t led = 0; led < NDData::LEyeLED::numOfLEyeLEDs; ++led)
+      actuators.lEyeLEDs[color][led] = theLEDRequest.leftEye[lEyeLEDsFromBase[led]][color];
 
-    leds[i] = (state == LEDRequest::on || (state == LEDRequest::blinking && on) || (state == LEDRequest::fastBlinking && fastOn))
-        ? 1.0f
-        : ((state == LEDRequest::half || (state == LEDRequest::halfBlinking && on) || (state == LEDRequest::halfFastBlinking && fastOn)) ? 0.5f : 0.0f);
-  }
+  for (size_t color = 0; color < NDData::RGBLED::numOfRGBLEDs; ++color)
+    for (size_t led = 0; led < NDData::REyeLED::numOfREyeLEDs; ++led)
+      actuators.rEyeLEDs[color][led] = theLEDRequest.rightEye[rEyeLEDsFromBase[led]][color];
 
-  copyAndCastWithTargetMapping(leds, actuators.chestLEDs, chestLEDsFromBase);
-  copyAndCastWithTargetMapping(leds, actuators.lEarLEDs, lEarLEDsFromBase);
-  for (size_t color = NDData::RGBLED::r; color < NDData::RGBLED::numOfRGBLEDs; ++color)
-    copyAndCastWithTargetMapping(leds, actuators.lEyeLEDs[color], lEyeLEDsFromBase[color]);
-  copyAndCastWithTargetMapping(leds, actuators.lFootLEDs, lFootLEDsFromBase);
-  copyAndCastWithTargetMapping(leds, actuators.rEarLEDs, rEarLEDsFromBase);
-  for (size_t color = NDData::RGBLED::r; color < NDData::RGBLED::numOfRGBLEDs; ++color)
-    copyAndCastWithTargetMapping(leds, actuators.rEyeLEDs[color], rEyeLEDsFromBase[color]);
-  copyAndCastWithTargetMapping(leds, actuators.rFootLEDs, rFootLEDsFromBase);
-  copyAndCastWithTargetMapping(leds, actuators.skullLEDs, skullLEDsFromBase);
+  copyAndCastWithTargetMapping(theLEDRequest.leftEar, actuators.lEarLEDs, lEarLEDsFromBase);
+  copyAndCastWithTargetMapping(theLEDRequest.rightEar, actuators.rEarLEDs, rEarLEDsFromBase);
+  copyAndCastWithTargetMapping(theLEDRequest.head, actuators.skullLEDs, skullLEDsFromBase);
 
   /* SONAR */
   actuators.sonars[0] = true;

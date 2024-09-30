@@ -57,4 +57,14 @@ void RobotModel::draw() const
   PLOT("representation:RobotModel:centerOfMassX", centerOfMass.x());
   PLOT("representation:RobotModel:centerOfMassY", centerOfMass.y());
   PLOT("representation:RobotModel:centerOfMassZ", centerOfMass.z());
+
+  DECLARE_DEBUG_DRAWING("representation:RobotModel:com", "drawingOnField");
+  COMPLEX_DRAWING("representation:RobotModel:com")
+  {
+    Angle fieldDrawingRotation = 90_deg;
+    float fieldDrawingScale = 20.f;
+    Vector2f com_rotated(centerOfMass.x(), centerOfMass.y());
+    com_rotated.rotate(fieldDrawingRotation);
+    LARGE_DOT("representation:RobotModel:com", com_rotated.x() * fieldDrawingScale, com_rotated.y() * fieldDrawingScale, ColorRGBA::cyan, ColorRGBA::cyan);
+  }
 }

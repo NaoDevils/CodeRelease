@@ -23,7 +23,6 @@
 #include "Controller/Visualization/PaintMethods.h"
 #include "Controller/ImageViewAdapter.h"
 #include "Representations/Infrastructure/Image.h"
-#include "Platform/Thread.h"
 #include "Tools/ColorModelConversions.h"
 #include <QFileDialog>
 
@@ -81,14 +80,14 @@ void ImageWidget::paint(QPainter& painter)
   RobotConsole::Images::const_iterator i = currentImages.find(imageView.background);
   if (i != currentImages.end())
   {
-    image = i->second.image;
+    image = i->second.get();
     imageWidth = image->width;
     imageHeight = image->height;
   }
   else if (!currentImages.empty())
   {
-    imageWidth = currentImages.begin()->second.image->width;
-    imageHeight = currentImages.begin()->second.image->height;
+    imageWidth = currentImages.begin()->second->width;
+    imageHeight = currentImages.begin()->second->height;
   }
 
   const QSize& size = painter.window().size();
@@ -211,7 +210,7 @@ bool ImageWidget::needsRepaint() const
   RobotConsole::Images& currentImages = imageView.console.camImages;
   RobotConsole::Images::const_iterator j = currentImages.find(imageView.background);
   if (j != currentImages.end())
-    image = j->second.image;
+    image = j->second.get();
 
   if (!image)
   {
@@ -272,7 +271,7 @@ void ImageWidget::mouseMoveEvent(QMouseEvent* event)
     Image* image = 0;
     RobotConsole::Images& currentImages = imageView.console.camImages;
     if (auto i = currentImages.find(imageView.background); i != currentImages.end())
-      image = i->second.image;
+      image = i->second.get();
     if (image && pos.rx() >= 0 && pos.ry() >= 0 && pos.rx() < image->width && pos.ry() < image->height)
     {
       Image::Pixel& pixel = (*image)[pos.ry()][pos.rx()];
@@ -467,7 +466,7 @@ void ImageWidget::saveImg()
   RobotConsole::Images::const_iterator i = currentImages.find(imageView.background);
   if (i != currentImages.end())
   {
-    image = i->second.image;
+    image = i->second.get();
     imageWidth = image->width;
     imageHeight = image->height;
   }

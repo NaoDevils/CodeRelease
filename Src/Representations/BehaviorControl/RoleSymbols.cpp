@@ -2,6 +2,7 @@
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Math/Pose3f.h"
+#include "Tools/Module/Blackboard.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 
 void RoleSymbols::draw() const

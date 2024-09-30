@@ -8,7 +8,7 @@
 #ifndef DOWNLOADCAMERACALIBRATIONSCMD_H_
 #define DOWNLOADCAMERACALIBRATIONSCMD_H_
 
-#include "Utils/dorsh/cmdlib/RobotCommand.h"
+#include "cmdlib/RobotCommand.h"
 /**
  * Downloads the log files from the robot.
  */

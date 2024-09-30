@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Tools/Math/Eigen.h"
+#include "Tools/Enum.h"
 #include "Tools/Streams/AutoStreamable.h"
 
 /**
@@ -46,7 +47,8 @@ STREAMABLE_WITH_BASE(CheckedBallSpot, ScanlinesBallSpot,
   ENUM(DetectionSource,
     scanlines,
     yoloHypothesis,
-    ballModel
+    ballModel,
+    segmentorHypothesis
   );
 
   ENUM(DetectionVerifier,

@@ -28,7 +28,7 @@ void RoleDynamicProvider::update(RoleSymbols& roleSymbols)
     roleSymbols.role = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber ? BehaviorData::RoleAssignment::receiver : BehaviorData::RoleAssignment::keeper;
     roleSymbols.roleSuggestions[theRobotInfo.number] = roleSymbols.role;
   }
-  else if (!theTeammateData.wlanOK && useStaticAssignmentNoWifi)
+  else if (!theTeammateData.commEnabled && useStaticAssignmentNoWifi)
   {
     setStaticAssignment(roleSymbols);
   }
@@ -106,7 +106,7 @@ void RoleDynamicProvider::getCurrentTeamStatus()
 
   // get information for myself
   const bool iAmKeeper = theRobotInfo.number == 1;
-  const bool inReady = (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY);
+  const bool inReady = (theGameInfo.inPreGame() || theGameInfo.state == STATE_READY);
   const bool iAmBallchaserInReady = inReady && theRobotInfo.number == theBallChaserDecision.playerNumberToBall;
   if (!iAmKeeper && !iAmBallchaserInReady && theRobotInfo.penalty == PENALTY_NONE)
     playerNumbers.push_back(theRobotInfo.number);
@@ -154,7 +154,7 @@ void RoleDynamicProvider::setStaticAssignment(RoleSymbols& roleSymbols)
 void RoleDynamicProvider::addRoles(RoleSymbols& roleSymbols)
 {
   roles.clear();
-  const bool inReady = theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY;
+  const bool inReady = theGameInfo.inPreGame() || theGameInfo.state == STATE_READY;
   const BehaviorData::RoleAssignment ballchaserRole = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber ? theRoleSelection.ballchaserDuringOwnKickoff : theRoleSelection.ballchaserDuringOppKickoff;
   for (const auto& role : theRoleSelection.selectedRoles)
   {
@@ -255,7 +255,7 @@ void RoleDynamicProvider::takeNewestRoleAssignment(RoleSymbols& roleSymbols)
 void RoleDynamicProvider::compareToLastAssignment(RoleSymbols& roleSymbols, const std::vector<float>& bestWalkDistances)
 {
   // Always use the best assignment when in initial
-  if (theGameInfo.state == STATE_INITIAL)
+  if (theGameInfo.inPreGame())
     return;
 
   const Teammate* teammate = theTeammateData.getNewestEventMessage(TeamCommEvents::SendReason::newRolesAssigned);
@@ -307,7 +307,7 @@ void RoleDynamicProvider::compareToLastAssignment(RoleSymbols& roleSymbols, cons
 
   // check if the correct role is replaced by the ballchaser during ready
   {
-    const bool inReady = (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_READY);
+    const bool inReady = (theGameInfo.inPreGame() || theGameInfo.state == STATE_READY);
     const BehaviorData::RoleAssignment ballchaserRole = theGameInfo.kickingTeam == theOwnTeamInfo.teamNumber ? theRoleSelection.ballchaserDuringOwnKickoff : theRoleSelection.ballchaserDuringOppKickoff;
     if (inReady && currentSuggestions[theBallChaserDecision.playerNumberToBall] != ballchaserRole)
       return;

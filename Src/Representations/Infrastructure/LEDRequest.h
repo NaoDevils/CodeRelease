@@ -3,139 +3,99 @@
  *
  * This file contains the LEDRequest struct.
  *
- * @author <A href="mailto:Thomas.Roefer@dfki.de">Thomas Röfer</A>
+ * @author <a href="mailto:aaron.larisch@tu-dortmund.de">Aaron Larisch</a>
  */
 
 #pragma once
 
 #include "Tools/Streams/AutoStreamable.h"
 #include "Tools/Enum.h"
+#include <array>
 
 /**
  * This describes a LEDRequest
  */
 STREAMABLE(LEDRequest,
-  /** ids for all LEDs */
-  ENUM(LED,
-    faceLeftRed0Deg,
-    faceLeftRed45Deg,
-    faceLeftRed90Deg,
-    faceLeftRed135Deg,
-    faceLeftRed180Deg,
-    faceLeftRed225Deg,
-    faceLeftRed270Deg,
-    faceLeftRed315Deg,
-    faceLeftGreen0Deg,
-    faceLeftGreen45Deg,
-    faceLeftGreen90Deg,
-    faceLeftGreen135Deg,
-    faceLeftGreen180Deg,
-    faceLeftGreen225Deg,
-    faceLeftGreen270Deg,
-    faceLeftGreen315Deg,
-    faceLeftBlue0Deg,
-    faceLeftBlue45Deg,
-    faceLeftBlue90Deg,
-    faceLeftBlue135Deg,
-    faceLeftBlue180Deg,
-    faceLeftBlue225Deg,
-    faceLeftBlue270Deg,
-    faceLeftBlue315Deg,
-    faceRightRed0Deg,
-    faceRightRed45Deg,
-    faceRightRed90Deg,
-    faceRightRed135Deg,
-    faceRightRed180Deg,
-    faceRightRed225Deg,
-    faceRightRed270Deg,
-    faceRightRed315Deg,
-    faceRightGreen0Deg,
-    faceRightGreen45Deg,
-    faceRightGreen90Deg,
-    faceRightGreen135Deg,
-    faceRightGreen180Deg,
-    faceRightGreen225Deg,
-    faceRightGreen270Deg,
-    faceRightGreen315Deg,
-    faceRightBlue0Deg,
-    faceRightBlue45Deg,
-    faceRightBlue90Deg,
-    faceRightBlue135Deg,
-    faceRightBlue180Deg,
-    faceRightBlue225Deg,
-    faceRightBlue270Deg,
-    faceRightBlue315Deg,
-    earsLeft0Deg,
-    earsLeft36Deg,
-    earsLeft72Deg,
-    earsLeft108Deg,
-    earsLeft144Deg,
-    earsLeft180Deg,
-    earsLeft216Deg,
-    earsLeft252Deg,
-    earsLeft288Deg,
-    earsLeft324Deg,
-    earsRight0Deg,
-    earsRight36Deg,
-    earsRight72Deg,
-    earsRight108Deg,
-    earsRight144Deg,
-    earsRight180Deg,
-    earsRight216Deg,
-    earsRight252Deg,
-    earsRight288Deg,
-    earsRight324Deg,
-    chestRed,
-    chestGreen,
-    chestBlue,
-    headLedRearLeft0,
-    headLedRearLeft1,
-    headLedRearLeft2,
-    headLedRearRight0,
-    headLedRearRight1,
-    headLedRearRight2,
-    headLedMiddleRight0,
-    headLedFrontRight0,
-    headLedFrontRight1,
-    headLedFrontLeft0,
-    headLedFrontLeft1,
-    headLedMiddleLeft0,
-    footLeftRed,
-    footLeftGreen,
-    footLeftBlue,
-    footRightRed,
-    footRightGreen,
-    footRightBlue
+  ENUM(EyeLED,
+    eye0Deg,
+    eye45Deg,
+    eye90Deg,
+    eye135Deg,
+    eye180Deg,
+    eye225Deg,
+    eye270Deg,
+    eye315Deg
   );
 
-  ENUM(LEDState,
-    off,
-    on,
-    blinking,
-    fastBlinking,
-    half,
-    halfBlinking,
-    halfFastBlinking
+  ENUM(EarLED,
+    ear0Deg,
+    ear36Deg,
+    ear72Deg,
+    ear108Deg,
+    ear144Deg,
+    ear180Deg,
+    ear216Deg,
+    ear252Deg,
+    ear288Deg,
+    ear324Deg
   );
 
-  LEDRequest()
+  ENUM(HeadLED,
+    rearLeft0,
+    rearLeft1,
+    rearLeft2,
+    rearRight0,
+    rearRight1,
+    rearRight2,
+    middleRight0,
+    frontRight0,
+    frontRight1,
+    frontLeft0,
+    frontLeft1,
+    middleLeft0
+  );
+
+  STREAMABLE(RGBLED, PROTECT(
+    constexpr RGBLED() = default;
+    constexpr RGBLED(float r, float g, float b) : r(r), g(g), b(b) {}
+    static RGBLED fromHSV(short h, float s = 1.f, float v = 1.f);
+
+    operator std::array<float, 3>&() { return reinterpret_cast<std::array<float, 3>&>(r); }
+    operator const std::array<float, 3>&() const { return reinterpret_cast<const std::array<float, 3>&>(r); }
+
+    float& operator[](size_t i) { return reinterpret_cast<std::array<float, 3>&>(r)[i]; }
+    const float& operator[](size_t i) const { return reinterpret_cast<const std::array<float, 3>&>(r)[i]; }
+
+    RGBLED& operator*=(float scale) { r *= scale; g *= scale; b *= scale; return *this; }
+    RGBLED operator*(float scale) const { return RGBLED(*this) *= scale; }
+
+    RGBLED& operator+=(const RGBLED& other) { r += other.r; g += other.g; b += other.b; return *this; }
+    RGBLED operator+(const RGBLED& other) const { return RGBLED(*this) += other; }
+    
+    static RGBLED white, black, red, green, blue, yellow, cyan, magenta, orange, violet;
+    ),
+    (float)(0.f) r,
+    (float)(0.f) g,
+    (float)(0.f) b
+  );
+
+  void setBothEyes(size_t i, RGBLED val, bool mirror = false)
   {
-    for(int i = 0; i < numOfLEDs; ++i)
-      ledStates[i] = off;
+    leftEye[i] = val;
+
+    if (mirror && i > 0)
+      i = rightEye.size() - i;
+
+    rightEye[i] = val;
   }
 
-  bool operator==(const LEDRequest& other) const
-  {
-    for(int i = 0; i < numOfLEDs; i++)
-      if(ledStates[i] != other.ledStates[i])
-        return false;
-    return true;
-  }
-
-  bool operator!=(const LEDRequest& other) const
-  {
-    return !(*this == other);
-  }
   ,
-  (LEDState[numOfLEDs]) ledStates /**< The intended states of the LEDs (use type State). */
+  (std::array<float, HeadLED::numOfHeadLEDs>)({0.f}) head,
+  (std::array<RGBLED, EyeLED::numOfEyeLEDs>) leftEye,
+  (std::array<RGBLED, EyeLED::numOfEyeLEDs>) rightEye,
+  (std::array<float, EarLED::numOfEarLEDs>)({0.f}) leftEar,
+  (std::array<float, EarLED::numOfEarLEDs>)({0.f}) rightEar,
+  (RGBLED) chest,
+  (RGBLED) leftFoot,
+  (RGBLED) rightFoot
 );

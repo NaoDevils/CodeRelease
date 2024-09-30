@@ -5,9 +5,7 @@
  * @author Colin Graf
  */
 #include "TeamCommDataPacker.h"
-#include "Tools/Global.h"
-#include "Tools/MessageQueue/MessageQueue.h"
-#include <iostream>
+#include "Platform/SystemCall.h"
 
 MAKE_MODULE(TeamCommDataPacker, cognitionInfrastructure)
 
@@ -30,6 +28,7 @@ void TeamCommDataPacker::update(TeamCommOutput& teamCommOutput)
     teammate.behaviorData = BehaviorDataCompressed(theBehaviorData);
     teammate.teamCommEvents = TeamCommEventsCompressed(theTeamCommEvents);
     teammate.whistle = WhistleDortmundCompressed(theWhistleDortmund);
+    teammate.refereeGesture = theRefereeGesture.gesture;
     teammate.speedInfo = SpeedInfoCompressed(theSpeedInfo);
     teammate.localRobotMap = RobotMapCompressed(theLocalRobotMap);
 

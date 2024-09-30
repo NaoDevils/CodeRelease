@@ -8,7 +8,7 @@
 #pragma once
 
 #include "RoboCupGameControlData.h"
-#include "Tools/Streams/Streamable.h"
+#include "Tools/Streams/AutoStreamable.h"
 
 struct GameInfo : public RoboCup::RoboCupGameControlData, public Streamable
 {
@@ -32,6 +32,15 @@ public:
 
   std::string getStateAsString() const;
   std::string getSetPlayAsString() const;
+  bool isSetPlay() const;
+  bool isChampionsCup() const
+  {
+    // Distinguish between challenge shield and champions cup
+    static_assert(MAX_NUM_PLAYERS == 7);
+    return playersPerTeam == 7;
+  }
+
+  bool inPreGame() const { return state == STATE_INITIAL || state == STATE_STANDBY; }
 
   virtual Streamable& operator=(const Streamable&) noexcept;
 

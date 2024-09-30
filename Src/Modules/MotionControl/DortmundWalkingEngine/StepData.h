@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Modules/BehaviorControl/TacticControl/KicksProvider/Enums/KickWithLeftCondition.h"
 #include "Point.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/WalkRequest.h"
@@ -51,6 +50,8 @@ STREAMABLE_WITH_BASE(Footposition, StepData,
   float timeUntilKickHackKnee = 0;
   int kickHackDurationKnee = 0;
   float kickHackKneeIntensity = 1.0;
+  int kickHackDurationKneeReverse = 0;
+  float kickHackKneeIntensityReverse = 1.0;
 
   float ankleCompensationMultiplier = 1.0;
 
@@ -172,10 +173,10 @@ STREAMABLE(CustomStepsFile,
   void mirror();
   bool isApplicable(float distance);
 ,
-  (float)(0.f) horizontalInaccuracy,
-  (bool)(false) distanceAdjustable,
+  (float)(0.f) generalValue,
+  (float)(0.f) verticalInaccuracy,
+  (Angle)(0_deg) horizontalInaccuracy,
   (bool)(false) kickBlind,
-  ((KickInfos) KickWithLeftCondition)(KickWithLeftCondition::onLeftSide) kickWithLeftCondition,
   (bool)(false) switchKickFoot,
 
   (Vector2f)(Vector2f::Zero()) ballOffset,
@@ -195,6 +196,8 @@ STREAMABLE(CustomStepsFile,
   (int)(108) kickHackDurationKnee, // duration in frames of the kickhack in the knee
   (Angle)(-10_deg) kickHackKneeAngle,
   (float)(1.0) kickHackKneeIntensity,
+  (int)(0) kickHackDurationKneeReverse,
+  (float)(1.0) kickHackKneeIntensityReverse,
 
   (std::vector<CustomStep>) steps
 );

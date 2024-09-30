@@ -11,6 +11,7 @@
 
 // ------------- NAO-Framework includes --------------
 #include "Tools/Module/Module.h"
+#include "Tools/RingBuffer.h"
 
 // Requires
 #include "Representations/Infrastructure/FrameInfo.h" // frame timestamp

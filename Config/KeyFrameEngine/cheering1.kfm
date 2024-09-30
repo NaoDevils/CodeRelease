@@ -2,13 +2,23 @@
 // old -> needs adjustments
 keyFrameID = cheering1;
 initialKeyFrame = true;
-nextKeyFrameID = none;
+nextMotionConditions = [none];
+nextKeyFrameMotionIDs = [none];
 YstabilizationP = -0.05;
 YstabilizationI = 0;
 YstabilizationD = -0.6;
 XstabilizationP = 0;
 XstabilizationI = 0;
 XstabilizationD = 0;
+errorMultiplier = 2;
+reductionRate = 0.05;
+maxCompensation = 10deg;
+compensationThreshold = 4deg;
+hipYawCorrectionFactors = [0, 0, 0];
+hipCorrectionFactors = [0, 0];
+kneeCorrectionFactors = [0];
+ankleCorrectionFactors = [0, 0];
+localArmAngleReachedThreshold = 10deg;
 keyFrames = [
   {//start
     headAngles = [20000,20000];
@@ -25,13 +35,15 @@ keyFrames = [
     duration = 200;
     intType = linear;
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
-    stabilize = true;
+    angleAtKeyFrameError = [-1,-1];
+    stabilize = false;
     waitForStable = false;
     leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -74,11 +86,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     waitForStable = true;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -121,11 +135,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     waitForStable = true;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -168,11 +184,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     waitForStable = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -215,11 +233,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     waitForStable = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -263,11 +283,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     waitForStable = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -311,11 +333,13 @@ keyFrames = [
     
     // advanced parameters
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     waitForStable = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   },
@@ -327,13 +351,15 @@ keyFrames = [
     duration = 200;
     intType = linear;
     angleAtKeyFrameTarget = 0;
-    angleAtKeyFrameErrorFront = 30deg;
-    angleAtKeyFrameErrorBack = 30deg;
-    useAngleAtKeyFrameTarget = false;
-    activateFallDownProtection = false;
+    angleAtKeyFrameError = [-1,-1];
     stabilize = true;
     waitForStable = true;
     leavingPossible = false;
+    useArmProblemDetection = [false,false];
+    armAngleReached = false;
+    holdFrame = 0;
+    nextKeyFrameConditions = [none];
+    nextKeyFrameIDs = [none];
     fallDownProtection = none;
     holdFallDownProtection = 12;
   }

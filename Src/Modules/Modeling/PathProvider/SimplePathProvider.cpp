@@ -1,4 +1,5 @@
 #include "SimplePathProvider.h"
+#include "Tools/Math/Transformation.h"
 #include <algorithm>
 #include <functional>
 //#include "Representations/Infrastructure/TeamMateData.h" // TODO
@@ -230,16 +231,16 @@ void SimplePathProvider::buildPath()
     if (theRobotPoseAfterPreview.translation.y() > 0.f)
     {
       if (insertLeftGoalPost)
-        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
+        wayPoints.emplace_back(0.f, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
       if (insertRightGoalPost)
-        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
+        wayPoints.emplace_back(0.f, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
     }
     else
     {
       if (insertRightGoalPost)
-        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
+        wayPoints.emplace_back(0.f, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosRightGoal - 200.f));
       if (insertLeftGoalPost)
-        wayPoints.emplace_back(0, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
+        wayPoints.emplace_back(0.f, Vector2f(theFieldDimensions.xPosOwnGoalPost + 200.f, theFieldDimensions.yPosLeftGoal + 200.f));
     }
   }
 
@@ -420,7 +421,7 @@ void SimplePathProvider::avoidObstacles(bool notAllowedInGoalArea)
       if (obstacle->type == Path::ball)
       {
         Angle approachAngleWC = Angle::normalize(vectorToTarget.angle() - destWorldCoordinates.rotation);
-        if (avoidBallLeft && approachAngleWC > -160 && approachAngleWC < 0)
+        if (avoidBallLeft && approachAngleWC > -160_deg && approachAngleWC < 0)
           avoidBallLeft = false;
         else if (!avoidBallLeft && approachAngleWC < 160_deg && approachAngleWC > 0)
           avoidBallLeft = true;

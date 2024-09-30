@@ -4,6 +4,7 @@
 #include "Tools/Math/Angle.h"
 #include "Tools/Math/Eigen.h"
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Enum.h"
 
 /**
  * Encapsulates the IMU sensor data from Lola and different other filtered IMU models.

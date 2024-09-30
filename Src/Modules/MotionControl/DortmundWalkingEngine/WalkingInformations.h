@@ -51,12 +51,6 @@ namespace DWE
     unlimitedSingleSupportRight
   );
 
-  ENUM(SupportFootState,
-    leftSupportOnly,
-    rightSupportOnly,
-    bothFeetSupport
-  );
-
   inline bool isDS(WalkingPhase ph)
   {
     return ph == firstDoubleSupport || ph == secondDoubleSupport;

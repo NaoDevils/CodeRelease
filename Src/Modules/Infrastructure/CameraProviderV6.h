@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Platform/CameraV6.h"
+#include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
 #include "Representations/Infrastructure/CameraSettingsV6.h"
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -20,6 +21,7 @@ class NaoCameraV6;
 
 MODULE(CameraProviderV6,
   REQUIRES(Image),
+  USES(VisualRefereeBehaviorSymbols),
   PROVIDES_WITHOUT_MODIFY(Image),
   PROVIDES_WITHOUT_MODIFY(ImageUpper),
   PROVIDES(FrameInfo),
@@ -45,6 +47,8 @@ private:
   CameraIntrinsics cameraIntrinsics;
   CameraResolution cameraResolution;
   float cycleTime;
+  Vector2s oldWindowPosition = Vector2s::Zero();
+  Vector2s oldWindowSize = Vector2s::Zero();
 #ifdef CAMERA_INCLUDED
   unsigned int now;
   unsigned int imageTimeStamp;

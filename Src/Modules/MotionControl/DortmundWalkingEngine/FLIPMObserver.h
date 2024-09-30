@@ -13,32 +13,25 @@
 #include "Tools/RingBuffer.h"
 #include "Tools/Streams/RobotParameters.h"
 #include "Representations/MotionControl/WalkingEngineParams.h"
+#include "Representations/MotionControl/SensorControlParams.h"
 #include "Representations/MotionControl/WalkingInfo.h"
 #include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/ObservedFLIPMError.h"
 #include "Representations/MotionControl/FLIPMParams.h"
-#include "Representations/MotionControl/FLIPMObserverGains.h"
 #include "Representations/MotionControl/TargetCoM.h"
 #include "Representations/MotionControl/FLIPMObservedState.h"
 #include "Representations/Sensing/ZMPModel.h"
 #include "Representations/MotionControl/FootSteps.h"
-#include "Representations/Sensing/RobotModel.h"
-#include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/MotionControl/Footpositions.h"
-
 #define COMMA ,
 
 MODULE(FLIPMObserver,
   REQUIRES(WalkCalibration),
   REQUIRES(WalkingEngineParams),
+  REQUIRES(SensorControlParams),
   REQUIRES(FLIPMObservedState),
   REQUIRES(ZMPModel),
   REQUIRES(FootSteps),
-  REQUIRES(RobotModel),
-  REQUIRES(RobotDimensions),
-  REQUIRES(Footpositions),
   REQUIRES(FLIPMParameter),
-  REQUIRES(FLIPMObserverGains),
   REQUIRES(FLIPMObserverParameter),
   USES(WalkingInfo),
   USES(TargetCoM),

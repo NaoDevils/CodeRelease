@@ -14,10 +14,10 @@ on:
 jobs:
   build:
     name: Build framework
-    runs-on: self-hosted
+    runs-on: Windows
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: compile
       shell: cmd
       run: "Make\\Windows\\compile.bat"

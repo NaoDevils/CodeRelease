@@ -6,21 +6,21 @@ on:
 jobs:
   clang_format:
     name: ClangFormat
-    runs-on: self-hosted
+    runs-on: Linux
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v1
       with:
         fetch-depth: '0'
     - name: Check C++ formatting
-      run: bash -l -c ".github/workflows/clang-format.sh $Env:GITHUB_BASE_REF"
+      run: .github/workflows/clang-format.sh $GITHUB_BASE_REF
   line_endings:
     name: Line endings
-    runs-on: self-hosted
+    runs-on: Linux
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         fetch-depth: '0'
     - name: Check line endings
-      run: bash -l -c ".github/workflows/line-endings.sh $Env:GITHUB_BASE_REF"
+      run: .github/workflows/line-endings.sh $GITHUB_BASE_REF

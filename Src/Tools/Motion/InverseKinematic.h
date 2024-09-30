@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Tools/Math/Eigen.h"
+#include "Tools/Math/Angle.h"
 
 struct CameraCalibration;
 struct JointAngles;
@@ -44,12 +45,19 @@ namespace InverseKinematic
 
   /**
    * Solves the inverse kinematics for the head of the Nao such that the camera looks at a certain point.
-   * @param position Point the camera should look at in cartesian space relative to the robot origin.
-   * @param imageTilt Tilt angle at which the point should appear in the image (pi/2: center of image, less than pi/2 => closer to the top of the image.)
-   * @param panTilt Vector [pan, tilt] containing the resulting joint angles.
-   * @param lowerCamera true if the joint angles are to be determined for the lower camera, false for the upper camera.
-   * @param robotDimensions The robot dimensions needed for the calculation.
-   * @param cameraCalibration The camera calibration
    */
-  void calcHeadJoints(const Vector3f& position, const float imageTilt, const RobotDimensions& robotDimensions, const bool lowerCamera, Vector2f& panTilt, const CameraCalibration& cameraCalibration);
+
+  /**
+   * @brief Solves the inverse kinematics for the head of the Nao such that the camera looks at a certain point.
+   * @param position Point the camera should look at in cartesian space relative to the robot origin.
+   * @param robotDimensions The robot dimensions needed for the calculation.
+   * @param lowerCamera true if the joint angles are to be determined for the lower camera, false for the upper camera.
+   * @param cameraCalibration The camera calibration
+   * @param imageTilt Tilt angle at which the point should appear in the image (0: center of image, less than 0 => closer to the top of the image.)
+   * @param imagePan Pan angle at which the point should appear in the image (0: center of image, less than 0 => closer to the right of the image.)
+   * @return Vector [pan, tilt] containing the resulting joint angles.
+  */
+  Vector2a calcHeadJoints(
+      const Vector3f& position, const RobotDimensions& robotDimensions, const bool lowerCamera, const CameraCalibration& cameraCalibration, const Angle imageTilt = 0_deg, const Angle imagePan = 0_deg);
+
 }; // namespace InverseKinematic

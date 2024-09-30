@@ -63,7 +63,6 @@ private slots:
   void colorOppChanged(const QColor color);
   void numberChanged(int number);
   void overlaysChanged(const QString& overlays);
-  void gameModeChanged(const QString& gameMode);
   void wlanConfigChanged(const QString& config);
   void logConfigChanged(const QString& config);
   void buildConfigChanged(const QString& build);

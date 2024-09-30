@@ -2,11 +2,11 @@
 #include <QLabel>
 #include <QtCore>
 #include <QTextDocument>
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/ui/Console.h"
-#include "Utils/dorsh/ui/TeamSelector.h"
-#include "Utils/dorsh/ui/VisualContext.h"
-#include "Utils/dorsh/Session.h"
+#include "cmdlib/Context.h"
+#include "ui/Console.h"
+#include "ui/TeamSelector.h"
+#include "ui/VisualContext.h"
+#include "Session.h"
 
 VisualContext::VisualContext(QWidget* parent) : QFrame(parent), entries(), widgets(), formLayout(new QFormLayout()), nl(true)
 {

@@ -116,18 +116,9 @@ endif()
 
 target_precompile_headers(${PROJECT_NAME}
     PRIVATE
+        "Tools/Math/Angle.h"
         "Tools/Math/Eigen.h"
-        
-        "Tools/Boundary.h"
-        "Tools/RingBufferWithSum.h"
-        "Tools/Debugging/DebugDrawings.h"
-        "Tools/Math/Geometry.h"
         "Tools/Math/Pose3f.h"
-        "Tools/Math/Transformation.h"
-        "Tools/MessageQueue/MessageQueue.h"
         "Tools/Module/Module.h"
-        
-        <algorithm>
-        <list>
-        <sstream>
+        "Tools/Debugging/DebugDrawings.h"
 )

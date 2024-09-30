@@ -18,7 +18,8 @@ STREAMABLE(HeadControlRequest,
   ENUM(ControlType,
     ball, // fixiate on ball
     localize, // try to gather localization information
-    localizeBall, // try to find ball (w/fieldCoverage)
+    ballLostLeft, // try to find ball left
+    ballLostRight, // try to find ball right
     opponents, // fixiate on opponents
     soccer, // optimal mix for soccer
     direct // direct control of angles

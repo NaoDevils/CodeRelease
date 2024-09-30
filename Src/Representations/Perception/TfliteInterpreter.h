@@ -10,17 +10,26 @@
 
 #include <memory>
 #include "Tools/Streams/Streamable.h"
-#include "Modules/Perception/TFlite.h"
+#include "Platform/BHAssert.h"
 #include <functional>
 
 namespace tf
 {
   class Executor;
 }
+namespace tflite
+{
+  class Interpreter;
+  class FlatBufferModel;
+} // namespace tflite
 
 struct TfliteInterpreter : public Streamable
 {
 public:
+  TfliteInterpreter();
+  TfliteInterpreter(TfliteInterpreter&&) noexcept;
+  ~TfliteInterpreter();
+
   void updateInterpreters(const tf::Executor& executor, const std::function<std::unique_ptr<tflite::Interpreter>(const tflite::FlatBufferModel&, size_t thread)>& func);
   void loadModel(const std::string& filename);
 
@@ -43,7 +52,7 @@ public:
 private:
   std::string filename = "";
   std::vector<std::unique_ptr<tflite::Interpreter>> interpreters;
-  std::unique_ptr<tflite::FlatBufferModel> model = nullptr;
+  std::unique_ptr<tflite::FlatBufferModel> model;
   const tf::Executor* executor;
 };
 
@@ -53,8 +62,6 @@ struct BallPerceptTfliteInterpreter : public TfliteInterpreter
 
 struct SplittedTfliteInterpreter : public Streamable
 {
-  std::vector<TfliteInterpreter> layers;
-
   virtual Streamable& operator=(const Streamable&) noexcept
   {
     // this representation is not copyable
@@ -66,5 +73,7 @@ struct SplittedTfliteInterpreter : public Streamable
   {
     // this representation is not streamable
     ASSERT(false);
-  };
+  }
+
+  std::vector<TfliteInterpreter> layers;
 };

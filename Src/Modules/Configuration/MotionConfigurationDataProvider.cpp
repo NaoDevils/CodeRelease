@@ -119,8 +119,16 @@ void MotionConfigurationDataProvider::readFieldDimensions()
   theFieldDimensions = std::make_unique<FieldDimensions>();
 
   // try .json first, fallback to .cfg
-  if (!theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/field_dimensions.json"))
-    theFieldDimensions->load();
+  if (theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/field_dimensions.json"))
+    return;
+
+  for (const std::string& overlay : Global::getSettings().overlays)
+  {
+    if (theFieldDimensions->loadFromJsonFile(std::string(File::getBHDir()) + "/Config/Overlays/" + overlay + "/field_dimensions.json"))
+      return;
+  }
+
+  theFieldDimensions->load();
 }
 
 void MotionConfigurationDataProvider::readJointCalibration()

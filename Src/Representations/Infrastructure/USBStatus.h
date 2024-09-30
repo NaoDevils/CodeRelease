@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Tools/Streams/AutoStreamable.h"
+#include "Tools/Enum.h"
 
 STREAMABLE(USBStatus,
 	ENUM(MountStatus,

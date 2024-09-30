@@ -114,6 +114,11 @@ BIGENUM(MessageID,
     idTeamCommEvents,
     idBallchaser,
     idHeadAngleRequest,
+    idCameraCalibration,
+    idVisualRefereeBehaviorSymbols,
+    idRefereeKeypoints,
+    idJoystickState,
+    idRecommendedKick,
 
     numOfDataMessageIDs /**< everything below this does not belong into log files */
   ),(

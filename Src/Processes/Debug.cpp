@@ -10,7 +10,7 @@
 #include "Tools/Debugging/Debugging.h"
 #include "Platform/SystemCall.h"
 
-Debug::Debug() : INIT_EXTERNAL_DEBUGGING, INIT_DEBUG_RECEIVER(Cognition), INIT_DEBUG_RECEIVER(Motion), INIT_DEBUG_SENDER(Cognition), INIT_DEBUG_SENDER(Motion)
+Debug::Debug(Settings& settings) : INIT_EXTERNAL_DEBUGGING, INIT_DEBUG_RECEIVER(Cognition), INIT_DEBUG_RECEIVER(Motion), INIT_DEBUG_SENDER(Cognition), INIT_DEBUG_SENDER(Motion)
 {
   theDebugSender.setSize(MAX_PACKAGE_SEND_SIZE - 2000);
   theDebugReceiver.setSize(MAX_PACKAGE_RECEIVE_SIZE - 2000);

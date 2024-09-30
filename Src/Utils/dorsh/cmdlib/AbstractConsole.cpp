@@ -1,5 +1,5 @@
 #include <QString>
-#include "Utils/dorsh/cmdlib/AbstractConsole.h"
+#include "cmdlib/AbstractConsole.h"
 
 AbstractConsole::AbstractConsole(QObject* parent) : QObject(parent), IConsole()
 {

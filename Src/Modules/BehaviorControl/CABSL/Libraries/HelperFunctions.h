@@ -5,6 +5,7 @@
 #include "Representations/Modeling/RobotMap.h"
 #include "Representations/Modeling/RobotPose.h"
 #include "Tools/Math/Geometry.h"
+#include "Tools/Math/Transformation.h"
 //#include <algorithm>
 
 class HelperFunctions

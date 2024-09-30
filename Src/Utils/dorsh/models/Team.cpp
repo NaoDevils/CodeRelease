@@ -1,9 +1,9 @@
 #include "Platform/File.h"
 #include "Tools/Streams/InStreams.h"
-#include "Utils/dorsh/models/Robot.h"
-#include "Utils/dorsh/Session.h"
-#include "Utils/dorsh/models/Team.h"
-#include "Utils/dorsh/tools/Platform.h"
+#include "models/Robot.h"
+#include "Session.h"
+#include "models/Team.h"
+#include "tools/Platform.h"
 
 //TODO: remove color as string from Team
 
@@ -129,7 +129,6 @@ void Team::serialize(In* in, Out* out)
   STREAM(colorOwn);
   STREAM(colorOpp);
   STREAM(overlays);
-  STREAM(gameMode);
   STREAM(buildConfig);
   STREAM(wlanConfig);
   STREAM(logConfig);

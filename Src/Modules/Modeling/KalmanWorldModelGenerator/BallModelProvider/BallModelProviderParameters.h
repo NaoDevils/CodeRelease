@@ -115,6 +115,10 @@ STREAMABLE(BallModelProviderParameters,
   /// from \c SET to \c PLAYING.
   (bool) State_SetToPlaying_addKickOffHypothesis,
 
+  /// If \c true add a hypothesis at the kick off point when game state changes
+  /// from \c SET to \c PLAYING.
+  (bool) State_PlayingToReady_addKickOffHypothesis,
+
   /// If \c true add a hypothesis at the defined set play points when set play state changes
   /// to either \c SET_PLAY_CORNER_KICK or to \c SET_PLAY_GOAL_KICK
   (bool) State_SetPlay_addSetPlayHypothesis,

@@ -1,16 +1,11 @@
 #pragma once
 
 #include "Representations/BehaviorControl/BallSymbols.h"
-#include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
-#include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
-#include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
-#include "Representations/Infrastructure/FrameInfo.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/Modeling/Path.h"
 #include "Representations/Modeling/RobotMap.h"
@@ -21,22 +16,16 @@
 
 MODULE(SimplePathProvider,
   REQUIRES(BallSymbols),
-  REQUIRES(BallModel),
   REQUIRES(BallModelAfterPreview),
   REQUIRES(BehaviorData),
-  REQUIRES(BehaviorConfiguration),
   REQUIRES(FieldDimensions),
-  REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
   REQUIRES(Ballchaser),
   REQUIRES(MotionRequest),
-  REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(GameSymbols),
-  REQUIRES(PositioningSymbols),
-  REQUIRES(TacticSymbols),
   PROVIDES(Path),
   LOADS_PARAMETERS(,
     (float)(200.f) ballInfluenceRadius,

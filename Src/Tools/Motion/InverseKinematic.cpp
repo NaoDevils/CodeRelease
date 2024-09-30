@@ -154,25 +154,31 @@ bool InverseKinematic::calcLegJoints(
   return hl <= maxLen && hr <= maxLen;
 }
 
-void InverseKinematic::calcHeadJoints(
-    const Vector3f& position, const float imageTilt, const RobotDimensions& robotDimensions, const bool lowerCamera, Vector2f& panTilt, const CameraCalibration& cameraCalibration)
+Vector2a InverseKinematic::calcHeadJoints(
+    const Vector3f& position, const RobotDimensions& robotDimensions, const bool lowerCamera, const CameraCalibration& cameraCalibration, const Angle imageTilt, const Angle imagePan)
 {
-  const Vector2f headJoint2Target(std::sqrt(sqr(position.x()) + sqr(position.y())), position.z() - robotDimensions.hipToNeckLength);
-  const Vector2f headJoint2Camera(robotDimensions.getXOffsetNeckToCamera(lowerCamera), robotDimensions.getZOffsetNeckToCamera(lowerCamera));
-  const float headJoint2CameraAngle = std::atan2(headJoint2Camera.x(), headJoint2Camera.y());
-  const float cameraAngle = pi3_2 - imageTilt - (pi_2 - headJoint2CameraAngle) - robotDimensions.getTiltNeckToCamera(lowerCamera);
-  const float targetAngle = std::asin(headJoint2Camera.norm() * std::sin(cameraAngle) / headJoint2Target.norm());
-  const float headJointAngle = pi - targetAngle - cameraAngle;
-  panTilt.y() = std::atan2(headJoint2Target.x(), headJoint2Target.y()) - headJointAngle - headJoint2CameraAngle;
-  panTilt.x() = std::atan2(position.y(), position.x());
-  if (lowerCamera)
+  const auto& rotationCorrection = lowerCamera ? cameraCalibration.lowerCameraRotationCorrection : cameraCalibration.upperCameraRotationCorrection;
+  Vector2a ret(Vector2a::Zero());
+
+  // x=z y=x in head joint coordinate system
+  const Vector2f headJoint2Target(position.z() - robotDimensions.hipToNeckLength, position.head<2>().norm());
+  const Vector2f headJoint2Camera(robotDimensions.getZOffsetNeckToCamera(lowerCamera), robotDimensions.getXOffsetNeckToCamera(lowerCamera));
+
+  // triangle: camera-target-headJoint (xz-plane)
   {
-    panTilt.x() -= cameraCalibration.lowerCameraRotationCorrection.z();
-    panTilt.y() -= cameraCalibration.lowerCameraRotationCorrection.y();
+    const Angle cameraAngle = pi_2 - robotDimensions.getTiltNeckToCamera(lowerCamera) - imageTilt + headJoint2Camera.angle() - rotationCorrection.y();
+    const Angle targetAngle = std::asin(headJoint2Camera.norm() * std::sin(cameraAngle) / headJoint2Target.norm());
+    const Angle headJointAngle = pi - targetAngle - cameraAngle;
+    ret.y() = headJoint2Target.angle() - headJointAngle - headJoint2Camera.angle();
   }
-  else
+
+  // triangle: camera-target-headJoint (xy-plane)
   {
-    panTilt.x() -= cameraCalibration.upperCameraRotationCorrection.z();
-    panTilt.y() -= cameraCalibration.upperCameraRotationCorrection.y();
+    const Angle cameraAngle = Angle::normalize(180_deg - imagePan - rotationCorrection.z());
+    const Angle targetAngle = std::asin(headJoint2Camera.y() * std::sin(cameraAngle) / headJoint2Target.y());
+    const Angle headJointAngle = Angle::normalize(180_deg - cameraAngle - targetAngle);
+    ret.x() = position.head<2>().angle() - headJointAngle;
   }
+
+  return ret;
 }

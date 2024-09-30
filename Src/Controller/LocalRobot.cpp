@@ -8,10 +8,13 @@
 */
 
 #include "LocalRobot.h"
+#include "LogPlayer.h"
 #include "Controller/ConsoleRoboCupCtrl.h"
+#include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/AnnotationInfo.h"
 
-LocalRobot::LocalRobot()
-    : RobotConsole(theDebugReceiver, theDebugSender), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S"), image(false),
+LocalRobot::LocalRobot(Settings& settings)
+    : RobotConsole(theDebugReceiver, theDebugSender, settings), theDebugReceiver(this, "Receiver.MessageQueue.O"), theDebugSender(this, "Sender.MessageQueue.S"), image(false),
       imageUpper(false), nextImageTimeStamp(0), imageLastTimeStampSent(0), jointLastTimeStampSent(0), updatedSignal(1), puppet(0)
 {
   mode = ((ConsoleRoboCupCtrl*)RoboCupCtrl::controller)->getMode();
@@ -131,7 +134,7 @@ void LocalRobot::update()
       if (logAcknowledged && logPlayer.replay())
         logAcknowledged = false;
       if (puppet)
-        simulatedRobot.getAndSetJointData(jointRequest, jointSensorData);
+        simulatedRobot.getAndSetJointData(getJointRequest(), jointSensorData);
     }
     if (mode == SystemCall::simulatedRobot || puppet)
     {
@@ -181,7 +184,7 @@ void LocalRobot::update()
 
       simulatedRobot.getOdometryData(robotPose, odometryData);
       simulatedRobot.getSensorData(fsrSensorData, inertialSensorData, sonarSensorData);
-      simulatedRobot.getAndSetJointData(jointRequest, jointSensorData);
+      simulatedRobot.getAndSetJointData(getJointRequest(), jointSensorData);
     }
 
     std::string statusText;

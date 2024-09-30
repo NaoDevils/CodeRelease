@@ -5,7 +5,7 @@
 
 FieldColorProvider::FieldColorProvider()
 {
-  minYDivFactor = 500;
+  minYDivFactor = 450;
 }
 
 void FieldColorProvider::update(FieldColors& theFieldColor)
@@ -240,6 +240,9 @@ void FieldColorProvider::calcFieldColorFromSamples(const bool& upper, FieldColor
     else
       break;
   }
+
+  //fieldColor.fieldColorMaxDistY = std::max((rangeUp + rangeDown + 1) * 2, 20);
+  fieldColor.fieldColorMaxDistY = fieldColorMaxDistY;
 
   // set field color ranges/ratios for field pixel test depending on optimal values
   fieldColor.fieldColorOptCbCrRatio = (fieldColor.fieldColorOptCb << 10) / (fieldColor.fieldColorOptCr + 1);

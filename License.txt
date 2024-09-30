@@ -1,4 +1,4 @@
-Copyright (c) 2023 Nao Devils.  All rights reserved.
+Copyright (c) 2024 Nao Devils.  All rights reserved.
 *************************************************************************
 
     Preamble: Nao Devils releases most of the software it uses at RoboCup

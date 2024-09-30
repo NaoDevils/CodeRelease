@@ -22,7 +22,7 @@
 #include "Representations/Modeling/RobotPose.h" // robot pose
 #include "Representations/Perception/CameraMatrix.h" // camera matrix
 
- /**
+/**
   * \class MultiKalmanModelAngle
   *
   * This class stores a set of multiple \c KalmanPositionHypotheses. Each
@@ -47,7 +47,6 @@ STREAMABLE(MultiKalmanModelAngle,
     static_assert(std::is_base_of<KalmanPositionHypothesis, hypothesis_t>::value,
                   "hypothesis_t not derived from class KalmanPositionHypothesis");
 
-  public:
     /**
      * The type of hypothesis stored in the kalman model
      */
@@ -57,8 +56,7 @@ STREAMABLE(MultiKalmanModelAngle,
      * Default constructor creates a new and empty \c MultiKalmanModelAngle object.
      * The default perceptDuration is 1000ms.
      */
-    MultiKalmanModelAngle() {
-    }
+    MultiKalmanModelAngle() {}
 
     /**
      * Constructor setting the perceptDuration.
@@ -66,10 +64,8 @@ STREAMABLE(MultiKalmanModelAngle,
      *
      * \param [in] perceptDuration, The duration (in ms) percepts get buffered for identifying the validity of a hypothesis.
      */
-    MultiKalmanModelAngle(unsigned perceptDuration)
-    {
-      m_perceptDuration = perceptDuration;
-    }
+    MultiKalmanModelAngle(unsigned perceptDuration) : m_perceptDuration(perceptDuration) {}
+    
 
     //MARK: Kalman filter related methods
 
@@ -405,8 +401,6 @@ STREAMABLE(MultiKalmanModelAngle,
     RobotPose robotPose;
     // BallFriction
     float friction = -0.16f;
-
-  public:
     ,
       /// Stores a set of kalman hypotheses.
       (std::vector<hypothesis_t>) m_hypotheses

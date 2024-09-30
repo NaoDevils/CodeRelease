@@ -1,10 +1,10 @@
-#include "Utils/dorsh/cmds/CompileCmd.h"
-#include "Utils/dorsh/cmdlib/Context.h"
-#include "Utils/dorsh/tools/Filesystem.h"
-#include "Utils/dorsh/tools/StringTools.h"
-#include "Utils/dorsh/models/Team.h"
+#include "cmds/CompileCmd.h"
+#include "cmdlib/Context.h"
+#include "tools/Filesystem.h"
+#include "tools/StringTools.h"
+#include "models/Team.h"
 #include "Platform/File.h"
-#include "Utils/dorsh/tools/Platform.h"
+#include "tools/Platform.h"
 #include "Tools/Build.h"
 
 CompileCmd CompileCmd::theCompileCmd;

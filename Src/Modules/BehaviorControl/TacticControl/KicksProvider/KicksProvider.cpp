@@ -1,10 +1,10 @@
 #include "KicksProvider.h"
 
-#include "Modules/BehaviorControl/TacticControl/KicksProvider/Types/Dribble.h"
-#include "Modules/BehaviorControl/TacticControl/KicksProvider/Types/KickEngineKick.h"
+#include "Modules/BehaviorControl/TacticControl/KicksProvider/KickTypes/Dribble.h"
+#include "Modules/BehaviorControl/TacticControl/KicksProvider/KickTypes/KickEngineKick.h"
 #include "Modules/MotionControl/DortmundWalkingEngine/StepData.h"
 
-KicksProvider::KicksProvider() {}
+KicksProvider::KicksProvider() = default;
 
 void KicksProvider::update(Kicks& kicks)
 {

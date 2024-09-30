@@ -31,10 +31,8 @@ option(Ballchaser)
         Walk(WalkRequest::speed, -theWalkingEngineParams.speedLimits.xBackward, sign * 30.f, 0);
       else
       {
-        Walk(WalkRequest::speed, -theWalkingEngineParams.speedLimits.xBackward * 0.75f, 0, 90_deg * sign);
-        theHeadControlRequest.controlType = HeadControlRequest::direct;
-        theHeadControlRequest.pan = 45_deg * sign;
-        theHeadControlRequest.tilt = 25_deg;
+        Walk(WalkRequest::speed, 0, 0, 60_deg * sign);
+        theHeadControlRequest.controlType = theBallSymbols.ballLastSeenLeft ? HeadControlRequest::ballLostLeft : HeadControlRequest::ballLostRight;
       }
     }
   }

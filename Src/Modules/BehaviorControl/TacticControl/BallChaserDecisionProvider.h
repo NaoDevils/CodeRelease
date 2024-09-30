@@ -15,7 +15,6 @@
 #include "Representations/MotionControl/WalkingEngineParams.h"
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Infrastructure/TeamInfo.h"
-#include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -62,7 +61,6 @@ MODULE(BallChaserDecisionProvider,
   REQUIRES(FieldDimensions),
   REQUIRES(WalkingEngineParams),
   REQUIRES(GameInfo),
-  REQUIRES(GameSymbols),
   REQUIRES(RobotInfo),
   REQUIRES(TeammateData),
   REQUIRES(DangerMap),

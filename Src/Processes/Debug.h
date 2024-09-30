@@ -16,6 +16,8 @@
 #include "Platform/DebugHandler.h"
 #include "Tools/Debugging/QueueFillRequest.h"
 
+struct Settings;
+
 /**
  * @class Debug
  *
@@ -41,7 +43,7 @@ public:
   char processIdentifier = 0; /**< The process the messages from the GUI are meant to be sent to. */
   OutBinaryFile* fout = nullptr; /**< Stream to store data on disk/stick. */
 
-  Debug();
+  Debug(Settings& settings);
   ~Debug()
   {
     if (fout)

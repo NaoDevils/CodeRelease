@@ -92,7 +92,7 @@ std::list<std::string> File::getConfigDirectories()
   std::list<std::string> subpaths;
   std::vector<std::string> overlays;
 #ifndef TARGET_TOOL
-  if (Global::settingsExist())
+  if (Global::hasSettings())
   {
     subpaths.push_back("Robots/" + Global::getSettings().robotName + "/" + Global::getSettings().bodyName + "/");
     subpaths.push_back("Robots/" + Global::getSettings().robotName + "/Head/");

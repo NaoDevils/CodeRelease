@@ -29,9 +29,11 @@
 #include "NaoBodyV6.h"
 #include "Tools/Settings.h"
 #include "naodevilsbase/naodevilsbase.h"
+#include "Tools/Streams/StreamHandler.h"
 
 static pid_t pid = 0;
 static pthread_t mainTid = 0;
+static Settings settings;
 static Robot* robot = nullptr;
 static std::atomic<bool> run = true;
 
@@ -123,11 +125,12 @@ namespace
   }
 } // namespace
 
+
 static void bhumanStart()
 {
   fprintf(stderr, "NaoDevils: Start.\n");
 
-  robot = new Robot();
+  robot = new Robot(settings);
   robot->start();
 }
 
@@ -163,10 +166,12 @@ static void sighandlerRedirect(int sig)
 
 int main(int argc, char* argv[])
 {
+  StreamHandler streamHandler;
+  GlobalGuard g{{.streamHandler = &streamHandler}};
+
   {
     // parse command-line arguments
     bool background = false;
-    bool recover = false;
     bool watchdog = false;
     const char* bhDir = "/home/nao";
 
@@ -284,19 +289,7 @@ int main(int argc, char* argv[])
           if (normalExit)
             exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
 
-          // don't restart if the child process got killed
-          if (WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL)
-            exit(EXIT_FAILURE);
-
-            // restart in release mode only
-#ifndef NDEBUG
           exit(EXIT_FAILURE);
-#else
-          // deactivate the pre-initial state
-          recover = true;
-
-          usleep(2000 * 1000);
-#endif
         }
         else
         {
@@ -322,10 +315,7 @@ int main(int argc, char* argv[])
 
     std::cout << "Loading settings" << std::endl;
     // load first settings instance
-    Settings settings;
-    settings.recover = recover;
-
-    if (!settings.loadingSucceeded())
+    if (!settings.load())
       return EXIT_FAILURE;
 
 

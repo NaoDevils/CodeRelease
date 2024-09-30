@@ -94,7 +94,8 @@ void KeeperProvider::regularPlay(Keeper& keeper)
     keeper.ballSearchState = Keeper::KeeperBallSearchState::wait; // default state
     searchForBall(keeper);
   }
-  else if (theBallChaserDecision.playerNumberToBall == 1 && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK && theBallSymbols.ballInOwnPenaltyArea && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT)
+  else if (theBallChaserDecision.playerNumberToBall == 1 && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK && theBallSymbols.ballInOwnPenaltyArea
+      && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theBallSymbols.timeSinceLastSeen < 3000)
   {
     keeperState = KeeperState::chaseBall;
     keeper.isBallchaser = true;
@@ -144,6 +145,11 @@ void KeeperProvider::updateDecisionVariables(Keeper& keeper)
   keeper.isBallchaser = false;
   keeper.catchBall = false;
 
+  // when keeper becomes ballchaser and starts walking/standing, it may still be in prepare dive pose
+  if (theMotionInfo.motion == MotionRequest::Motion::specialAction && theMotionInfo.specialActionRequest.specialAction == SpecialActionRequest::SpecialActionID::penaltyGoaliePrepareDive)
+    lastInPrepareDive = theFrameInfo.time;
+  keeper.isInPrepareDive = theFrameInfo.getTimeSince(lastInPrepareDive) < 350;
+
   //**** CALCULATE isSupported & ballPositionSupporter
   for (auto& mate : theTeammateData.teammates)
   {
@@ -172,8 +178,8 @@ void KeeperProvider::updateDecisionVariables(Keeper& keeper)
   float nearestBallDistance = Geometry::getDistanceToLine(Geometry::Line(theBallSymbols.ballPositionRelative, theBallSymbols.ballVelocityRelative), Vector2f::Zero());
   keeper.catchBall = /*theMotionSelection.ratios[MotionRequest::walk] == 1.f //dont trigger while in special action (dive/standup/..)
     && */
-      theRobotPoseAfterPreview.translation.x() < (theFieldDimensions.xPosOwnPenaltyArea + 100) // only in goal area
-      && std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.yPosLeftPenaltyArea - 100 // only in goal area
+      theRobotPoseAfterPreview.translation.x() < (theFieldDimensions.xPosOwnGoalArea + 100) // only in goal area
+      && std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.yPosLeftGoalArea - 100 // only in goal area
       && theBallSymbols.timeSinceLastSeen < 3000 //ball should be seen in the last 3 seconds
       && theBallSymbols.ballPositionFieldPredicted.x() < theRobotPoseAfterPreview.translation.x() // must stop behind robot
       && std::abs(nearestBallDistance) < maxDiveDistance
@@ -205,7 +211,7 @@ void KeeperProvider::searchForBall(Keeper& keeper)
   // If the ball was last seen in own half but wasn't seen after all, then try to rotate a little to the right and left
   // If team comm is down, do this without the ballPosition check
   if (keeper.ballSearchState != Keeper::KeeperBallSearchState::locate && keeper.ballSearchState != Keeper::KeeperBallSearchState::penalty
-      && (theBallSymbols.ballPositionField.x() < borderForOwnHalfBehavior || theBehaviorConfiguration.noWLAN || !theTeammateData.wlanOK)
+      && (theBallSymbols.ballPositionField.x() < borderForOwnHalfBehavior || !theTeammateData.commEnabled)
       && ((keeper.ballSearchState != Keeper::KeeperBallSearchState::supporter && theBallSymbols.timeSinceLastSeenByTeam > (timeUntilSearchBehavior + timeForSearchBehavior))
           || theBallSymbols.timeSinceLastSeenByTeam > (timeUntilSearchBehavior + timeForSearchBehavior + timeForMovingSearchBehavior)))
     keeper.ballSearchState = Keeper::KeeperBallSearchState::movingBall;
@@ -273,10 +279,10 @@ void KeeperProvider::updateKeeper(Keeper& keeper)
   }
   else
   {
-    keeper.thresholdXBack = 50.f;
+    keeper.thresholdXBack = 75.f;
     keeper.thresholdXFront = 100.f;
-    keeper.thresholdY = 100.f;
-    keeper.thresholdRotation = 10_deg;
+    keeper.thresholdY = 150.f;
+    keeper.thresholdRotation = 15_deg;
     keeper.stopAtTarget = true;
     keeper.previewArrival = true;
   }
@@ -284,58 +290,15 @@ void KeeperProvider::updateKeeper(Keeper& keeper)
 
 void KeeperProvider::calcOptPlayingPosition(Keeper& keeper)
 {
-  // Calculations are in field coordinates.
-  // Note: own goal center/post should always be in front of ball for this calculation,
-  // otherwise we run into strange singularities if ball is near own ground line in our goal.
-  Vector2f ownGoalCenter = Vector2f(std::min(theFieldDimensions.xPosOwnGroundline, theBallSymbols.ballPositionField.x() - 200.f), 0.f);
-  Vector2f vectorToBall = theBallSymbols.ballPositionField - ownGoalCenter;
-
-  // we want to limit this angle to avoid running outside of the field
-  Angle angleToCover = std::min(80_deg, std::max<Angle>(-80_deg, vectorToBall.angle()));
-
-  // finally, calculate position to block this angle
-  // move forward if not defensive behavior
-  Vector2f vectorFromCoverPositionToOptPosition = Vector2f(distanceFromGroundLine, 0.f).rotate(angleToCover);
   Vector2f optPosition;
-  // get intersection between defense line and vectorFromCoverPositionToOptPosition
-  if (!Geometry::getIntersectionOfLines(Geometry::Line(Vector2f(theFieldDimensions.xPosOwnGroundline + distanceFromGroundLine, -10000.f), Vector2f(0.f, 100.f)),
-          Geometry::Line(ownGoalCenter, vectorFromCoverPositionToOptPosition),
-          optPosition))
-    optPosition = ownGoalCenter + vectorFromCoverPositionToOptPosition;
-
-  // if the ball is rolling fast, not within our penalty area and predicted to land in our goal, intercept and/or block
-  bool interceptBall = false;
-  /*if (theMotionSelection.ratios[MotionRequest::walk] == 1.f //dont trigger while in special action (dive/standup/..)
-      && theBallSymbols.ballPositionFieldPredicted.x() < theRobotPoseAfterPreview.translation.x() // ball will be behind us
-      && !theBallSymbols.ballInOwnGoalArea // not already in goal area
-      && std::abs(theBallSymbols.yPosWhenBallReachesGroundLine) < theFieldDimensions.yPosLeftGoal + 100.f && theBallSymbols.ballVelocityRelative.norm() > moveWithBallSpeed) // moving fast
-  {
-    if (theRobotPoseAfterPreview.translation.x() < (theFieldDimensions.xPosOwnPenaltyArea + 100) // only in goal area
-        && std::abs(theRobotPoseAfterPreview.translation.y()) < theFieldDimensions.yPosLeftPenaltyArea - 100 // only in goal area
-        && theBallSymbols.ballPositionRelative.norm() < maxBallDistanceForBlock && theBallSymbols.ballPositionRelative.norm() > minBallDistanceForBlock
-        && theBallSymbols.ballPositionField.x() > theRobotPoseAfterPreview.translation.x() && std::abs (theBallSymbols.yPosWhenBallReachesOwnYAxis) < yReachableWithDive
-        && theFrameInfo.getTimeSince(lastBlockTimeStamp) > timeBetweenBlockMotions)
-    {
-      keeper.catchBall = true;
-      lastBlockTimeStamp = theFrameInfo.time;
-    }
-    else
-    {
-      optPosition.y() = theRobotPoseAfterPreview.translation.y() + theBallSymbols.yPosWhenBallReachesOwnYAxis;
-      interceptBall = true;
-      return;
-    }
-  }*/
-
   // keep robot near own goal
-  if (!interceptBall)
-    optPosition.y() = std::min(theFieldDimensions.yPosLeftGoal + 100.f, std::max(theFieldDimensions.yPosRightGoal - 100.f, optPosition.y()));
+  optPosition.y() = theBallSymbols.ballPositionField.y() * 650 / theFieldDimensions.yPosLeftSideline;
   // keep safety distance to goal post
   optPosition.x() = theFieldDimensions.xPosOwnGroundline + std::max(distanceFromGroundLine, std::max(0.f, 300.f - std::abs(theFieldDimensions.yPosLeftGoal - std::abs(optPosition.y()))));
   keeper.optPosition.translation = optPosition;
-  keeper.optPosition.rotation = (theBallSymbols.ballPositionField - optPosition).angle();
-  if (interceptBall)
-    keeper.optPosition.rotation = theRobotPoseAfterPreview.rotation + Angle::normalize(theBallSymbols.ballVelocityRelative.angle() + pi);
+  keeper.optPosition.rotation = 0_deg;
+  if (std::abs(keeper.optPosition.translation.y()) > theFieldDimensions.yPosLeftGoal - 250)
+    keeper.optPosition.rotation = (theBallSymbols.ballPositionField - optPosition).angle();
 }
 
 void KeeperProvider::updateBallchaserKeeper(Keeper& keeper)
@@ -371,7 +334,7 @@ void KeeperProvider::updateBallchaserKeeper(Keeper& keeper)
   keeper.optKickTarget = Pose2f(keeper.optPosition).translate(2000.f, 0.f).translation;
   // TODO: select kick depending on situation
   keeper.useLongKick = false;
-  keeper.walkKick = WalkRequest::StepRequest::any;
+  keeper.walkKick = WalkRequest::StepRequest::kickHackLong;
   keeper.stopAtTarget = false;
   keeper.previewArrival = true;
 }

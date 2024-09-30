@@ -62,6 +62,9 @@ void BallPercept::draw() const
     case CheckedBallSpot::DetectionSource::ballModel:
       brushColor = ColorRGBA::violet;
       break;
+    case CheckedBallSpot::DetectionSource::segmentorHypothesis:
+      brushColor = ColorRGBA::yellow;
+      break;
     }
     brushColor.a = alpha;
 
@@ -190,6 +193,9 @@ void MultipleBallPercept::draw() const
         break;
       case CheckedBallSpot::DetectionSource::ballModel:
         brushColor = ColorRGBA::violet;
+        break;
+      case CheckedBallSpot::DetectionSource::segmentorHypothesis:
+        brushColor = ColorRGBA::yellow;
         break;
       }
       brushColor.a = alpha;

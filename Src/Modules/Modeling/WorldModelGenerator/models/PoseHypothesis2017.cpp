@@ -13,6 +13,7 @@
 
 #include "PoseHypothesis2017.h"
 #include "Tools/Modeling/PoseGenerator.h"
+#include "Tools/Math/Transformation.h"
 
 CycleLocal<std::unique_ptr<PoseHypothesis2017::KalmanStateUpdate>> PoseHypothesis2017::stateUpdate{nullptr};
 CycleLocal<std::unique_ptr<PoseHypothesis2017::KalmanInfiniteLineStateUpdate>> PoseHypothesis2017::stateUpdateInfiniteLine{nullptr};
@@ -1033,10 +1034,12 @@ void PoseHypothesis2017::updateSymmetryByComparingRemoteToLocalModels(const Ball
         float distanceTeammate = (mate.behaviorData.ballPositionField - localModelInGlobalCoords).norm();
         float distanceTeammateMirrored = (mate.behaviorData.ballPositionField - localModelInGlobalCoordsMirrored).norm();
 
+        const int playerWeight = mate.behaviorData.role == BehaviorData::RoleAssignment::keeper ? 2 : 1;
+
         if (distanceTeammateMirrored < distanceTeammate && distanceTeammateMirrored < 500.f)
-          numberOfTeammatesWithMirroredBall++;
+          numberOfTeammatesWithMirroredBall += playerWeight;
         else if (distanceTeammateMirrored > distanceTeammate && distanceTeammate < 500.f)
-          numberOfTeammatesWithSameBall++;
+          numberOfTeammatesWithSameBall += playerWeight;
       }
     }
     if (numberOfTeammatesWithMirroredBall >= 2)

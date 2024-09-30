@@ -6,7 +6,6 @@
 #include "Representations/Sensing/FallDownState.h"
 #include "Representations/Sensing/JoinedIMUData.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
-#include "Representations/BehaviorControl/RoleSymbols.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -25,7 +24,6 @@
 MODULE(ArmContactProvider,
   USES(ArmMovement),
   USES(RawJointRequest),
-  REQUIRES(BallModelAfterPreview),
   REQUIRES(BallSymbols),
   REQUIRES(FallDownState),
   REQUIRES(FieldDimensions),
@@ -37,7 +35,6 @@ MODULE(ArmContactProvider,
   REQUIRES(MotionSelection),
   REQUIRES(RobotMap),
   REQUIRES(RobotPose),
-  REQUIRES(RoleSymbols),
   REQUIRES(BallChaserDecision),
   REQUIRES(RobotInfo),
   PROVIDES(ArmContact),

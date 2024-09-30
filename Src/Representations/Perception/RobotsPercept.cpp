@@ -3,6 +3,9 @@
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/ImageCoordinateTransformations.h"
 
+#include <iomanip>
+#include <sstream>
+
 void ObstacleBasePoints::draw() const
 {
   DEBUG_DRAWING("representation:ObstacleBasePoints:Image:Lower", "drawingOnImage")
@@ -44,9 +47,13 @@ void RobotsPercept::draw() const
   {
     ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green : (robotEstimate.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red : ColorRGBA::black);
     ColorRGBA recallColor = robotEstimate.robotType == RobotEstimate::unknownRobot ? ColorRGBA::white : ColorRGBA::black;
+    const char* srcStr = "";
+    if (robotEstimate.source == RobotEstimate::closeRobotDetection)
+      srcStr = "C";
+    if (robotEstimate.source == RobotEstimate::segmentor)
+      srcStr = "S";
     std::stringstream ss;
-    ss << std::fixed << std::setprecision(1) << robotEstimate.validity * 100.f << "%" << (robotEstimate.keeper ? " Keeper" : "") << (robotEstimate.fromUpperImage ? " U" : " L")
-       << (robotEstimate.source == RobotEstimate::closeRobotDetection ? "C" : "");
+    ss << std::fixed << std::setprecision(1) << robotEstimate.validity * 100.f << "%" << (robotEstimate.keeper ? " Keeper" : "") << (robotEstimate.fromUpperImage ? " U" : " L") << srcStr;
 
     if (robotEstimate.fromUpperImage)
     {
@@ -125,10 +132,24 @@ void RobotsPercept::draw() const
 
   //Field
   DECLARE_DEBUG_DRAWING("representation:RobotsPercept:Field", "drawingOnField");
+  DECLARE_DEBUG_DRAWING("representation:RobotsPercept:ConvexHull", "drawingOnField");
   for (auto const& robotEstimate : robots)
   {
     ColorRGBA color = robotEstimate.robotType == RobotEstimate::teammateRobot ? ColorRGBA::green : (robotEstimate.robotType == RobotEstimate::opponentRobot ? ColorRGBA::red : ColorRGBA::black);
     CIRCLE("representation:RobotsPercept:Field", robotEstimate.locationOnField.translation.x(), robotEstimate.locationOnField.translation.y(), 40, 2, Drawings::solidPen, color, Drawings::solidBrush, color);
+
+    if (robotEstimate.convexHull.size() <= 1)
+      continue;
+    for (int j = 0; j < static_cast<int>(robotEstimate.convexHull.size()) - 1; j++)
+    {
+      Vector2f p1 = robotEstimate.convexHull[j];
+      Vector2f p2 = robotEstimate.convexHull[j + 1];
+
+      LINE("representation:RobotsPercept:ConvexHull", p1.x(), p1.y(), p2.x(), p2.y(), 3, Drawings::solidPen, ColorRGBA::blue);
+    }
+    Vector2f p1 = robotEstimate.convexHull[0];
+    Vector2f p2 = robotEstimate.convexHull[robotEstimate.convexHull.size() - 1];
+    LINE("representation:RobotsPercept:ConvexHull", p1.x(), p1.y(), p2.x(), p2.y(), 3, Drawings::solidPen, ColorRGBA::blue);
   }
 };
 

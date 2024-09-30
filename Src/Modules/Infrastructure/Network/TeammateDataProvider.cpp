@@ -15,9 +15,9 @@ void TeammateDataProvider::update(TeammateData& teammateData)
   if (theGameInfo.timeLastPackageReceived == theFrameInfo.time)
     teammateData.messageBudget = theOwnTeamInfo.messageBudget;
 
-  // in INITIAL, FINISHED and PENALTY_SHOOTOUT, message budget is ignored
+  // in INITIAL, STANDBY, FINISHED and PENALTY_SHOOTOUT, message budget is ignored
   // otherwise set to starting value, see Rules 2023
-  if (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_FINISHED || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
+  if (theGameInfo.state == STATE_INITIAL || theGameInfo.state == STATE_STANDBY || theGameInfo.state == STATE_FINISHED || theGameInfo.gamePhase == GAME_PHASE_PENALTYSHOOT)
     teammateData.messageBudget = 1200;
 
   for (const auto& message : theTeamCommInput.messages)
@@ -63,7 +63,7 @@ void TeammateDataProvider::update(TeammateData& teammateData)
     // update newestEventMessages
     for (const auto reason : teammate->teamCommEvents.sendReasons)
     {
-      Teammate* eventmessage = teammateData.getNewestEventMessage(reason);
+      TeammateReceived* eventmessage = teammateData.getNewestEventMessage(reason);
       if (!eventmessage)
       {
         auto& teammateevent = teammateData.newestEventMessages.emplace_back();
@@ -87,15 +87,9 @@ void TeammateDataProvider::update(TeammateData& teammateData)
   };
   teammateData.numberOfActiveTeammates = static_cast<int>(std::count_if(teammateData.teammates.begin(), teammateData.teammates.end(), isActiveTeammate));
 
-  // check wlanQuality
-  if (wlanQuality > 0.7f)
-    teammateData.wlanOK = true;
-  else if (wlanQuality < 0.5f)
-    teammateData.wlanOK = false;
-
-  // if no communication is possible due to package limit, behave as if no wifi is available
-  if (teammateData.messageBudget <= 5)
-    teammateData.wlanOK = false;
+  // disable communication when package limit reached
+  teammateData.commEnabled = teammateData.messageBudget > 5;
+  MODIFY("module:TeammateDataProvider:commEnabled", teammateData.commEnabled);
 
   if (teammateData.teammates.size() != lastNoOfTeammates)
     ANNOTATION("TeammateData", "Number of Teammates changed to " << teammateData.teammates.size());
@@ -105,20 +99,11 @@ void TeammateDataProvider::update(TeammateData& teammateData)
   teammateData.messageBudgetFactor = std::min(1.f, static_cast<float>(teammateData.messageBudget) / totalSecsRemaining);
 }
 
-bool TeammateDataProvider::isLatencyOkay(const TeammateReceived& teammate)
+bool TeammateDataProvider::isLatencyOkay(const TeammateReceived& teammate) const
 {
   // Send timestamp may be in the future if time synchronization wasn't successful.
   // Discard package here, otherwise we keep packages in newestEventMessages forever.
-  if (std::abs(static_cast<int64_t>(teammate.receiveTimestamp) - static_cast<int64_t>(teammate.sendTimestamp)) > badWifiTimeout)
-  {
-    wlanQuality = std::max(0.f, wlanQuality - 0.2f);
-    return false;
-  }
-  else
-  {
-    wlanQuality = std::min(1.f, wlanQuality + 0.1f);
-    return true;
-  }
+  return std::abs(static_cast<int64_t>(teammate.receiveTimestamp) - static_cast<int64_t>(teammate.sendTimestamp)) < badWifiTimeout;
 }
 
 MAKE_MODULE(TeammateDataProvider, cognitionInfrastructure)

@@ -11,6 +11,7 @@
 #include <nlohmann/json_fwd.hpp>
 #include <chrono>
 #include "../Tools/Network/UdpComm.h"
+#include <filesystem>
 
 struct NDData;
 
@@ -29,6 +30,9 @@ private:
 
   std::chrono::time_point<std::chrono::steady_clock> wlanRequest;
   std::chrono::time_point<std::chrono::steady_clock> gcData;
+  std::filesystem::file_time_type walkCalibrationTimestamp;
+  float qualityOfRobotHardware = 1.f;
+  bool walkCalibrated = false;
 
   nlohmann::json getJson() const;
 

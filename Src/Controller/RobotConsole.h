@@ -8,49 +8,29 @@
 
 #pragma once
 
-#ifdef WINDOWS
-#include <WinSock2.h> // This must be included first to prevent errors, since windows.h is included in one of the following headers.
-#endif
-
-#include "Representations/BehaviorControl/ActivationGraph.h"
-#include "Representations/BehaviorControl/BehaviorData.h"
-#include "Representations/Configuration/JointCalibration.h"
-#include "Representations/Configuration/RobotDimensions.h"
-#include "Representations/Infrastructure/JointRequest.h"
-#include "Representations/Infrastructure/RobotHealth.h"
-#include "Representations/Infrastructure/SensorData/FsrSensorData.h"
-#include "Representations/Infrastructure/SensorData/InertialSensorData.h"
-#include "Representations/Infrastructure/SensorData/JointSensorData.h"
-#include "Representations/Infrastructure/SensorData/KeyStates.h"
-#include "Representations/Infrastructure/SensorData/SystemSensorData.h"
-#include "Representations/Infrastructure/SensorData/SonarSensorData.h"
-#include "Representations/Modeling/BallModel.h"
-#include "Representations/Modeling/TeamBallModel.h"
-#include "Representations/Modeling/RobotPose.h"
-#include "Representations/MotionControl/MotionRequest.h"
-#include "Representations/Perception/CameraMatrix.h"
-#include "Representations/Perception/GoalPercept.h"
-#include "Tools/Debugging/DebugDrawings3D.h"
-#include "Tools/Debugging/DebugImages.h"
 #include "Tools/ProcessFramework/Process.h"
 
 #include "AudioPlayer.h"
-#include "LogPlayer.h" // Must be included after Process.h
 #include "Platform/Joystick.h"
-#include "Representations/AnnotationInfo.h"
-#include "Representations/ModuleInfo.h"
-#include "Representations/TimeInfo.h"
-#include "Views/DataView/DataView.h"
-#include "Visualization/DebugDrawing.h"
-#include "Visualization/DebugDrawing3D.h"
 
 #include <QString>
 #include <fstream>
 #include <list>
 #include <map>
+#include <memory>
 
+class DataView;
+class AnnotationInfo;
+class TimeInfo;
+class DebugDrawing;
+class DebugDrawing3D;
 class ConsoleRoboCupCtrl;
 class ImageView;
+class LogPlayer;
+class ModuleInfo;
+struct JointRequest;
+struct Image;
+struct Settings;
 
 /**
 * @class RobotConsole
@@ -60,6 +40,9 @@ class ImageView;
 class RobotConsole : public Process
 {
 private:
+  struct Pimpl;
+  std::unique_ptr<Pimpl> data;
+
   /**
    * Writes a message to a list of strings. Used to save representations as files,
    * i.e. save calibration values set in the simulator.
@@ -116,7 +99,8 @@ protected:
   bool logAcknowledged = true; /**< The flag is true whenever log data sent to the robot code was processed. */
   bool destructed = false; /**< A flag stating that this object has already been destructed. */
   std::string logFile; /**< The name of the log file replayed. */
-  LogPlayer logPlayer; /**< The log player to record and replay log files. */
+  std::unique_ptr<LogPlayer> logPlayerPtr; /**< The log player to record and replay log files. */
+  LogPlayer& logPlayer = *logPlayerPtr; /**< The log player to record and replay log files. */
   MessageQueue& debugOut; /**< The outgoing debug queue. */
   StreamHandler streamHandler; /**< Local stream handler. Note: Process::streamHandler may be accessed unsynchronized in different thread, so don't use it here. */
   DrawingManager drawingManager;
@@ -124,13 +108,6 @@ protected:
   DebugRequestTable debugRequestTable;
   AudioPlayer audioPlayer;
   const char* pollingFor = nullptr; /**< The information the console is waiting for. */
-  JointRequest jointRequest; /**< The joint angles request received from the robot code. */
-  JointSensorData jointSensorData; /**< The most current set of joint angles received from the robot code. */
-  FsrSensorData fsrSensorData; /**< The most current set of fsr sensor data received from the robot code. */
-  InertialSensorData inertialSensorData; /**< The most current set of inertial sensor data received from the robot code. */
-  KeyStates keyStates; /**< The most current set of key states received from the robot code. */
-  SystemSensorData systemSensorData; /**< The most current set of system sensor data received from the robot code. */
-  SonarSensorData sonarSensorData; /**< The most current set of sonar sensor data received from the robot code. */
   enum MoveOp
   {
     noMove,
@@ -143,13 +120,6 @@ protected:
   Vector3f moveRot = Vector3f::Zero(); /**< The rotation the robot is moved to. */
   Angle kickAngle; /**< The angle giving the direction of the kicked ball. */
   float kickVelocity; /**< The velocity the ball is kicked with. */
-  RobotPose robotPose; /**< Robot pose from team communication. */
-  BallModel ballModel; /**< Ball model from team communication. */
-  TeamBallModel teamBallModel; /**< combined ball information from team communication */
-  GoalPercept goalPercept; /**< Goal percept from team communication. */
-  BehaviorData behaviorData; /**< Behavior data from team communication. */
-  RobotHealth robotHealth; /**< Robot Health from team communication. */
-  MotionRequest motionRequest; /**< Motion Request from team communication. */
   bool hasGroundContact = true; /**< Ground contact state from team communication. */
   bool isUpright = true; /**<fall down state from team communication */
   unsigned obstacleModelCompressedReceived = 0; /**< When was the obstacle model received from team communication. */
@@ -165,39 +135,22 @@ protected:
   unsigned teamPlayersModelReceived = 0; /**< When was the team players model received from team communication. */
   unsigned isUprightReceived = 0; /**< When was the fall down state received from team communication. */
   int mrCounter = 0; /**< Counts the number of mr commands. */
-  JointCalibration jointCalibration; /**< The joint calibration received from the robot code. */
-  RobotDimensions robotDimensions; /**< The robotDimensions received from the robot code. */
   std::string printBuffer; /**< Buffer used for command get. */
   char drawingsViaProcess = 'b'; /** Which process is used to provide field and 3D drawings */
-  std::unordered_map<char, AnnotationInfo> annotationInfos;
+  std::unordered_map<char, AnnotationInfo>& annotationInfos;
   unsigned frame = 0; /**< Current frame number */
   unsigned sleepTimer = 0; /**< sleep frames counter */
 
 public:
-  class ImagePtr
-  {
-  public:
-    Image* image = nullptr;
-    char processIdentifier = 0; /**< "c" denotes lower camera process, "d" denotes upper camera process */
-
-    ~ImagePtr() { reset(); }
-
-    void reset()
-    {
-      if (image)
-        delete image;
-      image = nullptr;
-    }
-  };
-  typedef std::unordered_map<std::string, ImagePtr> Images; /**< The type of the map of images. */
+  typedef std::unordered_map<std::string, std::unique_ptr<Image>> Images; /**< The type of the map of images. */
 
   Images camImages;
 
   typedef std::unordered_map<std::string, DebugDrawing> Drawings;
-  Drawings camImageDrawings, motionImageDrawings; /**< Buffers for image drawings from the debug queue. */
-  Drawings camFieldDrawings, motionFieldDrawings; /**< Buffers for field drawings from the debug queue. */
+  Drawings &camImageDrawings, &motionImageDrawings; /**< Buffers for image drawings from the debug queue. */
+  Drawings &camFieldDrawings, &motionFieldDrawings; /**< Buffers for field drawings from the debug queue. */
   typedef std::unordered_map<std::string, DebugDrawing3D> Drawings3D;
-  Drawings3D camDrawings3D, motionDrawings3D; /**< Buffers for 3d drawings from the debug queue. */
+  Drawings3D &camDrawings3D, &motionDrawings3D; /**< Buffers for 3d drawings from the debug queue. */
 
   Drawings* currentImageDrawings = nullptr;
   Drawings* currentFieldDrawings = nullptr;
@@ -228,7 +181,8 @@ public:
   Views fieldViews; /**< The map of all field views. */
   Views imageViews; /**< The map of all image views. */
   Views imageViews3D; /**< The map of all 3-D image views. */
-  ModuleInfo moduleInfo; /**< The current state of all solution requests. */
+  std::unique_ptr<ModuleInfo> moduleInfoPtr; /**< The current state of all solution requests. */
+  ModuleInfo& moduleInfo = *moduleInfoPtr; /**< The current state of all solution requests. */
 
   /**List of currently active representation views. Key: representation name, value: pointer to the view */
   std::map<std::string, DataView*> representationViews;
@@ -263,15 +217,14 @@ private:
   DebugDataInfos debugDataInfos; /** All debug data information. */
 
   Images incompleteImages; /** Buffers images of this frame (created on demand). */
-  Drawings incompleteImageDrawings; /**< Buffers incomplete image drawings from the debug queue. */
-  Drawings incompleteFieldDrawings; /**< Buffers incomplete field drawings from the debug queue. */
-  Drawings3D incompleteDrawings3D; /**< Buffers incomplete 3d drawings from the debug queue. */
+  Drawings& incompleteImageDrawings; /**< Buffers incomplete image drawings from the debug queue. */
+  Drawings& incompleteFieldDrawings; /**< Buffers incomplete field drawings from the debug queue. */
+  Drawings3D& incompleteDrawings3D; /**< Buffers incomplete 3d drawings from the debug queue. */
 
-  ActivationGraph activationGraph; /**< Graph of active options and states. */
   unsigned activationGraphReceived = 0; /**< When was the last activation graph received? */
   std::fstream* logMessages = nullptr; /** The file messages from the robot are written to. */
   typedef std::unordered_map<char, TimeInfo> TimeInfos;
-  TimeInfos timeInfos; /**< Information about the timing of modules per process. */
+  TimeInfos& timeInfos; /**< Information about the timing of modules per process. */
   Vector3f background = Vector3f(0.5f, 0.5f, 0.5f); /**< The background color of all 3-D views. */
   std::list<std::string> lines; /**< Console lines buffered because the process is currently waiting. */
   int waitingFor[numOfMessageIDs]; /**< Each entry states for how many information packages the process waits. */
@@ -318,7 +271,7 @@ public:
   /**
   * Constructor.
   */
-  RobotConsole(MessageQueue& in, MessageQueue& out);
+  RobotConsole(MessageQueue& in, MessageQueue& out, Settings& settings);
 
   /**
   * Destructor.
@@ -410,6 +363,8 @@ protected:
           map.at(cycle).handleMessage(msg);
         });
   }
+
+  JointRequest& getJointRequest();
 
 private:
   /**

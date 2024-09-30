@@ -8,6 +8,8 @@
 
 #include <utility>
 #include "TeammateData.h"
+#include "Tools/Streams/InStreams.h"
+#include "Tools/Streams/OutStreams.h"
 #include "Representations/Infrastructure/RoboCupGameControlData.h"
 #include "Representations/Infrastructure/TeamInfo.h"
 #include "Representations/Infrastructure/Time.h"
@@ -49,6 +51,7 @@ TeamCommOutput Teammate::toTeamCommData() const
   stream(behaviorData, "behaviorData");
   stream(teamCommEvents, "teamCommEvents");
   stream(whistle, "whistle");
+  stream(refereeGesture, "refereeGesture");
   stream(speedInfo, "speedInfo");
   stream(localRobotMap, "localRobotMap");
 
@@ -82,6 +85,7 @@ bool TeammateReceived::fromTeamCommData(const TeamCommDataReceived& teamCommData
   stream(behaviorData);
   stream(teamCommEvents);
   stream(whistle);
+  stream(refereeGesture);
   stream(speedInfo);
   stream(localRobotMap);
 

@@ -9,9 +9,7 @@
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
-#include "Representations/BehaviorControl/RoleSelection.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
-#include "Representations/BehaviorControl/RoleSymbols/BallchaserKeeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/Center.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/DefenderSingle.h"
@@ -28,7 +26,6 @@
 
 MODULE(CenterProviderOld,
     REQUIRES(Ballchaser), // for avoidance
-    REQUIRES(BallchaserKeeper), // for avoidance
     REQUIRES(BallChaserDecision), // for avoidance
     REQUIRES(BallSymbols),
     REQUIRES(BehaviorConfiguration),
@@ -37,10 +34,7 @@ MODULE(CenterProviderOld,
     REQUIRES(GameSymbols),
     REQUIRES(TacticSymbols),
     REQUIRES(TeammateData),
-    REQUIRES(RoleSelection),
     PROVIDES(Center),
-    REQUIRES(RobotPose),
-    REQUIRES(RobotMap),
     REQUIRES(DefenderSingle),
     LOADS_PARAMETERS(,
       (float)(2400.f) setPlayOppCornerKickDistanceX,

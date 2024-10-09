@@ -43,7 +43,7 @@ void BallSearchProvider::update(BallSearch& ballsearch)
       timeStampBallLostForTeam = theFrameInfo.time;
     int timeSinceBallSearchStarted = theFrameInfo.getTimeSince(timeStampBallLostForTeam);
 
-    static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 13, "Missing role!");
+    static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 14, "Missing role!");
     // TODO: add frontWing / backWing
 
     if (lastBallPositionField.x() < theFieldDimensions.xPosOwnGroundline + defenseSearchStart * 2 * theFieldDimensions.xPosOpponentGroundline)

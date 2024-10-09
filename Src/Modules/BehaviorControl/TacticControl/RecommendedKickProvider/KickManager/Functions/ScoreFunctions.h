@@ -18,7 +18,6 @@
 #include <optional>
 #include <utility>
 #include <vector>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/Hysteresis.h>
 
 class ScoreFunctions
 {
@@ -71,5 +70,5 @@ public:
 
   static float scoreExecutableShot(const ExecutableShot& executableShot, const float successProbability, const float noSuccessScore);
 
-  static float applyHysteresis(float score, float poseTime, const Hysteresis& hysteresis);
+  static float applyHysteresis(float score, float poseTime);
 };

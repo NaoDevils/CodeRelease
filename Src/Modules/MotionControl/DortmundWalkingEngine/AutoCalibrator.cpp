@@ -233,7 +233,7 @@ void AutoCalibrator::update(WalkCalibration& walkCalibration)
   }
 
   walkCalibration = localWalkCalibration;
-  if (theJointError.timeSpendWalking > 5 * 60 && theRawGameInfo.state == STATE_PLAYING && theRawGameInfo.controllerConnected)
+  if (theJointError.timeSpendWalking > 5 * 60)
   {
     walkCalibration.qualityOfRobotHardware = theJointError.qualityOfRobotHardware;
     walkCalibration.walkCalibrated = true;

@@ -1,11 +1,12 @@
-#include "RecommendedKickObjective.h"
+#include "ExecuteRecommendationObjective.h"
 
+#include "Modules/BehaviorControl/TacticControl/KicksProvider/KickTypes/Dribble.h"
 #include "Modules/BehaviorControl/TacticControl/KicksProvider/KicksProvider.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserUtils.h"
 
-RecommendedKickObjective::RecommendedKickObjective(BallchaserProvider* role, BehaviorLogger& logger) : Objective("RecommendedKickObjective", role, logger) {}
+ExecuteRecommendationObjective::ExecuteRecommendationObjective(BallchaserProvider* role, BehaviorLogger& logger) : Objective("ExecuteRecommendationObjective", role, logger) {}
 
-bool RecommendedKickObjective::perform(Ballchaser& ballchaser)
+bool ExecuteRecommendationObjective::perform(Ballchaser& ballchaser)
 {
   if (role->theRecommendedKick.hasRecommendation)
   {
@@ -37,12 +38,12 @@ bool RecommendedKickObjective::perform(Ballchaser& ballchaser)
   }
 }
 
-bool RecommendedKickObjective::leaveCondition() const
+bool ExecuteRecommendationObjective::leaveCondition() const
 {
   return true;
 }
 
-void RecommendedKickObjective::postprocess()
+void ExecuteRecommendationObjective::postprocess()
 {
   Objective::postprocess();
 }

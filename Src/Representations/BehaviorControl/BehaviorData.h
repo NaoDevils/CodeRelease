@@ -44,7 +44,8 @@ STREAMABLE(BehaviorData,
     leftWing,
     rightWing,
     frontWing,
-    backWing
+    backWing,
+    remoteControl
   );
   
   ENUM(SoccerState,

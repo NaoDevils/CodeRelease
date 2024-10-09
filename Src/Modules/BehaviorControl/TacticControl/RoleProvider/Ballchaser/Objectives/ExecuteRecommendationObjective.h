@@ -9,11 +9,11 @@
 
 class BallchaserProvider;
 struct Ballchaser;
-class RecommendedKickObjective : public Objective<BallchaserProvider, Ballchaser>
+class ExecuteRecommendationObjective : public Objective<BallchaserProvider, Ballchaser>
 {
 
 public:
-  RecommendedKickObjective(BallchaserProvider* role, BehaviorLogger& logger);
+  ExecuteRecommendationObjective(BallchaserProvider* role, BehaviorLogger& logger);
   bool perform(Ballchaser& ballchaser) override;
   [[nodiscard]] bool leaveCondition() const override;
   void postprocess() override;

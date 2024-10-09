@@ -12,9 +12,9 @@ STREAMABLE_WITH_BASE(FrontWing, PositioningSymbols,
   ///** debug drawings, in world coordinate system. */
   //void draw() const
   //{
-  //  DEBUG_DRAWING("representation:LeftWing", "drawingOnField")
+  //  DEBUG_DRAWING("representation:FrontWing", "drawingOnField")
   //  {
-  //    POSE_2D_SAMPLE("representation:LeftWing", optPosition, ColorRGBA::yellow);
+  //    POSE_2D_SAMPLE("representation:FrontWing", optPosition, ColorRGBA::yellow);
   //  }
 
   //}

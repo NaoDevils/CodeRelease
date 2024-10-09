@@ -32,22 +32,12 @@ WhistleDetector::WhistleDetector()
 
 void WhistleDetector::execute(tf::Subflow& subflow)
 {
-  DEBUG_RESPONSE("module:WhistleDetector:detectWhistle")
-  {
-    localWhistle.detectionState = WhistleDortmund::DetectionState::isDetected;
-    localWhistle.lastDetectionTime = theFrameInfo.time;
-    return;
-  }
-
   if (!initialize || channels != theAudioData.channels)
   {
     if (theAudioData.isValid)
       init();
     else
-    {
-      localWhistle.detectionState = WhistleDortmund::DetectionState::notDetected;
       return;
-    }
   }
 
   INIT_DEBUG_IMAGE_BLACK(SPECTROGRAM, audioBufferSize, (windowSize / 2) + 1);
@@ -57,6 +47,12 @@ void WhistleDetector::execute(tf::Subflow& subflow)
   DECLARE_PLOT("representation:Whistle:confidence");
   DECLARE_PLOT("representation:Whistle:threshold");
 
+  DEBUG_RESPONSE("module:WhistleDetector:detectWhistle")
+  {
+    localWhistle.detectionState = WhistleDortmund::DetectionState::isDetected;
+    localWhistle.lastDetectionTime = theFrameInfo.time;
+    return;
+  }
 
   //update local constants
   const int channels = theAudioData.channels;
@@ -129,7 +125,7 @@ void WhistleDetector::execute(tf::Subflow& subflow)
 
   COMPLEX_IMAGE(SPECTROGRAM)
   {
-    int mic = audioBuffer.getCurrentMic(false);
+    int mic = audioBuffer.getCurrentMic();
 
     if (mic >= 0)
     {
@@ -190,11 +186,11 @@ void WhistleDetector::execute(tf::Subflow& subflow)
 
     if (mic >= 0)
     {
-      PLOT("representation:Whistle:pmConfidence", confidences[0][0]);
-      PLOT("representation:Whistle:nnConfidence", confidences[0][1]);
-      PLOT("representation:Whistle:noise", confidences[0][2]);
-      PLOT("representation:Whistle:confidence", confidences[0][3]);
-      PLOT("representation:Whistle:threshold", threshold + ((1 - threshold) * (noiseWeight * confidences[0][2])));
+      PLOT("representation:Whistle:pmConfidence", confidences[mic][0]);
+      PLOT("representation:Whistle:nnConfidence", confidences[mic][1]);
+      PLOT("representation:Whistle:noise", confidences[mic][2]);
+      PLOT("representation:Whistle:confidence", confidences[mic][3]);
+      PLOT("representation:Whistle:threshold", threshold + ((1 - threshold) * (noiseWeight * confidences[mic][2])));
     }
   }
 }
@@ -236,10 +232,6 @@ void WhistleDetector::update(WhistleDortmund& whistle)
     audioBuffer.setMinFreq(minFreq);
   if (maxFreq != audioBuffer.getMaxFreq())
     audioBuffer.setMaxFreq(maxFreq);
-  if (minFreqBorder != audioBuffer.getMinFreqBorder())
-    audioBuffer.setMinFreqBorder(minFreqBorder);
-  if (maxFreqBorder != audioBuffer.getMaxFreqBorder())
-    audioBuffer.setMaxFreqBorder(maxFreqBorder);
   //------[Whistle Candidate Detection]------
   if (whistleCandidateThreshold != audioBuffer.getWhistleCandidateThreshold())
     audioBuffer.setWhistleCandidateThreshold(whistleCandidateThreshold);
@@ -266,7 +258,7 @@ void WhistleDetector::detectWhistle(WhistleDortmund& whistle)
   }
   else if (numOfCandidates > 0)
   {
-    whistleSequenceLength.resize(numOfCandidates);
+    whistleSequenceLength.reserve(numOfCandidates);
     for (unsigned int idx = 0; idx < numOfCandidates; idx++)
     {
       whistleSequenceLength[idx] = whistleCandiates[idx][1] - whistleCandiates[idx][0];
@@ -298,7 +290,7 @@ void WhistleDetector::detectWhistle(WhistleDortmund& whistle)
         std::nth_element(whistleFrequencies.begin(), whistleFrequencies.begin() + whistleFrequencies.size() / 2, whistleFrequencies.end());
         unsigned int whistleFrequency = whistleFrequencies[whistleFrequencies.size() / 2];
 
-        if (attackCount[idxCandidates] >= attackFactor)
+        if (attackCount[idxCandidates] > whistleSequenceLength[idxCandidates] * attackFactor)
         {
           ANNOTATION("Whistle", "Whistle was detected.");
           if (freqCalibration)
@@ -611,8 +603,6 @@ void WhistleDetector::init()
   //----------[Whistle Calibration]----------
   audioBufferParameters.minFreq = minFreq;
   audioBufferParameters.maxFreq = maxFreq;
-  audioBufferParameters.minFreqBorder = minFreqBorder;
-  audioBufferParameters.maxFreqBorder = maxFreqBorder;
   //------[Whistle Candidate Detection]------
   audioBufferParameters.whistleCandidateThreshold = whistleCandidateThreshold;
   audioBufferParameters.attentionMultiplier = attentionMultiplier;

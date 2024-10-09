@@ -26,6 +26,7 @@
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/LeftWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/BehaviorControl/RoleSymbols/FrontWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/BackWing.h"
 #include "Representations/BehaviorControl/BallChaserDecision.h"
@@ -52,6 +53,7 @@ MODULE(PositioningSymbolsProvider,
   REQUIRES(ReplacementKeeper),
   REQUIRES(LeftWing),
   REQUIRES(RightWing),
+  REQUIRES(RemoteControl),
   REQUIRES(BackWing),
   REQUIRES(FrontWing),
   REQUIRES(GameInfo),

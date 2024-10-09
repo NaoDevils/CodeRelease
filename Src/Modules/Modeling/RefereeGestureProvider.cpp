@@ -47,24 +47,12 @@ void RefereeGestureProvider::update(RefereeGesture& refereeGesture)
   }
 
   if (useKeypointThreshold)
-  {
-    // sanity check using nose and hand keypoints confidence
+  { // sanity check using nose and hand keypoints confidence
     if (theRefereeKeypoints.confidence.at(0) < keypointThreshold)
       validSkeleton = false;
     if (theRefereeKeypoints.confidence.at(3) < keypointThreshold)
-      validSkeleton = false; // nose
+      validSkeleton = false;
     if (theRefereeKeypoints.confidence.at(6) < keypointThreshold)
-      validSkeleton = false;
-
-    // Elbows
-    if (theRefereeKeypoints.confidence.at(1) < keypointThreshold)
-      validSkeleton = false;
-    if (theRefereeKeypoints.confidence.at(5) < keypointThreshold)
-      validSkeleton = false;
-    // Shoulders
-    if (theRefereeKeypoints.confidence.at(2) < keypointThreshold)
-      validSkeleton = false;
-    if (theRefereeKeypoints.confidence.at(4) < keypointThreshold)
       validSkeleton = false;
   }
 

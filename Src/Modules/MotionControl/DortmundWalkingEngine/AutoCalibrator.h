@@ -7,7 +7,6 @@
 #include "Representations/BehaviorControl/HeadControlRequest.h"
 #include "Representations/BehaviorControl/KeySymbols.h"
 #include "Representations/Infrastructure/FrameInfo.h"
-#include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/MotionControl/MotionRequest.h"
 #include "Representations/MotionControl/WalkCalibration.h"
 #include "Representations/MotionControl/JointError.h"
@@ -24,7 +23,6 @@ MODULE(AutoCalibrator,
   REQUIRES(RobotPose),
   REQUIRES(JoinedIMUData),
   REQUIRES(KeySymbols),
-  REQUIRES(RawGameInfo),
   USES(JointError),
   PROVIDES(WalkCalibration),
   PROVIDES(MotionRequest),

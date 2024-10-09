@@ -20,7 +20,7 @@ BallchaserProvider::BallchaserProvider() : regularPlayObjectivesManager(&logger)
 void BallchaserProvider::init()
 {
   regularPlayObjectivesManager.clear();
-  regularPlayObjectivesManager.add(std::make_unique<RecommendedKickObjective>(this, logger));
+  regularPlayObjectivesManager.add(std::make_unique<ExecuteRecommendationObjective>(this, logger));
 
   setPlayCurrentKickManager = {};
 
@@ -41,12 +41,46 @@ void BallchaserProvider::update(BallchaserHeadPOIList& ballchaserHeadPoiList)
 
 void BallchaserProvider::execute(tf::Subflow& subflow)
 {
-  declareDebugDrawings();
+  DECLARE_DEBUG_DRAWING(DRAW_KICK_RANGE_NAME, "drawingOnField");
+  DECLARE_DEBUG_DRAWING(DRAW_KICK_DANGER_NAME, "drawingOnField");
+  DECLARE_DEBUG_DRAWING(DRAW_EXECUTABLE_KICKS_IN_GRID, "drawingOnField");
+  DECLARE_DEBUG_DRAWING(DRAW_EXECUTABLE_KICKS_FREELY, "drawingOnField");
+  DECLARE_DEBUG_DRAWING(DRAW_KICK_MIN_WIDTH, "drawingOnField");
+  DECLARE_DEBUG_DRAWING(DRAW_TEST, "drawingOnField");
+
+  DEBUG_RESPONSE_ONCE("module:BallchaserProvider:default") // Command: "dr module:BallchaserProvider:default"
+  {
+    testBehavior = false;
+    init();
+  }
+  std::string kickToCenterTestKickName;
+  MODIFY_ONCE("module:BallchaserProvider:kickToCenterTest", kickToCenterTestKickName); // Command: "set module:BallchaserProvider:kickToCenterTest kickHack"
+  if (!kickToCenterTestKickName.empty())
+  {
+    testBehavior = true;
+    regularPlayObjectivesManager.clear();
+    regularPlayObjectivesManager.add(std::make_unique<KickToCenterTestObjective>(this, logger, kickToCenterTestKickName));
+  }
+  std::string kickBallTestKickName;
+  MODIFY_ONCE("module:BallchaserProvider:kickBallTest", kickBallTestKickName); // Example command: "set module:BallchaserProvider:kickBallTest kickHack"
+  if (!kickBallTestKickName.empty())
+  {
+    testBehavior = true;
+    regularPlayObjectivesManager.clear();
+    regularPlayObjectivesManager.add(std::make_unique<KickBallTestObjective>(this, logger, kickBallTestKickName));
+  }
+  std::string kickInPositionTestKickName;
+  MODIFY_ONCE("module:BallchaserProvider:kickInPositionTest", kickInPositionTestKickName); // Example command: "set module:BallchaserProvider:kickInPositionTest kickHack"
+  if (!kickInPositionTestKickName.empty())
+  {
+    testBehavior = true;
+    regularPlayObjectivesManager.clear();
+    regularPlayObjectivesManager.add(std::make_unique<KickInPositionTestObjective>(this, logger, kickInPositionTestKickName));
+  }
 
   // Reset
   localBallchaser.kickType = MotionRequest::KickType::walkKick;
   localBallchaser.walkKickType = WalkRequest::StepRequest::none;
-  localBallchaserHeadPoiList.targets.clear();
   // Reset Logs
   localBallchaser.log_currState = "None";
   localBallchaser.log_currObj = "None";
@@ -54,77 +88,20 @@ void BallchaserProvider::execute(tf::Subflow& subflow)
   localBallchaser.log_kickName = "None";
   logger.clear();
 
-  // Set behavior
-  readTestBehaviorCommandsAndUpdate();
+  // Set Body
   localBallchaser.stopAtTarget = theGameInfo.state != STATE_PLAYING;
   localBallchaser.previewArrival = previewArrival;
-  if (testMode)
+  if (testBehavior)
   {
-    regularPlay(localBallchaser, localBallchaserHeadPoiList);
+    regularPlay(localBallchaser);
   }
   else
   {
-    switch (theGameSymbols.gameSituation)
-    {
-    case GameSymbols::GameSituation::kickOff_own_ready:
-      kickOff_own(localBallchaser, localBallchaserHeadPoiList, true);
-      break;
-    case GameSymbols::GameSituation::kickOff_own_set:
-      kickOff_own(localBallchaser, localBallchaserHeadPoiList, false);
-      break;
-    case GameSymbols::GameSituation::kickOff_opponent_ready:
-      kickOff_opponent(localBallchaser, localBallchaserHeadPoiList, true);
-      break;
-    case GameSymbols::GameSituation::kickOff_opponent_set:
-    case GameSymbols::GameSituation::kickOff_opponent_playing_ballNotFree:
-      kickOff_opponent(localBallchaser, localBallchaserHeadPoiList, false);
-      break;
-    case GameSymbols::GameSituation::goalKick_own:
-      goalKick_own(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::pushingFreeKick_own:
-      pushingFreeKick_own(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::goalKick_opponent:
-    case GameSymbols::GameSituation::pushingFreeKick_opponent:
-      defendOwnGoal(localBallchaser, localBallchaserHeadPoiList, false);
-      break;
-    case GameSymbols::GameSituation::cornerKick_own:
-      cornerKick_own(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::cornerKick_opponent:
-      cornerKick_opponent(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::kickIn_own:
-      kickIn_own(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::kickIn_opponent:
-      kickIn_opponent(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::penaltyKick_own_ready:
-    case GameSymbols::GameSituation::penaltyKick_own_set:
-      penaltyKick_own_ready(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::penaltyKick_own_playing:
-      penaltyKick_own_playing(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::penaltyKick_opponent_ready:
-    case GameSymbols::GameSituation::penaltyKick_opponent_set:
-    case GameSymbols::GameSituation::penaltyKick_opponent_playing:
-      penaltyKick_opponent_ready(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::kickOff_own_playing_ballNotFree:
-    case GameSymbols::GameSituation::regularPlay:
-      regularPlay(localBallchaser, localBallchaserHeadPoiList);
-      break;
-    case GameSymbols::GameSituation::none:
-      OUTPUT_ERROR("GameSituation must not be handled in the BallchaserProvider!");
-      break;
-    default:
-      OUTPUT_ERROR("Unknown GameSituation in BallchaserProvider!");
-      break;
-    }
+    decide(localBallchaser, theBallSymbols, theFieldDimensions, theGameInfo, theGameSymbols);
   }
+
+  // Set head
+  fillHeadPoiList(localBallchaserHeadPoiList, theRecommendedKick.hasRecommendation ? std::optional<Vector2f>{theRecommendedKick.kickTarget} : std::optional<Vector2f>{});
 
   // Set Logs
   localBallchaser.log_toBallDistance = std::to_string(Geometry::distance(theRobotPoseAfterPreview.translation, theBallSymbols.ballPositionFieldPredicted));
@@ -135,98 +112,106 @@ void BallchaserProvider::execute(tf::Subflow& subflow)
   localBallchaser.log_obj5 = logger.get(4);
 }
 
-void BallchaserProvider::declareDebugDrawings()
+void BallchaserProvider::fillHeadPoiList(BallchaserHeadPOIList& ballchaserHeadPoiList, const std::optional<Vector2f>& targetOptional)
 {
-  DECLARE_DEBUG_DRAWING(DRAW_KICK_RANGE_NAME, "drawingOnField");
-  DECLARE_DEBUG_DRAWING(DRAW_KICK_DANGER_NAME, "drawingOnField");
-  DECLARE_DEBUG_DRAWING(DRAW_EXECUTABLE_KICKS_IN_GRID, "drawingOnField");
-  DECLARE_DEBUG_DRAWING(DRAW_EXECUTABLE_KICKS_FREELY, "drawingOnField");
-  DECLARE_DEBUG_DRAWING(DRAW_KICK_MIN_WIDTH, "drawingOnField");
-  DECLARE_DEBUG_DRAWING(DRAW_TEST, "drawingOnField");
-}
+  ballchaserHeadPoiList.targets.clear();
 
-void BallchaserProvider::readTestBehaviorCommandsAndUpdate()
-{
-  DEBUG_RESPONSE_ONCE("module:BallchaserProvider:default") // Command: "dr module:BallchaserProvider:default"
+  if (theGameInfo.state == STATE_SET && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)
   {
-    testMode = false;
-    init();
-  }
-  std::string kickToCenterTestKickName;
-  MODIFY_ONCE("module:BallchaserProvider:kickToCenterTest", kickToCenterTestKickName); // Command: "set module:BallchaserProvider:kickToCenterTest kickHack"
-  if (!kickToCenterTestKickName.empty())
-  {
-    testMode = true;
-    regularPlayObjectivesManager.clear();
-    regularPlayObjectivesManager.add(std::make_unique<KickToCenterTestObjective>(this, logger, kickToCenterTestKickName));
-  }
-  std::string kickBallTestKickName;
-  MODIFY_ONCE("module:BallchaserProvider:kickBallTest", kickBallTestKickName); // Example command: "set module:BallchaserProvider:kickBallTest kickHack"
-  if (!kickBallTestKickName.empty())
-  {
-    testMode = true;
-    regularPlayObjectivesManager.clear();
-    regularPlayObjectivesManager.add(std::make_unique<KickBallTestObjective>(this, logger, kickBallTestKickName));
-  }
-  std::string kickInPositionTestKickName;
-  MODIFY_ONCE("module:BallchaserProvider:kickInPositionTest", kickInPositionTestKickName); // Example command: "set module:BallchaserProvider:kickInPositionTest kickHack"
-  if (!kickInPositionTestKickName.empty())
-  {
-    testMode = true;
-    regularPlayObjectivesManager.clear();
-    regularPlayObjectivesManager.add(std::make_unique<KickInPositionTestObjective>(this, logger, kickInPositionTestKickName));
-  }
-}
-
-void BallchaserProvider::kickOff_own(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList, const bool readyElseSet)
-{
-  ballchaser.recommendShot = false;
-
-  PositionUtils::setPosition(ballchaser, -500.f, 0);
-  PositionUtils::turnToPosition(ballchaser, Vector2f(0.f, 0.f));
-  ThresholdUtils::setThreshholdsLow(ballchaser);
-
-  if (readyElseSet)
-  {
-    // ready
-  }
-  else
-  {
-    // set
     ballchaserHeadPoiList.type = HeadPOIList::sweep;
     ballchaserHeadPoiList.addAngle({-90_deg, 15_deg});
     ballchaserHeadPoiList.addAngle({+90_deg, 15_deg});
+    ballchaserHeadPoiList.addBall();
+    return;
   }
-}
 
-void BallchaserProvider::kickOff_opponent(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList, const bool readyElseSet)
-{
-  ballchaser.recommendShot = false;
+  return;
+  /*
 
-  PositionUtils::setPosition(ballchaser, -theFieldDimensions.centerCircleRadius - theBehaviorConfiguration.behaviorParameters.kickOffLineDistance, 0.f);
-  PositionUtils::turnToPosition(ballchaser, Vector2f(0.f, 0.f));
-  ThresholdUtils::setThreshholdsLow(ballchaser);
-
-  if (readyElseSet)
+  if (!targetOptional.has_value())
   {
-    // ready
+    return;
   }
-  else
+
+  const float SHOOT_NOW_TIME = 10.f;
+  const float SHOOT_SOON_TIME = 15.f;
+
+  const float playerTime = theRecommendedKick.estimatedKickTime + theRecommendedKick.estimatedPoseTime;
+  const float opponentTime = theTacticSymbols.untilOpponentStealsBallTime;
+
+  ballchaserHeadPoiList.playerShootsNow = playerTime < SHOOT_NOW_TIME;
+  ballchaserHeadPoiList.opponentShootsNow = opponentTime < SHOOT_NOW_TIME;
+
+  ballchaserHeadPoiList.playerShootsSoon = playerTime < SHOOT_SOON_TIME;
+  ballchaserHeadPoiList.opponentShootsSoon = opponentTime < SHOOT_SOON_TIME;
+
+  if (ballchaserHeadPoiList.playerShootsNow || ballchaserHeadPoiList.opponentShootsNow)
   {
-    // set
     ballchaserHeadPoiList.type = HeadPOIList::focus;
     ballchaserHeadPoiList.addBall();
+    return;
   }
+
+  if (!ballchaserHeadPoiList.playerShootsSoon && !ballchaserHeadPoiList.opponentShootsSoon)
+  {
+    ballchaserHeadPoiList.type = HeadPOIList::sweep;
+    // todo start with side on which the target is or with opponent side
+    ballchaserHeadPoiList.addAngle({-90_deg, 0_deg});
+    ballchaserHeadPoiList.addAngle({+90_deg, 0_deg});
+    return;
+  }
+
+  ballchaserHeadPoiList.type = HeadPOIList::focus;
+  ballchaserHeadPoiList.addBall();
+  if (ballchaserHeadPoiList.playerShootsSoon)
+  {
+    ballchaserHeadPoiList.addFieldPosition(targetOptional.value());
+  }
+  if (ballchaserHeadPoiList.opponentShootsSoon)
+  {
+    ballchaserHeadPoiList.addFieldPosition(theTacticSymbols.closestToBallOpponentRobot.translation);
+  }
+  */
 }
 
-void BallchaserProvider::goalKick_own(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+void BallchaserProvider::stateReady_kickOff_own(Ballchaser& positioningSymbols, const Vector2f& kickOffPosition)
 {
-  const bool left = theBallSymbols.ballPositionFieldPredicted.y() > 0;
-  const Vector2f waitPosition = Vector2f(theFieldDimensions.xPosOwnGoalArea - 300.f, left ? theFieldDimensions.yPosLeftGoalArea : theFieldDimensions.yPosRightGoalArea);
-  actInOwnSetPlay(ballchaser, ballchaserHeadPoiList, waitPosition);
+  positioningSymbols.recommendShot = false;
+  PositionUtils::setPosition(positioningSymbols, -500.f, 0);
+  PositionUtils::turnToPosition(positioningSymbols, kickOffPosition);
+  ThresholdUtils::setThreshholdsLow(positioningSymbols);
 }
 
-void BallchaserProvider::pushingFreeKick_own(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+void BallchaserProvider::statePlaying_kickOff_own(Ballchaser& positioningSymbols, const Vector2f& kickOffPosition)
+{
+  regularPlay(positioningSymbols);
+}
+
+void BallchaserProvider::stateReady_kickOff_opponent(Ballchaser& positioningSymbols, const Vector2f& kickOffPosition)
+{
+  positioningSymbols.recommendShot = false;
+  positioningSymbols.optPosition.translation.x() = -theFieldDimensions.centerCircleRadius - theBehaviorConfiguration.behaviorParameters.kickOffLineDistance;
+  positioningSymbols.optPosition.translation.y() = 0;
+  positioningSymbols.optPosition.rotation = 0;
+  positioningSymbols.thresholdXFront = 50;
+  positioningSymbols.thresholdXBack = 50;
+  positioningSymbols.thresholdY = 25;
+}
+
+float BallchaserProvider::goalKick_own(Ballchaser& positioningSymbols, bool left)
+{
+  const Vector2f waitPosition = Vector2f(theFieldDimensions.xPosOwnGoalArea - 300.f, left ? theFieldDimensions.yPosLeftGoalArea : theFieldDimensions.yPosRightGoalArea);
+  actInOwnSetPlay(positioningSymbols, waitPosition);
+  return 0.f;
+}
+
+float BallchaserProvider::goalKick_opponent(Ballchaser& positioningSymbols, bool left)
+{
+  defendOwnGoal(positioningSymbols, left);
+  return 0.f;
+}
+
+float BallchaserProvider::pushingFreeKick_own(Ballchaser& positioningSymbols)
 {
   const Vector2f ballPosition = theBallSymbols.ballPositionFieldPredicted;
   const Vector2f opponentGoalCenter = FieldUtils::getOpponentGoalCenter(theFieldDimensions);
@@ -234,44 +219,53 @@ void BallchaserProvider::pushingFreeKick_own(Ballchaser& ballchaser, BallchaserH
   const Vector2f ballToOpponentGoalCenter = (opponentGoalCenter - ballPosition).normalized();
   const Vector2f waitPosition = ballPosition - 300 * ballToOpponentGoalCenter;
 
-  actInOwnSetPlay(ballchaser, ballchaserHeadPoiList, waitPosition);
+  actInOwnSetPlay(positioningSymbols, waitPosition);
+  return 0.f;
 }
 
-void BallchaserProvider::cornerKick_own(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+float BallchaserProvider::pushingFreeKick_opponent(Ballchaser& positioningSymbols)
 {
-  const bool left = theBallSymbols.ballPositionFieldPredicted.y() > 0;
+  defendOwnGoal(positioningSymbols, theBallSymbols.ballPositionFieldPredicted.y() > 0.f);
+  return 0.f;
+}
+
+float BallchaserProvider::cornerKick_own(Ballchaser& positioningSymbols, const Vector2f& cornerKickPosition, bool left)
+{
   const Vector2f waitPosition = Vector2f(theFieldDimensions.xPosOpponentGroundline + 200.f, left ? theFieldDimensions.yPosLeftSideline + 200.f : theFieldDimensions.yPosRightSideline - 200.f);
-  actInOwnSetPlay(ballchaser, ballchaserHeadPoiList, waitPosition);
+  actInOwnSetPlay(positioningSymbols, waitPosition);
+  return 0.f;
 }
 
-void BallchaserProvider::cornerKick_opponent(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+float BallchaserProvider::cornerKick_opponent(Ballchaser& positioningSymbols, const Vector2f& cornerKickPosition, bool left)
 {
-  actInOpponentsSetPlay(ballchaser,
-      ballchaserHeadPoiList,
+  actInOpponentsSetPlay(positioningSymbols,
+      left,
       [this](const Vector2f& robotPosition)
       {
         return (abs(robotPosition.y()) >= abs(theFieldDimensions.yPosLeftSideline) + 60.f && robotPosition.x() < theFieldDimensions.xPosOwnGroundline + 20.f);
       });
+  return 0.f;
 }
 
-void BallchaserProvider::kickIn_own(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList) //TODO: Wait for 10 seconds if time permits before shooting. Longer if we are winning. RoleProvider. 1vs1.
+float BallchaserProvider::kickIn_own(Ballchaser& positioningSymbols, bool left) //TODO: Wait for 10 seconds if time permits before shooting. Longer if we are winning. RoleProvider. 1vs1.
 {
-  const bool left = theBallSymbols.ballPositionFieldPredicted.y() > 0;
   const Vector2f waitPosition = Vector2f(theBallSymbols.ballPositionField.x(), left ? theFieldDimensions.yPosLeftSideline + 300.f : theFieldDimensions.yPosRightSideline - 300.f);
-  actInOwnSetPlay(ballchaser, ballchaserHeadPoiList, waitPosition);
+  actInOwnSetPlay(positioningSymbols, waitPosition);
+  return 0.f;
 }
 
-void BallchaserProvider::kickIn_opponent(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+float BallchaserProvider::kickIn_opponent(Ballchaser& positioningSymbols, bool left)
 {
-  actInOpponentsSetPlay(ballchaser,
-      ballchaserHeadPoiList,
+  actInOpponentsSetPlay(positioningSymbols,
+      left,
       [this](const Vector2f& robotPosition)
       {
         return abs(robotPosition.y()) >= abs(theFieldDimensions.yPosLeftSideline) - 20.f;
       });
+  return 0.f;
 }
 
-void BallchaserProvider::penaltyKick_own_ready(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+float BallchaserProvider::stateReady_penaltyKick_own(Ballchaser& ballchaser)
 {
   ballchaser.recommendShot = false;
 
@@ -282,9 +276,10 @@ void BallchaserProvider::penaltyKick_own_ready(Ballchaser& ballchaser, Ballchase
   ThresholdUtils::setThreshholdsMedium(ballchaser);
   PositionUtils::setPosition(ballchaser, position);
   PositionUtils::turnToPosition(ballchaser, position);
+  return 0.f;
 }
 
-void BallchaserProvider::penaltyKick_own_playing(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+float BallchaserProvider::statePlaying_penaltyKick_own(Ballchaser& ballchaser)
 {
   ballchaser.recommendShot = false;
 
@@ -296,92 +291,41 @@ void BallchaserProvider::penaltyKick_own_playing(Ballchaser& ballchaser, Ballcha
   const ShotParameters parameters = {ShotParameters::KickParameters(0.f, 0.f),
       ShotParameters::TargetParameters(0.f, 0.f, 0.f, 0.f, 0.f, 0.1f, 10.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f),
       ShotParameters::PoseParameters(0.f, 0.f, 0.f)};
-  const auto currentKick = setPlayCurrentKickManager.getCurrentKick(theBallSymbols);
+  const auto currentKick = setPlayCurrentKickManager.getCurrentKick(theBallSymbols.ballPositionFieldPredicted);
 
   const auto executableShotOptional = SelectFunctions::createAndFilterAndSelect(
       theRobotPoseAfterPreview, theBallSymbols.ballPositionFieldPredicted, KickUtils::unpack(penaltyKicks), currentKick, filterer, parameters, theDirectionInfo, theFieldDimensions, thePositionInfo, theTacticSymbols);
 
   if (executableShotOptional.has_value())
   {
-    setPlayCurrentKickManager.setCurrentKick(ballchaser, executableShotOptional.value(), theBallSymbols, theFrameInfo);
+    setPlayCurrentKickManager.setCurrentKick(ballchaser, executableShotOptional.value(), theFrameInfo);
   }
   else
   {
     // TODO Warning only if Ballchaser
   }
+  return 0.f;
 }
 
-void BallchaserProvider::penaltyKick_opponent_ready(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+float BallchaserProvider::stateReady_penaltyKick_opponent(Ballchaser& positioningSymbols)
 {
-  ballchaser.recommendShot = false;
-  ballchaser.optPosition.translation.x() = theFieldDimensions.xPosOwnPenaltyArea + 300.f;
-  ballchaser.optPosition.translation.y() = theFieldDimensions.yPosKickOffPoint + 800.f;
+  positioningSymbols.recommendShot = false;
+  positioningSymbols.optPosition.translation.x() = theFieldDimensions.xPosOwnPenaltyArea + 300.f;
+  positioningSymbols.optPosition.translation.y() = theFieldDimensions.yPosKickOffPoint + 800.f;
   const Vector2f penaltyCross{theFieldDimensions.xPosOwnPenaltyMark, theFieldDimensions.yPosKickOffPoint};
-  ballchaser.optPosition.rotation = (penaltyCross - ballchaser.optPosition.translation).angle();
+  positioningSymbols.optPosition.rotation = (penaltyCross - positioningSymbols.optPosition.translation).angle();
+  return 0.f;
 }
 
-void BallchaserProvider::regularPlay(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
+void BallchaserProvider::regularPlay(Ballchaser& positioningSymbols)
 {
-  ballchaser.recommendShot = true;
-
-  if (!theRecommendedKick.hasRecommendation)
-  {
-    //defendOwnGoal(ballchaser, ballchaserHeadPoiList, true);
-    return;
-  }
-
-  regularPlayObjectivesManager.performObjective(ballchaser);
-
-  return; // the logic below is not tested in real games
-
-  /*
-  const int LOOK_AFTER_BALL_TIME = 5000;
-  const float SHOOT_NOW_TIME = 10.f;
-  const float SHOOT_SOON_TIME = 20.f;
-
-  const unsigned int sinceLastKickTime = theFrameInfo.getTimeSince(theGameSymbols.lastKickTime);
-  ballchaserHeadPoiList.followKick = LOOK_AFTER_BALL_TIME > sinceLastKickTime;
-
-  const float playerTime = theRecommendedKick.estimatedKickTime + theRecommendedKick.estimatedPoseTime;
-  const float opponentTime = theTacticSymbols.untilOpponentStealsBallTime;
-
-  ballchaserHeadPoiList.playerShootsNow = playerTime < SHOOT_NOW_TIME;
-  ballchaserHeadPoiList.opponentShootsNow = opponentTime < SHOOT_NOW_TIME;
-
-  ballchaserHeadPoiList.playerShootsSoon = playerTime < SHOOT_SOON_TIME;
-  ballchaserHeadPoiList.opponentShootsSoon = opponentTime < SHOOT_SOON_TIME;
-
-  if (ballchaserHeadPoiList.followKick || ballchaserHeadPoiList.playerShootsNow || ballchaserHeadPoiList.opponentShootsNow)
-  {
-    return; // default behavior is good and handles a lot of edge cases very well
-  }
-
-  if (ballchaserHeadPoiList.playerShootsSoon || ballchaserHeadPoiList.opponentShootsSoon)
-  {
-    ballchaserHeadPoiList.type = HeadPOIList::focus;
-    ballchaserHeadPoiList.look in walking direction
-    ballchaserHeadPoiList.addBall();
-    if (ballchaserHeadPoiList.playerShootsSoon)
-    {
-      ballchaserHeadPoiList.addFieldPosition(theRecommendedKick.kickTarget);
-    }
-    if (ballchaserHeadPoiList.opponentShootsSoon)
-    {
-      ballchaserHeadPoiList.addFieldPosition(theTacticSymbols.closestToBallOpponentRobot.translation);
-    }
-    return;
-  }
-
-  ballchaserHeadPoiList.type = HeadPOIList::sweep;
-  // todo start with side on which the target is or with opponent side
-  ballchaserHeadPoiList.addAngle({-70_deg, 0_deg});
-  ballchaserHeadPoiList.addAngle({+70_deg, 0_deg});
-  */
+  positioningSymbols.recommendShot = true;
+  regularPlayObjectivesManager.performObjective(positioningSymbols);
 }
 
 // Helper ==========================================================================================================================================================================
 
-bool BallchaserProvider::waitInOwnSetPlay(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList, const Vector2f& waitingPosition)
+bool BallchaserProvider::waitInOwnSetPlay(Ballchaser& positioningSymbols, const Vector2f& waitingPosition)
 {
   // TODO HeadControl: The Robot only looks around once
 
@@ -418,23 +362,23 @@ bool BallchaserProvider::waitInOwnSetPlay(Ballchaser& ballchaser, BallchaserHead
     startedSetPlayWaitingRemainingTime = remainingTime;
   }
 
-  PositionUtils::setPosition(ballchaser, waitingPosition);
-  PositionUtils::turnTowardsBall(ballchaser, theBallSymbols);
-  ballchaser.stopAtTarget = true;
+  PositionUtils::setPosition(positioningSymbols, waitingPosition);
+  PositionUtils::turnTowardsBall(positioningSymbols, theBallSymbols);
+  positioningSymbols.stopAtTarget = true;
   return true;
 }
 
-void BallchaserProvider::actInOwnSetPlay(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList, const Vector2f& waitPosition)
+void BallchaserProvider::actInOwnSetPlay(Ballchaser& ballchaser, const Vector2f& waitPosition)
 {
-  if (waitInOwnSetPlay(ballchaser, ballchaserHeadPoiList, waitPosition))
+  if (waitInOwnSetPlay(ballchaser, waitPosition))
   {
     ballchaser.recommendShot = false;
     return;
   }
-  regularPlay(ballchaser, ballchaserHeadPoiList);
+  regularPlay(ballchaser);
 }
 
-void BallchaserProvider::actInOpponentsSetPlay(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList, const std::function<bool(const Vector2f&)>& isRobotPoseKickerPose)
+void BallchaserProvider::actInOpponentsSetPlay(Ballchaser& ballchaser, const bool left, const std::function<bool(const Vector2f&)>& isRobotPoseKickerPose)
 {
   ballchaser.recommendShot = false;
 
@@ -465,15 +409,13 @@ void BallchaserProvider::actInOpponentsSetPlay(Ballchaser& ballchaser, Ballchase
   }
   else
   {
-    defendOwnGoal(ballchaser, ballchaserHeadPoiList, false);
+    defendOwnGoal(ballchaser, left);
   }
 }
 
-void BallchaserProvider::defendOwnGoal(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList, const bool recommendShot)
+void BallchaserProvider::defendOwnGoal(Ballchaser& ballchaser, const bool left)
 {
-  const bool left = theBallSymbols.ballPositionFieldPredicted.y() > 0;
-
-  ballchaser.recommendShot = recommendShot;
+  ballchaser.recommendShot = false;
 
   const Vector2f ballPosition = theBallSymbols.ballPositionFieldPredicted;
 

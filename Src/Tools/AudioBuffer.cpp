@@ -73,13 +73,9 @@ AudioBuffer::AudioBuffer(AudioBufferParameters parameters)
   minFreq = parameters.minFreq;
   currentMinFreq = minFreq;
   whistleMinMaxFreq[0] = currentMinFreq;
-  minFreqBorder = parameters.minFreqBorder;
-  permanentMinFreqBorder = minFreqBorder;
   maxFreq = parameters.maxFreq;
   currentMaxFreq = maxFreq;
   whistleMinMaxFreq[1] = currentMaxFreq;
-  maxFreqBorder = parameters.maxFreqBorder;
-  permanentMaxFreqBorder = maxFreqBorder;
   whistleCandidateThreshold = parameters.whistleCandidateThreshold;
   attentionMultiplier = parameters.attentionMultiplier;
   minWhistleFrames = parameters.minWhistleFrames;
@@ -213,16 +209,6 @@ void AudioBuffer::add(std::vector<float> samples)
   }
 }
 
-int AudioBuffer::getMinFreqBorder()
-{
-  return minFreqBorder;
-}
-
-int AudioBuffer::getMaxFreqBorder()
-{
-  return maxFreqBorder;
-}
-
 std::vector<std::vector<unsigned int>> AudioBuffer::getWhistleCandidateIdx()
 {
   unsigned int longestSequence = 0;
@@ -289,18 +275,6 @@ std::vector<std::vector<unsigned int>> AudioBuffer::getWhistleCandidateIdx()
   }
 
   return detectedWhistles;
-}
-
-void AudioBuffer::setMinFreqBorder(unsigned int minFreqBorder)
-{
-  this->minFreqBorder = minFreqBorder;
-  this->permanentMinFreqBorder = minFreqBorder;
-}
-
-void AudioBuffer::setMaxFreqBorder(unsigned int maxFreqBorder)
-{
-  this->maxFreqBorder = maxFreqBorder;
-  this->permanentMaxFreqBorder = maxFreqBorder;
 }
 
 std::vector<std::vector<unsigned int>> AudioBuffer::getNewWhistleCandidateIdx()
@@ -541,27 +515,8 @@ void AudioBuffer::setMicStatus(std::vector<std::vector<float>> magnitudes)
   }
 }
 
-int AudioBuffer::getCurrentMic(bool highestMagnitude)
+int AudioBuffer::getCurrentMic()
 {
-  if (highestMagnitude)
-  {
-    unsigned int micWithMaxMagnitude = 0;
-    float maxMagnitude = 0.f;
-    for (unsigned int c = 0; c < channels; c++)
-    {
-      if (currentMaxMag[c] > maxMagnitude)
-      {
-        maxMagnitude = currentMaxMag[c];
-        micWithMaxMagnitude = c;
-      }
-    }
-
-    if (micStatus[micWithMaxMagnitude])
-    {
-      return micWithMaxMagnitude;
-    }
-  }
-
   for (unsigned int c = 0; c < channels; c++)
   {
     if (micStatus[c])
@@ -569,7 +524,6 @@ int AudioBuffer::getCurrentMic(bool highestMagnitude)
       return c;
     }
   }
-
   return -1;
 }
 
@@ -717,7 +671,7 @@ std::array<unsigned int, 2> AudioBuffer::calibrateFrequency(unsigned int detecte
   }
   else
   {
-    minFreqBorder = std::max(permanentMinFreqBorder, minFreqBorder - std::abs(whistleFreqBuffer.minimum() - currentMinFreq));
+    minFreqBorder = std::max(450, minFreqBorder - std::abs(whistleFreqBuffer.minimum() - currentMinFreq));
   }
 
   if (whistleFreqBuffer.maximum() > currentMaxFreq)
@@ -726,7 +680,7 @@ std::array<unsigned int, 2> AudioBuffer::calibrateFrequency(unsigned int detecte
   }
   else
   {
-    maxFreqBorder = std::max(permanentMaxFreqBorder, maxFreqBorder - std::abs(whistleFreqBuffer.maximum() - currentMaxFreq));
+    maxFreqBorder = std::max(300, maxFreqBorder - std::abs(whistleFreqBuffer.maximum() - currentMaxFreq));
   }
 
   if (detectedFrequency > minFreq && detectedFrequency < maxFreq)

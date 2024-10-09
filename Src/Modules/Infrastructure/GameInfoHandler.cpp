@@ -79,8 +79,8 @@ void GameInfoHandler::update(GameInfo& gameInfo)
         gameInfo.state = STATE_READY;
       else if (highestActivePlayerInReady)
       {
-        // other players follow after some time if the robot wasn't penalized
-        if (theFrameInfo.getTimeSince(refereeDetectedMate->sendTimestamp) > timeUntilTeamReadyAfterGesture)
+        // other players follow after 15s if the robot wasn't penalized
+        if (theFrameInfo.getTimeSince(refereeDetectedMate->sendTimestamp) > 15000)
         {
           const TeammateReceived* mate = theTeammateData.getPlayer(highestActivePlayerInReady);
           if (mate && mate->status != TeammateReceived::Status::INACTIVE)

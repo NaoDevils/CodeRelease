@@ -50,7 +50,6 @@ MODULE(SimpleFallDownStateDetector,
     (float)(0.75f) fsrOnGroundThreshold,
     (float)(0.1f) fsrCheckThreshold,
     (unsigned int)(72) fsrAttack,
-    (unsigned int)(9) fsrBufferSize,
     (unsigned int)(2000) minAirTime, // in milliseconds
     (float)(3.f) fsrDbgThreshold, // in seconds
     (float)(10.f) fsrModelSettleTime, // in seconds

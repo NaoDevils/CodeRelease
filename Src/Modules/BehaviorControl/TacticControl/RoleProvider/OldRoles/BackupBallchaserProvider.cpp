@@ -1,13 +1,13 @@
 /**
-* @file BackupBallchaserProviderOld.cpp
+* @file BackupBallchaserProvider.cpp
 *
-* Implementation of class BackupBallchaserProviderOld.
+* Implementation of class BackupBallchaserProvider.
 *
 */
 
-#include "BackupBallchaserProviderOld.h"
+#include "BackupBallchaserProvider.h"
 
-void BackupBallchaserProviderOld::update(BackupBallchaser& positioningSymbols)
+void BackupBallchaserProvider::update(BackupBallchaser& positioningSymbols)
 {
   if (theGameInfo.state != STATE_PLAYING)
     getReadyPosition(positioningSymbols);
@@ -27,7 +27,7 @@ void BackupBallchaserProviderOld::update(BackupBallchaser& positioningSymbols)
 /**
 * \brief Get fixed position during ready state.
 */
-void BackupBallchaserProviderOld::getReadyPosition(BackupBallchaser& positioningSymbols)
+void BackupBallchaserProvider::getReadyPosition(BackupBallchaser& positioningSymbols)
 {
   // stand further back if oppenent team has kick off (ballchaser not in center circle)
   positioningSymbols.optPosition.translation.x() = -theFieldDimensions.centerCircleRadius - (theGameSymbols.ownKickOff ? 300.f : 1000.f);
@@ -40,7 +40,7 @@ void BackupBallchaserProviderOld::getReadyPosition(BackupBallchaser& positioning
 /**
 * \brief Get position behind ballchaser.
 */
-void BackupBallchaserProviderOld::getFollowPosition(BackupBallchaser& positioningSymbols)
+void BackupBallchaserProvider::getFollowPosition(BackupBallchaser& positioningSymbols)
 {
   // assume ballchaser always positions in front of the ball
   Vector2f ballChaserPosition = theBallchaser.optPosition.translation;
@@ -68,7 +68,7 @@ void BackupBallchaserProviderOld::getFollowPosition(BackupBallchaser& positionin
 * it will not be changed as long as backupBallchaser is too close to own groundline to avoid a jump of the optPosition 
 * and possible collisions when repositioning.
 */
-void BackupBallchaserProviderOld::avoidOwnGroundline(BackupBallchaser& positioningSymbols)
+void BackupBallchaserProvider::avoidOwnGroundline(BackupBallchaser& positioningSymbols)
 {
   // hysteresis for stable decision
   float factorGroundline = 0.5f - (tooCloseToGroundline ? 0.2f : 0.f);
@@ -100,7 +100,7 @@ void BackupBallchaserProviderOld::avoidOwnGroundline(BackupBallchaser& positioni
     sideChosenForAvoidingGroundline = 0.f;
 }
 
-void BackupBallchaserProviderOld::getSetPlayPosition(BackupBallchaser& positioningSymbols)
+void BackupBallchaserProvider::getSetPlayPosition(BackupBallchaser& positioningSymbols)
 {
   if (theGameSymbols.ownKickOff)
   {
@@ -120,4 +120,4 @@ void BackupBallchaserProviderOld::getSetPlayPosition(BackupBallchaser& positioni
   }
 }
 
-MAKE_MODULE(BackupBallchaserProviderOld, behaviorControl)
+MAKE_MODULE(BackupBallchaserProvider, behaviorControl)

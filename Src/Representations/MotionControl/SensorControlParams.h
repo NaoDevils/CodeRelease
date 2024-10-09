@@ -77,7 +77,7 @@ STREAMABLE(SpeedReduction,,
   (float)(1.15f) speedReductionExponentialBasis,
   (float)(1.65f) emergencyStopSpeedReductionFactorThreshold,
   (float)(0.70f) emergencyStopGyroVariance,
-  (Vector2f)({0.25f, 0.25f}) stepSpeedInfluenceFactor,
+  (float)(0.4f) stepSpeedInfluenceFactor,
   (float)(2.5f) customStepFactorStable,
   ((JoinedIMUData) InertialDataSource)(JoinedIMUData::imuModel) anglesource
 );

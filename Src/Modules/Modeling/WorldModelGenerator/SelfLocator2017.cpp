@@ -477,10 +477,9 @@ void SelfLocator2017::pruneHypotheses()
   pruneHypothesesWithInvalidValues();
 
   // special case: no position on opp side
-  if (theBehaviorData.role == BehaviorData::keeper // Let's simply assume that the keeper will never be in the opponent half!  :)
-      || (theGameInfo.state == STATE_SET // Cannot be in opponent half in set, except in penalty kick situations
-          && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)
-      || theGameInfo.inPreGame())
+  if ((theBehaviorData.role == BehaviorData::keeper // Let's simply assume that the keeper will never be in the opponent half!  :)
+          || (theGameInfo.state == STATE_SET // Cannot be in opponent half in set, except in penalty kick situations
+              && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT && theGameInfo.setPlay != SET_PLAY_PENALTY_KICK)))
     pruneHypothesesInOpponentHalf();
 
   // in penalty shootout the striker will never reach the own half because of manually placement

@@ -51,8 +51,6 @@ MODULE(WhistleDetector,
     //----------[Whistle Calibration]----------
     (int) minFreq, 
     (int) maxFreq,
-    (int) minFreqBorder,
-    (int) maxFreqBorder,
     (bool) freqCalibration,
     //----------[Whistle Detection]----------
     (float) threshold,

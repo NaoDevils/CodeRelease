@@ -33,6 +33,7 @@
 #include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
 #include "Representations/BehaviorControl/RoleSymbols/LeftWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
@@ -118,6 +119,7 @@ MODULE(BehaviorControl,
   REQUIRES(Receiver),
   REQUIRES(LeftWing),
   REQUIRES(RightWing),
+  REQUIRES(RemoteControl),
   REQUIRES(KickEngineOutput),
   REQUIRES(MotionInfo),
   REQUIRES(MotionState),

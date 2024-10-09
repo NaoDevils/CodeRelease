@@ -34,8 +34,11 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/RoleSymbols/DefenderSingle.h
         BehaviorControl/RoleSymbols/FrontWing.h
         BehaviorControl/RoleSymbols/Keeper.h
+        BehaviorControl/RoleSymbols/LeftWing.h
         BehaviorControl/RoleSymbols/Receiver.h
         BehaviorControl/RoleSymbols/ReplacementKeeper.h
+        BehaviorControl/RoleSymbols/RightWing.h
+        BehaviorControl/RoleSymbols/RemoteControl.h
         BehaviorControl/TacticSymbols.cpp
         BehaviorControl/TacticSymbols.h
         BehaviorControl/VisualRefereeBehaviorSymbols.h
@@ -205,8 +208,6 @@ target_sources(${PROJECT_NAME}
         Perception/CenterCirclePercept.h
         Perception/CognitionState.h
         Perception/FieldColor.h
-        Perception/FieldColorMask.cpp
-        Perception/FieldColorMask.h
         Perception/GoalPercept.cpp
         Perception/GoalPercept.h
         Perception/ImageCoordinateSystem.cpp

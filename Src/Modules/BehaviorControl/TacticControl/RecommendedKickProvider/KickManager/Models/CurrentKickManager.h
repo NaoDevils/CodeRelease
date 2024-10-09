@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Representations/BehaviorControl/BallSymbols.h>
+#include <Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Selectables/SimpleExecutableShot.h>
 #include "CurrentKick.h"
 #include "Modules/BehaviorControl/TacticControl/KicksProvider/Kick.h"
 #include "Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Selectables/ExecutableShot.h"
@@ -22,10 +22,10 @@ public:
   ~CurrentKickManager() = default;
 
   void deleteCurrentKick();
-  [[nodiscard]] std::optional<CurrentKick> getCurrentKick(const BallSymbols& theBallSymbols);
-  void setCurrentKick(PositioningAndKickSymbols& pakSymbols, const ExecutableShot& executableKick, const BallSymbols& theBallSymbols, const FrameInfo& theFrameInfo);
-  void setCurrentKick(
-      PositioningAndKickSymbols& pakSymbols, Kick* kick, const Pose2f& kickPose, const bool kickWithLeft, const Vector2f& target, const BallSymbols& theBallSymbols, const FrameInfo& theFrameInfo);
+  [[nodiscard]] std::optional<CurrentKick> getCurrentKick(const Vector2f& ballPosition);
+  void setCurrentKick(PositioningAndKickSymbols& pakSymbols, const ExecutableShot& executableShot, const FrameInfo& theFrameInfo);
+  void setCurrentKick(PositioningAndKickSymbols& pakSymbols, const SimpleExecutableShot& simpleExecutableShot, const FrameInfo& theFrameInfo);
+  void setCurrentKick(PositioningAndKickSymbols& pakSymbols, const Vector2f& ballPosition, Kick* kick, const Pose2f& kickPose, const bool kickWithLeft, const Vector2f& target, const FrameInfo& theFrameInfo);
 
 private:
   /**
@@ -35,6 +35,6 @@ private:
 
   // Save current Kick to decide if hysteresis should be applied
   CurrentKick currentKick = {};
-  Vector2f currentKickAbsoluteBallPosition = {};
-  Vector2f currentKickRelativeBallPosition = {};
+  unsigned currentKickTime = 0;
+  Vector2f currentKickBallPosition = {};
 };

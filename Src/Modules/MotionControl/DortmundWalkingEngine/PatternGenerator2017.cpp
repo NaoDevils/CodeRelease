@@ -1192,22 +1192,22 @@ void PatternGenerator2017::applyAcceleration()
       {
         if (theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.y() > 0.f)
         {
-          stepSpeedInfluenceFactorX = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.x()) + 1.f);
+          stepSpeedInfluenceFactorX = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f);
         }
         else
         {
-          stepSpeedInfluenceFactorX = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.x()) + 1.f;
+          stepSpeedInfluenceFactorX = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f;
         }
       }
       else
       {
         if (theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.y() > 0.f)
         {
-          stepSpeedInfluenceFactorX = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.x()) + 1.f;
+          stepSpeedInfluenceFactorX = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f;
         }
         else
         {
-          stepSpeedInfluenceFactorX = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.x()) + 1.f);
+          stepSpeedInfluenceFactorX = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.x() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f);
         }
       }
       currentMovement.speed.translation.x() *= stepSpeedInfluenceFactorX;
@@ -1278,23 +1278,23 @@ void PatternGenerator2017::applyAcceleration()
       {
         if (theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.x() > 0.f)
         {
-          stepSpeedInfluenceFactorY = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.y()) + 1.f);
+          stepSpeedInfluenceFactorY = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f);
         }
 
         else
         {
-          stepSpeedInfluenceFactorY = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.y()) + 1.f;
+          stepSpeedInfluenceFactorY = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f;
         }
       }
       else
       {
         if (theJoinedIMUData.imuData[theSensorControlParams.speedReduction.anglesource].angle.x() > 0.f)
         {
-          stepSpeedInfluenceFactorY = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.y()) + 1.f;
+          stepSpeedInfluenceFactorY = ((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f;
         }
         else
         {
-          stepSpeedInfluenceFactorY = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor.y()) + 1.f);
+          stepSpeedInfluenceFactorY = 1.f / (((theMotionState.walkingStatus.fallDownSpeedReductionFactor.y() - 1.f) * theSensorControlParams.speedReduction.stepSpeedInfluenceFactor) + 1.f);
         }
       }
       currentMovement.speed.translation.y() *= stepSpeedInfluenceFactorY;

@@ -11,6 +11,7 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
@@ -30,6 +31,7 @@ MODULE(TacticProvider,
   REQUIRES(GameSymbols),
   REQUIRES(OwnTeamInfo),
   REQUIRES(OpponentTeamInfo),
+  USES(RemoteControl),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(TeammateData),
@@ -68,7 +70,6 @@ private:
   void getBallDirection();
   void getBallSide();
   bool decideKickoffDirection(TacticSymbols& tacticSymbols);
-  void updateDanger(TacticSymbols& tacticSymbols);
   [[nodiscard]] bool isDanger(float dangerDistance, bool hysteresis) const;
 
   enum class BallSide
@@ -97,4 +98,5 @@ private:
   bool lastKickoffWasOwn;
   int lastOwnScore;
   int lastOpponentScore;
+  void updateDanger(TacticSymbols& tacticSymbols, const GameInfo& theGameInfo);
 };

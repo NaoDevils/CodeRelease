@@ -1,0 +1,21 @@
+vf worldState
+vfd worldState fieldLines
+vfd worldState goalFrame 
+vfd worldState fieldPolygons
+vfd worldState representation:GameInfo
+vfd worldState representation:RobotPose
+
+vfd worldState behavior:RemoteControlProvider 
+vfd worldState representation:RobotMap
+vfd worldState representation:BallChaserDecision
+vfd worldState representation:TeammateData
+vfd worldState origin:RobotPoseAfterPreview 
+vfd worldState representation:MotionRequest 
+vfd worldState origin:RobotPose
+vfd worldState representation:BallModel 
+vfd worldState representation:BallModel:endPosition
+
+vd module:BallChaserDecisionProvider:overwrite
+
+echo call Includes/JPEGImageViews
+echo set parameters:JPEGImageProvider quality = 15;

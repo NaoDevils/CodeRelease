@@ -2,7 +2,7 @@
 
 #include <Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/ShotParameters.h>
 #include "Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/CurrentKickManager.h"
-#include "Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/RecommendedKickObjective.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/ExecuteRecommendationObjective.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/RoleProvider.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/Logs/BehaviorLogger.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/ObjectivesManager/Objective.h"

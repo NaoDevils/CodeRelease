@@ -41,25 +41,16 @@ void PathToSpeedStable::update(SpeedRequest& speedRequest)
         gyroDataBuffersY[i].push_front(theJoinedIMUData.imuData[i].gyro.y());
       }
 
-
     Angle gyroVariance = (gyroDataBuffersY[theSensorControlParams.speedReduction.anglesource].getVariance() + gyroDataBuffersX[theSensorControlParams.speedReduction.anglesource].getVariance());
     PLOT("module:PathToSpeedStable:gyroVariance", gyroVariance);
-    float maxFallDownSpeedReductionFactor = std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y());
-    PLOT("module:PathToSpeedStable:maxFallDownSpeedReductionFactor", maxFallDownSpeedReductionFactor);
-
-    float gyroVarianceThreshold = wasInEmergencyStop ? (theSensorControlParams.speedReduction.emergencyStopGyroVariance * 0.15f) : theSensorControlParams.speedReduction.emergencyStopGyroVariance;
-    float emergencyStopSpeedReductionFactorThreshold = wasInEmergencyStop ? (1.2f) : theSensorControlParams.speedReduction.emergencyStopSpeedReductionFactorThreshold;
-
-    if (theFootpositions.inKick)
-    {
-      gyroVarianceThreshold *= 2.f;
-      emergencyStopSpeedReductionFactorThreshold *= 2.f;
-    }
-    PLOT("module:PathToSpeedStable:emergencyStopGyroVariance", gyroVarianceThreshold);
-    PLOT("module:PathToSpeedStable:emergencyStopSpeedReductionFactorThreshold", emergencyStopSpeedReductionFactorThreshold);
+    PLOT("module:PathToSpeedStable:emergencyStopSpeedReductionFactorThreshold", theSensorControlParams.speedReduction.emergencyStopSpeedReductionFactorThreshold);
+    PLOT("module:PathToSpeedStable:emergencyStopGyroVariance", theSensorControlParams.speedReduction.emergencyStopGyroVariance);
 
     // dont move if nearly falling
-    if (theMotionRequest.motion == MotionRequest::walk && (maxFallDownSpeedReductionFactor >= emergencyStopSpeedReductionFactorThreshold || gyroVariance >= gyroVarianceThreshold))
+    if (theMotionRequest.motion == MotionRequest::walk
+        && (std::max<float>(theMotionState.walkingStatus.fallDownSpeedReductionFactor.x(), theMotionState.walkingStatus.fallDownSpeedReductionFactor.y())
+                >= theSensorControlParams.speedReduction.emergencyStopSpeedReductionFactorThreshold
+            || gyroVariance >= (wasInEmergencyStop ? (theSensorControlParams.speedReduction.emergencyStopGyroVariance * 0.25) : theSensorControlParams.speedReduction.emergencyStopGyroVariance)))
     {
       speedRequest.translation = Vector2f::Zero();
       speedRequest.rotation = 0.f;

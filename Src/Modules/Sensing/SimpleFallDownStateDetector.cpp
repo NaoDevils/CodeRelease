@@ -22,12 +22,6 @@ SimpleFallDownStateDetector::SimpleFallDownStateDetector()
   lastState = FallDownState::undefined;
   onGroundCounter = 0;
   standUpCounter = 0;
-
-  for (int i = 0; i < FsrSensorData::numOfFsrSensorPositions; i++)
-  {
-    leftFsrBufferArray[i].reserve(fsrBufferSize);
-    rightFsrBufferArray[i].reserve(fsrBufferSize);
-  }
 }
 
 void SimpleFallDownStateDetector::update(FallDownState& fallDownState)
@@ -50,15 +44,6 @@ void SimpleFallDownStateDetector::update(FallDownState& fallDownState)
 
 void SimpleFallDownStateDetector::update(FsrModelData& fsrModelData)
 {
-  if (leftFsrBufferArray[0].capacity() != fsrBufferSize)
-  {
-    for (int i = 0; i < FsrSensorData::numOfFsrSensorPositions; i++)
-    {
-      leftFsrBufferArray[i].reserve(fsrBufferSize);
-      rightFsrBufferArray[i].reserve(fsrBufferSize);
-    }
-  }
-
   unsigned int prevLeftFsrMinAttack = leftFsrMinAttack;
   unsigned int prevLeftFsrMaxAttack = leftFsrMaxAttack;
   unsigned int prevRightFsrMinAttack = rightFsrMinAttack;

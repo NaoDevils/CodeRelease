@@ -60,7 +60,7 @@ protected:
         if (theGameSymbols.ownKickOff)
         {
           setplayContinueSeconds = statePlaying_penaltyKick_own(positioningSymbols);
-          positioningSymbols.log_currState = "PHASE_PENALTYSHOOT STATE_PLAYING SET_PLAY_PENALTY_KICK penaltyKick_own_playing";
+          positioningSymbols.log_currState = "PHASE_PENALTYSHOOT STATE_PLAYING SET_PLAY_PENALTY_KICK statePlaying_penaltyKick_own";
         }
         else
         {
@@ -114,12 +114,12 @@ protected:
             if (theGameSymbols.ownKickOff)
             {
               setplayContinueSeconds = stateReady_penaltyKick_own(positioningSymbols);
-              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK penaltyKick_own_ready";
+              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK stateReady_penaltyKick_own";
             }
             else
             {
               setplayContinueSeconds = stateReady_penaltyKick_opponent(positioningSymbols);
-              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK penaltyKick_opponent_ready";
+              positioningSymbols.log_currState = "STATE_READY SET_PLAY_PENALTY_KICK stateReady_penaltyKick_opponent";
             }
             return;
           default:
@@ -133,12 +133,12 @@ protected:
         if (theGameSymbols.ownKickOff)
         {
           stateReady_kickOff_own(positioningSymbols, Vector2f::Zero());
-          positioningSymbols.log_currState = "STATE_READY kickOff_own";
+          positioningSymbols.log_currState = "STATE_READY stateReady_kickOff_own";
         }
         else
         {
           stateReady_kickOff_opponent(positioningSymbols, Vector2f::Zero());
-          positioningSymbols.log_currState = "STATE_READY kickOff_opponent";
+          positioningSymbols.log_currState = "STATE_READY stateReady_kickOff_opponent";
         }
         return;
       }
@@ -161,13 +161,13 @@ protected:
           if (theGameSymbols.ownKickOff)
           {
             statePlaying_kickOff_own(positioningSymbols, Vector2f::Zero());
-            positioningSymbols.log_currState = "STATE_PLAYING kickOff_own";
+            positioningSymbols.log_currState = "STATE_PLAYING stateReady_kickOff_own";
             return;
           }
           else if (theGameSymbols.avoidCenterCircle)
           {
             statePlaying_kickOff_opponent(positioningSymbols, Vector2f::Zero());
-            positioningSymbols.log_currState = "STATE_PLAYING kickOff_opponent";
+            positioningSymbols.log_currState = "STATE_PLAYING stateReady_kickOff_opponent";
             return;
           }
         }
@@ -234,7 +234,7 @@ protected:
             if (theGameSymbols.ownKickOff)
             {
               setplayContinueSeconds = statePlaying_penaltyKick_own(positioningSymbols);
-              positioningSymbols.log_currState = "STATE_PLAYING SET_PLAY_PENALTY_KICK penaltyKick_own_playing";
+              positioningSymbols.log_currState = "STATE_PLAYING SET_PLAY_PENALTY_KICK statePlaying_penaltyKick_own";
             }
             else
             {

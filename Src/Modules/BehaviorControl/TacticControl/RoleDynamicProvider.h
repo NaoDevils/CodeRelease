@@ -18,6 +18,7 @@
 #include "Representations/BehaviorControl/RoleSymbols/DefenderSingle.h"
 #include "Representations/BehaviorControl/RoleSymbols/Keeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/BehaviorControl/RoleSymbols/ReplacementKeeper.h"
 #include "Representations/BehaviorControl/RoleSymbols/LeftWing.h"
 #include "Representations/BehaviorControl/RoleSymbols/RightWing.h"
@@ -55,6 +56,7 @@ MODULE(RoleDynamicProvider,
   REQUIRES(Keeper),
   REQUIRES(Receiver),
   REQUIRES(ReplacementKeeper),
+  REQUIRES(RemoteControl),
   REQUIRES(RoleSelection),
   REQUIRES(GameInfo),
   REQUIRES(RobotInfo),

@@ -1,0 +1,10 @@
+call Includes/Normal
+
+echo gc playing
+
+robot robot1
+rc defensive
+robot robot2
+rc defensive
+rc on
+call Includes/SharedAutonomy

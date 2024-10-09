@@ -166,7 +166,6 @@ target_sources(${PROJECT_NAME}
         SensorData.h
         Settings.cpp
         Settings.h
-        SortingNetworks.h
         Streams/AutoStreamable.h
         Streams/Compressed.cpp
         Streams/Compressed.h
@@ -187,4 +186,4 @@ target_sources(${PROJECT_NAME}
         Streams/Streamable.h
         TripleBuffer.h
         date.h
- )
+)

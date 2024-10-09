@@ -8,6 +8,7 @@
 #include "RoleDynamicProvider.h"
 #include "Representations/Infrastructure/TeamCommEvents.h"
 #include "Tools/Debugging/Annotation.h"
+#include "Tools/Debugging/Modify.h"
 #include <algorithm>
 
 void RoleDynamicProvider::update(RoleSymbols& roleSymbols)
@@ -43,6 +44,12 @@ void RoleDynamicProvider::update(RoleSymbols& roleSymbols)
     takeNewestRoleAssignment(roleSymbols);
 
     roleSymbols.dynamic = true;
+  }
+
+  if (theRemoteControl.enabled)
+  {
+    //force role to be RemoteControl
+    roleSymbols.role = BehaviorData::RoleAssignment::remoteControl;
   }
 
   if (roleSymbols.role != lastRole)
@@ -228,7 +235,8 @@ void RoleDynamicProvider::updateRolePositions()
   rolePositions[BehaviorData::RoleAssignment::rightWing] = theRightWing.optPosition.translation;
   rolePositions[BehaviorData::RoleAssignment::frontWing] = theFrontWing.optPosition.translation;
   rolePositions[BehaviorData::RoleAssignment::backWing] = theBackWing.optPosition.translation;
-  static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 13, "Missing role!");
+  rolePositions[BehaviorData::RoleAssignment::remoteControl] = theRemoteControl.optPosition.translation;
+  static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 14, "Missing role!");
 }
 
 void RoleDynamicProvider::takeNewestRoleAssignment(RoleSymbols& roleSymbols)

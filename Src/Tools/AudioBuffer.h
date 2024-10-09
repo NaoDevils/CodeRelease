@@ -40,8 +40,6 @@ struct AudioBufferParameters
   //----------[Whistle Calibration]----------
   unsigned int minFreq = 2500;
   unsigned int maxFreq = 3500;
-  unsigned int minFreqBorder = 450;
-  unsigned int maxFreqBorder = 350;
   //------[Whistle Candidate Detection]------
   float whistleCandidateThreshold = 0.25f;
   float attentionMultiplier = 2.0f;
@@ -125,8 +123,6 @@ private:
   int currentMaxFreq = 3500;
   int minFreqBorder = 450;
   int maxFreqBorder = 300;
-  int permanentMinFreqBorder = 450;
-  int permanentMaxFreqBorder = 300;
 
   RingBufferWithSum<int, 20> whistleFreqBuffer;
   std::array<unsigned int, 2> whistleMinMaxFreq = {2500, 3500};
@@ -142,7 +138,7 @@ private:
 public:
   AudioBuffer();
   AudioBuffer(AudioBufferParameters parameters);
-  int getCurrentMic(bool highestMagnitude = true);
+  int getCurrentMic();
   unsigned int getNumOfNewFrames();
   std::vector<std::vector<std::vector<float>>> getLevels(unsigned int minIDX = 0, unsigned int maxIDX = 17);
   std::vector<std::vector<float>> getConfidences(unsigned int numOfWindows = 1);
@@ -188,10 +184,6 @@ public:
   void setMinFreq(unsigned int minFreq);
   int getMaxFreq();
   void setMaxFreq(unsigned int maxFreq);
-  int getMinFreqBorder();
-  void setMinFreqBorder(unsigned int minFreqBorder);
-  int getMaxFreqBorder();
-  void setMaxFreqBorder(unsigned int maxFreqBorder);
   float getOvertoneBorderMultiplier();
   void setOvertoneBorderMultiplier(float overtoneBorderMultiplier);
   void add(std::vector<float> samples);

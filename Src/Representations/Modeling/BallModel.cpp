@@ -33,18 +33,17 @@ void BallModel::draw() const
   {
     const Vector2f& position(estimate.position);
     const Vector2f& velocity(estimate.velocity);
-    const ColorRGBA colorForDrawing(255, 0, 0, 128);
     CIRCLE("representation:BallModel",
         position.x(),
         position.y(),
-        45,
-        0, // pen width
+        70,
+        10, // pen width
         Drawings::solidPen,
-        colorForDrawing,
+        ColorRGBA::black,
         Drawings::solidBrush,
-        colorForDrawing);
-    ARROW("representation:BallModel", position.x(), position.y(), position.x() + velocity.x(), position.y() + velocity.y(), 5, 1, colorForDrawing);
-    DRAWTEXT("representation:BallModel", position.x() + 50, position.y() + 50, 50, colorForDrawing, static_cast<int>(validity * 100.f + 0.5f) << "%");
+        ColorRGBA::white);
+    ARROW("representation:BallModel", position.x(), position.y(), position.x() + velocity.x(), position.y() + velocity.y(), 5, 1, ColorRGBA::white);
+    DRAWTEXT("representation:BallModel", position.x() + 50, position.y() + 50, 50, ColorRGBA::white, static_cast<int>(validity * 100.f + 0.5f) << "%");
   }
 
   // drawing of the end position
@@ -54,12 +53,12 @@ void BallModel::draw() const
     CIRCLE("representation:BallModel:endPosition",
         position.x(),
         position.y(),
-        45,
-        0, // pen width
+        70,
+        10, // pen width
         Drawings::solidPen,
         ColorRGBA::black,
         Drawings::solidBrush,
-        ColorRGBA(168, 25, 99, 220));
+        ColorRGBA::gray);
   }
 
   DEBUG_DRAWING3D("representation:BallModel", "robot")

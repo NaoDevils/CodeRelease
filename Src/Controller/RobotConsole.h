@@ -31,6 +31,7 @@ class ModuleInfo;
 struct JointRequest;
 struct Image;
 struct Settings;
+struct RemoteControlRequest;
 
 /**
 * @class RobotConsole
@@ -335,6 +336,9 @@ public:
    */
   std::string getDebugRequest(const std::string& name);
 
+  RemoteControlRequest& getRemoteControlRequest();
+  void sendRemoteControlRequest();
+
 protected:
   /**
    * Called by the Process (the base class) to get the
@@ -437,6 +441,7 @@ private:
   bool moveRobot(In&);
   bool moveBall(In&);
   bool kickBall(In&);
+  bool remoteControl(In&);
   bool sleepConsole(In&);
   bool view3D(In& stream);
   bool viewField(In& stream);

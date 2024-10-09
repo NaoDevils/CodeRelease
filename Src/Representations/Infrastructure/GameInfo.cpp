@@ -99,9 +99,9 @@ Streamable& GameInfo::operator=(const Streamable& other) noexcept
   return *this = dynamic_cast<const GameInfo&>(other);
 }
 
-bool GameInfo::isSetPlay() const
+bool GameInfo::isRegularPlay() const
 {
-  return setPlay != SET_PLAY_NONE;
+  return gamePhase == GAME_PHASE_NORMAL && state == STATE_PLAYING && setPlay == SET_PLAY_NONE;
 }
 
 void GameInfo::serialize(In* in, Out* out)

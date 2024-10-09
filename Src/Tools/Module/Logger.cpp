@@ -143,7 +143,7 @@ void Logger::runStateMachine(char processIdentifier)
 
       receivedGameControllerPacket |= static_cast<const RoboCup::RoboCupGameControlData&>(gameInfo).packetNumber != 0 || gameInfo.secsRemaining != 0;
 
-      const bool record = gameInfo.state == STATE_STANDBY || gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING
+      const bool record = gameInfo.state == STATE_READY || gameInfo.state == STATE_SET || gameInfo.state == STATE_PLAYING
           || behaviorData.behaviorState >= BehaviorData::BehaviorState::firstCalibrationState || visualRefereeBehaviorSymbols.state != VisualRefereeBehaviorSymbols::State::idle;
 
       const bool transitionToFramework = robotInfo.transitionToFramework > 0.f;

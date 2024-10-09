@@ -34,6 +34,6 @@ bool KickBallTestObjective::perform(Ballchaser& ballchaser)
   }
   const Pose2f kickPose = kick->getKickPose(ballPosition, targetDirectionVector.angle(), kickWithLeft);
   const Vector2f target = ballPosition + targetDirectionVector.normalize(1000.f);
-  currentKickManager.setCurrentKick(ballchaser, kick, kickPose, kickWithLeft, target, role->theBallSymbols, role->theFrameInfo);
+  currentKickManager.setCurrentKick(ballchaser, ballPosition, kick, kickPose, kickWithLeft, target, role->theFrameInfo);
   return true;
 }

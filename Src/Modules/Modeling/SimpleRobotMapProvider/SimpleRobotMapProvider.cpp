@@ -29,7 +29,7 @@ void SimpleRobotMapProvider::execute(tf::Subflow&)
   for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)
   {
     if (simpleRobots[sr].fromTeamMatePoses)
-      simpleRobots[sr].validity = std::max(0.f, simpleRobots[sr].validity - validityUpdate / 4.f);
+      simpleRobots[sr].validity = std::max(0.f, simpleRobots[sr].validity - validityUpdate / 2.f);
     else
       simpleRobots[sr].validity = std::max(0.f, simpleRobots[sr].validity - validityUpdate);
   }
@@ -165,7 +165,7 @@ void SimpleRobotMapProvider::updateWithTeamMatePoses()
   {
     const RobotPoseCompressed& otherPose = mate.robotPose;
     if (otherPose.validity > teamMateMinValidity && mate.status != TeammateReceived::Status::INACTIVE
-        && (theFrameInfo.getTimeSince(mate.receiveTimestamp) < 750 || (theGameInfo.state == STATE_SET && theFrameInfo.getTimeSince(mate.receiveTimestamp) < theGameSymbols.timeSinceGameState)))
+        && (theFrameInfo.getTimeSince(mate.receiveTimestamp) < 500 || (theGameInfo.state == STATE_SET && theFrameInfo.getTimeSince(mate.receiveTimestamp) < theGameSymbols.timeSinceGameState)))
     {
       bool merged = false;
       for (unsigned int sr = 0; sr < simpleRobots.size(); sr++)

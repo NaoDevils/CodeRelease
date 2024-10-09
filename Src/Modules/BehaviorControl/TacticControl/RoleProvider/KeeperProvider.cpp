@@ -334,7 +334,7 @@ void KeeperProvider::updateBallchaserKeeper(Keeper& keeper)
   keeper.optKickTarget = Pose2f(keeper.optPosition).translate(2000.f, 0.f).translation;
   // TODO: select kick depending on situation
   keeper.useLongKick = false;
-  keeper.walkKick = WalkRequest::StepRequest::kickHackLong;
+  keeper.walkKick = WalkRequest::StepRequest::any;
   keeper.stopAtTarget = false;
   keeper.previewArrival = true;
 }

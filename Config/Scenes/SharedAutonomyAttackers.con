@@ -1,0 +1,15 @@
+call Includes/Normal
+
+echo gc playing
+
+robot robot8
+dr module:BallChaserDecisionProvider:enable on
+robot robot9
+dr module:BallChaserDecisionProvider:enable on
+robot robot3
+rc offensive
+robot robot4
+rc offensive
+rc on
+
+call Includes/SharedAutonomy

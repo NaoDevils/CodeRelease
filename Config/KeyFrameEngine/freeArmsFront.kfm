@@ -1,7 +1,7 @@
 keyFrameID = freeArmsFront;
 initialKeyFrame = true;
 nextMotionConditions = [execute];
-nextKeyFrameMotionIDs = [standUpFront];
+nextKeyFrameMotionIDs = [lying];
 YstabilizationP = 0;
 YstabilizationI = 0;
 YstabilizationD = 0;

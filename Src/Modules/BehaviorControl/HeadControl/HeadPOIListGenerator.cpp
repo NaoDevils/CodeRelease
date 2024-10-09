@@ -69,14 +69,12 @@ void HeadPOIListGenerator::update(HeadPOIList& headPOIList)
           addBallWithSweep(headPOIList);
         }
       }
-      else if (((theBehaviorData.role == BehaviorData::RoleAssignment::keeper && theFrameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 5000)
+      else if (((theBehaviorData.role == BehaviorData::RoleAssignment::keeper && theFrameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 10000)
                    || ((theBehaviorData.role == BehaviorData::RoleAssignment::replacementKeeper || theBehaviorData.playerNumberToBall == theRobotInfo.number)
                        && theFrameInfo.getTimeSince(theRemoteBallModel.timeWhenLastSeen) < 3000))
-          && theBallSymbols.timeSinceLastSeen > 10000)
+          && theFrameInfo.getTimeSince(theBallSymbols.ballWasSeen) > 10000)
       {
         addRemoteBall(headPOIList);
-        if (theSpeedInfo.speed.translation.x() > 0.1)
-          addStraight(headPOIList);
       }
       else
         addSweep(headPOIList);

@@ -36,8 +36,7 @@ MODULE(GameInfoHandler,
     (float) (600.f) maxBallToMiddleDistance,
     (int) (20000) playToReadyTimeout, // after this time, local decision will be reverted
     (int) (20000) setToPlayTimeout, // after this time, local decision will be reverted
-    (int) (3000) maxTimediffWhistleToGoal,
-    (int) (7500) timeUntilTeamReadyAfterGesture
+    (int) (3000) maxTimediffWhistleToGoal
   )
 );
 

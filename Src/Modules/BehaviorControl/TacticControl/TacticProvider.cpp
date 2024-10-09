@@ -20,7 +20,7 @@ void TacticProvider::update(TacticSymbols& tacticSymbols)
   tacticSymbols.activity = decideActivity();
   decideFightForBall(tacticSymbols, theBallSymbols.ballPositionFieldPredicted, theRobotMap);
   decideDefensiveCone(tacticSymbols, theBallSymbols.ballPositionFieldPredicted, theFieldDimensions);
-  updateDanger(tacticSymbols);
+  updateDanger(tacticSymbols, theGameInfo);
   tacticSymbols.keepRoleAssignment = theGameInfo.state == STATE_READY && theGameSymbols.timeSinceGameState > static_cast<int>(timeTillKeepRoleAssignmentInReady);
 
   switch (currentDirection)
@@ -93,6 +93,16 @@ void TacticProvider::calcNumberOfActiveFieldPlayers(TacticSymbols& tacticSymbols
 */
 bool TacticProvider::decideDefensiveBehavior()
 {
+  if (theRemoteControl.enforceOffensiveRoles)
+  {
+    defensiveBehavior = false;
+    return defensiveBehavior;
+  }
+  if (theRemoteControl.enforceDefensiveRoles)
+  {
+    defensiveBehavior = true;
+    return defensiveBehavior;
+  }
   const bool setPlayOwn = (theGameSymbols.ownKickOff && theGameSymbols.currentSetPlay != SET_PLAY_NONE);
   const bool setPlayOpponent = (!theGameSymbols.ownKickOff && theGameSymbols.currentSetPlay != SET_PLAY_NONE);
   if (setPlayOwn)
@@ -281,9 +291,9 @@ void TacticProvider::decideFightForBall(TacticSymbols& tacticSymbols, const Vect
   }
 }
 
-void TacticProvider::updateDanger(TacticSymbols& tacticSymbols)
+void TacticProvider::updateDanger(TacticSymbols& tacticSymbols, const GameInfo& theGameInfo)
 {
-  if (theGameSymbols.gameSituation == GameSymbols::GameSituation::regularPlay)
+  if (theGameInfo.isRegularPlay())
   {
     if (isDanger(450.f, tacticSymbols.ballInDanger == TacticSymbols::Danger::HIGH))
     {

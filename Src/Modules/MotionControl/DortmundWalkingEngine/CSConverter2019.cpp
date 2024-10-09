@@ -370,9 +370,9 @@ void CSConverter2019::applyOffsets(KinematicRequest& kinematicRequest)
       float anklePIDMultiplicatorX, anklePIDMultiplicatorY, hipPIDMultiplicatorX, hipPIDMultiplicatorY;
       if (theSpeedRequest.translation.norm() == 0 && theSpeedRequest.rotation == 0)
       {
-        if (theSensorControlParams.sensorControlActivation.activateSpeedReduction)
-        /*&& (angleErrorX < (theSensorControlParams.speedReduction.angleX.min) || angleErrorX > (theSensorControlParams.speedReduction.angleX.max)
-                || (angleErrorY < theSensorControlParams.speedReduction.angleY.min) || angleErrorY > (theSensorControlParams.speedReduction.angleY.max)))*/
+        if (theSensorControlParams.sensorControlActivation.activateSpeedReduction
+            && (angleErrorX < (theSensorControlParams.speedReduction.angleX.min) || angleErrorX > (theSensorControlParams.speedReduction.angleX.max)
+                || (angleErrorY < theSensorControlParams.speedReduction.angleY.min) || angleErrorY > (theSensorControlParams.speedReduction.angleY.max)))
         {
           anklePIDMultiplicatorX = theSensorControlParams.ankleHipPID.ankleParams.pidMultiplicatorsX.zero;
           anklePIDMultiplicatorY = theSensorControlParams.ankleHipPID.ankleParams.pidMultiplicatorsY.zero;

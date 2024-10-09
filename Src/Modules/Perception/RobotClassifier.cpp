@@ -1,31 +1,13 @@
 #include "RobotClassifier.h"
 #include "Platform/File.h"
 #include "Representations/Infrastructure/CameraInfo.h"
-#include <taskflow/taskflow.hpp>
-#include "Tools/Build.h"
-#include "Tools/ImageCoordinateTransformations.h"
 #include "Tools/Math/Transformation.h"
-
-static int roundToInt(float x)
-{
-  return static_cast<int>(round(x));
-}
-
-static Vector2i roundToInt(Vector2f x)
-{
-  return (x + Vector2f::Constant(0.5f)).cast<int>();
-}
-
-static float halfWidthFromHeight(float height)
-{
-  return height * 0.2f;
-}
 
 RobotClassifier::RobotClassifier()
 {
   std::string basePath = std::string(File::getBHDir()) + "/Config/tflite/robot/";
-  initModel(basePath + classifierName, classificationModelInterpreter, classificationModel);
-  initModel(basePath + bboxCorrectifierName, bboxCorrectionModelInterpreter, bboxCorrectionModel);
+  initModel(basePath + "robot_classifier_rec_0.88_thr_0.70541.tflite", classificationModelInterpreter, classificationModel);
+  initModel(basePath + "bbox_correctifier_y_rel_0.057.tflite", bboxCorrectionModelInterpreter, bboxCorrectionModel);
 }
 
 void RobotClassifier::update(RobotsPerceptClassified& robotsPerceptClassified)
@@ -38,156 +20,7 @@ void RobotClassifier::update(ProcessedRobotsHypotheses& processedRobotsHypothese
   std::swap(processedRobotsHypotheses, localRobotsHypotheses);
 }
 
-void RobotClassifier::execute(tf::Subflow& subflow)
-{
-  classifyHypotheses();
-  postProcess();
-}
-
-void RobotClassifier::postProcess()
-{
-  if (localRobotsPerceptClassified.robots.size() == 0)
-  {
-    return;
-  }
-  sortLocalClassificationsByY();
-  doRemainingClassifications();
-
-  if (enableTracking)
-  {
-    interpolateTrackedBboxes();
-  }
-  removeInvalidatedRobots();
-
-  lastValidEstimates.clear();
-  copy(localRobotsPerceptClassified.robots.begin(), localRobotsPerceptClassified.robots.end(), back_inserter(lastValidEstimates));
-}
-
-void RobotClassifier::removeInvalidatedRobots()
-{
-  localRobotsPerceptClassified.robots.erase(
-      std::remove_if(localRobotsPerceptClassified.robots.begin(),
-          localRobotsPerceptClassified.robots.end(),
-          [&](const RobotEstimate& re)
-          {
-            return re.validity == 0;
-          }),
-      localRobotsPerceptClassified.robots.end());
-  //for (RobotEstimate& re : localRobotsPerceptClassified.robots)
-  //{
-  //  printIou(re);
-  //}
-}
-
-void RobotClassifier::interpolateTrackedBboxes()
-{
-  for (RobotEstimate& re : localRobotsPerceptClassified.robots)
-  {
-    std::optional<RobotEstimate> reOldOpt = findClosestOldRobot(re);
-    if (!reOldOpt.has_value())
-      continue;
-    RobotEstimate& reOld = reOldOpt.value();
-    Vector2f resF;
-    static_cast<void>(Transformation::robotToImage(reOld.locationOnField.translation, theCameraMatrixUpper, theCameraInfoUpper, resF));
-    Vector2i reOldPos = resF.cast<int>();
-    Vector2i reOldPosNow = Vector2i((reOld.imageLowerRight.x() + reOld.imageUpperLeft.x()) / 2, reOld.imageLowerRight.y());
-    Vector2i moved = reOldPosNow - reOldPos;
-    Vector2i movedOldUl = reOld.imageUpperLeft + moved, movedOldLr = reOld.imageLowerRight + moved;
-
-    interpolateBbox(re, movedOldUl, movedOldLr, oldInterpolationFactor, false);
-    re.trackingAge = reOld.trackingAge + 1;
-    DRAWTEXT("module:RobotClassifier:tracking:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA::black, std::to_string(re.trackingAge));
-    ARROW("module:RobotClassifier:tracking:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), reOld.imageLowerRight.x(), reOld.imageLowerRight.y(), 2, Drawings::solidPen, ColorRGBA::black);
-  }
-}
-
-void RobotClassifier::sortLocalClassificationsByY()
-{
-  const auto sorting_criteria = [](const RobotEstimate& a, const RobotEstimate& b)
-  {
-    if (a.fromUpperImage && !b.fromUpperImage)
-      return false;
-    if (!a.fromUpperImage && b.fromUpperImage)
-      return true;
-    return a.imageLowerRight.y() > b.imageLowerRight.y();
-  };
-  std::sort(localRobotsPerceptClassified.robots.begin(), localRobotsPerceptClassified.robots.end(), sorting_criteria);
-}
-
-void RobotClassifier::doRemainingClassifications()
-{
-  // do the remaining bbox corrections but at most 2 per robot, thus total 3 per robot as one bbox correction was done earlier already
-  int remainingBboxCorrections = std::min(maxBboxCorrections - doneBboxCorrections, static_cast<int>(localRobotsPerceptClassified.robots.size()) * 2);
-  for (int i = 0; i < remainingBboxCorrections; i++)
-  {
-    if (maxBboxCorrections <= doneBboxCorrections)
-      break;
-    for (RobotEstimate& re : localRobotsPerceptClassified.robots)
-    {
-      if (maxBboxCorrections <= doneBboxCorrections)
-        break;
-      correctBbox(re);
-      filterNms(re, true);
-    }
-  }
-}
-
-std::optional<RobotEstimate> RobotClassifier::findClosestOldRobot(const RobotEstimate& re)
-{
-  Vector2i rePos((re.imageUpperLeft.x() + re.imageLowerRight.x()) / 2, re.imageLowerRight.y());
-  if (!re.fromUpperImage)
-    ImageCoordinateTransformations::toUpper(rePos, rePos);
-  const int maxDist = roundToInt((re.imageLowerRight.x() - re.imageUpperLeft.x()) * maxTrackingDist);
-  for (auto& reOld : lastValidEstimates)
-  {
-    Vector2f resF;
-    static_cast<void>(Transformation::robotToImage(reOld.locationOnField.translation, theCameraMatrixUpper, theCameraInfoUpper, resF));
-    Vector2i reOldPos = resF.cast<int>();
-    if (!reOld.fromUpperImage)
-      ImageCoordinateTransformations::toUpper(reOldPos, reOldPos);
-
-    const int dist = (rePos - reOldPos).norm();
-
-    if (dist < maxDist)
-    {
-      return std::optional<RobotEstimate>(reOld);
-    }
-  }
-  return std::nullopt;
-}
-
-void RobotClassifier::acceptRecallRobots()
-{
-  for (auto& re : declinedButPossibleRobots)
-  {
-    if (filterNms(re, true))
-    {
-      printDeclinedRobot(re, std::to_string(re.validity));
-      continue;
-    }
-    // get closest old robot
-    std::optional<RobotEstimate> closestOldRe = findClosestOldRobot(re);
-    if (!closestOldRe.has_value())
-      continue;
-    RobotEstimate reOld = closestOldRe.value();
-    Vector2f resF;
-    static_cast<void>(Transformation::robotToImage(reOld.locationOnField.translation, theCameraMatrixUpper, theCameraInfoUpper, resF));
-    // correct bbox once, as it was ommitted before
-    correctBbox(re);
-    // filter again in case the bbox prediction changed enough, put into classified vector
-    if (!filterNms(re, true))
-    {
-      re.source = RobotEstimate::recallAcceptance;
-      localRobotsPerceptClassified.robots.push_back(re);
-      Vector2i rePos = Vector2i((re.imageUpperLeft.x() + re.imageLowerRight.x()) / 2, re.imageLowerRight.y());
-    }
-  }
-
-  // remove newly filtered robot estimates
-  removeInvalidatedRobots();
-}
-
-void RobotClassifier::classifyHypotheses()
+void RobotClassifier::execute(tf::Subflow&)
 {
   DECLARE_PLOT("module:RobotClassifier:sumOfRobotsHypotheses");
   DECLARE_PLOT("module:RobotClassifier:processedRobotsHypotheses");
@@ -197,26 +30,21 @@ void RobotClassifier::classifyHypotheses()
   DECLARE_DEBUG_DRAWING("module:RobotClassifier:updateEstimate:Lower", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:RobotClassifier:declinedRobotPercepts:Upper", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:RobotClassifier:declinedRobotPercepts:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:RobotClassifier:declinedRobotPercepts:Close", "drawingOnImage");
+  DECLARE_DEBUG_DRAWING("module:RobotClassifier:declinedRobotPercepts:Segmentor", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:RobotClassifier:bboxCorrection:Upper", "drawingOnImage");
   DECLARE_DEBUG_DRAWING("module:RobotClassifier:bboxCorrection:Lower", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:RobotClassifier:nms:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:RobotClassifier:recallRobots:Upper", "drawingOnImage");
-  DECLARE_DEBUG_DRAWING("module:RobotClassifier:tracking:Upper", "drawingOnImage");
 
   sumOfRobotsHypotheses = 0;
   processedRobotsHypotheses = 0;
   localRobotsPerceptClassified.robots.clear();
   localRobotsHypotheses.robots.clear();
-  doneBboxCorrections = 0;
 
   // if the validity is similar, the nearest estimate is more important, else the more valid
-  const auto sorting_criteria = [](const RobotEstimate& a, const RobotEstimate& b)
+  auto sorting_criteria = [](const RobotEstimate& a, const RobotEstimate& b)
   {
     return a.validity > b.validity;
   };
   int classified = 0;
-  declinedButPossibleRobots.clear();
 
   // Segmentor
   {
@@ -239,25 +67,31 @@ void RobotClassifier::classifyHypotheses()
       // classify
       if (re.validity >= 1.0)
       {
-        correctBbox(re);
+        correctBbox(theImage, re);
       }
       else
       {
-        updateEstimate(re);
-        classified++;
+        int xUlGeometric, yUlGeometric, xLrGeometric, yLrGeometric;
+        getGeometricBbox(re, xUlGeometric, yUlGeometric, xLrGeometric, yLrGeometric);
+        re.imageUpperLeft.x() = xUlGeometric;
+        re.imageUpperLeft.y() = yUlGeometric;
+        re.imageLowerRight.x() = xLrGeometric;
+        re.imageLowerRight.y() = yLrGeometric;
+        updateEstimate(theImage, re);
       }
+      classified++;
       processedRobotsHypotheses++;
       if (re.validity >= classifierThresholdLower)
       {
         localRobotsPerceptClassified.robots.push_back(re);
-      }
-      else if (re.validity >= classifierThresholdRecall)
-      {
-        declinedButPossibleRobots.push_back(re);
+        continue;
       }
       else
       {
-        printDeclinedRobot(re, std::to_string(re.validity));
+        // if not accepted, print debug info
+        RECTANGLE(
+            "module:RobotClassifier:declinedRobotPercepts:Segmentor", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(0, 0, 0, 200));
+        DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Segmentor", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), re.validity);
       }
     }
   }
@@ -272,7 +106,7 @@ void RobotClassifier::classifyHypotheses()
     sumOfRobotsHypotheses += sortedHyptotheses.size();
     for (auto& estimate : sortedHyptotheses)
     {
-      Stopwatch s1("RobotClassifier-checkRobotEstimate");
+      Stopwatch s2("RobotClassifier-checkRobotEstimate");
       RobotEstimate& re = localRobotsHypotheses.robots.emplace_back(estimate);
       // check if the estimate can be filtered fast
       if (filterNms(re, false))
@@ -283,26 +117,28 @@ void RobotClassifier::classifyHypotheses()
       // if budget is exceeded, print debug info and continue
       if (classified >= maxClassficationsLower)
       {
-        if constexpr (!Build::targetSimulator())
-          break;
-        printDeclinedRobot(re, "");
+        RECTANGLE(
+            "module:RobotClassifier:declinedRobotPercepts:Lower", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, 200));
+        std::string str = "lower clf budget exceeded ";
+        str.append(std::to_string(classified));
+        DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Lower", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), str);
         continue;
       }
       // else update with nets
-      updateEstimate(re);
+      updateEstimate(theImage, re);
       classified++;
       processedRobotsHypotheses++;
       if (re.validity >= classifierThresholdLower)
       {
         localRobotsPerceptClassified.robots.push_back(re);
-      }
-      else if (re.validity >= classifierThresholdRecall)
-      {
-        declinedButPossibleRobots.push_back(re);
+        continue;
       }
       else
       {
-        printDeclinedRobot(re, std::to_string(re.validity));
+        // if not accepted, print debug info
+        RECTANGLE(
+            "module:RobotClassifier:declinedRobotPercepts:Lower", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(0, 0, 0, 200));
+        DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Lower", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), re.validity);
       }
     }
   }
@@ -328,38 +164,36 @@ void RobotClassifier::classifyHypotheses()
       // if budget is exceeded, print debug info and continue
       if (classified >= maxClassficationsTotal)
       {
-        if constexpr (!Build::targetSimulator())
-          break;
-        printDeclinedRobot(re, "");
+        RECTANGLE(
+            "module:RobotClassifier:declinedRobotPercepts:Upper", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, 200));
+        std::string str = "clf budget exceeded ";
+        str.append(std::to_string(classified));
+        DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), str);
         continue;
       }
       // else update the estimate
-      updateEstimate(re);
+      updateEstimate(theImageUpper, re);
       classified++;
       processedRobotsHypotheses++;
       if (re.validity >= classifierThreshold)
       {
         localRobotsPerceptClassified.robots.push_back(re);
-      }
-      else if (re.validity >= classifierThresholdRecall)
-      {
-        declinedButPossibleRobots.push_back(re);
+        continue;
       }
       else
       {
-        printDeclinedRobot(re, std::to_string(re.validity));
+        // if not accepted, print debug info
+        RECTANGLE(
+            "module:RobotClassifier:declinedRobotPercepts:Upper", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(0, 0, 0, 200));
+        DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), re.validity);
       }
     }
   }
-
   int validatedRobotPercepts = static_cast<short>(localRobotsPerceptClassified.robots.size());
   PLOT("module:RobotClassifier:sumOfRobotsHypotheses", sumOfRobotsHypotheses);
   PLOT("module:RobotClassifier:processedRobotsHypotheses", processedRobotsHypotheses);
   PLOT("module:RobotClassifier:validatedRobotPercepts", validatedRobotPercepts);
   PLOT("module:RobotClassifier:declinedRobotPercepts", (processedRobotsHypotheses - validatedRobotPercepts));
-
-  // RECALL
-  acceptRecallRobots();
 }
 
 void RobotClassifier::initModel(std::string path, std::unique_ptr<tflite::Interpreter>& interpreter, std::unique_ptr<tflite::FlatBufferModel>& model)
@@ -381,330 +215,293 @@ void RobotClassifier::initModel(std::string path, std::unique_ptr<tflite::Interp
   // tflite::PrintInterpreterState(featureModelInterpreter.get());
 }
 
-void RobotClassifier::updateEstimate(RobotEstimate& re)
+void RobotClassifier::updateEstimate(const Image& image, RobotEstimate& re)
 {
   Stopwatch s("RobotClassifier-updateEstimate");
   // skip if not valid to avoid unnecessary bbox correction
-  if (classifyEstimate(re))
+  if (classifyEstimate(image, re))
   {
-    correctBbox(re);
+    correctBbox(image, re);
     filterNms(re, true);
   }
 }
 
-bool RobotClassifier::classifyEstimate(RobotEstimate& re)
+bool RobotClassifier::classifyEstimate(const Image& image, RobotEstimate& re)
 {
   Stopwatch s("RobotClassifier-classifyEstimate");
-  Vector2i upperLeftArea, sizeArea;
-  getArea(re, classifierMargin, upperLeftArea, sizeArea);
+  const Vector2i reSize = re.imageLowerRight - re.imageUpperLeft;
+  const Vector2i margin = (reSize.cast<float>() * classifierMargin + Vector2f::Constant(0.5f)).cast<int>();
 
-  const std::unique_ptr<tflite::Interpreter>& clfInterpreter = classificationModelInterpreter;
-  unsigned char* input = clfInterpreter->typed_tensor<unsigned char>(clfInterpreter->inputs()[0]);
-  Vector2i inputDims(clfInterpreter->input_tensor(0)->dims->data[2], clfInterpreter->input_tensor(0)->dims->data[1]);
-  re.patch = std::vector<unsigned char>{input, input + inputDims.x() * inputDims.y() * 3};
+  const Vector2i upperLeftArea = re.imageUpperLeft - margin;
+  const Vector2i sizeArea = reSize + 2 * margin;
 
+  // get features
+  int* inputDims = classificationModelInterpreter->input_tensor(0)->dims->data;
   {
-    Stopwatch s1("RobotClassifier-classifyEstimate-copyImageAndRunNet");
+    Stopwatch s2("RobotClassifier-classifyEstimate-copyImageAndRunNet");
     {
-      Stopwatch s2("RobotClassifier-classifyEstimate-copyAndResize");
+      Stopwatch s3("RobotClassifier-classifyEstimate-copyAndResize");
       // dim shape is (batchSize, height, width, channels)
-      (re.fromUpperImage ? theImageUpper : theImage).copyAndResizeArea(upperLeftArea, sizeArea, inputDims, input);
-      if (!re.fromUpperImage && upperLeftArea.y() < 0)
+      image.copyAndResizeArea(upperLeftArea, sizeArea, {inputDims[2], inputDims[1]}, classificationModelInterpreter->typed_input_tensor<unsigned char>(0));
+      if (!re.fromUpperImage && re.imageUpperLeft.y() < 0)
       {
-        Vector2i ulUpper = Vector2i();
-        Vector2i lrUpper = Vector2i();
-        ImageCoordinateTransformations::toUpper(upperLeftArea, ulUpper);
-        ImageCoordinateTransformations::toUpper(upperLeftArea + sizeArea, lrUpper);
-        theImageUpper.copyAndResizeArea<true, true, false>(ulUpper, lrUpper - ulUpper, inputDims, input);
+        Vector2i ul = re.imageUpperLeft;
+        Vector2i lr = re.imageLowerRight;
+        getUpperImageCoordinates(re, ul.x(), ul.y(), lr.x(), lr.y());
+        theImageUpper.copyAndResizeArea<true, true, false>(ul, lr - ul, {inputDims[2], inputDims[1]}, classificationModelInterpreter->typed_input_tensor<unsigned char>(0));
       }
     }
     {
       Stopwatch s3("RobotClassifier-classifyEstimate-runNet");
-      if (clfInterpreter->Invoke() != kTfLiteOk)
+      if (classificationModelInterpreter->Invoke() != kTfLiteOk)
       {
         OUTPUT_ERROR("Failed to invoke tflite!");
         return true;
       }
     }
-    re.validity = clfInterpreter->typed_output_tensor<float>(0)[0];
+    float* classificationOutput = classificationModelInterpreter->typed_output_tensor<float>(0);
+
+    re.validity = classificationOutput[0];
   }
-  return re.validity >= (re.fromUpperImage ? classifierThreshold : classifierThreshold);
+  return re.fromUpperImage ? re.validity >= classifierThreshold : re.validity >= classifierThresholdLower;
 }
 
-void RobotClassifier::correctBbox(RobotEstimate& re)
+void RobotClassifier::correctBbox(const Image& image, RobotEstimate& re)
 {
-  // old bbox before corrections
-  const Vector2i ulOld = re.imageUpperLeft;
-  const Vector2i lrOld = re.imageLowerRight;
   if (useBboxPrediction)
   {
-    Vector2i ulPred = Vector2i();
-    Vector2i lrPred = Vector2i();
-    predictBbox(re, ulPred, lrPred);
+    int xUlPred, yUlPred, xLrPred, yLrPred;
+    predictBbox(image, re, xUlPred, yUlPred, xLrPred, yLrPred);
     if (interpolatePredictedBbox)
     {
-      interpolateBbox(re, ulPred, lrPred, interpolatePredictedBboxFactor, false);
+      interpolateBbox(re, xUlPred, yUlPred, xLrPred, yLrPred, interpolatePredictedBboxFactor, false);
     }
     else
     {
-      re.imageUpperLeft = ulPred, re.imageLowerRight = lrPred;
+      re.imageUpperLeft.x() = xUlPred, re.imageUpperLeft.y() = yUlPred, re.imageLowerRight.x() = xLrPred, re.imageLowerRight.y() = yLrPred;
     }
   }
   if (useGeometricHeight)
   {
-    Vector2i ulGeometric = Vector2i();
-    Vector2i lrGeometric = Vector2i();
-    getGeometricBbox(re, ulGeometric, lrGeometric);
+    int xUlGeometric, yUlGeometric, xLrGeometric, yLrGeometric;
+    getGeometricBbox(re, xUlGeometric, yUlGeometric, xLrGeometric, yLrGeometric);
     if (interpolateGeometricBbox)
     {
-      interpolateBbox(re, ulGeometric, lrGeometric, interpolateGeometricBboxFactor, true);
+      interpolateBbox(re, xUlGeometric, yUlGeometric, xLrGeometric, yLrGeometric, interpolateGeometricBboxFactor, true);
     }
     else
     {
-      re.imageUpperLeft = ulGeometric, re.imageLowerRight = lrGeometric;
+      re.imageUpperLeft.x() = xUlGeometric, re.imageUpperLeft.y() = yUlGeometric, re.imageLowerRight.x() = xLrGeometric, re.imageLowerRight.y() = yLrGeometric;
     }
   }
-  calculateDistance(re);
-
-  // draws the area, the prediction and an arrow from the area to the prediction
-  if (re.fromUpperImage)
-  {
-    RECTANGLE("module:RobotClassifier:bboxCorrection:Upper", ulOld.x(), ulOld.y(), lrOld.x(), lrOld.y(), 1, Drawings::dottedPen, ColorRGBA::black);
-    ARROW("module:RobotClassifier:bboxCorrection:Upper", lrOld.x(), lrOld.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 1, Drawings::dottedPen, ColorRGBA::black);
-  }
-  else
-  {
-    RECTANGLE("module:RobotClassifier:bboxCorrection:Lower", ulOld.x(), ulOld.y(), lrOld.x(), lrOld.y(), 1, Drawings::dottedPen, ColorRGBA::black);
-    ARROW("module:RobotClassifier:bboxCorrection:Lower", lrOld.x(), lrOld.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 1, Drawings::dottedPen, ColorRGBA::black);
-  }
-}
-
-void RobotClassifier::calculateDistance(RobotEstimate& re)
-{
-  const int midX = (re.imageUpperLeft.x() + re.imageLowerRight.x()) / 2;
+  int midX = (re.imageUpperLeft.x() + re.imageLowerRight.x()) / 2;
   const CameraMatrix& cameraMatrix = re.fromUpperImage ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
   const CameraInfo& cameraInfo = re.fromUpperImage ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
-  const bool outOfField = !Transformation::imageToRobot(Vector2f(midX, re.imageLowerRight.y()), cameraMatrix, cameraInfo, re.locationOnField.translation);
+  bool outOfField = !Transformation::imageToRobot(Vector2f(midX, re.imageLowerRight.y()), cameraMatrix, cameraInfo, re.locationOnField.translation);
   if (outOfField)
   {
+    RECTANGLE(
+        "module:RobotClassifier:declinedRobotPercepts:Upper", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, 200));
+    DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), "out of field");
     re.validity = 0;
-    printDeclinedRobot(re, "outOfField");
   }
   re.distance = re.locationOnField.translation.norm();
 }
 
-void RobotClassifier::getGeometricBbox(RobotEstimate& re, Vector2i& ul, Vector2i& lr)
+void RobotClassifier::getGeometricBbox(RobotEstimate& re, int& xUl, int& yUl, int& xLr, int& yLr)
 {
   // update height from known robot dimensions if wanted
   const CameraMatrix& cameraMatrix = re.fromUpperImage ? (CameraMatrix&)theCameraMatrixUpper : theCameraMatrix;
   const CameraInfo& cameraInfo = re.fromUpperImage ? (CameraInfo&)theCameraInfoUpper : theCameraInfo;
-  const int midX = (re.imageUpperLeft.x() + re.imageLowerRight.x()) / 2;
-  const bool outOfField = !Transformation::imageToRobot(Vector2f(midX, re.imageLowerRight.y()), cameraMatrix, cameraInfo, re.locationOnField.translation);
+  int midX = (re.imageUpperLeft.x() + re.imageLowerRight.x()) / 2;
+  bool outOfField = !Transformation::imageToRobot(Vector2f(midX, re.imageLowerRight.y()), cameraMatrix, cameraInfo, re.locationOnField.translation);
   if (outOfField)
   {
+    RECTANGLE(
+        "module:RobotClassifier:declinedRobotPercepts:Upper", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, 200));
+    DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), "out of field");
     re.validity = 0;
-    printDeclinedRobot(re, "outOfField");
   }
   re.distance = re.locationOnField.translation.norm();
-  const float heightInImage = Geometry::getSizeByDistance(cameraInfo, ROBOT_HEIGHT, re.distance);
+  float heightInImage = Geometry::getSizeByDistance(cameraInfo, 580.f, re.distance);
 
-  ul.x() = roundToInt(midX - halfWidthFromHeight(heightInImage));
-  ul.y() = roundToInt(re.imageLowerRight.y() - heightInImage);
-  lr.x() = roundToInt(midX + halfWidthFromHeight(heightInImage));
-  lr.y() = re.imageLowerRight.y();
+  xUl = static_cast<int>(round(midX - heightInImage / 5));
+  yUl = static_cast<int>(round(re.imageLowerRight.y() - heightInImage));
+  xLr = static_cast<int>(round(midX + heightInImage / 5));
+  yLr = static_cast<int>(round(re.imageLowerRight.y()));
 }
 
-void RobotClassifier::interpolateBbox(RobotEstimate& re, Vector2i& ul, Vector2i& lr, float factor, bool keepLower)
+void RobotClassifier::interpolateBbox(RobotEstimate& re, int& xUl, int& yUl, int& xLr, int& yLr, float factor, bool keepLower)
 {
-  const Vector2f mid = (ul + lr).cast<float>() / 2;
-  const int height = lr.y() - ul.y();
-  const Vector2f midOld = (re.imageUpperLeft + re.imageLowerRight).cast<float>() / 2;
-  const int heightOld = re.imageLowerRight.y() - re.imageUpperLeft.y();
+  int midX = (xUl + xLr) / 2;
+  int midY = (yUl + yLr) / 2;
+  int height = yLr - yUl;
+  int oldXul = re.imageUpperLeft.x(), oldYul = re.imageUpperLeft.y(), oldXlr = re.imageLowerRight.x(), oldYlr = re.imageLowerRight.y();
+  int midXOld = (oldXul + oldXlr) / 2, midYOld = (oldYul + oldYlr) / 2;
+  int heightOld = yLr - yUl;
 
-  const Vector2i midInterpolated = roundToInt(factor * mid + (1 - factor) * midOld);
-  const float heightInterpolated = factor * height + (1 - factor) * heightOld;
+  int midXInterpolated = static_cast<int>(std::round(factor * midX + (1 - factor) * midXOld)), midYInterpolated = static_cast<int>(std::round(factor * midY + (1 - factor) * midYOld));
+  int heightInterpolated = static_cast<int>(std::round(factor * height + (1 - factor) * heightOld));
 
-  if (keepLower)
-  {
-    re.imageLowerRight.y() = re.imageLowerRight.y();
-    re.imageUpperLeft.y() = roundToInt(re.imageLowerRight.y() - heightInterpolated);
-    re.imageLowerRight.x() = roundToInt(midInterpolated.x() + halfWidthFromHeight(heightInterpolated));
-    re.imageUpperLeft.x() = roundToInt(midInterpolated.x() - halfWidthFromHeight(heightInterpolated));
-  }
-  else
-  {
-    re.imageUpperLeft.x() = roundToInt(midInterpolated.x() - halfWidthFromHeight(heightInterpolated));
-    re.imageUpperLeft.y() = roundToInt(midInterpolated.y() - heightInterpolated / 2.f);
-    re.imageLowerRight.x() = roundToInt(midInterpolated.x() + halfWidthFromHeight(heightInterpolated));
-    re.imageLowerRight.y() = roundToInt(midInterpolated.y() + heightInterpolated / 2.f);
-  }
+  re.imageUpperLeft.x() = static_cast<int>(midXInterpolated - heightInterpolated / 5.f);
+  re.imageUpperLeft.y() = static_cast<int>(midYInterpolated - heightInterpolated / 2);
+  re.imageLowerRight.x() = static_cast<int>(midXInterpolated + heightInterpolated / 5.f);
+  if (!keepLower)
+    re.imageLowerRight.y() = static_cast<int>(midYInterpolated + heightInterpolated / 2);
 }
 
-void RobotClassifier::getArea(RobotEstimate& re, const float margin, Vector2i& upperLeftArea, Vector2i& sizeArea)
-{
-  // the net is bad at predicting bboxes that are larger than the input, therefore we take the max of the geometric and original bbox plus some margin
-  Vector2i ulGeometric = Vector2i();
-  Vector2i lrGeometric = Vector2i();
-  getGeometricBbox(re, ulGeometric, lrGeometric);
-
-  const Vector2i sizeGeometric = lrGeometric - ulGeometric;
-  const Vector2i sizeRe = re.imageLowerRight - re.imageUpperLeft;
-
-  const Vector2i size = sizeGeometric.y() > sizeRe.y() ? sizeGeometric : sizeRe;
-  const Vector2i ul = sizeGeometric.y() > sizeRe.y() ? ulGeometric : re.imageUpperLeft;
-  const Vector2i lr = sizeGeometric.y() > sizeRe.y() ? lrGeometric : re.imageLowerRight;
-
-  const Vector2i marginAbs = roundToInt(size.cast<float>() * margin);
-
-  upperLeftArea = ul - marginAbs;
-  sizeArea = size + 2 * marginAbs;
-}
-
-void RobotClassifier::predictBbox(RobotEstimate& re, Vector2i& ulPred, Vector2i& lrPred)
+void RobotClassifier::predictBbox(const Image& image, RobotEstimate& re, int& xUl, int& yUl, int& xLr, int& yLr)
 {
   Stopwatch s("RobotClassifier-correctBbox");
-  Vector2i upperLeftArea, sizeArea;
-  getArea(re, bboxMargin, upperLeftArea, sizeArea);
+  const Vector2i reSize = re.imageLowerRight - re.imageUpperLeft;
+  const Vector2i margin = (reSize.cast<float>() * bboxMargin + Vector2f::Constant(0.5f)).cast<int>();
+
+  const Vector2i upperLeftArea = re.imageUpperLeft - margin;
+  const Vector2i sizeArea = reSize + 2 * margin;
+
+  // get features
+  int* inputDims = classificationModelInterpreter->input_tensor(0)->dims->data;
 
   // get bbox
   {
-    Stopwatch s1("RobotClassifier-correctBbox-copyImageAndRunNet");
-    const std::unique_ptr<tflite::Interpreter>& bboxInterpreter = bboxCorrectionModelInterpreter;
-    unsigned char* input = bboxInterpreter->typed_tensor<unsigned char>(bboxInterpreter->inputs()[0]);
-    Vector2i inputDims(bboxInterpreter->input_tensor(0)->dims->data[2], bboxInterpreter->input_tensor(0)->dims->data[1]);
+    Stopwatch s2("RobotClassifier-correctBbox-copyImageAndRunNet");
+    inputDims = bboxCorrectionModelInterpreter->input_tensor(0)->dims->data;
     {
-      Stopwatch s2("RobotClassifier-correctBbox-copyAndResize");
+      Stopwatch s3("RobotClassifier-correctBbox-copyAndResize");
       // dim shape is (batchSize, height, width, channels)
-      (re.fromUpperImage ? theImageUpper : theImage).copyAndResizeArea(upperLeftArea, sizeArea, inputDims, input);
-      if (!re.fromUpperImage && upperLeftArea.y() < 0)
-      {
-        Vector2i ulUpper = Vector2i();
-        Vector2i lrUpper = Vector2i();
-        ImageCoordinateTransformations::toUpper(upperLeftArea, ulUpper);
-        ImageCoordinateTransformations::toUpper(upperLeftArea + sizeArea, lrUpper);
-        theImageUpper.copyAndResizeArea<true, true, false>(ulUpper, lrUpper - ulUpper, inputDims, input);
-      }
+      image.copyAndResizeArea(upperLeftArea, sizeArea, {inputDims[2], inputDims[1]}, bboxCorrectionModelInterpreter->typed_input_tensor<unsigned char>(0));
     }
     {
       Stopwatch s3("RobotClassifier-correctBbox-runNet");
-      if (bboxInterpreter->Invoke() != kTfLiteOk)
+      if (bboxCorrectionModelInterpreter->Invoke() != kTfLiteOk)
       {
         OUTPUT_ERROR("Failed to invoke tflite!");
         return;
       }
     }
+    // old bbox before corrections
+    const Vector2i oldUl = re.imageUpperLeft;
+    const Vector2i oldLr = re.imageLowerRight;
 
-    // outputs shape : (midX, midY, half Height)
-    float* bboxOutput = bboxInterpreter->typed_output_tensor<float>(0);
+    // outputs
+    float* bboxOutput = bboxCorrectionModelInterpreter->typed_output_tensor<float>(0);
     const Vector2f midRel(bboxOutput[0], bboxOutput[1]);
-    const Vector2f halfSizeRel(bboxOutput[2], bboxOutput[2]);
+    const Vector2f sizeRel(bboxOutput[2], bboxOutput[2]);
 
     // relative anchor points
-    const Vector2f ulRel = midRel - halfSizeRel;
-    const Vector2f lrRel = midRel + halfSizeRel;
+    const Vector2f ulRel = midRel - sizeRel;
+    const Vector2f lrRel = midRel + sizeRel;
 
     // absolute anchor points
     const Vector2f ulOffset = ulRel.cwiseProduct(sizeArea.cast<float>());
     const Vector2f lrOffset = lrRel.cwiseProduct(sizeArea.cast<float>());
 
-    // fill prediction
-    ulPred = roundToInt(upperLeftArea.cast<float>() + ulOffset);
-    lrPred = roundToInt(upperLeftArea.cast<float>() + lrOffset);
+    const Vector2f Ul = upperLeftArea.cast<float>() + ulOffset;
+    const Vector2f Lr = upperLeftArea.cast<float>() + lrOffset;
+
+    // TODO: use Vector2i as output parameters
+    xUl = static_cast<int>(Ul.x());
+    yUl = static_cast<int>(Ul.y());
+    xLr = static_cast<int>(Lr.x());
+    yLr = static_cast<int>(Lr.y());
+
+    // draws the area, the prediction and an arrow from the area to the prediction
+    if (re.fromUpperImage)
+    {
+      RECTANGLE("module:RobotClassifier:bboxCorrection:Upper", oldUl.x(), oldUl.y(), oldLr.x(), oldLr.y(), 1, Drawings::dottedPen, ColorRGBA::black);
+      ARROW("module:RobotClassifier:bboxCorrection:Upper", oldUl.x(), oldUl.y(), Ul.x(), Ul.y(), 1, Drawings::dottedPen, ColorRGBA::black);
+    }
+    else
+    {
+      RECTANGLE("module:RobotClassifier:bboxCorrection:Lower", oldUl.x(), oldUl.y(), oldLr.x(), oldLr.y(), 1, Drawings::dottedPen, ColorRGBA::black);
+      ARROW("module:RobotClassifier:bboxCorrection:Lower", oldUl.x(), oldUl.y(), Ul.x(), Ul.y(), 1, Drawings::dottedPen, ColorRGBA::black);
+    }
   }
 }
 
 bool RobotClassifier::filterNms(RobotEstimate& re, bool respectValidity)
 {
-  for (RobotEstimate& other : localRobotsPerceptClassified.robots)
+  if (re.fromUpperImage)
   {
-    if (&re == &other)
-      continue;
-    const float overlap = iou(re, other);
+    for (size_t i = 0; i < localRobotsPerceptClassified.robots.size(); i++)
+    {
+      float overlap = iou(re, localRobotsPerceptClassified.robots[i]);
+      if (overlap >= nonMaximumSuppressionThreshold)
+      {
+        RobotEstimate& guilty = localRobotsPerceptClassified.robots[i];
+        RECTANGLE("module:RobotClassifier:declinedRobotPercepts", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 1, Drawings::dottedPen, ColorRGBA::magenta);
+        RECTANGLE("module:RobotClassifier:declinedRobotPercepts", guilty.imageUpperLeft.x(), guilty.imageUpperLeft.y(), guilty.imageLowerRight.x(), guilty.imageLowerRight.y(), 1, Drawings::dottedPen, ColorRGBA::magenta);
+        ARROW("module:RobotClassifier:declinedRobotPercepts", guilty.imageUpperLeft.x(), guilty.imageUpperLeft.y(), re.imageUpperLeft.x(), re.imageUpperLeft.y(), 1, Drawings::dottedPen, ColorRGBA::magenta);
+
+        if (respectValidity && re.validity > guilty.validity)
+        {
+          guilty.validity = 0.f;
+        }
+        else
+        {
+          re.validity = 0.f;
+          return true;
+        }
+      }
+    }
+  }
+
+  for (size_t i = 0; i < localRobotsPerceptClassified.robots.size(); i++)
+  {
+    float overlap = iou(re, localRobotsPerceptClassified.robots[i]);
     if (overlap >= nonMaximumSuppressionThreshold)
     {
-      RobotEstimate& guilty = other;
-
+      RobotEstimate& guilty = localRobotsPerceptClassified.robots[i];
       if (respectValidity && re.validity > guilty.validity)
       {
         guilty.validity = 0.f;
-        printDeclinedRobot(guilty, "nms");
       }
       else
       {
         re.validity = 0.f;
-        printDeclinedRobot(re, "nms");
         return true;
       }
     }
-  }
-  return false;
-}
-bool RobotClassifier::printIou(RobotEstimate& re)
-{
-  for (size_t i = 0; i < localRobotsPerceptClassified.robots.size(); i++)
-  {
-    RobotEstimate& other = localRobotsPerceptClassified.robots[i];
-    if (other.imageLowerRight == re.imageLowerRight)
-      continue;
-    const float overlap = iou(re, other);
-    if (overlap == 0)
-      continue;
-    Vector2i pos = roundToInt(.3 * Vector2f(re.imageLowerRight.cast<float>()) + .7 * Vector2f(other.imageLowerRight.cast<float>()));
-    DRAWTEXT("module:RobotClassifier:nms:Upper", pos.x(), pos.y(), 10, ColorRGBA(0, 0, 0, 200), std::to_string(overlap));
-    ARROW("module:RobotClassifier:nms:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), other.imageLowerRight.x(), other.imageLowerRight.y(), 1, Drawings::solidPen, ColorRGBA::black);
   }
   return false;
 }
 
 float RobotClassifier::iou(const RobotEstimate& re1, const RobotEstimate& re2)
 {
-  Vector2i ul1(re1.imageUpperLeft.x(), re1.imageUpperLeft.y());
-  Vector2i lr1(re1.imageLowerRight.x(), re1.imageLowerRight.y());
-  Vector2i ul2(re2.imageUpperLeft.x(), re2.imageUpperLeft.y());
-  Vector2i lr2(re2.imageLowerRight.x(), re2.imageLowerRight.y());
+  int ulX1 = re1.imageUpperLeft.x(), ulY1 = re1.imageUpperLeft.y(), lrX1 = re1.imageLowerRight.x(), lrY1 = re1.imageLowerRight.y();
+  int ulX2 = re2.imageUpperLeft.x(), ulY2 = re2.imageUpperLeft.y(), lrX2 = re2.imageLowerRight.x(), lrY2 = re2.imageLowerRight.y();
 
   if (re1.fromUpperImage && !re2.fromUpperImage)
   {
-    re2.getUpperImageCoordinates(ul2, lr2);
+    getUpperImageCoordinates(re2, ulX2, ulY2, lrX2, lrY2);
   }
   else if (!re1.fromUpperImage && re2.fromUpperImage)
   {
-    re1.getUpperImageCoordinates(ul1, lr1);
+    getUpperImageCoordinates(re1, ulX1, ulY1, lrX1, lrY1);
   }
 
-  const int intersection = std::max(0, std::min(lr1.x(), lr2.x()) - std::max(ul1.x(), ul2.x()) + 1) * std::max(0, std::min(lr1.y(), lr2.y()) - std::max(ul1.y(), ul2.y()) + 1);
+  int intersection = std::max(0, std::min(lrX1, lrX2) - std::max(ulX1, ulX2)) * std::max(0, std::min(lrY1, lrY2) - std::max(ulY1, ulY2));
 
-  const int volumei = (lr1.x() - ul1.x()) * (lr1.y() - ul1.y());
-  const int volumej = (lr2.x() - ul2.x()) * (lr2.y() - ul2.y());
+  int volumei = (lrX1 - ulX1) * (lrY1 - ulY1);
+  int volumej = (lrX2 - ulX2) * (lrY2 - ulY2);
 
-  const int unite = volumei + volumej - intersection;
+  int unite = volumei + volumej - intersection;
 
   return intersection / (float)unite;
 }
 
-void RobotClassifier::printDeclinedRobot(const RobotEstimate& re, const std::string reason)
+void RobotClassifier::getUpperImageCoordinates(const RobotEstimate& re, int& upperLeftX, int& upperLeftY, int& lowerRightX, int& lowerRightY)
 {
-  if constexpr (!Build::targetSimulator())
-    return;
-  unsigned char alpha = reason != "" ? 200 : 100;
-  if (re.source == RobotEstimate::segmentor)
+  if (re.fromUpperImage)
   {
-    RECTANGLE(
-        "module:RobotClassifier:declinedRobotPercepts:Segmentor", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, alpha));
-    DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Segmentor", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), reason);
+    upperLeftX = re.imageUpperLeft.x(), upperLeftY = re.imageUpperLeft.y(), lowerRightX = re.imageLowerRight.x(), lowerRightY = re.imageLowerRight.y();
   }
-  else if (re.fromUpperImage)
-  {
-    RECTANGLE(
-        "module:RobotClassifier:declinedRobotPercepts:Upper", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, alpha));
-    DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Upper", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), reason);
-  }
-  else if (!re.fromUpperImage)
-  {
-    RECTANGLE(
-        "module:RobotClassifier:declinedRobotPercepts:Lower", re.imageUpperLeft.x(), re.imageUpperLeft.y(), re.imageLowerRight.x(), re.imageLowerRight.y(), 2, Drawings::dottedPen, ColorRGBA(75, 75, 75, alpha));
-    DRAWTEXT("module:RobotClassifier:declinedRobotPercepts:Lower", re.imageLowerRight.x(), re.imageLowerRight.y(), 10, ColorRGBA(0, 0, 0, 200), reason);
-  }
+  float xFraction = static_cast<float>(theImageUpper.width) / theImage.width;
+  float yFraction = static_cast<float>(theImageUpper.height) / theImage.height;
+  upperLeftX = static_cast<int>(round(re.imageUpperLeft.x() * xFraction));
+  upperLeftY = std::max(0, static_cast<int>(round(theImageUpper.height + re.imageUpperLeft.y() * yFraction)));
+  lowerRightX = static_cast<int>(round(re.imageLowerRight.x() * xFraction));
+  lowerRightY = static_cast<int>(round(theImageUpper.height + re.imageLowerRight.y() * yFraction));
 }
 
 MAKE_MODULE(RobotClassifier, perception);

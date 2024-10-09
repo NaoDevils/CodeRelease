@@ -995,11 +995,7 @@ SpecialActionRequest::SpecialActionID KeyFrameEngine::selectNextMotionID(std::ve
     for (KeyFrameMotion::KeyFrame::Conditions condition : conditions)
     {
       if (checkCondition(condition))
-      {
-        if (nextMotionIDs[idx] == SpecialActionRequest::rip)
-          standUpNotWorking = true;
         return nextMotionIDs[idx];
-      }
       idx++;
     }
   }
@@ -1462,7 +1458,6 @@ void KeyFrameEngine::handleInitialFallDownProtection(SpecialActionsOutput& speci
   else if (theFallDownState.state == FallDownState::upright || theFallDownState.state == FallDownState::flying)
   {
     initialFallDownProtectionActive = false;
-    clearPrioritizedMotions();
   }
 }
 
@@ -1516,7 +1511,7 @@ void KeyFrameEngine::chooseFallDownProtection(SpecialActionsOutput& specialActio
     {
       specialActionsOutput.isFallProtectionNeeded = true;
       specialActionsOutput.isMotionFinished = true;
-      priorizeMotion(SpecialActionRequest::playDead, false, saveFallTime);
+      priorizeMotion(SpecialActionRequest::saveFall, false, saveFallTime);
       priorizeMotion(SpecialActionRequest::lying, false, lyingTime);
     }
   }

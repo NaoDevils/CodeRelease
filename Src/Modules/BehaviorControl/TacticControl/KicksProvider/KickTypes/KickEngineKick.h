@@ -29,7 +29,7 @@ public:
 
   static float calculateKickTime(const KickEngineParameters& kickEngineParameters)
   {
-    unsigned int time = 3000;
+    unsigned int time = 0;
     for (const auto& phase : kickEngineParameters.phaseParameters)
     {
       if (phase.kick)

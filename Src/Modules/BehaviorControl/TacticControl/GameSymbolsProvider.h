@@ -24,7 +24,6 @@ MODULE(GameSymbolsProvider,
   REQUIRES(FieldDimensions),
   REQUIRES(FrameInfo),
   REQUIRES(GameInfo),
-  REQUIRES(MotionInfo),
   REQUIRES(RawGameInfo),
   REQUIRES(OwnTeamInfo),
   REQUIRES(RobotInfo),
@@ -71,7 +70,4 @@ private:
   bool ownTeamScoredGoal = false;
   Vector2f ballAtStart = Vector2f::Zero();
   float ballStartCounter = 0.f;
-
-  void decideGameSituation(GameSymbols& theGameSymbols);
-  int getSetPlay();
 };

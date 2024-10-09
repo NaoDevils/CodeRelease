@@ -1,3 +1,4 @@
+
 -- GoalieTest
 -- shots the ball from different source positions towards different target positions in the goal at different velocities
 -- collects and measures relevant data
@@ -7,6 +8,7 @@
 -- 1) preparation: place the ball and robot, let the robot move to his goalkeeper position
 -- 2) execution: shoot the ball
 -- 3) capture results: calculate dive recovery time, in case the goalie made a dive motion
+
 
 local xMin = 250
 local xMax = 4500
@@ -22,7 +24,7 @@ local xTargetPos = 4500
 
 local yTargetMin = -700
 local yTargetMax = 700
-local yTargetStep = 100
+local yTargetStep = 150
 local yTargetPos = yTargetMin
 
 local kickSpeedMin = 1.95
@@ -34,7 +36,7 @@ local finished = false
 local goalDetected = false
 local diveDetected = false
 local diveDetectionActive = false
-local diveRecoveryFailureTime = 8333 --eq. 99.9s
+local diveRecoveryFailureTime = 8333
 local diveTimestamp = 0
 local recoveryTimestamp = 0
 local lastUprightTransition = 0
@@ -44,7 +46,6 @@ local uprightDeBounce = 400
 
 local cycleDuration = 4000
 local counter = 0
-local goals = 0
 local result = { details = {} }
 
 local function MyOnEventHandler(self, event, ...)
@@ -95,8 +96,8 @@ local function finishTest(adapter)
   end
   adapter.saveTestResult(result.id.."-details", bulkData)
 
-  adapter.printLn("Test finished.")
-  adapter.printLn("Prevented goal-rate (%): " .. result.preventedGoalRatePercent)
+  adapter.printLn("finishTest done")
+  adapter.printLn("Revented goal-rate (%): " .. result.preventedGoalRatePercent)
 end
 
 local function addResult(self,xKickPos,yKickPos,xTargetPos,yTargetPos,velocity,goalScored,dive,timeToRecover)
@@ -110,7 +111,6 @@ local function addResult(self,xKickPos,yKickPos,xTargetPos,yTargetPos,velocity,g
   o.distance = math.sqrt(dx*dx+dy*dy)
   o.velocity = velocity
   if goalScored then
-    goals = goals + 1
     o.goalsScored = 1
   else
     o.goalsScored = 0
@@ -127,8 +127,7 @@ local function MyOnUpdateHandler(self, timestamp)
     local cycleTimestamp = timestamp % cycleDuration;
     --preparation phase: place the ball and robot, let the robot move to his goalkeeper position
     if (cycleTimestamp == 1) then
-      local percent = ((counter-goals)/math.max(1,counter)*100.0)
-      self.printLn("Start test: ".. counter+1 .. " (PreventedGoalRate:"..string.format("%.2f %%", percent).."): ball:"..xPos.."/"..yPos..", target:"..xTargetPos.."/"..yTargetPos..", velocity:"..kickSpeed)
+      self.printLn("Start test: ".. counter+1 .. ", ball:"..xPos.."/"..yPos..", target:"..xTargetPos.."/"..yTargetPos..", velocity:"..kickSpeed)
       goalDetected = false
       diveDetected = false
       diveDetectionActive = false
@@ -137,7 +136,7 @@ local function MyOnUpdateHandler(self, timestamp)
       self.gc("set")
       self.moveBall(xPos,yPos)
     end
-    if (cycleTimestamp >= 50 and cycleTimestamp <= 700) then
+    if (cycleTimestamp >= 200 and cycleTimestamp <= 700) then
       --keep the robot above the ground for at least some seconds in case he needs to recover from fallen state
       self.moveRobot(4000, 0, 400, 0, 0, 180, "robot01")
     end

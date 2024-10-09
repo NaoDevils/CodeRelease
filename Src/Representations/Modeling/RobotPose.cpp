@@ -6,7 +6,7 @@
  */
 
 #include "RobotPose.h"
-#include "Representations/Infrastructure/TeamInfo.h"
+#include "Representations/Sensing/FallDownState.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Debugging/DebugDrawings3D.h"
 #include "Tools/Module/Blackboard.h"
@@ -20,8 +20,8 @@ void RobotPose::draw() const
 
   Vector2f dirVec(200, 0);
   dirVec = *this * dirVec;
-  static const ColorRGBA colors[] = {ColorRGBA::blue, ColorRGBA::red, ColorRGBA::yellow, ColorRGBA::black};
-  const ColorRGBA ownTeamColorForDrawing = colors[Blackboard::getInstance().exists("OwnTeamInfo") ? Blackboard::get<OwnTeamInfo>().fieldPlayerColour : TEAM_BLUE];
+  const bool upright = Blackboard::getInstance().exists("FallDownState") ? Blackboard::get<FallDownState>().state == FallDownState::State::upright : false;
+  const ColorRGBA ownTeamColorForDrawing = upright ? ColorRGBA::blue : ColorRGBA::red;
   LINE("representation:RobotPose", translation.x(), translation.y(), dirVec.x(), dirVec.y(), 20, Drawings::solidPen, ColorRGBA::white);
   POLYGON("representation:RobotPose", 4, bodyPoints, 20, Drawings::solidPen, ownTeamColorForDrawing, Drawings::solidBrush, ColorRGBA::white);
   CIRCLE("representation:RobotPose", translation.x(), translation.y(), 42, 0, Drawings::solidPen, ownTeamColorForDrawing, Drawings::solidBrush, ownTeamColorForDrawing);

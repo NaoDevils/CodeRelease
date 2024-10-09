@@ -32,7 +32,7 @@ public:
 
   std::string getStateAsString() const;
   std::string getSetPlayAsString() const;
-  bool isSetPlay() const;
+  bool isRegularPlay() const;
   bool isChampionsCup() const
   {
     // Distinguish between challenge shield and champions cup

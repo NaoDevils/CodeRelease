@@ -15,16 +15,16 @@ bool KickToCenterTestObjective::perform(Ballchaser& ballchaser)
 {
   Kick* kick = KickUtils::unpack(kicks).at(0);
   const bool kickWithLeft = true;
-  const Vector2f absoluteBallPosition = role->theBallSymbols.ballPositionFieldPredicted;
+  const Vector2f ballPosition = role->theBallSymbols.ballPositionFieldPredicted;
 
   Vector2f targetDirectionVector = Vector2f(0.f, 0.f) - role->theRobotPoseAfterPreview.translation;
   if (targetDirectionVector.x() == 0.f && targetDirectionVector.y() == 0.f)
   {
     targetDirectionVector = Vector2f(1.f, 0.f);
   }
-  const Pose2f kickPose = kick->getKickPose(absoluteBallPosition, targetDirectionVector.angle(), kickWithLeft);
-  const Vector2f target = absoluteBallPosition + targetDirectionVector.normalize(1000.f);
-  currentKickManager.setCurrentKick(ballchaser, kick, kickPose, kickWithLeft, target, role->theBallSymbols, role->theFrameInfo);
+  const Pose2f kickPose = kick->getKickPose(ballPosition, targetDirectionVector.angle(), kickWithLeft);
+  const Vector2f target = ballPosition + targetDirectionVector.normalize(1000.f);
+  currentKickManager.setCurrentKick(ballchaser, ballPosition, kick, kickPose, kickWithLeft, target, role->theFrameInfo);
   return true;
 }
 

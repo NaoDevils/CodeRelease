@@ -103,7 +103,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARI
         ${DEBUG_FLAG}   # create debugging information
     )
 else()
-    message(FATAL_ERROR "Unsupported compiler!")
+    message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}!")
 endif()
 
 # reset configuration-dependent compile flags

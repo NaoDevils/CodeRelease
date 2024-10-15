@@ -118,7 +118,6 @@ BIGENUM(MessageID,
     idVisualRefereeBehaviorSymbols,
     idRefereeKeypoints,
     idJoystickState,
-    idRecommendedKick,
 
     numOfDataMessageIDs /**< everything below this does not belong into log files */
   ),(
@@ -166,6 +165,7 @@ BIGENUM(MessageID,
     idPathDebugMessage,
     idExecutorObservings,
     idPingpong,
-    idTeamCommSenderOutput
+    idTeamCommSenderOutput,
+    idRemoteControlRequest
   )
 );

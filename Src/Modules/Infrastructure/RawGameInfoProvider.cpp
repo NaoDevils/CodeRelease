@@ -24,8 +24,8 @@ void RawGameInfoProvider::update(OwnTeamInfo& ownTeamInfo)
 {
   ownTeamInfo = this->ownTeamInfo;
 
-  if (ownTeamInfo.goalkeeper > 0 && ownTeamInfo.goalkeeper != 1)
-    OUTPUT_WARNING("RawGameInfoProvider: Player number " << ownTeamInfo.goalkeeper << " is supposed to be the goalkeeper, which is not supported!");
+  // if (ownTeamInfo.goalkeeper > 0 && ownTeamInfo.goalkeeper != 1)
+  //   OUTPUT_WARNING("RawGameInfoProvider: Player number " << ownTeamInfo.goalkeeper << " is supposed to be the goalkeeper, which is not supported!");
 }
 
 void RawGameInfoProvider::update(RawGameInfo& rawGameInfo)

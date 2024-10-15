@@ -17,9 +17,9 @@ void EventManager::update(TeamCommEvents& events)
 {
   events.sendReasons = getSendReasons();
 
-  const Teammate* newestTeammate = theTeammateData.getNewestTeammate();
+  //const Teammate* newestTeammate = theTeammateData.getNewestTeammate();
 
-  const float messageBudgetFactor = std::min(1.f, 0.9f + static_cast<float>(theFrameInfo.getTimeSince(theGameInfo.timeFirstReadyState)) / 900000.f);
+  //const float messageBudgetFactor = std::min(1.f, 0.9f + static_cast<float>(theFrameInfo.getTimeSince(theGameInfo.timeFirstReadyState)) / 900000.f);
 
   const bool isPenalized = theRobotInfo.penalty != PENALTY_NONE;
   const bool eventOldEnough = isEventOldEnough(events.sendReasons);
@@ -36,14 +36,14 @@ void EventManager::update(TeamCommEvents& events)
     events.sendReasons = {TeamCommEvents::SendReason::newBallchaser};
   }
 
-  const bool inMessageBudget = theTeammateData.messageBudgetFactor >= messageBudgetFactor || !newestTeammate
-      || theFrameInfo.getTimeSince(newestTeammate->sendTimestamp) > static_cast<int>(globalSendLimitWhenMessageRateTooHigh);
+  //const bool inMessageBudget = theTeammateData.messageBudgetFactor >= messageBudgetFactor || !newestTeammate
+  //    || theFrameInfo.getTimeSince(newestTeammate->sendTimestamp) > static_cast<int>(globalSendLimitWhenMessageRateTooHigh);
 
   const bool allowedToSend = theTeammateData.messageBudget >= 5 // 5 message buffer for safety
       && theRobotInfo.transitionToFramework == 1.f // framework active
       && theGameInfo.gamePhase != GAME_PHASE_PENALTYSHOOT;
 
-  events.sendThisFrame = active && allowedToSend && inMessageBudget;
+  events.sendThisFrame = active && allowedToSend /* && inMessageBudget */;
 
   if (events.sendThisFrame)
     for (const auto sendReason : events.sendReasons)

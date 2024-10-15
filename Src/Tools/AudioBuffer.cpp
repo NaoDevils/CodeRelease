@@ -541,27 +541,8 @@ void AudioBuffer::setMicStatus(std::vector<std::vector<float>> magnitudes)
   }
 }
 
-int AudioBuffer::getCurrentMic(bool highestMagnitude)
+int AudioBuffer::getCurrentMic()
 {
-  if (highestMagnitude)
-  {
-    unsigned int micWithMaxMagnitude = 0;
-    float maxMagnitude = 0.f;
-    for (unsigned int c = 0; c < channels; c++)
-    {
-      if (currentMaxMag[c] > maxMagnitude)
-      {
-        maxMagnitude = currentMaxMag[c];
-        micWithMaxMagnitude = c;
-      }
-    }
-
-    if (micStatus[micWithMaxMagnitude])
-    {
-      return micWithMaxMagnitude;
-    }
-  }
-
   for (unsigned int c = 0; c < channels; c++)
   {
     if (micStatus[c])
@@ -569,7 +550,6 @@ int AudioBuffer::getCurrentMic(bool highestMagnitude)
       return c;
     }
   }
-
   return -1;
 }
 

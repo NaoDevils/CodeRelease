@@ -129,7 +129,7 @@ void WhistleDetector::execute(tf::Subflow& subflow)
 
   COMPLEX_IMAGE(SPECTROGRAM)
   {
-    int mic = audioBuffer.getCurrentMic(false);
+    int mic = audioBuffer.getCurrentMic();
 
     if (mic >= 0)
     {
@@ -190,11 +190,11 @@ void WhistleDetector::execute(tf::Subflow& subflow)
 
     if (mic >= 0)
     {
-      PLOT("representation:Whistle:pmConfidence", confidences[0][0]);
-      PLOT("representation:Whistle:nnConfidence", confidences[0][1]);
-      PLOT("representation:Whistle:noise", confidences[0][2]);
-      PLOT("representation:Whistle:confidence", confidences[0][3]);
-      PLOT("representation:Whistle:threshold", threshold + ((1 - threshold) * (noiseWeight * confidences[0][2])));
+      PLOT("representation:Whistle:pmConfidence", confidences[mic][0]);
+      PLOT("representation:Whistle:nnConfidence", confidences[mic][1]);
+      PLOT("representation:Whistle:noise", confidences[mic][2]);
+      PLOT("representation:Whistle:confidence", confidences[mic][3]);
+      PLOT("representation:Whistle:threshold", threshold + ((1 - threshold) * (noiseWeight * confidences[mic][2])));
     }
   }
 }
@@ -266,7 +266,7 @@ void WhistleDetector::detectWhistle(WhistleDortmund& whistle)
   }
   else if (numOfCandidates > 0)
   {
-    whistleSequenceLength.resize(numOfCandidates);
+    whistleSequenceLength.reserve(numOfCandidates);
     for (unsigned int idx = 0; idx < numOfCandidates; idx++)
     {
       whistleSequenceLength[idx] = whistleCandiates[idx][1] - whistleCandiates[idx][0];
@@ -298,7 +298,7 @@ void WhistleDetector::detectWhistle(WhistleDortmund& whistle)
         std::nth_element(whistleFrequencies.begin(), whistleFrequencies.begin() + whistleFrequencies.size() / 2, whistleFrequencies.end());
         unsigned int whistleFrequency = whistleFrequencies[whistleFrequencies.size() / 2];
 
-        if (attackCount[idxCandidates] >= attackFactor)
+        if (attackCount[idxCandidates] > whistleSequenceLength[idxCandidates] * attackFactor)
         {
           ANNOTATION("Whistle", "Whistle was detected.");
           if (freqCalibration)

@@ -187,6 +187,11 @@ bool Debug::handleMessage(InMessage& message)
     message >> theMotionSender;
     return true;
 
+  //messages to Cognition
+  case idRemoteControlRequest:
+    message >> theCognitionSender;
+    return true;
+
   // messages to all processes
   case idDebugRequest:
     message >> theCognitionSender;
@@ -196,8 +201,7 @@ bool Debug::handleMessage(InMessage& message)
   case idProcessBegin:
     message.bin >> processIdentifier;
     message.resetReadPosition();
-    // no break
-
+    [[fallthrough]];
   default:
     if (processIdentifier == 'm')
       message >> theMotionSender;

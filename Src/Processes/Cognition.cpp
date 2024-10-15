@@ -8,6 +8,7 @@
 #include "Modules/Configuration/CognitionConfigurationDataProvider.h"
 #include "Modules/Infrastructure/CameraProviderV6.h"
 #include "Modules/Infrastructure/CognitionLogDataProvider.h"
+#include "Modules/BehaviorControl/TacticControl/RoleProvider/RemoteControlProvider.h"
 #include "Platform/BHAssert.h"
 #include "Tools/Settings.h"
 
@@ -162,7 +163,8 @@ bool Cognition::handleMessage(InMessage& message)
     return true;
   }
   default:
-    return CognitionLogDataProvider::handleMessage(message) || CognitionConfigurationDataProvider::handleMessage(message) || SuperThread::handleMessage(message);
+    return RemoteControlProvider::handleMessage(message) || CognitionLogDataProvider::handleMessage(message) || CognitionConfigurationDataProvider::handleMessage(message)
+        || SuperThread::handleMessage(message);
   }
   BH_TRACE_MSG("after Cognition:handleMessage");
 }

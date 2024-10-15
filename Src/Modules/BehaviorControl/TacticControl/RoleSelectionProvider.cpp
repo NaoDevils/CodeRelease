@@ -78,7 +78,7 @@ bool RoleSelectionProvider::substituteRoles(BehaviorData::RoleAssignment toRepla
 bool RoleSelectionProvider::isKeeperAvailable()
 {
   // the keeper needs to check its own penalty seperately because it is not in its own teammateData
-  if (theRobotInfo.number == 1)
+  /* if (theRobotInfo.number == 1)
     return theRobotInfo.penalty == PENALTY_NONE;
 
   if (theTeammateData.commEnabled)
@@ -100,7 +100,10 @@ bool RoleSelectionProvider::isKeeperAvailable()
   else
   {
     return true;
-  }
+  }*/
+
+  //in this challenge: no
+  return false;
 }
 
 /**
@@ -111,8 +114,11 @@ bool RoleSelectionProvider::isKeeperAvailable()
 */
 bool RoleSelectionProvider::isReplacementKeeperNeeded(RoleSelection& roleSelection)
 {
-  bool replacementKeeperNeeded = !isKeeperAvailable() && theTacticSymbols.numberOfActiveFieldPlayers > 1 && enableReplacementKeeper;
-  return replacementKeeperNeeded;
+  //bool replacementKeeperNeeded = !isKeeperAvailable() && theTacticSymbols.numberOfActiveFieldPlayers > 1 && enableReplacementKeeper;
+  //return replacementKeeperNeeded;
+
+  //for this challenge: no
+  return false;
 }
 
 /**

@@ -113,7 +113,7 @@ std::optional<ExecutableShot> SelectFunctions::createAndFilterAndSelect(const Po
           const float poseScore = ScoreFunctions::scorePose(selectablePose, factors.poseParameters, theTacticSymbols);
           selectablePose.setScore(poseScore);
 
-          ExecutableShot executableShot = {selectablePose, Hysteresis::NO};
+          ExecutableShot executableShot = {selectablePose, false};
           const float successProbability = ProbabilityFunctions::getTimeProbability(executableShot.selectablePose.getTotalTime(), theTacticSymbols);
           executableShot.setSuccessProbability(successProbability);
           const float executableShotScore = ScoreFunctions::scoreExecutableShot(executableShot, successProbability, noSuccessScore);
@@ -188,7 +188,7 @@ std::optional<ExecutableShot> SelectFunctions::createExecutableShotFromCurrentKi
     }
   }
 
-  ExecutableShot es = ExecutableShot(selectablePose, currentKick.hysteresis);
+  ExecutableShot es = ExecutableShot(selectablePose, true);
 
   const float kickScore = ScoreFunctions::scoreKick(currentKick.kick, factors.kickParameters);
   es.selectablePose.selectableShot.selectableTarget.selectableKick.setScore(kickScore);

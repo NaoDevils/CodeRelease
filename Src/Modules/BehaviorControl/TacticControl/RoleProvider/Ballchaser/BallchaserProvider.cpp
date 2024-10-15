@@ -296,14 +296,14 @@ void BallchaserProvider::penaltyKick_own_playing(Ballchaser& ballchaser, Ballcha
   const ShotParameters parameters = {ShotParameters::KickParameters(0.f, 0.f),
       ShotParameters::TargetParameters(0.f, 0.f, 0.f, 0.f, 0.f, 0.1f, 10.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f),
       ShotParameters::PoseParameters(0.f, 0.f, 0.f)};
-  const auto currentKick = setPlayCurrentKickManager.getCurrentKick(theBallSymbols);
+  const auto currentKick = setPlayCurrentKickManager.getCurrentKick(theBallSymbols.ballPositionFieldPredicted);
 
   const auto executableShotOptional = SelectFunctions::createAndFilterAndSelect(
       theRobotPoseAfterPreview, theBallSymbols.ballPositionFieldPredicted, KickUtils::unpack(penaltyKicks), currentKick, filterer, parameters, theDirectionInfo, theFieldDimensions, thePositionInfo, theTacticSymbols);
 
   if (executableShotOptional.has_value())
   {
-    setPlayCurrentKickManager.setCurrentKick(ballchaser, executableShotOptional.value(), theBallSymbols, theFrameInfo);
+    setPlayCurrentKickManager.setCurrentKick(ballchaser, executableShotOptional.value(), theFrameInfo);
   }
   else
   {
@@ -322,61 +322,17 @@ void BallchaserProvider::penaltyKick_opponent_ready(Ballchaser& ballchaser, Ball
 
 void BallchaserProvider::regularPlay(Ballchaser& ballchaser, BallchaserHeadPOIList& ballchaserHeadPoiList)
 {
-  ballchaser.recommendShot = true;
-
-  if (!theRecommendedKick.hasRecommendation)
+  if (theGameSymbols.timeSincePlayingState < 25000)
   {
-    //defendOwnGoal(ballchaser, ballchaserHeadPoiList, true);
-    return;
+    Vector2f target = Vector2f(-2500.f, 1000.f);
+
+    kickManager.kickTo(ballchaser, theRobotPose, theBallSymbols.ballPositionFieldPredicted, target, true, KickUtils::unpack(penaltyKicks), theFrameInfo);
   }
-
-  regularPlayObjectivesManager.performObjective(ballchaser);
-
-  return; // the logic below is not tested in real games
-
-  /*
-  const int LOOK_AFTER_BALL_TIME = 5000;
-  const float SHOOT_NOW_TIME = 10.f;
-  const float SHOOT_SOON_TIME = 20.f;
-
-  const unsigned int sinceLastKickTime = theFrameInfo.getTimeSince(theGameSymbols.lastKickTime);
-  ballchaserHeadPoiList.followKick = LOOK_AFTER_BALL_TIME > sinceLastKickTime;
-
-  const float playerTime = theRecommendedKick.estimatedKickTime + theRecommendedKick.estimatedPoseTime;
-  const float opponentTime = theTacticSymbols.untilOpponentStealsBallTime;
-
-  ballchaserHeadPoiList.playerShootsNow = playerTime < SHOOT_NOW_TIME;
-  ballchaserHeadPoiList.opponentShootsNow = opponentTime < SHOOT_NOW_TIME;
-
-  ballchaserHeadPoiList.playerShootsSoon = playerTime < SHOOT_SOON_TIME;
-  ballchaserHeadPoiList.opponentShootsSoon = opponentTime < SHOOT_SOON_TIME;
-
-  if (ballchaserHeadPoiList.followKick || ballchaserHeadPoiList.playerShootsNow || ballchaserHeadPoiList.opponentShootsNow)
+  else
   {
-    return; // default behavior is good and handles a lot of edge cases very well
+    ballchaser.recommendShot = true;
+    regularPlayObjectivesManager.performObjective(ballchaser);
   }
-
-  if (ballchaserHeadPoiList.playerShootsSoon || ballchaserHeadPoiList.opponentShootsSoon)
-  {
-    ballchaserHeadPoiList.type = HeadPOIList::focus;
-    ballchaserHeadPoiList.look in walking direction
-    ballchaserHeadPoiList.addBall();
-    if (ballchaserHeadPoiList.playerShootsSoon)
-    {
-      ballchaserHeadPoiList.addFieldPosition(theRecommendedKick.kickTarget);
-    }
-    if (ballchaserHeadPoiList.opponentShootsSoon)
-    {
-      ballchaserHeadPoiList.addFieldPosition(theTacticSymbols.closestToBallOpponentRobot.translation);
-    }
-    return;
-  }
-
-  ballchaserHeadPoiList.type = HeadPOIList::sweep;
-  // todo start with side on which the target is or with opponent side
-  ballchaserHeadPoiList.addAngle({-70_deg, 0_deg});
-  ballchaserHeadPoiList.addAngle({+70_deg, 0_deg});
-  */
 }
 
 // Helper ==========================================================================================================================================================================

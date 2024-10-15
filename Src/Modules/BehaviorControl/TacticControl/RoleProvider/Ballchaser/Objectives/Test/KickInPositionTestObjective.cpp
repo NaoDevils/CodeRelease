@@ -27,7 +27,7 @@ bool KickInPositionTestObjective::perform(Ballchaser& ballchaser)
   else
   {
     const Vector2f target = {0, 0};
-    currentKickManager.setCurrentKick(ballchaser, kicks.at(0).get(), role->theRobotPoseAfterPreview, true, target, role->theBallSymbols, role->theFrameInfo);
+    currentKickManager.setCurrentKick(ballchaser, role->theBallSymbols.ballPositionFieldPredicted, kicks.at(0).get(), role->theRobotPoseAfterPreview, true, target, role->theFrameInfo);
   }
   return true;
 }

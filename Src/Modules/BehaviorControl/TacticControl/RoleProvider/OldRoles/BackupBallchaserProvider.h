@@ -1,7 +1,7 @@
 /**
-* @file BackupBallchaserProviderOld.h
+* @file BackupBallchaserProvider.h
 *
-* Declaration of class BackupBallchaserProviderOld.
+* Declaration of class BackupBallchaserProvider.
 * Provides positions for the BackupBallchaser in PLAY and READY.
 * All positions are in world coordinates with a positioning angle in degrees (for CABSL).
 *
@@ -20,7 +20,7 @@
 #include "Representations/Infrastructure/GameInfo.h"
 #include "Representations/Modeling/RobotPose.h"
 
-MODULE(BackupBallchaserProviderOld,
+MODULE(BackupBallchaserProvider,
   REQUIRES(BallSymbols),
   REQUIRES(Ballchaser),
   REQUIRES(FieldDimensions),
@@ -37,15 +37,15 @@ MODULE(BackupBallchaserProviderOld,
 
 
 /**
-* @class BackupBallchaserProviderOld
+* @class BackupBallchaserProvider
 * Symbols for new role behavior 2019
 */
 
-class BackupBallchaserProviderOld : public BackupBallchaserProviderOldBase
+class BackupBallchaserProvider : public BackupBallchaserProviderBase
 {
 public:
   /** Constructor */
-  BackupBallchaserProviderOld() {}
+  BackupBallchaserProvider() {}
 
   /** Updates some of the symbols */
   void update(BackupBallchaser& positioningSymbols);

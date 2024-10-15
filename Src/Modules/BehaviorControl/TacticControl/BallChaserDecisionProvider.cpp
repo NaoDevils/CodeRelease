@@ -55,28 +55,41 @@ void BallChaserDecisionProvider::update(BallChaserDecision& ballChaserDecision)
   if (theTacticSymbols.keepRoleAssignment)
     return;
 
-  int localBallChaserNumber = calcBallChaserNumber(ballChaserDecision, true);
-  /*
+  DEBUG_RESPONSE("module:BallChaserDecisionProvider:enable")
+  {
+    int localBallChaserNumber = calcBallChaserNumber(ballChaserDecision, true);
+    /*
   * Ignore team decision if local decision is better. This is the case when:
   * 1. we are the local decision
   * 2. the goalie is currently not the team decision
   *    (removed, otherwise nobody will go to the ball if the goalie is penalized or cannot stand up)
   * 3. our ball percept is newer than the team's OR we are goalie
   */
-  if (teamBallChaserNumber != localBallChaserNumber && localBallChaserNumber == theRobotInfo.number
-      && (theBallSymbols.timeSinceLastSeen < theFrameInfo.getTimeSince(teamBallLastSeen) || theRobotInfo.number == 1))
-  {
-    ballChaserDecision.playerNumberToBall = localBallChaserNumber;
-  }
+    if (teamBallChaserNumber != localBallChaserNumber && localBallChaserNumber == theRobotInfo.number
+        && (theBallSymbols.timeSinceLastSeen < theFrameInfo.getTimeSince(teamBallLastSeen) || theRobotInfo.number == 1))
+    {
+      ballChaserDecision.playerNumberToBall = localBallChaserNumber;
+    }
 
-  /*
+    /*
   * if i am currently ballchaser, but my local decision is different
   * -> hand the ballchaser role to local decision number
   */
-  if (teamBallChaserNumber == theRobotInfo.number && teamBallChaserNumber != localBallChaserNumber)
-  {
-    ballChaserDecision.playerNumberToBall = localBallChaserNumber;
+    if (teamBallChaserNumber == theRobotInfo.number && teamBallChaserNumber != localBallChaserNumber)
+    {
+      ballChaserDecision.playerNumberToBall = localBallChaserNumber;
+    }
   }
+
+  STREAMABLE(Overwrite,,
+    (bool)(false) active,
+    (bool)(true) isBallchaser
+  );
+
+  Overwrite overwrite;
+  MODIFY("module:BallChaserDecisionProvider:overwrite", overwrite);
+  if (overwrite.active)
+    ballChaserDecision.playerNumberToBall = overwrite.isBallchaser ? theRobotInfo.number : (theRobotInfo.number % 2 == 0 ? theRobotInfo.number - 1 : theRobotInfo.number + 1);
 }
 
 void BallChaserDecisionProvider::decideLocal(BallChaserDecision& ballChaserDecision)

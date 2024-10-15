@@ -184,18 +184,13 @@ float ScoreFunctions::scoreExecutableShot(const ExecutableShot& executableShot, 
   float executableShotScore = successAgnosticScore + successProbability * successScore + (1.f - successProbability) * noSuccessScore;
   if (executableShot.hysteresis)
   {
-    executableShotScore = ScoreFunctions::applyHysteresis(executableShotScore, executableShot.selectablePose.getPoseTime(), executableShot.hysteresis);
+    executableShotScore = ScoreFunctions::applyHysteresis(executableShotScore, executableShot.selectablePose.getPoseTime());
   }
   return executableShotScore;
 }
 
-float ScoreFunctions::applyHysteresis(const float score, const float poseTime, const Hysteresis& hysteresis)
+float ScoreFunctions::applyHysteresis(const float score, const float poseTime)
 {
-  if (hysteresis == Hysteresis::NO)
-  {
-    return score;
-  }
-
   const float MAX_FOR_JUST_DO_IT_HYSTERESIS = 3.f;
   const float JUST_DO_IT_HYSTERESIS_ADD = 10.f;
   const float JUST_DO_IT_HYSTERESIS_MULTIPLIER = 10.f;
@@ -204,31 +199,35 @@ float ScoreFunctions::applyHysteresis(const float score, const float poseTime, c
   const float HIGH_HYSTERESIS_ADD = 3.f;
   const float HIGH_HYSTERESIS_MULTIPLIER = 3.f;
 
-  const float MAX_FOR_LOW_HYSTERESIS = 7.f;
-  const float LOW_HYSTERESIS_ADD = 0.5f;
-  const float LOW_HYSTERESIS_MULTIPLIER = 1.1f;
+  const float MAX_FOR_MEDIUM_HYSTERESIS = 0.f;
+  const float MEDIUM_HYSTERESIS_ADD = 0.f;
+  const float MEDIUM_HYSTERESIS_MULTIPLIER = 1.f;
+
+  const float LOW_HYSTERESIS_ADD = 0.f;
+  const float LOW_HYSTERESIS_MULTIPLIER = 1.f;
 
   float hysteresisAdd;
-  float hysteresisMultiplierOrDivisor;
-  if (hysteresis == Hysteresis::FORCE_JUST_DO_IT || (hysteresis == Hysteresis::YES && poseTime < MAX_FOR_JUST_DO_IT_HYSTERESIS))
+  float hysteresisMultiplier;
+  if (poseTime < MAX_FOR_JUST_DO_IT_HYSTERESIS)
   {
     hysteresisAdd = JUST_DO_IT_HYSTERESIS_ADD;
-    hysteresisMultiplierOrDivisor = JUST_DO_IT_HYSTERESIS_MULTIPLIER;
+    hysteresisMultiplier = JUST_DO_IT_HYSTERESIS_MULTIPLIER;
   }
-  else if (hysteresis == Hysteresis::FORCE_HIGH || (hysteresis == Hysteresis::YES && poseTime < MAX_FOR_HIGH_HYSTERESIS))
+  else if (poseTime < MAX_FOR_HIGH_HYSTERESIS)
   {
     hysteresisAdd = HIGH_HYSTERESIS_ADD;
-    hysteresisMultiplierOrDivisor = HIGH_HYSTERESIS_MULTIPLIER;
+    hysteresisMultiplier = HIGH_HYSTERESIS_MULTIPLIER;
   }
-  else if (hysteresis == Hysteresis::FORCE_LOW || (hysteresis == Hysteresis::YES && poseTime < MAX_FOR_LOW_HYSTERESIS))
+  else if (poseTime < MAX_FOR_MEDIUM_HYSTERESIS)
   {
-    hysteresisAdd = LOW_HYSTERESIS_ADD;
-    hysteresisMultiplierOrDivisor = LOW_HYSTERESIS_MULTIPLIER;
+    hysteresisAdd = MEDIUM_HYSTERESIS_ADD;
+    hysteresisMultiplier = MEDIUM_HYSTERESIS_MULTIPLIER;
   }
   else
   {
-    return score;
+    hysteresisAdd = LOW_HYSTERESIS_ADD;
+    hysteresisMultiplier = LOW_HYSTERESIS_MULTIPLIER;
   }
 
-  return HysteresisUtils::makeBigger(score, hysteresisAdd, hysteresisMultiplierOrDivisor);
+  return HysteresisUtils::makeBigger(score, hysteresisAdd, hysteresisMultiplier);
 }

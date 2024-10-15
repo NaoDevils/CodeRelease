@@ -1,16 +1,15 @@
 #pragma once
 
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/Hysteresis.h>
 #include "SelectablePose.h"
 
 class ExecutableShot
 {
 
 public:
-  ExecutableShot(const SelectablePose& selectablePose, const Hysteresis& hysteresis) : selectablePose(std::move(selectablePose)), hysteresis(hysteresis) {}
+  ExecutableShot(const SelectablePose& selectablePose, const bool hysteresis) : selectablePose(std::move(selectablePose)), hysteresis(hysteresis) {}
 
   SelectablePose selectablePose;
-  Hysteresis hysteresis = Hysteresis::NO;
+  bool hysteresis;
 
   void setSuccessProbability(const float newSuccessProbability)
   {

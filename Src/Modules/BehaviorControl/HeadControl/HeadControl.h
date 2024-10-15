@@ -20,6 +20,7 @@
 #include "Representations/Infrastructure/CameraInfo.h"
 #include "Representations/BehaviorControl/HeadPOIList.h"
 #include "Representations/Infrastructure/SensorData/JointSensorData.h"
+#include "Representations/Infrastructure/RobotInfo.h"
 #include "Representations/Modeling/RemoteBallModel.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Modeling/RobotPose.h"
@@ -40,6 +41,7 @@ MODULE(HeadControl,
   REQUIRES(RobotDimensions),
   REQUIRES(RobotPose),
   REQUIRES(TorsoMatrix),
+  REQUIRES(RobotInfo),
   PROVIDES(HeadAngleRequest),
   LOADS_PARAMETERS(
     ,

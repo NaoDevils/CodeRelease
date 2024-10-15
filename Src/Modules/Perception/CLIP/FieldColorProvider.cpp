@@ -241,9 +241,6 @@ void FieldColorProvider::calcFieldColorFromSamples(const bool& upper, FieldColor
       break;
   }
 
-  //fieldColor.fieldColorMaxDistY = std::max((rangeUp + rangeDown + 1) * 2, 20);
-  fieldColor.fieldColorMaxDistY = fieldColorMaxDistY;
-
   // set field color ranges/ratios for field pixel test depending on optimal values
   fieldColor.fieldColorOptCbCrRatio = (fieldColor.fieldColorOptCb << 10) / (fieldColor.fieldColorOptCr + 1);
   fieldColor.fieldColorMaxCbCrRatioDiff = fieldColor.fieldColorOptCbCrRatio / fieldColor.fieldColorCbCrFactor;

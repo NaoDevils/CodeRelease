@@ -15,7 +15,7 @@
 #include <QEvent>
 
 DataView::DataView(const QString& fullName, const std::string& repName, RobotConsole& console, StreamHandler& streamHandler)
-    : theFullName(fullName), theIcon(":/Icons/tag_green.png"), theConsole(console), theName(repName), pTheWidget(nullptr), theStreamHandler(streamHandler), theAutoSetModeIsEnabled(false)
+    : theFullName(fullName), theIcon(":/Icons/tag_green.png"), theConsole(console), theName(repName), pTheWidget(nullptr), theStreamHandler(streamHandler), theAutoSetModeIsEnabled(true)
 {
 } //FIXME destructor
 
@@ -125,7 +125,7 @@ void DataView::set()
 
   pTheWidget->setSetButtonEnabled(false);
   pTheWidget->setUnchangedButtonEnabled(true);
-  setIgnoreUpdates(false);
+  setIgnoreUpdates(true);
 }
 
 void DataView::setAutoSet(bool value)

@@ -22,6 +22,10 @@ void TeamCommDataPacker::update(TeamCommOutput& teamCommOutput)
     teammate.teamNumber = static_cast<unsigned char>(theOwnTeamInfo.teamNumber);
     teammate.sendTimestamp = SystemCall::getCurrentSystemTime();
     teammate.fallen = theFallDownState.state != FallDownState::State::upright;
+    teammate.enforceDefensiveRoles = theRemoteControl.enforceDefensiveRoles;
+    teammate.enforceOffensiveRoles = theRemoteControl.enforceOffensiveRoles;
+    teammate.kickPreference = theRemoteControl.kickPreference;
+    teammate.passPreference = theRemoteControl.passPreference;
     teammate.timeSynchronization = theTimeSynchronization;
     teammate.robotPose = RobotPoseCompressed(theRobotPose);
     teammate.ballModel = BallModelCompressed(theBallModel);

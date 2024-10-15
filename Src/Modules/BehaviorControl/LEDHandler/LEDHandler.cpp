@@ -149,7 +149,7 @@ void LEDHandler::setCheeringAnimation(LEDRequest& ledRequest)
 void LEDHandler::setConnectionInfo(LEDRequest& ledRequest) const
 {
   const float gcState = theGameInfo.controllerConnected ? blinking : 1.f;
-  for (size_t i = 0; i < ledRequest.leftEar.size(); ++i)
+  for (size_t i = 0; i <= ledRequest.leftEar.size(); ++i)
   {
     const uint8_t num = static_cast<uint8_t>(std::round(float(i) * (MAX_NUM_PLAYERS - 1) / ledRequest.leftEar.size()));
 
@@ -222,6 +222,9 @@ void LEDHandler::setRoleInfo(LEDRequest& ledRequest) const
     break;
   case BehaviorData::frontWing:
     ledRequest.rightEye.fill(LEDRequest::RGBLED::red * state);
+    break;
+  case BehaviorData::remoteControl:
+    ledRequest.rightEye.fill(LEDRequest::RGBLED::violet * state);
     break;
   case BehaviorData::backWing:
     ledRequest.rightEye.fill(LEDRequest::RGBLED::yellow * state);

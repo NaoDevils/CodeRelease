@@ -13,6 +13,7 @@
 #include "Representations/Modeling/RobotPose.h"
 #include "Representations/Modeling/BallModel.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/Infrastructure/TeamCommEvents.h"
 #include "Representations/Modeling/WhistleDortmund.h"
 #include "Representations/MotionControl/SpeedInfo.h"
@@ -28,6 +29,7 @@ MODULE(TeamCommDataPacker,
   REQUIRES(OwnTeamInfo),
   REQUIRES(TimeSynchronization),
   REQUIRES(RobotPose),
+  USES(RemoteControl),
   REQUIRES(BallModel),
   REQUIRES(BehaviorData),
   REQUIRES(TeamCommEvents),

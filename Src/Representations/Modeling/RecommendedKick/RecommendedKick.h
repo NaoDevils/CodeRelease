@@ -9,7 +9,5 @@ STREAMABLE_WITH_BASE(RecommendedKick, PositioningAndKickSymbols,
   (float)(-1.f) estimatedKickTime,
   (float)(-1.f) estimatedPoseTime,
   (float)(-1.f) successProbability,
-  (float)(-1.f) score,
-  (unsigned int)(0) recommendationTimeStamp,
-  (unsigned int)(0) sinceRecommendationTime
+  (float)(-1.f) score
 );

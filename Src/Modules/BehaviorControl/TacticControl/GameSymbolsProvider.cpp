@@ -182,14 +182,7 @@ void GameSymbolsProvider::decideGameSituation(GameSymbols& theGameSymbols)
     switch (theGameInfo.state)
     {
     case STATE_SET:
-      if (theGameSymbols.ownKickOff)
-      {
-        theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_own_set;
-      }
-      else
-      {
-        theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_set;
-      }
+      theGameSymbols.gameSituation = GameSymbols::GameSituation::none;
       return;
     case STATE_PLAYING:
       if (theGameSymbols.ownKickOff)
@@ -201,8 +194,6 @@ void GameSymbolsProvider::decideGameSituation(GameSymbols& theGameSymbols)
         theGameSymbols.gameSituation = GameSymbols::GameSituation::penaltyKick_opponent_playing;
       }
       return;
-    default:
-      OUTPUT_ERROR("Unknown GameSituation!");
     }
     return;
   case GAME_PHASE_NORMAL:
@@ -292,7 +283,7 @@ void GameSymbolsProvider::decideGameSituation(GameSymbols& theGameSymbols)
         }
         else
         {
-          // TODO This happens quiet regularly: OUTPUT_ERROR("Unknown game situation! Something is wrong with kickOff variables!");
+          OUTPUT_ERROR("Unknown");
         }
       }
 

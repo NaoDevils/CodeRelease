@@ -1,0 +1,17 @@
+call Includes/Normal
+
+robot robot3
+call Includes/FieldViewsCreate
+call Includes/Ballchaser
+
+robot robot4
+rc defensive
+rc passPref
+rc on
+call Includes/SharedAutonomy
+
+echo gc playing
+echo rc kickPref
+echo rc passPref
+echo rc offensive
+echo rc defensive

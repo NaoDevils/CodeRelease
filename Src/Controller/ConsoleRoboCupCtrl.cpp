@@ -775,6 +775,8 @@ void ConsoleRoboCupCtrl::help(In& stream)
   list("  jm <axis> ( off | <button> <button> ) : Map two buttons on an axis.", pattern, true);
   list("  js <axis> <speed> <threshold> [<center>] : Set axis maximum speed and ignore threshold for \"jc motion <num>\" commands.", pattern, true);
   list("  kfm : Send local key frame motions to the robot. ", pattern, true);
+  list("  kiba <angle> <velocity>: Kicks the ball in the direction given by angle having the given velocity. ", pattern, true);
+  list("  kiba <xPos> <xPos> <velocity>: Kicks the ball in the direction of xPos, yPos having the given velocity. ", pattern, true);
   list("  log start | stop | clear | save <file> | full | jpeg : Record log file and (de)activate image compression.", pattern, true);
   list("  log saveAudio <file> : Save audio data from log.", pattern, true);
   list("  log saveTrueWhistleAudio <file> (<split>): Save true whistle audio data from log.", pattern, true);
@@ -790,11 +792,13 @@ void ConsoleRoboCupCtrl::help(In& stream)
   list("  mr ? [<pattern>] | modules [<pattern>] | save | <representation> ( ? [<pattern>] | <module> | off ) : Send module request.", pattern, true);
   list("  mv <x> <y> <z> [<rotx> <roty> <rotz>] : Move the selected simulated robot to the given position.", pattern, true);
   list("  mvb <x> <y> <z> : Move the ball to the given position.", pattern, true);
-  list("  kiba <angle> <velocity>: Kicks the ball in the direction given by angle having the given velocity. ", pattern, true);
-  list("  kiba <xPos> <xPos> <velocity>: Kicks the ball in the direction of xPos, yPos having the given velocity. ", pattern, true);
   list("  poll : Poll for all available debug requests and drawings. ", pattern, true);
   list("  pr none | ballHolding | playerPushing | inactivePlayer | illegalDefender | leavingTheField | playingWithHands | requestForPickup : Penalize robot.", pattern, true);
   list("  qfr queue | replace | reject | collect <seconds> | save [<seconds>] : Send queue fill request.", pattern, true);
+  list("  rc on | off : Switches the robots remote contol mode on or off.", pattern, true);
+  list("  rc walk <x> <y> [<rotation>] : Let the robot walk to the given position incl. optional rotation.", pattern, true);
+  list("  rc kick <x> <y> [<kick name>] [left | right]: Let the robot execute a kick towards the given position, optionally forcing the given kick and foot.", pattern, true);
+  list("  rc pass <x> <y> [<kick name>] [left | right]: Let the robot pass the ball to the given position, optionally forcing the given kick and foot.", pattern, true);
   list("  set ? [<pattern>] | <key> ( ? | unchanged | <data> ) : Change debug data or show its specification.", pattern, true);
   list("  save ? [<pattern>] | <key> [<path>] : Save debug data to a configuration file.", pattern, true);
   list("  sleep <frames> : Sleeps for the given number of frames and delays the following commands. ", pattern, true);
@@ -1015,6 +1019,11 @@ void ConsoleRoboCupCtrl::createCompletion()
       "qfr reject",
       "qfr collect",
       "qfr save",
+      "rc kick",
+      "rc pass",
+      "rc on",
+      "rc off",
+      "rc walk",
       "robot all",
       "sc",
       "si lower number",

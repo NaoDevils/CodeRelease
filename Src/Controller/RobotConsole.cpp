@@ -48,6 +48,7 @@
 
 #include "Representations/BehaviorControl/ActivationGraph.h"
 #include "Representations/BehaviorControl/BehaviorData.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/Configuration/JointCalibration.h"
 #include "Representations/Configuration/RobotDimensions.h"
 #include "Representations/Infrastructure/JointRequest.h"
@@ -100,6 +101,7 @@ struct RobotConsole::Pimpl
   JointCalibration jointCalibration; /**< The joint calibration received from the robot code. */
   RobotDimensions robotDimensions; /**< The robotDimensions received from the robot code. */
   ActivationGraph activationGraph; /**< Graph of active options and states. */
+  RemoteControlRequest remoteControlRequest;
 
   std::unordered_map<char, AnnotationInfo> annotationInfos;
   Drawings camImageDrawings, motionImageDrawings; /**< Buffers for image drawings from the debug queue. */
@@ -1082,6 +1084,10 @@ bool RobotConsole::handleConsoleLine(const std::string& line, bool fromCall)
   else if (command == "kiba")
   {
     result = kickBall(stream);
+  }
+  else if (command == "rc")
+  {
+    result = remoteControl(stream);
   }
   else if (command == "sleep")
   {
@@ -2221,6 +2227,81 @@ bool RobotConsole::kickBall(In& stream)
       moveOp = kickBallVelocity;
     }
   }
+  return true;
+}
+
+RemoteControlRequest& RobotConsole::getRemoteControlRequest()
+{
+  return data->remoteControlRequest;
+}
+
+void RobotConsole::sendRemoteControlRequest()
+{
+  debugOut.out.bin << data->remoteControlRequest;
+  debugOut.out.finishMessage(idRemoteControlRequest);
+}
+
+bool RobotConsole::remoteControl(In& stream)
+{
+  SYNC;
+  std::string command;
+  stream >> command;
+
+  if (command == "on")
+  {
+    data->remoteControlRequest.command = RemoteControlRequest::Command::enable;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "off")
+  {
+    data->remoteControlRequest.command = RemoteControlRequest::Command::disable;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "walk")
+  {
+    stream >> data->remoteControlRequest.target.translation.x() >> data->remoteControlRequest.target.translation.y() >> data->remoteControlRequest.target.rotation;
+    data->remoteControlRequest.command = RemoteControlRequest::Command::walk;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "pass")
+  {
+    stream >> data->remoteControlRequest.target.translation.x() >> data->remoteControlRequest.target.translation.y() >> data->remoteControlRequest.target.rotation;
+    data->remoteControlRequest.command = RemoteControlRequest::Command::pass;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "kick")
+  {
+    stream >> data->remoteControlRequest.target.translation.x() >> data->remoteControlRequest.target.translation.y() >> data->remoteControlRequest.target.rotation;
+    data->remoteControlRequest.command = RemoteControlRequest::Command::kick;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "offensive")
+  {
+    data->remoteControlRequest.command = RemoteControlRequest::Command::enforceOffensiveRoles;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "defensive")
+  {
+    data->remoteControlRequest.command = RemoteControlRequest::Command::enforceDefensiveRoles;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "kickPref")
+  {
+    data->remoteControlRequest.command = RemoteControlRequest::Command::kickPreference;
+    data->remoteControlRequest.handled = false;
+  }
+  else if (command == "passPref")
+  {
+    data->remoteControlRequest.command = RemoteControlRequest::Command::passPreference;
+    data->remoteControlRequest.handled = false;
+  }
+  else
+  {
+    return false;
+  }
+
+  debugOut.out.bin << data->remoteControlRequest;
+  debugOut.out.finishMessage(idRemoteControlRequest);
   return true;
 }
 

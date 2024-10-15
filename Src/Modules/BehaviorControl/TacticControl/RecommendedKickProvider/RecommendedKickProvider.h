@@ -12,6 +12,7 @@
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
 #include "Representations/Infrastructure/FrameInfo.h"
+#include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Modeling/RecommendedKick/DirectionInfo.h"
 #include "Representations/Modeling/RecommendedKick/PositionInfo/PositionInfo.h"
 #include "Representations/Modeling/RecommendedKick/RecommendedKick.h"
@@ -29,6 +30,7 @@ MODULE(RecommendedKickProvider,
   REQUIRES(PositionInfo),
   REQUIRES(RobotPoseAfterPreview),
   REQUIRES(TacticSymbols),
+  REQUIRES(TeammateData),
 
   USES(PositioningAndKickSymbols),
 

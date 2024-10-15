@@ -44,7 +44,7 @@ void RecommendedKickProvider::update(RecommendedKick& theRecommendedKick)
   }
   skips = 0;
 
-  if (thePositioningAndKickSymbols.recommendShot)
+  if (thePositioningAndKickSymbols.recommendShot) // theGameInfo.gamePhase == STATE_INITIAL || theGameInfo.gamePhase == STATE_READY || theGameInfo.gamePhase == STATE_SET
   {
     recommend(theRecommendedKick);
   }
@@ -98,26 +98,42 @@ void RecommendedKickProvider::recommend(RecommendedKick& theRecommendedKick)
     }
   }
 
-  const Vector2f absoluteBallPosition = theBallSymbols.ballPositionFieldPredicted;
+  for (auto& mate : theTeammateData.teammates)
+  {
+    if (mate.status != mate.INACTIVE)
+    {
+      if (mate.passPreference)
+      {
+        cycleParameters.targetParameters.teammatesToGoalHeatParameter += 500;
+        cycleParameters.targetParameters.teammatesHeatParameter += 500;
+        cycleParameters.targetParameters.goalsHeatParameter = 0;
+        cycleParameters.targetParameters.intoOpponentsGoalParameter = 0;
+      }
+      if (mate.kickPreference)
+      {
+        cycleParameters.targetParameters.teammatesToGoalHeatParameter += 0;
+        cycleParameters.targetParameters.teammatesHeatParameter += 0;
+        cycleParameters.targetParameters.goalsHeatParameter = 500;
+        cycleParameters.targetParameters.intoOpponentsGoalParameter = 500;
+      }
+    }
+  }
+
+
+  const Vector2f ballPosition = theBallSymbols.ballPositionFieldPredicted;
   Filterer filterer = {};
   filterer.filterKickPoseBlockedByGoalPost(theFieldDimensions);
   const std::optional<ExecutableShot> executableShotOptional = SelectFunctions::createAndFilterAndSelect(
-      theRobotPoseAfterPreview, absoluteBallPosition, KickUtils::unpack(kicks), currentKickManager.getCurrentKick(theBallSymbols), filterer, cycleParameters, theDirectionInfo, theFieldDimensions, thePositionInfo, theTacticSymbols);
+      theRobotPoseAfterPreview, ballPosition, KickUtils::unpack(kicks), currentKickManager.getCurrentKick(ballPosition), filterer, cycleParameters, theDirectionInfo, theFieldDimensions, thePositionInfo, theTacticSymbols);
 
   if (executableShotOptional.has_value())
   {
-    if (executableShotOptional.value().hysteresis == Hysteresis::NO)
-    {
-      // is a new recommendation
-      theRecommendedKick.sinceRecommendationTime = theFrameInfo.getTimeSince(theRecommendedKick.recommendationTimeStamp);
-      theRecommendedKick.recommendationTimeStamp = theFrameInfo.time;
-    }
     theRecommendedKick.hasRecommendation = true;
     theRecommendedKick.estimatedKickTime = executableShotOptional.value().selectablePose.selectableShot.selectableTarget.selectableKick.kick->time;
     theRecommendedKick.estimatedPoseTime = executableShotOptional.value().selectablePose.getPoseTime();
     theRecommendedKick.successProbability = executableShotOptional.value().getSuccessProbability();
     theRecommendedKick.score = executableShotOptional.value().getScore();
-    currentKickManager.setCurrentKick(theRecommendedKick, executableShotOptional.value(), theBallSymbols, theFrameInfo);
+    currentKickManager.setCurrentKick(theRecommendedKick, executableShotOptional.value(), theFrameInfo);
     executableShotOptional.value().selectablePose.selectableShot.selectableTarget.draw();
   }
   else

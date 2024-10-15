@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <functional>
+#include <set>
 
 #include "Representations/Infrastructure/Image.h"
 #include "Representations/Infrastructure/TeamInfo.h"
@@ -9,6 +10,7 @@
 #include "Representations/Perception/RobotsPercept.h"
 #include "Tools/Debugging/DebugDrawings.h"
 #include "Tools/Module/Module.h"
+#include "Tools/ImageProcessing/KMeans.h"
 
 class TeamColor
 {
@@ -80,7 +82,13 @@ MODULE(JerseyColorDetector,
 
     (float) minColorConfidence,
     (float) minAssignedPixelsPercentage,
-    (bool) acceptBlackOpponent
+    (bool) acceptBlackOpponent,
+
+    (bool)(true) useKMeans,
+    (int)(2) maxKMeansIter,
+    (int)(5) k,
+    (bool)(true) useDistributionEstimation,
+    (float)(0.1) distribuitonInterpolationAlpha
   )
 );
 
@@ -90,10 +98,28 @@ class JerseyColorDetector : public JerseyColorDetectorBase
 public:
   void update(RobotsPerceptTeam& theRobotsPerceptTeam);
 
+  void printDistributionDebug(const RobotEstimate& re, ColorDistribution& distribution, ColorDistribution& expectedDistribution);
+
+  void runKMeans(RobotEstimate& re);
+
+  std::optional<ColorDistribution> estimateTeamColorDistribution(RobotEstimate& re, ColorDistribution& expectedDistribution, std::vector<ABC>& data, KMeans& kmeans, std::set<int>& assignedClusters);
+
 private:
   using TC = TeamColor::Color;
 
-  std::map<TC, std::reference_wrapper<ColorDistribution>> colorDistributions{{TC::Cyan, cyanDistribution},
+  // colorDistributions might be updated during a game, preconfiguredColorDistributions will stay the same
+  std::map<TC, ColorDistribution> colorDistributions{{TC::Cyan, cyanDistribution},
+      {TC::Red, redDistribution},
+      {TC::Yellow, yellowDistribution},
+      {TC::Black, blackDistribution},
+      {TC::White, whiteDistribution},
+      {TC::Darkgreen, darkgreenDistribution},
+      {TC::Orange, orangeDistribution},
+      {TC::Purple, purpleDistribution},
+      {TC::Brown, brownDistribution},
+      {TC::Gray, grayDistribution},
+      {TC::OwnMagenta, ownMagentaDistribution}};
+  std::map<TC, std::reference_wrapper<ColorDistribution>> preconfiguredColorDistributions{{TC::Cyan, cyanDistribution},
       {TC::Red, redDistribution},
       {TC::Yellow, yellowDistribution},
       {TC::Black, blackDistribution},

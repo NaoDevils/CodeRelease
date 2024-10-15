@@ -93,6 +93,23 @@ void TacticProvider::calcNumberOfActiveFieldPlayers(TacticSymbols& tacticSymbols
 */
 bool TacticProvider::decideDefensiveBehavior()
 {
+  for (auto& mate : theTeammateData.teammates)
+  {
+    if (mate.status != mate.INACTIVE)
+    {
+      if (mate.enforceOffensiveRoles)
+      {
+        defensiveBehavior = false;
+        return defensiveBehavior;
+      }
+      if (mate.enforceDefensiveRoles)
+      {
+        defensiveBehavior = true;
+        return defensiveBehavior;
+      }
+    }
+  }
+
   const bool setPlayOwn = (theGameSymbols.ownKickOff && theGameSymbols.currentSetPlay != SET_PLAY_NONE);
   const bool setPlayOpponent = (!theGameSymbols.ownKickOff && theGameSymbols.currentSetPlay != SET_PLAY_NONE);
   if (setPlayOwn)

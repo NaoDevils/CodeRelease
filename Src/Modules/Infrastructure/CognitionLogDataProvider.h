@@ -16,7 +16,6 @@
 #include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
 #include "Representations/BehaviorControl/VisualRefereeBehaviorSymbols.h"
 #include "Representations/BehaviorControl/JoystickControl/JoystickState.h"
-#include "Representations/Modeling/RecommendedKick/RecommendedKick.h"
 #include "Representations/Configuration/CameraCalibration.h"
 #include "Representations/Infrastructure/AudioData.h"
 #include "Representations/Infrastructure/FrameInfo.h"
@@ -99,7 +98,6 @@ MODULE(CognitionLogDataProvider,
   PROVIDES_CONCURRENT(ProcessedRobotsHypotheses),
   PROVIDES_CONCURRENT(PositioningSymbols),
   PROVIDES_CONCURRENT(RawGameInfo),
-  PROVIDES_CONCURRENT(RecommendedKick),
   PROVIDES_CONCURRENT(RefereeKeypoints),
   PROVIDES_CONCURRENT(RemoteBallModel),
   PROVIDES_CONCURRENT(RobotHealth),
@@ -169,7 +167,6 @@ private:
   void update(ProcessedRobotsHypotheses&) override {}
   void update(PositioningSymbols&) override {}
   void update(RawGameInfo&) override {}
-  void update(RecommendedKick&) override {}
   void update(RefereeKeypoints&) override {}
   void update(RemoteBallModel&) override {}
   void update(RobotHealth&) override {}

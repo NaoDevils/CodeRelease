@@ -90,6 +90,9 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
   case BehaviorData::rightWing:
     positioningSymbols = theRightWing;
     break;
+  case BehaviorData::remoteControl:
+    positioningSymbols = theRemoteControl;
+    break;
   case BehaviorData::backWing:
     positioningSymbols = theBackWing;
     break;
@@ -103,7 +106,7 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
     positioningSymbols = theBallchaser;
     break;
   }
-  static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 13, "Missing role!");
+  static_assert(BehaviorData::RoleAssignment::numOfRoleAssignments == 14, "Missing role!");
 
   positioningSymbols.distanceToOptPosition = (positioningSymbols.optPosition.translation - theRobotPoseAfterPreview.translation).norm();
 
@@ -117,7 +120,15 @@ void PositioningSymbolsProvider::update(PositioningSymbols& positioningSymbols)
 
 void PositioningSymbolsProvider::update(PositioningAndKickSymbols& positioningAndKickSymbols)
 {
-  positioningAndKickSymbols = theBallchaser;
+  switch (theRoleSymbols.role)
+  {
+  case BehaviorData::remoteControl:
+    positioningAndKickSymbols = theRemoteControl;
+    break;
+  default: //Ballchaser
+    positioningAndKickSymbols = theBallchaser;
+    break;
+  }
 
   // TODO Add Keeper
   // positioningAndKickSymbols = theKeeper;

@@ -73,8 +73,8 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/PositioningSymbolsProvider.h
         BehaviorControl/TacticControl/RoleDynamicProvider.cpp
         BehaviorControl/TacticControl/RoleDynamicProvider.h
-        BehaviorControl/TacticControl/RoleProvider/OldRoles/BackupBallchaserProviderOld.cpp
-        BehaviorControl/TacticControl/RoleProvider/OldRoles/BackupBallchaserProviderOld.h
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/BackupBallchaserProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/OldRoles/BackupBallchaserProvider.h
         BehaviorControl/TacticControl/RoleProvider/OldRoles/BallchaserKeeperProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/OldRoles/BallchaserKeeperProvider.h
         BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserProvider.cpp
@@ -97,8 +97,6 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.h
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/KeeperProvider.h
-        BehaviorControl/TacticControl/RoleProvider/BackupBallchaserProvider.cpp
-        BehaviorControl/TacticControl/RoleProvider/BackupBallchaserProvider.h
         BehaviorControl/TacticControl/RecommendedKickProvider/Constants.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Ranges/DistanceRequirement.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Functions/DrawFunctions.h
@@ -113,6 +111,7 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/CurrentKick.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/CurrentKickManager.cpp
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/CurrentKickManager.h
+        BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/KickManager.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/ShotParameters.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Filterer/Filterer.cpp
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Filterer/Filterer.h
@@ -131,6 +130,7 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Selectables/SelectablePose.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Selectables/SelectableShot.h
         BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Selectables/SelectableTarget.h
+        BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/Selectables/SimpleExecutableShot.h
         BehaviorControl/TacticControl/RecommendedKickProvider/RecommendedKickProvider.cpp
         BehaviorControl/TacticControl/RecommendedKickProvider/RecommendedKickProvider.h
         BehaviorControl/TacticControl/KicksProvider/KickTypes/Dribble.h
@@ -158,7 +158,6 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/RoleProvider/Utils/AvoidUtils.h
         BehaviorControl/TacticControl/RoleProvider/Ballchaser/BallchaserUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/FieldUtils.h
-        BehaviorControl/TacticControl/RoleProvider/Utils/Hysteresis.h
         BehaviorControl/TacticControl/RoleProvider/Utils/HysteresisUtils.h
         BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.cpp
         BehaviorControl/TacticControl/RoleProvider/Utils/KickUtils.h
@@ -171,6 +170,8 @@ target_sources(${PROJECT_NAME}
         BehaviorControl/TacticControl/RoleProvider/LeftWingProvider.h
         BehaviorControl/TacticControl/RoleProvider/RightWingProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/RightWingProvider.h
+        BehaviorControl/TacticControl/RoleProvider/RemoteControlProvider.cpp
+        BehaviorControl/TacticControl/RoleProvider/RemoteControlProvider.h
         BehaviorControl/TacticControl/RoleProvider/OldRoles/ReceiverProvider.cpp
         BehaviorControl/TacticControl/RoleProvider/OldRoles/ReceiverProvider.h
         BehaviorControl/TacticControl/RoleProvider/OldRoles/ReplacementKeeperProvider.cpp

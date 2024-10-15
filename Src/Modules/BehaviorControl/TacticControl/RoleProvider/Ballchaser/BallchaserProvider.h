@@ -13,6 +13,7 @@
 #include "Modules/BehaviorControl/CABSL/BehaviorParameters.h"
 #include "Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/CurrentKickManager.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Ballchaser/Objectives/RecommendedKickObjective.h"
+#include <Modules/BehaviorControl/TacticControl/RecommendedKickProvider/KickManager/Models/KickManager.h>
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/RoleProvider.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/Logs/BehaviorLogger.h"
 #include "Modules/BehaviorControl/TacticControl/RoleProvider/Utils/ObjectivesManager/Objective.h"
@@ -24,8 +25,10 @@
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/GoalSymbols.h"
 #include "Representations/BehaviorControl/RoleSelection.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/BehaviorControl/RoleSymbols/Ballchaser.h"
 #include "Representations/BehaviorControl/RoleSymbols/PositioningSymbols.h"
+#include "Representations/BehaviorControl/RoleSymbols/PositioningAndKickSymbols.h"
 #include "Representations/BehaviorControl/RoleSymbols/Receiver.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Configuration/FieldDimensions.h"
@@ -60,6 +63,7 @@ MODULE(BallchaserProvider,
   REQUIRES(PositionInfo),
   REQUIRES(Receiver),
   REQUIRES(RecommendedKick),
+  USES(RemoteControl),
   REQUIRES(RobotInfo),
   REQUIRES(RobotMap),
   REQUIRES(RobotModel),
@@ -71,6 +75,7 @@ MODULE(BallchaserProvider,
   REQUIRES(WalkingEngineParams),
 
   USES(PositioningSymbols),
+  USES(PositioningAndKickSymbols),
 
   PROVIDES(Ballchaser),
   PROVIDES(BallchaserHeadPOIList),
@@ -123,6 +128,10 @@ private:
   std::vector<std::unique_ptr<Kick>> penaltyKicks;
   BehaviorLogger logger;
   bool testMode = false;
+  KickManager kickManager = {};
+
+  bool testBehavior = false;
+
   Ballchaser localBallchaser;
   BallchaserHeadPOIList localBallchaserHeadPoiList;
   int startedSetPlayWaitingRemainingTime = 0;

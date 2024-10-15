@@ -11,6 +11,7 @@
 
 #include "Tools/Module/Module.h"
 #include "Representations/Configuration/FieldDimensions.h"
+//#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Representations/BehaviorControl/BallSymbols.h"
 #include "Representations/BehaviorControl/GameSymbols.h"
 #include "Representations/BehaviorControl/BehaviorConfiguration.h"
@@ -21,6 +22,8 @@
 #include "Representations/Infrastructure/TeammateData.h"
 #include "Representations/Modeling/RobotMap.h"
 #include "Tools/Settings.h"
+
+//USES(RemoteControl),
 
 MODULE(TacticProvider,
   REQUIRES(BallSymbols),

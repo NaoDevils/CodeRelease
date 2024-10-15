@@ -7,7 +7,6 @@
 #include <optional>
 #include <utility>
 #include <vector>
-#include <Modules/BehaviorControl/TacticControl/RoleProvider/Utils/Hysteresis.h>
 
 class CurrentKick
 {
@@ -20,5 +19,4 @@ public:
   Vector2f target;
   Kick* kick;
   bool kickWithLeft;
-  Hysteresis hysteresis = Hysteresis::YES;
 };

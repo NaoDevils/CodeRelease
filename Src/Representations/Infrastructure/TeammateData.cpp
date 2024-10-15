@@ -45,6 +45,10 @@ TeamCommOutput Teammate::toTeamCommData() const
   stream(teamNumber, "teamNumber");
   stream(sendTimestamp, "sendTimestamp");
   stream(fallen, "fallen");
+  stream(enforceDefensiveRoles, "enforceDefensiveRoles");
+  stream(enforceOffensiveRoles, "enforceOffensiveRoles");
+  stream(passPreference, "passPreference");
+  stream(kickPreference, "kickPreference");
   stream(timeSynchronization, "timeSynchronization");
   stream(robotPose, "robotPose");
   stream(ballModel, "ballModel");
@@ -79,6 +83,10 @@ bool TeammateReceived::fromTeamCommData(const TeamCommDataReceived& teamCommData
   stream(teamNumber);
   stream(sendTimestamp);
   stream(fallen);
+  stream(enforceDefensiveRoles);
+  stream(enforceOffensiveRoles);
+  stream(passPreference);
+  stream(kickPreference);
   stream(timeSynchronization);
   stream(robotPose);
   stream(ballModel);
@@ -142,36 +150,6 @@ void TeammateData::draw() const
     // Role
     //DRAWTEXT("representation:TeammateData", rPos.x() + 100, rPos.y() - 150, 100,
     //         ColorRGBA::black, BehaviorData::RoleAssignment::getName(teammate.behaviorData.role));
-    // Intention
-    std::string intentionStr;
-    switch (teammate.behaviorData.soccerState)
-    {
-    case BehaviorData::waiting:
-      intentionStr = "default";
-      break;
-    case BehaviorData::positioning:
-      if (teammate.behaviorData.role == BehaviorData::keeper)
-        intentionStr = "keeper";
-      else
-        intentionStr = "defensive";
-      break;
-    case BehaviorData::controlBall:
-      intentionStr = "kick";
-      break;
-    case BehaviorData::penalized:
-    case BehaviorData::searchForBall:
-      intentionStr = "lost";
-      break;
-    default:
-      intentionStr = "unknown";
-    }
-    DRAWTEXT("representation:TeammateData", rPos.x() + 100, rPos.y() - 450, 100, ColorRGBA::black, "Intention: " << intentionStr);
-
-    const Vector2f bPos = teammate.robotPose * teammate.ballModel.position;
-    //Line from Robot to WalkTarget
-    //LINE("representation:TeammateData", rPos.x(), rPos.y(), teammate.walkRequest.request.translation.x(), teammate.walkRequest.request.translation.y(), 10, Drawings::dashedPen, ColorRGBA::magenta);
-    // Ball position
-    CIRCLE("representation:TeammateData", bPos.x(), bPos.y(), 50, 20, Drawings::solidPen, ColorRGBA::yellow, Drawings::solidBrush, ColorRGBA::yellow);
   }
 }
 

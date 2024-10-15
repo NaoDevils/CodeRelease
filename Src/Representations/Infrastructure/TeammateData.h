@@ -22,7 +22,7 @@
 
 STREAMABLE(Teammate,
   // Increase version number whenever something changes!
-  static constexpr unsigned char thisVersion = 1;
+  static constexpr unsigned char thisVersion = 2;
 
   // Sum version numbers of all streamables
   static constexpr unsigned char totalVersion = thisVersion
@@ -43,6 +43,10 @@ STREAMABLE(Teammate,
   (unsigned char)(0) teamNumber,
   (unsigned)(0) sendTimestamp,
   (bool)(false) fallen, // TC: we could use soccerState instead if filled correctly at all times
+  (bool)(false) enforceDefensiveRoles,
+  (bool)(false) enforceOffensiveRoles,
+  (bool)(false) passPreference,
+  (bool)(false) kickPreference,
   (TimeSynchronization) timeSynchronization,
   (RobotPoseCompressed) robotPose,
   (BallModelCompressed) ballModel,

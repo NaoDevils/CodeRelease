@@ -71,19 +71,7 @@ private:
   FieldColorMask localFieldColorMask;
   FieldColorMaskUpper localFieldColorMaskUpper;
 
-  std::vector<uchar> lowerMaskFrontBuffer;
-  std::vector<uchar> lowerMaskBackBuffer;
-  std::vector<uchar> upperMaskFrontBuffer;
-  std::vector<uchar> upperMaskBackBuffer;
-
   void update(FieldColorMask& fieldColorMask) override;
   void update(FieldColorMaskUpper& fieldColorMaskUpper) override;
   void execute(tf::Subflow& subflow) override;
-
-public:
-  FieldColorMaskProvider()
-      : FieldColorMaskProviderBase(), lowerMaskFrontBuffer(Image::maxResolutionWidth * Image::maxResolutionHeight), lowerMaskBackBuffer(Image::maxResolutionWidth * Image::maxResolutionHeight),
-        upperMaskFrontBuffer(Image::maxResolutionWidth * Image::maxResolutionHeight), upperMaskBackBuffer(Image::maxResolutionWidth * Image::maxResolutionHeight)
-  {
-  }
 };

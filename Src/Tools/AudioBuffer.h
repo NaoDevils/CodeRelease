@@ -142,7 +142,7 @@ private:
 public:
   AudioBuffer();
   AudioBuffer(AudioBufferParameters parameters);
-  int getCurrentMic(bool highestMagnitude = true);
+  int getCurrentMic();
   unsigned int getNumOfNewFrames();
   std::vector<std::vector<std::vector<float>>> getLevels(unsigned int minIDX = 0, unsigned int maxIDX = 17);
   std::vector<std::vector<float>> getConfidences(unsigned int numOfWindows = 1);

@@ -14,7 +14,7 @@ STREAMABLE(FieldColors,
   STREAMABLE(FieldColor,
     inline bool isPixelFieldColor(const int &y, const int &cb, const int &cr) const
     {
-      return std::abs(y - fieldColorOptY) < fieldColorMaxDistY &&
+      return std::abs(y - fieldColorOptY) < 65 &&
         std::abs(cb - fieldColorOptCb) < fieldColorMaxDistCb &&
         std::abs(cr - fieldColorOptCr) < fieldColorMaxDistCr;
     }
@@ -30,7 +30,6 @@ STREAMABLE(FieldColors,
       fieldColorOptY = other.fieldColorOptY;
       fieldColorOptCb = other.fieldColorOptCb;
       fieldColorOptCr = other.fieldColorOptCr;
-      fieldColorMaxDistY = other.fieldColorMaxDistY;
       fieldColorMaxDistCr = other.fieldColorMaxDistCr;
       fieldColorMaxDistCb = other.fieldColorMaxDistCb;
       fieldColorMaxYDiff = other.fieldColorMaxYDiff;
@@ -45,7 +44,6 @@ STREAMABLE(FieldColors,
     (int)(100) fieldColorOptY,
     (int)(80) fieldColorOptCb,
     (int)(100) fieldColorOptCr,
-    (int)(65) fieldColorMaxDistY,
     (int)(15) fieldColorMaxDistCb,
     (int)(10) fieldColorMaxDistCr,
     (int)(65) fieldColorMaxYDiff,
@@ -72,14 +70,13 @@ STREAMABLE(FieldColors,
     // TODO: interpolate?
     // TODO: better to not call this above horizon, using std::abs for now for debugging
     int areaNo = 1 + 3 * (std::abs(yPos - horizonYAvg) / areaHeight) + (xPos /areaWidth);
-    return std::abs(y - fieldColorArray[areaNo].fieldColorOptY) < fieldColorArray[areaNo].fieldColorMaxDistY
-        &&
+    return std::abs(y - fieldColorArray[areaNo].fieldColorOptY) < 65 &&
       std::abs(cb - fieldColorArray[areaNo].fieldColorOptCb) < fieldColorArray[areaNo].fieldColorMaxDistCb &&
       std::abs(cr - fieldColorArray[areaNo].fieldColorOptCr) < fieldColorArray[areaNo].fieldColorMaxDistCr;
   }
   inline bool isPixelFieldColor(const int &y, const int &cb, const int &cr) const
   {
-    return std::abs(y - fieldColorArray[0].fieldColorOptY) < fieldColorArray[0].fieldColorMaxDistY &&
+    return std::abs(y - fieldColorArray[0].fieldColorOptY) < 65 &&
       std::abs(cb - fieldColorArray[0].fieldColorOptCb) < fieldColorArray[0].fieldColorMaxDistCb &&
       std::abs(cr - fieldColorArray[0].fieldColorOptCr) < fieldColorArray[0].fieldColorMaxDistCr;
   },

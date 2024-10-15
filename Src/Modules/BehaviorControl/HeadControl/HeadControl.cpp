@@ -8,6 +8,8 @@ void HeadControl::update(HeadAngleRequest& headAngleRequest)
   tiltLimits.max = transformHeadPosition(minTiltObject, true, theCameraInfo.openingAngleHeight / 2.f).y();
 
   headAngleRequest.speed = defaultSpeed;
+  if (theRobotInfo.number % 2 == 0)
+    headAngleRequest.speed = 15_deg;
 
   const std::vector<Vector2a> cameraPositions = getNextTarget();
 

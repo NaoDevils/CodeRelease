@@ -5,6 +5,11 @@
 
 #include <cmath>
 
+std::vector<uchar> lowerMaskFrontBuffer(Image::maxResolutionWidth* Image::maxResolutionHeight);
+std::vector<uchar> lowerMaskBackBuffer(Image::maxResolutionWidth* Image::maxResolutionHeight);
+std::vector<uchar> upperMaskFrontBuffer(Image::maxResolutionWidth* Image::maxResolutionHeight);
+std::vector<uchar> upperMaskBackBuffer(Image::maxResolutionWidth* Image::maxResolutionHeight);
+
 void FieldColorMaskProvider::update(FieldColorMask& fieldColorMask)
 {
   localFieldColorMask.draw();

@@ -1,0 +1,23 @@
+call Includes/Normal
+
+robot robot10
+dr module:BallChaserDecisionProvider:enable on
+robot robot11
+dr module:BallChaserDecisionProvider:enable on
+
+#robot robot1
+robot robot3
+call Includes/FieldViewsCreate
+call Includes/Ballchaser
+
+robot robot2
+rc defensive
+rc passPref
+rc on
+call Includes/SharedAutonomy
+
+echo gc playing
+echo rc kickPref
+echo rc passPref
+echo rc offensive
+echo rc defensive

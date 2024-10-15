@@ -1,0 +1,11 @@
+# connect to a robot
+call Includes/connect
+
+call Includes/SharedAutonomy
+rc passPref
+rc defensive
+rc on
+
+echo rc offensive
+echo rc defensive
+echo rc kickPref

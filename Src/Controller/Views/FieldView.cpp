@@ -20,6 +20,7 @@
 #include "Controller/RoboCupCtrl.h"
 #include "Controller/Visualization/PaintMethods.h"
 #include "Representations/Configuration/FieldDimensions.h"
+#include "Representations/BehaviorControl/RoleSymbols/RemoteControl.h"
 #include "Platform/Thread.h"
 #include "FieldView.h"
 
@@ -67,6 +68,7 @@ private:
   QPoint offset;
   QPoint dragStart;
   QPoint dragStartOffset;
+  QPoint walkPos;
 
   void paintEvent(QPaintEvent* event)
   {
@@ -262,10 +264,15 @@ private:
   {
     QWidget::mousePressEvent(event);
 
-    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton)
+    if (event->button() == Qt::LeftButton)
     {
       dragStart = event->pos();
       dragStartOffset = offset;
+    }
+    else if (event->button() == Qt::MiddleButton)
+    {
+      walkPos = event->pos();
+      window2viewport(walkPos);
     }
   }
 
@@ -273,7 +280,32 @@ private:
   {
     QWidget::mouseReleaseEvent(event);
 
-    dragStart = QPoint(-1, -1);
+    if (event->button() == Qt::LeftButton)
+      dragStart = QPoint(-1, -1);
+    else if (event->button() == Qt::MiddleButton)
+    {
+      SYNC_WITH(fieldView.console);
+
+      QPoint walkDir = event->pos();
+      window2viewport(walkDir);
+      Vector2f walkDirRel((walkDir - walkPos).x(), (walkDir - walkPos).y());
+
+      RemoteControlRequest& rcr = fieldView.console.getRemoteControlRequest();
+
+      rcr.target.translation.x() = walkPos.x();
+      rcr.target.translation.y() = walkPos.y();
+      if (walkDirRel.norm() > 200.f)
+        rcr.target.rotation = walkDirRel.angle();
+
+      if (event->modifiers().testFlag(Qt::ShiftModifier))
+        rcr.command = RemoteControlRequest::Command::kick;
+      else if (event->modifiers().testFlag(Qt::ControlModifier))
+        rcr.command = RemoteControlRequest::Command::pass;
+      else
+        rcr.command = RemoteControlRequest::Command::walk;
+
+      fieldView.console.sendRemoteControlRequest();
+    }
   }
 
   void mouseDoubleClickEvent(QMouseEvent* event)

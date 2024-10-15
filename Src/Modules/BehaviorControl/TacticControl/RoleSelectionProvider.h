@@ -15,9 +15,6 @@
 #include "Representations/BehaviorControl/RoleSelection.h"
 #include "Representations/BehaviorControl/TacticSymbols.h"
 #include "Representations/Infrastructure/GameInfo.h"
-#include "Representations/Infrastructure/RobotInfo.h"
-#include "Representations/Infrastructure/TeamInfo.h"
-#include "Representations/Infrastructure/TeammateData.h"
 #include "Tools/Settings.h"
 
 MODULE(RoleSelectionProvider,
@@ -25,10 +22,7 @@ MODULE(RoleSelectionProvider,
   REQUIRES(FieldDimensions),
   REQUIRES(GameInfo),
   REQUIRES(GameSymbols),
-  REQUIRES(OwnTeamInfo),
-  REQUIRES(RobotInfo),
   REQUIRES(TacticSymbols),
-  REQUIRES(TeammateData),
   PROVIDES(RoleSelection),
   LOADS_PARAMETERS(
     ,
